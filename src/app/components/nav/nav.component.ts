@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { RouterOutlet, RouterLink } from '@angular/router';
-import { MaterialModule } from '../../modules/material/material-module';
+import { MaterialModule } from '../../modules/material-module';
 import { Theme } from '../../services/theme';
 
 @Component({
