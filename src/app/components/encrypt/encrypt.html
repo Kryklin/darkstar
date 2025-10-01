@@ -1,1 +1,45 @@
-<p>encrypt works!</p>
+<mat-card class="encrypt-card">
+  <mat-card-header>
+    <mat-card-title>BIP39 Mnemonic Encryption</mat-card-title>
+    <mat-card-subtitle>Securely encrypt your 24-word recovery phrase</mat-card-subtitle>
+  </mat-card-header>
+  <mat-card-content>
+    <mat-stepper linear #stepper>
+      <mat-step [stepControl]="firstFormGroup">
+        <form [formGroup]="firstFormGroup">
+          <ng-template matStepLabel>Enter Recovery Phrase</ng-template>
+          <mat-form-field class="full-width">
+            <mat-label>Insert the 24 word BIP39 keyword set for bitcoin recovery</mat-label>
+            <textarea matInput
+                      formControlName="firstCtrl"
+                      cdkTextareaAutosize
+                      #autosize="cdkTextareaAutosize"
+                      cdkAutosizeMinRows="4"
+                      placeholder="e.g. word1 word2 word3 ..."></textarea>
+          </mat-form-field>
+          <div class="stepper-buttons">
+            <button mat-button (click)="generateRandomWords()">Debug</button>
+            <button mat-button matStepperNext>Next</button>
+          </div>
+        </form>
+      </mat-step>
+      <mat-step [stepControl]="secondFormGroup">
+        <form [formGroup]="secondFormGroup">
+          <ng-template matStepLabel>Set Password</ng-template>
+          <mat-form-field class="full-width">
+            <mat-label>Encryption password</mat-label>
+            <input matInput formControlName="secondCtrl" type="password" required>
+          </mat-form-field>
+          <div class="stepper-buttons">
+            <button mat-button matStepperPrevious>Back</button>
+            <button mat-raised-button color="primary">Submit</button>
+          </div>
+        </form>
+      </mat-step>
+    </mat-stepper>
+  </mat-card-content>
+  <mat-card-footer>
+    <p class="footer-text">Encryption is performed locally in your browser. Your private data is never transmitted.</p>
+  </mat-card-footer>
+</mat-card>
+
