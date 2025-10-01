@@ -1,0 +1,33 @@
+.home-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+.info-card {
+  max-width: 800px;
+  width: 100%;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+mat-card-title {
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+mat-card-subtitle {
+  font-size: 1rem;
+  color: #888;
+}
+
+h3 {
+  margin-top: 1.5rem;
+  font-size: 1.2rem;
+  font-weight: 500;
+}

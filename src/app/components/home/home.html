@@ -1,1 +1,22 @@
-<p>home works!</p>
+<div class="home-container">
+  <mat-card class="info-card">
+    <mat-card-header>
+      <img mat-card-avatar [src]="theme.logoSrc()" alt="Darkstar Logo" class="logo">
+      <mat-card-title>Darkstar</mat-card-title>
+      <mat-card-subtitle>Created by Victor Kane</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <p>
+        Darkstar is a powerful tool designed for text obfuscation and deobfuscation. It provides a suite of cryptographic and non-cryptographic methods to transform your text, making it unreadable to unauthorized users while allowing for easy reversal for those with the key.
+      </p>
+      <h3>Features:</h3>
+      <mat-list role="list">
+        <mat-list-item role="listitem">AES-256 Encryption: Secure your text with a strong, industry-standard encryption algorithm.</mat-list-item>
+        <mat-list-item role="listitem">Multiple Obfuscation Layers: Apply a variety of techniques like reversing, character encoding, and ciphers.</mat-list-item>
+        <mat-list-item role="listitem">Flexible Deobfuscation: The application can intelligently reverse the obfuscation steps to recover the original text.</mat-list-item>
+        <mat-list-item role="listitem">Dark/Light Theme: Choose the visual mode that's most comfortable for you.</mat-list-item>
+      </mat-list>
+    </mat-card-content>
+  </mat-card>
+</div>
+

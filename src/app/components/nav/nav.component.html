@@ -1,8 +1,22 @@
-<mat-sidenav-container class="sidenav-container">
-  <mat-sidenav #drawer class="sidenav" fixedInViewport mode="side" hasBackdrop="true">
-    <mat-toolbar>Menu</mat-toolbar>
+<mat-sidenav-container class="sidenav-container" hasbackdrop="true">
+  <mat-sidenav #drawer class="sidenav" fixedInViewport mode="over">
+    <mat-toolbar class="nav-link-center">DARKSTAR</mat-toolbar>
     <mat-nav-list>
-      <a mat-list-item routerLink="/home">Dashboard</a>
+      <a mat-list-item routerLink="/home">
+        <div class="nav-link-center">
+          <mat-icon>home</mat-icon>
+        </div>
+      </a>
+      <a mat-list-item routerLink="/home">
+        <div class="nav-link-center">
+          <mat-icon fontSet="material-symbols-outlined">encrypted_add_circle</mat-icon>
+        </div>
+      </a>
+      <a mat-list-item routerLink="/home">
+        <div class="nav-link-center">
+          <mat-icon fontSet="material-symbols-outlined">encrypted_minus_circle</mat-icon>
+        </div>
+      </a>
     </mat-nav-list>
   </mat-sidenav>
   <mat-sidenav-content>
