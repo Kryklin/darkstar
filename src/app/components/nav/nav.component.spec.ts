@@ -1,8 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NavComponent } from './nav.component';
 import { Theme } from '../../services/theme';
-import { signal } from '@angular/core';
-import { By } from '@angular/platform-browser';
 import { MaterialModule } from '../../modules/material/material-module';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -10,45 +8,60 @@ import { RouterTestingModule } from '@angular/router/testing';
 describe('NavComponent', () => {
   let component: NavComponent;
   let fixture: ComponentFixture<NavComponent>;
-  let mockThemeService: jasmine.SpyObj<Theme>;
+  let themeService: Theme;
+  let compiled: HTMLElement;
 
   beforeEach(async () => {
-    const isDarkThemeSignal = signal(false);
-    const logoSrcSignal = signal('public/img/logo-black.png');
-
-    mockThemeService = jasmine.createSpyObj('Theme', ['setDarkTheme'], {
-      'isDarkTheme': isDarkThemeSignal,
-      'logoSrc': logoSrcSignal
-    });
-
     await TestBed.configureTestingModule({
       imports: [NavComponent, MaterialModule, NoopAnimationsModule, RouterTestingModule],
-      providers: [{ provide: Theme, useValue: mockThemeService }],
+      providers: [Theme],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NavComponent);
     component = fixture.componentInstance;
+    themeService = TestBed.inject(Theme);
     fixture.detectChanges();
+    compiled = fixture.nativeElement;
   });
 
   it('should create the component', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should inject the Theme service', () => {
-    expect(component.theme).toBeTruthy();
-    expect(component.theme).toBe(mockThemeService);
+  it('should toggle theme from light to dark', () => {
+    const themeButton = compiled.querySelector('.mat-toolbar button:last-child');
+    const icon = themeButton?.querySelector('mat-icon');
+
+    // Initially, should be light theme
+    expect(themeService.isDarkTheme()).toBeFalse();
+    expect(icon?.textContent).toContain('dark_mode');
+
+    // Click to toggle to dark theme
+    (themeButton as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(themeService.isDarkTheme()).toBeTrue();
+    expect(icon?.textContent).toContain('light_mode');
   });
 
-  it('should call theme.setDarkTheme when toggleTheme is called', () => {
-    component.toggleTheme();
-    expect(mockThemeService.setDarkTheme).toHaveBeenCalledWith(true);
-  });
+  it('should toggle theme from dark to light', () => {
+    // Set initial theme to dark
+    themeService.setDarkTheme(true);
+    fixture.detectChanges();
 
-  it('should render the logo', () => {
-    const logoElement = fixture.debugElement.query(By.css('.navbar-logo'));
-    expect(logoElement).toBeTruthy();
-    expect(logoElement.nativeElement.src).toContain('public/img/logo-black.png');
+    const themeButton = compiled.querySelector('.mat-toolbar button:last-child');
+    const icon = themeButton?.querySelector('mat-icon');
+
+    // Initially, should be dark theme
+    expect(themeService.isDarkTheme()).toBeTrue();
+    expect(icon?.textContent).toContain('light_mode');
+
+    // Click to toggle to light theme
+    (themeButton as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(themeService.isDarkTheme()).toBeFalse();
+    expect(icon?.textContent).toContain('dark_mode');
   });
 });
 
