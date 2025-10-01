@@ -1,59 +1,39 @@
-# Darkstar
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/assets/icons/logo-white.png">
+    <img src="public/assets/icons/logo-black.png" alt="Darkstar Logo" width="400">
+  </picture>
+</p>
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.1.
+<h1 align="center">Darkstar</h1>
 
-## Development server
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.0.1-blue" alt="Version"/>
+  <img src="https://img.shields.io/badge/Angular-v20.3.0-dd0031?logo=angular" alt="Angular"/>
+  <img src="https://img.shields.io/badge/Angular%20Material-v20.2.3-blue?logo=angular" alt="Angular Material"/>
+  <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript"/>
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License"/>
+</p>
 
-To start a local development server, run:
+`darkstar` is a powerful, client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase (BIP39 mnemonic). It provides a robust, multi-layered solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your digital assets from both physical and digital threats.
 
-```bash
-ng serve
-```
+### How it Works
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+`darkstar` employs a sophisticated, multi-stage process to secure your recovery phrase:
 
-## Code scaffolding
+1.  **Guaranteed Seeded Obfuscation**: For each word, Darkstar randomly selects 12 unique obfuscation functions from a pool of 24. Crucially, it guarantees that at least one of these is a "seeded" function (e.g., character shuffling) that uses your password, deeply integrating the password into the obfuscation itself.
+2.  **AES-256 Encryption**: The collection of obfuscated words is joined together and then encrypted using the industry-standard AES-256 algorithm with a user-provided password.
+3.  **Reverse Key Generation**: A "reverse key" is generated, containing the precise sequence of obfuscation functions used for each word.
+4.  **Key Encoding**: This reverse key is then Base64 encoded. This is the final key you need to store.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+To decrypt, you need both the **Base64 encoded reverse key** (to reverse the obfuscation) and your **password** (to decrypt the data). This dual-component system significantly enhances the security of your recovery phrase.
 
-```bash
-ng generate component component-name
-```
+## Key Features
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+- **Angular**: A powerful and modern web application framework.
+- **Angular Material**: A comprehensive library of UI components.
+- **SCSS**: Advanced CSS preprocessor for more maintainable and powerful stylesheets.
 
-```bash
-ng generate --help
-```
+## Authors
 
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- **Victor Kane** - [https://github.com/Kryklin](https://github.com/Kryklin)

@@ -8,5 +8,5 @@ import { NavComponent } from './components/nav/nav.component';
   styleUrls: ['./app.scss']
 })
 export class App {
-  protected readonly title = signal('darkstar');
+  public readonly title = signal('darkstar');
 }
