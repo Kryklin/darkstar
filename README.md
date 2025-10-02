@@ -29,12 +29,6 @@
 
 To decrypt, you need both the **Base64 encoded reverse key** (to reverse the obfuscation) and your **password** (to decrypt the data). This dual-component system significantly enhances the security of your recovery phrase.
 
-## Key Features
-
-- **Angular**: A powerful and modern web application framework.
-- **Angular Material**: A comprehensive library of UI components.
-- **SCSS**: Advanced CSS preprocessor for more maintainable and powerful stylesheets.
-
 ## Authors
 
 - **Victor Kane** - [https://github.com/Kryklin](https://github.com/Kryklin)
