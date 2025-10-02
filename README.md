@@ -9,6 +9,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-0.0.1-blue" alt="Version"/>
+  <img src="https://img.shields.io/badge/status-under%20construction-yellow" alt="Status"/>
   <img src="https://img.shields.io/badge/Angular-v20.3.0-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Angular%20Material-v20.2.3-blue?logo=angular" alt="Angular Material"/>
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript"/>
