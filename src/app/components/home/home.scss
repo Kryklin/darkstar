@@ -6,7 +6,7 @@
 }
 
 .info-card {
-  max-width: 800px;
+  max-width: 1000px;
   width: 100%;
 }
 
@@ -30,4 +30,10 @@ h3 {
   margin-top: 1.5rem;
   font-size: 1.2rem;
   font-weight: 500;
+}
+
+mat-list-item {
+  height: auto;
+  white-space: normal;
+  padding: 8px 0;
 }

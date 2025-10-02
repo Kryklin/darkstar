@@ -1,5 +1,5 @@
 .encrypt-card {
-  max-width: 600px;
+  max-width: 800px;
   margin: 2rem auto;
 }
 
@@ -29,5 +29,9 @@ mat-form-field {
   display: flex;
   justify-content: center;
   padding-bottom: 16px;
+}
+
+.encrypt-card mat-card-content {
+  padding-top: 1rem;
 }
 

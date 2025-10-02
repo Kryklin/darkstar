@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { RouterOutlet, RouterLink } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { MaterialModule } from '../../modules/material-module';
 import { Theme } from '../../services/theme';
 
@@ -11,7 +11,8 @@ import { Theme } from '../../services/theme';
   imports: [
     MaterialModule,
     RouterOutlet,
-    RouterLink
+    RouterLink,
+    RouterLinkActive
 ]
 })
 export class NavComponent {
