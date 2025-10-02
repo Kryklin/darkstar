@@ -99,7 +99,7 @@ export class Encrypt {
       ].join('||');
 
       this.encryptedData = this.cryptService.encryptAES256(payload, password);
-      this.reverseKey = functionSequenceString;
+      this.reverseKey = btoa(functionSequenceString);
       this.showResult = true;
     }
   }
