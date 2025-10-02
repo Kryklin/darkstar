@@ -1,9 +1,9 @@
 import { Component, signal } from '@angular/core';
-import { NavComponent } from './components/nav/nav.component';
+import { Nav } from './components/nav/nav';
 
 @Component({
   selector: 'app-root',
-  imports: [NavComponent],
+  imports: [Nav],
   templateUrl: './app.html',
   styleUrls: ['./app.scss']
 })

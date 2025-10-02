@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
-import { NavComponent } from './components/nav/nav.component';
+import { Nav } from './components/nav/nav';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterTestingModule } from '@angular/router/testing';
 
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [App, NavComponent, NoopAnimationsModule, RouterTestingModule],
+      imports: [App, Nav, NoopAnimationsModule, RouterTestingModule],
     }).compileComponents();
   });
 
@@ -23,7 +23,7 @@ describe('App', () => {
     expect(app.title()).toEqual('darkstar');
   });
 
-  it('should render the nav component', () => {
+  it('should render the nav', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;

@@ -6,8 +6,8 @@ import { Theme } from '../../services/theme';
 @Component({
   selector: 'app-nav',
   standalone: true,
-  templateUrl: './nav.component.html',
-  styleUrls: ['./nav.component.scss'],
+  templateUrl: './nav.html',
+  styleUrls: ['./nav.scss'],
   imports: [
     MaterialModule,
     RouterOutlet,
@@ -15,7 +15,7 @@ import { Theme } from '../../services/theme';
     RouterLinkActive
 ]
 })
-export class NavComponent {
+export class Nav {
   theme = inject(Theme);
 
   toggleTheme() {

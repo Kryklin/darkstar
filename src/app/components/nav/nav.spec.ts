@@ -1,23 +1,23 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NavComponent } from './nav.component';
+import { Nav } from './nav';
 import { Theme } from '../../services/theme';
 import { MaterialModule } from '../../modules/material-module';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterTestingModule } from '@angular/router/testing';
 
-describe('NavComponent', () => {
-  let component: NavComponent;
-  let fixture: ComponentFixture<NavComponent>;
+describe('Nav', () => {
+  let component: Nav;
+  let fixture: ComponentFixture<Nav>;
   let themeService: Theme;
   let compiled: HTMLElement;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NavComponent, MaterialModule, NoopAnimationsModule, RouterTestingModule],
+      imports: [Nav, MaterialModule, NoopAnimationsModule, RouterTestingModule],
       providers: [Theme],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(NavComponent);
+    fixture = TestBed.createComponent(Nav);
     component = fixture.componentInstance;
     themeService = TestBed.inject(Theme);
     fixture.detectChanges();

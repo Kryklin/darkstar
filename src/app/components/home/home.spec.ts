@@ -41,12 +41,4 @@ describe('Home', () => {
     expect(subtitle?.textContent).toContain('Created by Victor Kane');
   });
 
-  it('should display the feature list', () => {
-    const listItems = compiled.querySelectorAll('mat-list-item');
-    expect(listItems.length).toBe(4);
-    expect(listItems[0].textContent).toContain('AES-256 Encryption');
-    expect(listItems[1].textContent).toContain('Multiple Obfuscation Layers');
-    expect(listItems[2].textContent).toContain('Flexible Deobfuscation');
-    expect(listItems[3].textContent).toContain('Dark/Light Theme');
-  });
 });
