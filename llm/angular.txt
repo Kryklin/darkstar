@@ -1,161 +1,30 @@
-https://angular.dev/overview
-https://angular.dev/installation
-https://angular.dev/essentials
-https://angular.dev/essentials/components
-https://angular.dev/essentials/signals
-https://angular.dev/essentials/templates
-https://angular.dev/essentials/dependency-injection
-https://angular.dev/essentials/next-steps
-https://angular.dev/guide/signals
-https://angular.dev/guide/signals/linked-signal
-https://angular.dev/guide/signals/resource
-https://angular.dev/guide/components
-https://angular.dev/guide/components/selectors
-https://angular.dev/guide/components/styling
-https://angular.dev/guide/components/inputs
-https://angular.dev/guide/components/outputs
-https://angular.dev/guide/components/content-projection
-https://angular.dev/guide/components/host-elements
-https://angular.dev/guide/components/lifecycle
-https://angular.dev/guide/components/queries
-https://angular.dev/guide/components/dom-apis
-https://angular.dev/guide/components/inheritance
-https://angular.dev/guide/components/programmatic-rendering
-https://angular.dev/guide/components/advanced-configuration
-https://angular.dev/guide/elements
-https://angular.dev/guide/templates
-https://angular.dev/guide/templates/binding
-https://angular.dev/guide/templates/event-listeners
-https://angular.dev/guide/templates/two-way-binding
-https://angular.dev/guide/templates/control-flow
-https://angular.dev/guide/templates/pipes
-https://angular.dev/guide/templates/ng-content
-https://angular.dev/guide/templates/ng-template
-https://angular.dev/guide/templates/ng-container
-https://angular.dev/guide/templates/variables
-https://angular.dev/guide/templates/defer
-https://angular.dev/guide/templates/expression-syntax
-https://angular.dev/guide/templates/whitespace
-https://angular.dev/guide/directives
-https://angular.dev/guide/directives/attribute-directives
-https://angular.dev/guide/directives/structural-directives
-https://angular.dev/guide/directives/directive-composition-api
-https://angular.dev/guide/image-optimization
-https://angular.dev/guide/di
-https://angular.dev/guide/di/dependency-injection
-https://angular.dev/guide/di/creating-injectable-service
-https://angular.dev/guide/di/dependency-injection-providers
-https://angular.dev/guide/di/dependency-injection-context
-https://angular.dev/guide/di/hierarchical-dependency-injection
-https://angular.dev/guide/di/lightweight-injection-tokens
-https://angular.dev/guide/di/di-in-action
-https://angular.dev/guide/routing
-https://angular.dev/guide/routing/define-routes
-https://angular.dev/guide/routing/show-routes-with-outlets
-https://angular.dev/guide/routing/navigate-to-routes
-https://angular.dev/guide/routing/read-route-state
-https://angular.dev/guide/routing/redirecting-routes
-https://angular.dev/guide/routing/route-guards
-https://angular.dev/guide/routing/data-resolvers
-https://angular.dev/guide/routing/lifecycle-and-events
-https://angular.dev/guide/routing/testing
-https://angular.dev/guide/routing/common-router-tasks
-https://angular.dev/guide/routing/routing-with-urlmatcher
-https://angular.dev/guide/routing/rendering-strategies
-https://angular.dev/guide/routing/customizing-route-behavior
-https://angular.dev/guide/routing/router-reference
-https://angular.dev/guide/routing/route-transition-animations
-https://angular.dev/guide/forms
-https://angular.dev/guide/forms/reactive-forms
-https://angular.dev/guide/forms/typed-forms
-https://angular.dev/guide/forms/template-driven-forms
-https://angular.dev/guide/forms/form-validation
-https://angular.dev/guide/forms/dynamic-forms
-https://angular.dev/guide/http
-https://angular.dev/guide/http/setup
-https://angular.dev/guide/http/making-requests
-https://angular.dev/guide/http/http-resource
-https://angular.dev/guide/http/interceptors
-https://angular.dev/guide/http/testing
-https://angular.dev/guide/performance
-https://angular.dev/guide/ssr
-https://angular.dev/guide/hydration
-https://angular.dev/guide/incremental-hydration
-https://angular.dev/guide/testing
-https://angular.dev/guide/testing/code-coverage
-https://angular.dev/guide/testing/services
-https://angular.dev/guide/testing/components-basics
-https://angular.dev/guide/testing/components-scenarios
-https://angular.dev/guide/testing/attribute-directives
-https://angular.dev/guide/testing/pipes
-https://angular.dev/guide/testing/debugging
-https://angular.dev/guide/testing/utility-apis
-https://angular.dev/guide/testing/unit-tests
-https://angular.dev/guide/testing/component-harnesses-overview
-https://angular.dev/guide/testing/using-component-harnesses
-https://angular.dev/guide/testing/creating-component-harnesses
-https://angular.dev/guide/testing/component-harnesses-testing-environments
-https://angular.dev/guide/i18n
-https://angular.dev/guide/i18n/add-package
-https://angular.dev/guide/i18n/locale-id
-https://angular.dev/guide/i18n/format-data-locale
-https://angular.dev/guide/i18n/prepare
-https://angular.dev/guide/i18n/translation-files
-https://angular.dev/guide/i18n/merge
-https://angular.dev/guide/i18n/deploy
-https://angular.dev/guide/i18n/import-global-variants
-https://angular.dev/guide/i18n/manage-marked-text
-https://angular.dev/guide/i18n/example
-https://angular.dev/guide/animations
-https://angular.dev/guide/animations/css
-https://angular.dev/guide/drag-drop
-https://angular.dev/ai
-https://angular.dev/ai/develop-with-ai
-https://angular.dev/ai/design-patterns
-https://angular.dev/ai/mcp
-https://angular.dev/tools/cli
-https://angular.dev/tools/cli/setup-local
-https://angular.dev/tools/cli/build
-https://angular.dev/tools/cli/serve
-https://angular.dev/tools/cli/deployment
-https://angular.dev/tools/cli/end-to-end
-https://angular.dev/tools/cli/build-system-migration
-https://angular.dev/tools/cli/environments
-https://angular.dev/tools/cli/cli-builder
-https://angular.dev/tools/cli/schematics
-https://angular.dev/tools/cli/schematics-authoring
-https://angular.dev/tools/cli/schematics-for-libraries
-https://angular.dev/tools/cli/template-typecheck
-https://angular.dev/tools/cli/aot-compiler
-https://angular.dev/tools/cli/aot-metadata-errors
-https://angular.dev/style-guide
-https://angular.dev/best-practices/security
-https://angular.dev/best-practices/a11y
-https://angular.dev/best-practices/error-handling
-https://angular.dev/best-practices/runtime-performance
-https://angular.dev/best-practices/zone-pollution
-https://angular.dev/best-practices/slow-computations
-https://angular.dev/best-practices/skipping-subtrees
-https://angular.dev/best-practices/profiling-with-chrome-devtools
-https://angular.dev/guide/zoneless
-https://angular.dev/update
-https://angular.dev/guide/ngmodules/overview
-https://angular.dev/guide/legacy-animations
-https://angular.dev/guide/legacy-animations/transition-and-triggers
-https://angular.dev/guide/legacy-animations/complex-sequences
-https://angular.dev/guide/legacy-animations/reusable-animations
-https://angular.dev/guide/animations/migration
-https://angular.dev/ecosystem/rxjs-interop
-https://angular.dev/ecosystem/rxjs-interop/output-interop
-https://angular.dev/ecosystem/rxjs-interop/take-until-destroyed
-https://angular.dev/ecosystem/service-workers
-https://angular.dev/ecosystem/service-workers/getting-started
-https://angular.dev/ecosystem/service-workers/custom-service-worker-scripts
-https://angular.dev/ecosystem/service-workers/config
-https://angular.dev/ecosystem/service-workers/communications
-https://angular.dev/ecosystem/service-workers/push-notifications
-https://angular.dev/ecosystem/service-workers/devops
-https://angular.dev/ecosystem/service-workers/app-shell
-https://angular.dev/ecosystem/web-workers
-https://angular.dev/ecosystem/custom-build-pipeline
-https://angular.dev/guide/tailwind
+- [Angular Overview](https://angular.dev/overview)
+- [Angular Installation](https://angular.dev/installation)
+- [Angular Essentials](https://angular.dev/essentials)
+- [Angular Components](https://angular.dev/essentials/components)
+- [Angular Signals](https://angular.dev/essentials/signals)
+- [Angular Templates](https://angular.dev/essentials/templates)
+- [Angular Dependency Injection](https://angular.dev/essentials/dependency-injection)
+- [Angular Next Steps](https://angular.dev/essentials/next-steps)
+- [Angular Signals Guide](https://angular.dev/guide/signals)
+- [Angular Components Guide](https://angular.dev/guide/components)
+- [Angular Templates Guide](https://angular.dev/guide/templates)
+- [Angular Directives Guide](https://angular.dev/guide/directives)
+- [Angular DI Guide](https://angular.dev/guide/di)
+- [Angular Routing Guide](https://angular.dev/guide/routing)
+- [Angular Forms Guide](https://angular.dev/guide/forms)
+- [Angular HTTP Client Guide](https://angular.dev/guide/http)
+- [Angular Performance Guide](https://angular.dev/guide/performance)
+- [Angular SSR Guide](https://angular.dev/guide/ssr)
+- [Angular Testing Guide](https://angular.dev/guide/testing)
+- [Angular Internationalization Guide](https://angular.dev/guide/i18n)
+- [Angular Animations Guide](https://angular.dev/guide/animations)
+- [Angular Drag and Drop Guide](https://angular.dev/guide/drag-drop)
+- [Angular and AI](https://angular.dev/ai)
+- [Angular CLI](https://angular.dev/tools/cli)
+- [Angular Style Guide](https://angular.dev/style-guide)
+- [Angular Best Practices](https://angular.dev/best-practices)
+- [Angular Update Guide](https://angular.dev/update)
+- [Angular NgModules Guide](https://angular.dev/guide/ngmodules/overview)
+- [Angular Ecosystem](https://angular.dev/ecosystem)
+- [Angular Tailwind CSS Guide](https://angular.dev/guide/tailwind)
