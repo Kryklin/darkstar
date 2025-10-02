@@ -4,6 +4,11 @@
     <mat-card-subtitle>Securely encrypt your 24-word recovery phrase</mat-card-subtitle>
   </mat-card-header>
   <mat-card-content>
+    @if (isLoading) {
+      <div class="spinner-overlay">
+        <mat-spinner></mat-spinner>
+      </div>
+    }
     <mat-stepper linear #stepper>
       <mat-step [stepControl]="firstFormGroup">
         <form [formGroup]="firstFormGroup">
@@ -32,7 +37,7 @@
           </mat-form-field>
           <div class="stepper-buttons">
             <button mat-button matStepperPrevious>Back</button>
-            <button mat-raised-button color="primary">Submit</button>
+            <button mat-raised-button color="primary" (click)="onSubmit()">Submit</button>
           </div>
         </form>
       </mat-step>

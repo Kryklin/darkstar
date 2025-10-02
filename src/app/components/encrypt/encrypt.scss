@@ -7,8 +7,12 @@
   width: 100%;
 }
 
+mat-form-field {
+  margin-bottom: 1rem;
+}
+
 .stepper-buttons {
-  margin-top: 1rem;
+  margin-top: 16px;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -19,4 +23,17 @@
   text-align: center;
   font-size: 0.8rem;
   color: #666;
+}
+
+.spinner-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
