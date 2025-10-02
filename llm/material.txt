@@ -1,2 +1,0 @@
-- [Angular Material Components](https://material.angular.dev/components)
-- [Angular Material Guides](https://material.angular.dev/guides)
