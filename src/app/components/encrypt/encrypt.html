@@ -1,50 +1,69 @@
 <mat-card class="encrypt-card">
-  <mat-card-header>
-    <mat-card-title>BIP39 Mnemonic Encryption</mat-card-title>
-    <mat-card-subtitle>Securely encrypt your 24-word recovery phrase</mat-card-subtitle>
-  </mat-card-header>
-  <mat-card-content>
-    @if (isLoading) {
-      <div class="spinner-overlay">
-        <mat-spinner></mat-spinner>
-      </div>
-    }
-    <mat-stepper linear #stepper>
-      <mat-step [stepControl]="firstFormGroup">
-        <form [formGroup]="firstFormGroup">
-          <ng-template matStepLabel>Enter Recovery Phrase</ng-template>
-          <mat-form-field class="full-width">
-            <mat-label>Insert the 24 word BIP39 keyword set for bitcoin recovery</mat-label>
-            <textarea matInput
-                      formControlName="firstCtrl"
-                      cdkTextareaAutosize
-                      #autosize="cdkTextareaAutosize"
-                      cdkAutosizeMinRows="4"
-                      placeholder="e.g. word1 word2 word3 ..."></textarea>
-          </mat-form-field>
-          <div class="stepper-buttons">
-            <button mat-button (click)="generateRandomWords()">Debug</button>
-            <button mat-button matStepperNext>Next</button>
-          </div>
-        </form>
-      </mat-step>
-      <mat-step [stepControl]="secondFormGroup">
-        <form [formGroup]="secondFormGroup">
-          <ng-template matStepLabel>Set Password</ng-template>
-          <mat-form-field class="full-width">
-            <mat-label>Encryption password</mat-label>
-            <input matInput formControlName="secondCtrl" type="password" required>
-          </mat-form-field>
-          <div class="stepper-buttons">
-            <button mat-button matStepperPrevious>Back</button>
-            <button mat-raised-button color="primary" (click)="onSubmit()">Submit</button>
-          </div>
-        </form>
-      </mat-step>
-    </mat-stepper>
-  </mat-card-content>
-  <mat-card-footer>
-    <p class="footer-text">Encryption is performed locally in your browser. Your private data is never transmitted.</p>
-  </mat-card-footer>
+  @if (!showResult) {
+    <mat-card-header>
+      <mat-card-title>BIP39 Mnemonic Encryption</mat-card-title>
+      <mat-card-subtitle>Securely encrypt your 24-word recovery phrase</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-stepper linear #stepper>
+        <mat-step [stepControl]="firstFormGroup">
+          <form [formGroup]="firstFormGroup">
+            <ng-template matStepLabel>Enter Recovery Phrase</ng-template>
+            <mat-form-field class="full-width">
+              <mat-label>Insert the 24 word BIP39 keyword set for bitcoin recovery</mat-label>
+              <textarea matInput
+                        formControlName="firstCtrl"
+                        cdkTextareaAutosize
+                        #autosize="cdkTextareaAutosize"
+                        cdkAutosizeMinRows="4"
+                        placeholder="e.g. word1 word2 word3 ..."></textarea>
+            </mat-form-field>
+            <div class="stepper-buttons">
+              <button mat-button (click)="generateRandomWords()">Debug</button>
+              <button mat-button matStepperNext>Next</button>
+            </div>
+          </form>
+        </mat-step>
+        <mat-step [stepControl]="secondFormGroup">
+          <form [formGroup]="secondFormGroup">
+            <ng-template matStepLabel>Set Password</ng-template>
+            <mat-form-field class="full-width">
+              <mat-label>Encryption password</mat-label>
+              <input matInput formControlName="secondCtrl" type="password" required>
+            </mat-form-field>
+            <div class="stepper-buttons">
+              <button mat-button matStepperPrevious>Back</button>
+              <button mat-raised-button color="primary" (click)="onSubmit()">Submit</button>
+            </div>
+          </form>
+        </mat-step>
+      </mat-stepper>
+    </mat-card-content>
+    <mat-card-footer>
+      <p class="footer-text">Encryption is performed locally in your browser. Your private data is never transmitted.</p>
+    </mat-card-footer>
+  } @else {
+    <mat-card-header>
+      <mat-card-title>Encryption Successful</mat-card-title>
+      <mat-card-subtitle>Your data has been securely encrypted.</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-form-field class="full-width">
+        <mat-label>Encrypted Data</mat-label>
+        <textarea matInput readonly [value]="encryptedData" cdkTextareaAutosize cdkAutosizeMinRows="8"></textarea>
+      </mat-form-field>
+      <mat-form-field class="full-width">
+        <mat-label>Reverse Key</mat-label>
+        <textarea matInput readonly [value]="reverseKey" cdkTextareaAutosize cdkAutosizeMinRows="2"></textarea>
+      </mat-form-field>
+    </mat-card-content>
+    <mat-card-actions align="end">
+      <button mat-button (click)="reset()">Reset</button>
+    </mat-card-actions>
+    <mat-card-footer>
+      <p class="footer-text">Store both the encrypted data and the reverse key securely. You will need both to decrypt your data.</p>
+    </mat-card-footer>
+  }
 </mat-card>
+
 

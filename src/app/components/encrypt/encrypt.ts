@@ -20,7 +20,9 @@ import { CryptService } from '../../services/crypt';
 export class Encrypt {
   firstFormGroup: FormGroup;
   secondFormGroup: FormGroup;
-  isLoading = false;
+  showResult = false;
+  encryptedData: string = '';
+  reverseKey: string = '';
 
   constructor(private _formBuilder: FormBuilder, private cryptService: CryptService) {
     this.firstFormGroup = this._formBuilder.group({
@@ -33,78 +35,72 @@ export class Encrypt {
 
   onSubmit() {
     if (this.firstFormGroup.valid && this.secondFormGroup.valid) {
-      this.isLoading = true;
-      setTimeout(() => {
-        const words = this.firstFormGroup.controls['firstCtrl'].value.trim().split(/[ ,]+/);
-        const password = this.secondFormGroup.controls['secondCtrl'].value;
+      const words = this.firstFormGroup.controls['firstCtrl'].value.trim().split(/[ ,]+/);
+      const password = this.secondFormGroup.controls['secondCtrl'].value;
 
-        const nonSeededFunctions: ((input: string) => string)[] = [
-          this.cryptService.obfuscateByReversing,
-          this.cryptService.obfuscateToCharCodes,
-          this.cryptService.obfuscateToBinary,
-          this.cryptService.obfuscateToHex,
-          this.cryptService.obfuscateWithCaesarCipher,
-          this.cryptService.obfuscateWithAtbashCipher,
-          this.cryptService.obfuscateToLeet,
-          this.cryptService.obfuscateByInterleaving,
-          this.cryptService.obfuscateWithCaesarCipher7,
-          this.cryptService.obfuscateWithCustomSeparator,
-          this.cryptService.obfuscateWithBitwiseNot,
-          this.cryptService.obfuscateToMorseCode,
-          this.cryptService.obfuscateWithKeyboardShift,
-          this.cryptService.obfuscateToHtmlEntities,
-          this.cryptService.obfuscateToOctal,
-          this.cryptService.obfuscateWithNibbleSwap,
-          this.cryptService.obfuscateWithVowelRotation,
-          this.cryptService.obfuscateWithIndexMath,
-          this.cryptService.obfuscateWithMirrorCase,
-          this.cryptService.obfuscateWithIndexInterleave,
-          this.cryptService.obfuscateBySwappingAdjacentChars,
-        ].map(f => f.bind(this.cryptService));
+      const nonSeededFunctions: ((input: string) => string)[] = [
+        this.cryptService.obfuscateByReversing,
+        this.cryptService.obfuscateToCharCodes,
+        this.cryptService.obfuscateToBinary,
+        this.cryptService.obfuscateToHex,
+        this.cryptService.obfuscateWithCaesarCipher,
+        this.cryptService.obfuscateWithAtbashCipher,
+        this.cryptService.obfuscateToLeet,
+        this.cryptService.obfuscateByInterleaving,
+        this.cryptService.obfuscateWithCaesarCipher7,
+        this.cryptService.obfuscateWithCustomSeparator,
+        this.cryptService.obfuscateWithBitwiseNot,
+        this.cryptService.obfuscateToMorseCode,
+        this.cryptService.obfuscateWithKeyboardShift,
+        this.cryptService.obfuscateToHtmlEntities,
+        this.cryptService.obfuscateToOctal,
+        this.cryptService.obfuscateWithNibbleSwap,
+        this.cryptService.obfuscateWithVowelRotation,
+        this.cryptService.obfuscateWithIndexMath,
+        this.cryptService.obfuscateWithMirrorCase,
+        this.cryptService.obfuscateWithIndexInterleave,
+        this.cryptService.obfuscateBySwappingAdjacentChars,
+      ].map(f => f.bind(this.cryptService));
 
-        const seededFunctions: ((input: string, seed: string) => string)[] = [
-          this.cryptService.obfuscateByShuffling,
-          this.cryptService.obfuscateWithXOR,
-        ].map(f => f.bind(this.cryptService));
-        
-        const asciiShift = (input: string, seed: string) => this.cryptService.obfuscateWithAsciiShift(input, parseInt(seed, 10));
-        seededFunctions.push(asciiShift.bind(this.cryptService));
+      const seededFunctions: ((input: string, seed: string) => string)[] = [
+        this.cryptService.obfuscateByShuffling,
+        this.cryptService.obfuscateWithXOR,
+      ].map(f => f.bind(this.cryptService));
+      
+      const asciiShift = (input: string, seed: string) => this.cryptService.obfuscateWithAsciiShift(input, parseInt(seed, 10));
+      seededFunctions.push(asciiShift.bind(this.cryptService));
 
 
-        // Select 11 non-seeded functions
-        const selectedNonSeeded = this.getRandomSubarray(nonSeededFunctions, 11);
+      // Select 11 non-seeded functions
+      const selectedNonSeeded = this.getRandomSubarray(nonSeededFunctions, 11);
 
-        // Select 1 seeded function
-        const selectedSeeded = this.getRandomSubarray(seededFunctions, 1)[0];
+      // Select 1 seeded function
+      const selectedSeeded = this.getRandomSubarray(seededFunctions, 1)[0];
 
-        const allFunctions = [...selectedNonSeeded, (input: string) => selectedSeeded(input, password)];
-        this.shuffleArray(allFunctions);
+      const allFunctions = [...selectedNonSeeded, (input: string) => selectedSeeded(input, password)];
+      this.shuffleArray(allFunctions);
 
-        const functionSequence: number[] = [];
-        const obfuscatedWords: string[] = [];
+      const functionSequence: number[] = [];
+      const obfuscatedWords: string[] = [];
 
-        for (let i = 0; i < words.length; i++) {
-          const funcIndex = i % allFunctions.length;
-          const func = allFunctions[funcIndex];
-          obfuscatedWords.push(func(words[i]));
-          functionSequence.push(funcIndex);
-        }
+      for (let i = 0; i < words.length; i++) {
+        const funcIndex = i % allFunctions.length;
+        const func = allFunctions[funcIndex];
+        obfuscatedWords.push(func(words[i]));
+        functionSequence.push(funcIndex);
+      }
 
-        const functionSequenceString = functionSequence.join(',');
+      const functionSequenceString = functionSequence.join(',');
 
-        const payload = [
-          obfuscatedWords.join(' '),
-          selectedNonSeeded.map(f => this.getFunctionName(f)).join(','),
-          this.getFunctionName(selectedSeeded)
-        ].join('||');
+      const payload = [
+        obfuscatedWords.join(' '),
+        selectedNonSeeded.map(f => this.getFunctionName(f)).join(','),
+        this.getFunctionName(selectedSeeded)
+      ].join('||');
 
-        const encrypted = this.cryptService.encryptAES256(payload, password);
-        const reverseKey = functionSequenceString;
-
-        console.log('Encrypted Payload:', encrypted);
-        console.log('Reverse Key:', reverseKey);
-        this.isLoading = false;
-      }, 0);
+      this.encryptedData = this.cryptService.encryptAES256(payload, password);
+      this.reverseKey = functionSequenceString;
+      this.showResult = true;
     }
   }
 
@@ -188,5 +184,13 @@ export class Encrypt {
       randomWords += words[Math.floor(Math.random() * words.length)] + ' ';
     }
     this.firstFormGroup.controls['firstCtrl'].setValue(randomWords.trim());
+  }
+
+  reset() {
+    this.firstFormGroup.reset();
+    this.secondFormGroup.reset();
+    this.showResult = false;
+    this.encryptedData = '';
+    this.reverseKey = '';
   }
 }
