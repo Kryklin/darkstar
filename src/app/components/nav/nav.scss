@@ -14,6 +14,7 @@
   position: sticky;
   top: 0;
   z-index: 1;
+  -webkit-app-region: drag;
 }
 
 .spacer {
@@ -33,4 +34,8 @@
 
 .active-link {
   background: rgba(0, 0, 0, 0.1);
+}
+
+button {
+  -webkit-app-region: no-drag;
 }

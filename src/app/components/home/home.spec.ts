@@ -1,7 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Home } from './home';
-import { MatCardModule } from '@angular/material/card';
-import { MatListModule } from '@angular/material/list';
+import { MaterialModule } from '../../modules/material/material';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Theme } from '../../services/theme';
 
@@ -12,7 +11,7 @@ describe('Home', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Home, MatCardModule, MatListModule, NoopAnimationsModule],
+      imports: [Home, MaterialModule, NoopAnimationsModule],
       providers: [Theme]
     }).compileComponents();
 

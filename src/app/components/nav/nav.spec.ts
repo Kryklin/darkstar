@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Nav } from './nav';
 import { Theme } from '../../services/theme';
-import { MaterialModule } from '../../modules/material-module';
+import { MaterialModule } from '../../modules/material/material';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterTestingModule } from '@angular/router/testing';
 

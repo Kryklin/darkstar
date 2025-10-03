@@ -59,6 +59,24 @@ The build artifacts will be stored in the `dist/` directory.
 - **HTTP Client:** A built-in service for making HTTP requests to external APIs.
 - **Angular Material:** This project uses Angular Material for its UI components. It provides a suite of high-quality, pre-built components that follow Material Design principles.
 
+## TypeScript
+
+This project is written in [TypeScript](https://www.typescriptlang.org/), a typed superset of JavaScript that compiles to plain JavaScript. All code should be written in TypeScript, following best practices for static typing.
+
+### Key Concepts
+
+- **Static Types:** Use static types for variables, function parameters, and return values to catch errors early and improve code readability.
+- **Interfaces:** Define custom types for complex objects to ensure type safety.
+- **Generics:** Use generics to create reusable components that can work with a variety of types.
+- **Modules:** Organize code into modules to maintain a clean and scalable project structure.
+
+### Additional Resources
+
+- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [TypeScript for JS Programmers](https://www.typescriptlang.org/docs/handbook/typescript-in-5-minutes.html)
+- [TypeScript Cheat Sheets](https://www.typescriptlang.org/cheatsheets/)
+
 ## Additional Resources
 
 For more information on Angular, refer to the official documentation:
@@ -100,3 +118,12 @@ This project uses [Angular Material](https://material.angular.dev) for UI compon
 
 - [Angular Material Components](https://material.angular.dev/components)
 - [Angular Material Guides](https://material.angular.dev/guides)
+
+## Electron
+
+For building cross-platform desktop applications, this project can be integrated with [Electron](https://www.electronjs.org/).
+
+- **What is Electron?**: A framework to build desktop apps with JavaScript, HTML, and CSS.
+- **Getting Started**: Refer to the official [Electron documentation](https://www.electronjs.org/docs/latest/) and use [Electron Fiddle](https://www.electronjs.org/fiddle) for experimenting.
+- **Key Concepts**: Electron has a main process for managing application lifecycle and renderer processes for UI.
+- **Community**: For help, use the [community Discord server](https://discord.gg/electronjs) and check the [GitHub issue tracker](https://github.com/electron/electron/issues) for bugs.

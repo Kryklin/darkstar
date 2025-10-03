@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { MaterialModule } from '../../modules/material-module';
+import { MaterialModule } from '../../modules/material/material';
 import { Theme } from '../../services/theme';
 
 @Component({

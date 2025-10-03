@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
-import { MaterialModule } from '../../modules/material-module';
+import { MaterialModule } from '../../modules/material/material';
 import { Theme } from '../../services/theme';
 
 @Component({
@@ -20,5 +20,17 @@ export class Nav {
 
   toggleTheme() {
     this.theme.setDarkTheme(!this.theme.isDarkTheme());
+  }
+
+  minimize() {
+    (window as any).electronAPI.minimize();
+  }
+
+  maximize() {
+    (window as any).electronAPI.maximize();
+  }
+
+  close() {
+    (window as any).electronAPI.close();
   }
 }

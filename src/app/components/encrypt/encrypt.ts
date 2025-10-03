@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { TextFieldModule } from '@angular/cdk/text-field';
-import { MaterialModule } from '../../modules/material-module';
+import { MaterialModule } from '../../modules/material/material';
 import BIP39 from '../../../assets/BIP39.json';
 import { CryptService } from '../../services/crypt';
 
