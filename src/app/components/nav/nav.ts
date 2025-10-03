@@ -3,6 +3,8 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { MaterialModule } from '../../modules/material/material';
 import { Theme } from '../../services/theme';
 
+import { MatDrawerMode } from '@angular/material/sidenav';
+
 @Component({
   selector: 'app-nav',
   standalone: true,
@@ -17,6 +19,9 @@ import { Theme } from '../../services/theme';
 })
 export class Nav {
   theme = inject(Theme);
+  isElectron = !!(window as any).electronAPI;
+  sidenavMode: MatDrawerMode = this.isElectron ? 'side' : 'push';
+  hasBackdrop = !this.isElectron;
 
   toggleTheme() {
     this.theme.setDarkTheme(!this.theme.isDarkTheme());

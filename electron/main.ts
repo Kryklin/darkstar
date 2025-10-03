@@ -1,5 +1,5 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const path = require('path');
+import { app, BrowserWindow, ipcMain } from 'electron';
+import * as path from 'path';
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -31,18 +31,26 @@ app.on('window-all-closed', () => {
 });
 
 ipcMain.on('minimize-window', () => {
-  BrowserWindow.getFocusedWindow().minimize();
+  const win = BrowserWindow.getFocusedWindow();
+  if (win) {
+    win.minimize();
+  }
 });
 
 ipcMain.on('maximize-window', () => {
   const win = BrowserWindow.getFocusedWindow();
-  if (win.isMaximized()) {
-    win.unmaximize();
-  } else {
-    win.maximize();
+  if (win) {
+    if (win.isMaximized()) {
+      win.unmaximize();
+    } else {
+      win.maximize();
+    }
   }
 });
 
 ipcMain.on('close-window', () => {
-  BrowserWindow.getFocusedWindow().close();
+  const win = BrowserWindow.getFocusedWindow();
+  if (win) {
+    win.close();
+  }
 });

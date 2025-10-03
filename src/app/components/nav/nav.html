@@ -1,5 +1,5 @@
-<mat-sidenav-container class="sidenav-container" hasbackdrop="false">
-  <mat-sidenav #drawer class="sidenav" fixedInViewport mode="push">
+<mat-sidenav-container class="sidenav-container" [hasBackdrop]="hasBackdrop">
+  <mat-sidenav #drawer class="sidenav" fixedInViewport [mode]="sidenavMode">
     <mat-toolbar class="nav-link-center">DARKSTAR</mat-toolbar>
     <mat-nav-list>
       <a mat-list-item routerLink="/home" routerLinkActive="active-link">
@@ -34,15 +34,17 @@
       <button mat-icon-button (click)="toggleTheme()">
         <mat-icon>{{ theme.isDarkTheme() ? 'light_mode' : 'dark_mode' }}</mat-icon>
       </button>
-      <button mat-icon-button (click)="minimize()">
-        <mat-icon>minimize</mat-icon>
-      </button>
-      <button mat-icon-button (click)="maximize()">
-        <mat-icon>crop_square</mat-icon>
-      </button>
-      <button mat-icon-button (click)="close()">
-        <mat-icon>close</mat-icon>
-      </button>
+      @if (isElectron) {
+        <button mat-icon-button (click)="minimize()">
+          <mat-icon>minimize</mat-icon>
+        </button>
+        <button mat-icon-button (click)="maximize()">
+          <mat-icon>crop_square</mat-icon>
+        </button>
+        <button mat-icon-button (click)="close()">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
     </mat-toolbar>
       <router-outlet></router-outlet>
   </mat-sidenav-content>

@@ -24,6 +24,9 @@
 - **AES-256 Encryption**: Industry-standard encryption to protect your data.
 - **Multi-Layered Obfuscation**: A sophisticated, multi-stage process to secure your recovery phrase.
 - **Cross-Platform Desktop App**: Available as a desktop application for Windows, macOS, and Linux, built with Electron.
+  - **Frameless Window**: A modern, clean look without the default window frame.
+  - **Custom Window Controls**: Custom-built window controls for minimizing, maximizing, and closing the application.
+  - **Draggable Area**: The top navigation bar acts as a draggable area.
 - **Client-Side Security**: All operations are performed client-side, ensuring your data never leaves your machine.
 - **Light & Dark Theme**: A user-friendly interface with both light and dark themes.
 
