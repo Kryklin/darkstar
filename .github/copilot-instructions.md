@@ -127,3 +127,18 @@ For building cross-platform desktop applications, this project can be integrated
 - **Getting Started**: Refer to the official [Electron documentation](https://www.electronjs.org/docs/latest/) and use [Electron Fiddle](https://www.electronjs.org/fiddle) for experimenting.
 - **Key Concepts**: Electron has a main process for managing application lifecycle and renderer processes for UI.
 - **Community**: For help, use the [community Discord server](https://discord.gg/electronjs) and check the [GitHub issue tracker](https://github.com/electron/electron/issues) for bugs.
+
+## Electron Forge
+
+For packaging and distributing the Electron application, this project can use [Electron Forge](https://www.electronforge.io/).
+
+- **What is Electron Forge?**: An all-in-one tool for packaging and distributing Electron applications.
+- **Key Commands**:
+  - `npx create-electron-app my-app`: Create a new Electron project.
+  - `npm start`: Start the development server.
+  - `npm run make`: Build distributables for the current platform.
+  - `npm run publish`: Publish the distributables.
+- **Configuration**: Custom configuration can be added to the `forge.config.js` file.
+- **Templates**: Electron Forge supports templates for Webpack, Vite, and more.
+- **Resources**:
+  - [Electron Forge Documentation](https://www.electronforge.io/)

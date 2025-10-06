@@ -13,9 +13,65 @@
   <img src="https://img.shields.io/badge/Angular-v20.3.0-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Angular%20Material-v20.2.5-blue?logo=angular" alt="Angular Material"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
+  <img src="https://img.shields.io/badge/Electron%20Forge-v7.9.0-blue?logo=electron" alt="Electron Forge"/>
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript"/>
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License"/>
 </p>
+
+`darkstar` is a powerful, client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase (BIP39 mnemonic). It provides a robust, multi-layered solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your digital assets from both physical and digital threats. Available as both a web application and a cross-platform desktop application built with Electron.
+
+## Features
+//... existing code ...
+- **Light & Dark Theme**: A user-friendly interface with both light and dark themes.
+
+## Getting Started
+
+### Prerequisites
+//... existing code ...
+- [Angular CLI](https://angular.io/cli)
+
+### Installation
+
+1.  Clone the repository:
+//... existing code ...
+    npm install
+    ```
+
+### Running the Application
+
+-   **Web & Desktop Version**:
+    ```bash
+    npm start
+    ```
+    This will start the application in development mode with hot-reloading.
+
+## Building and Packaging
+
+This project uses [Electron Forge](https://www.electronforge.io/) to build and package the application for different operating systems.
+
+To create a distributable package for your current OS, run:
+```bash
+npm run make
+```
+The packaged application will be located in the `out` folder.
+
+## How it Works
+
+`darkstar` employs a sophisticated, multi-stage process to secure your recovery phrase:
+//... existing code ...
+To decrypt, you need both the **Base64 encoded reverse key** (to reverse the obfuscation) and your **password** (to decrypt the data). This dual-component system significantly enhances the security of your recovery phrase.
+
+## Technologies Used
+
+- [Angular](https://angular.io/)
+- [Angular Material](https://material.angular.io/)
+- [Electron](https://www.electronjs.org/)
+- [Electron Forge](https://www.electronforge.io/)
+- [TypeScript](https://www.typescriptlang.org/)
+
+## Authors
+
+- **Victor Kane** - [https://github.com/Kryklin](https://github.com/Kryklin)
 
 `darkstar` is a powerful, client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase (BIP39 mnemonic). It provides a robust, multi-layered solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your digital assets from both physical and digital threats. Available as both a web application and a cross-platform desktop application built with Electron.
 
