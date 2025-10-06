@@ -1,1 +1,43 @@
-<p>decrypt works!</p>
+<div class="container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Decrypt Mnemonic</mat-card-title>
+      <mat-card-subtitle>Enter the details below to decrypt your mnemonic phrase.</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <form class="decrypt-form">
+        <mat-form-field class="full-width">
+          <mat-label>Encrypted Data</mat-label>
+          <textarea matInput placeholder="Paste your encrypted data here..." [ngModel]="encryptedData()" (ngModelChange)="encryptedData.set($event)"></textarea>
+        </mat-form-field>
+
+        <mat-form-field class="full-width">
+          <mat-label>Reverse Key</mat-label>
+          <input matInput placeholder="Paste your Base64 reverse key here..." [ngModel]="reverseKey()" (ngModelChange)="reverseKey.set($event)">
+        </mat-form-field>
+
+        <mat-form-field class="full-width">
+          <mat-label>Password</mat-label>
+          <input matInput [type]="hidePassword() ? 'password' : 'text'" placeholder="Enter your password" [ngModel]="password()" (ngModelChange)="password.set($event)">
+          <button mat-icon-button matSuffix (click)="togglePasswordVisibility()" [attr.aria-label]="'Hide password'" [attr.aria-pressed]="hidePassword()">
+            <mat-icon>{{hidePassword() ? 'visibility_off' : 'visibility'}}</mat-icon>
+          </button>
+        </mat-form-field>
+      </form>
+
+      <div class="result-container" *ngIf="decryptedMnemonic()">
+        <h3>Decrypted Mnemonic:</h3>
+        <div class="mnemonic-display">
+          <p>{{ decryptedMnemonic() }}</p>
+          <button mat-icon-button (click)="copyToClipboard()" matTooltip="Copy to clipboard">
+            <mat-icon>content_copy</mat-icon>
+          </button>
+        </div>
+      </div>
+
+    </mat-card-content>
+    <mat-card-actions>
+      <button mat-raised-button color="primary" (click)="decrypt()">Decrypt</button>
+    </mat-card-actions>
+  </mat-card>
+</div>

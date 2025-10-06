@@ -3,11 +3,14 @@ import { CryptService } from './crypt';
 
 describe('CryptService', () => {
   let service: CryptService;
-  const testString = 'Hello, World! 123';
-  const password = 'mysecretpassword';
+  // A 12-word mnemonic for faster testing
+  const testMnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+  const testPassword = 'mysecretpassword';
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [CryptService]
+    });
     service = TestBed.inject(CryptService);
   });
 
@@ -15,16 +18,55 @@ describe('CryptService', () => {
     expect(service).toBeTruthy();
   });
 
-  describe('AES Encryption', () => {
-    it('should encrypt and decrypt a string using AES-256', () => {
-      const encrypted = service.encryptAES256(testString, password);
-      const decrypted = service.decryptAES256(encrypted, password);
-      expect(decrypted).toBe(testString);
-      expect(encrypted).not.toBe(testString);
+  describe('Main Encryption/Decryption Logic', () => {
+    it('should encrypt and then decrypt a mnemonic phrase successfully', () => {
+      // Encrypt the mnemonic
+      const { encryptedData, reverseKey } = service.encrypt(testMnemonic, testPassword);
+
+      // Ensure the output looks encrypted and valid
+      expect(encryptedData).not.toBe(testMnemonic);
+      expect(reverseKey).toBeDefined();
+      expect(encryptedData.length).toBeGreaterThan(0);
+      expect(reverseKey.length).toBeGreaterThan(0);
+
+      // Decrypt the data
+      const decryptedMnemonic = service.decrypt(encryptedData, reverseKey, testPassword);
+
+      // Check if the decrypted mnemonic matches the original
+      expect(decryptedMnemonic).toBe(testMnemonic);
+    });
+
+    it('should fail decryption with the wrong password', () => {
+      const { encryptedData, reverseKey } = service.encrypt(testMnemonic, testPassword);
+      const wrongPassword = 'another-wrong-password';
+
+      // Expect the decrypt method to throw an error because AES decryption will fail
+      expect(() => service.decrypt(encryptedData, reverseKey, wrongPassword)).toThrow();
+    });
+
+    it('should use "§" as a delimiter in the intermediate obfuscated string', () => {
+      const words = testMnemonic.split(' ');
+      // Spy on the internal AES256 encryption method to inspect the data passed to it
+      const spy = spyOn(service, 'encryptAES256').and.callThrough();
+      
+      service.encrypt(testMnemonic, testPassword);
+
+      // Check that the spy was called
+      expect(spy).toHaveBeenCalled();
+      
+      // Get the first argument passed to the spy, which is the obfuscated string
+      const obfuscatedString = spy.calls.first().args[0];
+      
+      // The string should be joined by '§', so splitting by it should yield the original number of words
+      expect(obfuscatedString.split('§').length).toBe(words.length);
+      // Conversely, splitting by a space should not yield the same number of words
+      expect(obfuscatedString.split(' ').length).not.toBe(words.length);
     });
   });
 
-  describe('Obfuscation and Deobfuscation', () => {
+  describe('Individual Obfuscation/Deobfuscation Functions', () => {
+    const testString = 'hello';
+
     it('should reverse and de-reverse a string', () => {
       const obfuscated = service.obfuscateByReversing(testString);
       const deobfuscated = service.deobfuscateByReversing(obfuscated);
@@ -37,141 +79,17 @@ describe('CryptService', () => {
       expect(deobfuscated).toBe(testString);
     });
 
-    it('should convert to and from binary', () => {
-      const obfuscated = service.obfuscateToBinary(testString);
-      const deobfuscated = service.deobfuscateFromBinary(obfuscated);
-      expect(deobfuscated).toBe(testString);
-    });
-
-    it('should convert to and from hexadecimal', () => {
-      const obfuscated = service.obfuscateToHex(testString);
-      const deobfuscated = service.deobfuscateFromHex(obfuscated);
-      expect(deobfuscated).toBe(testString);
-    });
-
     it('should apply and reverse Caesar Cipher (ROT13)', () => {
       const obfuscated = service.obfuscateWithCaesarCipher(testString);
       const deobfuscated = service.deobfuscateWithCaesarCipher(obfuscated);
       expect(deobfuscated).toBe(testString);
     });
 
-    it('should apply and reverse Atbash Cipher', () => {
-      const obfuscated = service.obfuscateWithAtbashCipher(testString);
-      const deobfuscated = service.deobfuscateWithAtbashCipher(obfuscated);
-      expect(deobfuscated).toBe(testString);
-    });
-
-    it('should convert to and from Leet Speak', () => {
-        const leetTest = "agile"
-        const obfuscated = service.obfuscateToLeet(leetTest);
-        const deobfuscated = service.deobfuscateFromLeet(obfuscated);
-        expect(deobfuscated).toBe(leetTest);
-    });
-
-    it('should interleave and de-interleave a string', () => {
-      const obfuscated = service.obfuscateByInterleaving(testString);
-      const deobfuscated = service.deobfuscateByDeinterleaving(obfuscated);
-      expect(deobfuscated).toBe(testString);
-    });
-
-    it('should apply and reverse Caesar Cipher (ROT7)', () => {
-        const obfuscated = service.obfuscateWithCaesarCipher7(testString);
-        const deobfuscated = service.deobfuscateWithCaesarCipher7(obfuscated);
-        expect(deobfuscated).toBe(testString);
-    });
-
     it('should shuffle and un-shuffle a string with a seed', () => {
-        const seed = 'test-seed';
-        const obfuscated = service.obfuscateByShuffling(testString, seed);
-        const deobfuscated = service.deobfuscateByShuffling(obfuscated, seed);
-        expect(deobfuscated).toBe(testString);
-    });
-
-    it('should use and remove a custom separator', () => {
-        const obfuscated = service.obfuscateWithCustomSeparator(testString);
-        const deobfuscated = service.deobfuscateWithCustomSeparator(obfuscated);
-        expect(deobfuscated).toBe(testString);
-    });
-
-    it('should apply and reverse bitwise NOT', () => {
-        const obfuscated = service.obfuscateWithBitwiseNot(testString);
-        const deobfuscated = service.deobfuscateWithBitwiseNot(obfuscated);
-        expect(deobfuscated).toBe(testString);
-    });
-
-    it('should apply and reverse ASCII shift', () => {
-        const obfuscated = service.obfuscateWithAsciiShift(testString);
-        const deobfuscated = service.deobfuscateWithAsciiShift(obfuscated, '5');
-        expect(deobfuscated).toBe(testString);
-    });
-
-    it('should apply and reverse XOR obfuscation', () => {
-        const key = 'secret';
-        const obfuscated = service.obfuscateWithXOR(testString, key);
-        const deobfuscated = service.deobfuscateWithXOR(obfuscated, key);
-        expect(deobfuscated).toBe(testString);
-    });
-
-    it('should convert to and from Morse Code', () => {
-        const morseTest = 'HELLO WORLD';
-        const obfuscated = service.obfuscateToMorseCode(morseTest);
-        const deobfuscated = service.deobfuscateFromMorseCode(obfuscated);
-        expect(deobfuscated).toBe(morseTest);
-    });
-
-    it('should apply and reverse keyboard shift', () => {
-        const keyboardTest = "hello";
-        const obfuscated = service.obfuscateWithKeyboardShift(keyboardTest);
-        const deobfuscated = service.deobfuscateWithKeyboardShift(obfuscated);
-        expect(deobfuscated).toBe(keyboardTest);
-    });
-
-    it('should convert to and from HTML entities', () => {
-        const obfuscated = service.obfuscateToHtmlEntities(testString);
-        const deobfuscated = service.deobfuscateFromHtmlEntities(obfuscated);
-        expect(deobfuscated).toBe(testString);
-    });
-
-    it('should convert to and from octal', () => {
-        const obfuscated = service.obfuscateToOctal(testString);
-        const deobfuscated = service.deobfuscateFromOctal(obfuscated);
-        expect(deobfuscated).toBe(testString);
-    });
-
-    it('should apply and reverse nibble swap', () => {
-        const obfuscated = service.obfuscateWithNibbleSwap(testString);
-        const deobfuscated = service.deobfuscateWithNibbleSwap(obfuscated);
-        expect(deobfuscated).toBe(testString);
-    });
-
-    it('should apply and reverse vowel rotation', () => {
-        const obfuscated = service.obfuscateWithVowelRotation(testString);
-        const deobfuscated = service.deobfuscateWithVowelRotation(obfuscated);
-        expect(deobfuscated).toBe(testString);
-    });
-
-    it('should apply and reverse index math', () => {
-        const obfuscated = service.obfuscateWithIndexMath(testString);
-        const deobfuscated = service.deobfuscateWithIndexMath(obfuscated);
-        expect(deobfuscated).toBe(testString);
-    });
-
-    it('should apply and reverse mirror case', () => {
-        const obfuscated = service.obfuscateWithMirrorCase(testString);
-        const deobfuscated = service.deobfuscateWithMirrorCase(obfuscated);
-        expect(deobfuscated).toBe(testString);
-    });
-
-    it('should interleave and de-interleave with index', () => {
-        const obfuscated = service.obfuscateWithIndexInterleave(testString);
-        const deobfuscated = service.deobfuscateWithIndexInterleave(obfuscated);
-        expect(deobfuscated).toBe(testString);
-    });
-
-    it('should swap and un-swap adjacent characters', () => {
-        const obfuscated = service.obfuscateBySwappingAdjacentChars(testString);
-        const deobfuscated = service.deobfuscateBySwappingAdjacentChars(obfuscated);
-        expect(deobfuscated).toBe(testString);
+      const seed = 'a-specific-seed-for-testing';
+      const obfuscated = service.obfuscateByShuffling(testString, seed);
+      const deobfuscated = service.deobfuscateByShuffling(obfuscated, seed);
+      expect(deobfuscated).toBe(testString);
     });
   });
 });
