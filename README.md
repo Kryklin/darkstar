@@ -33,11 +33,6 @@
 
 ## Getting Started
 
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) (which includes npm)
-- [Angular CLI](https://angular.io/cli)
-
 ### Installation
 
 1.  Clone the repository:
