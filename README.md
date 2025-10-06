@@ -21,61 +21,6 @@
 `darkstar` is a powerful, client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase (BIP39 mnemonic). It provides a robust, multi-layered solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your digital assets from both physical and digital threats. Available as both a web application and a cross-platform desktop application built with Electron.
 
 ## Features
-//... existing code ...
-- **Light & Dark Theme**: A user-friendly interface with both light and dark themes.
-
-## Getting Started
-
-### Prerequisites
-//... existing code ...
-- [Angular CLI](https://angular.io/cli)
-
-### Installation
-
-1.  Clone the repository:
-//... existing code ...
-    npm install
-    ```
-
-### Running the Application
-
--   **Web & Desktop Version**:
-    ```bash
-    npm start
-    ```
-    This will start the application in development mode with hot-reloading.
-
-## Building and Packaging
-
-This project uses [Electron Forge](https://www.electronforge.io/) to build and package the application for different operating systems.
-
-To create a distributable package for your current OS, run:
-```bash
-npm run make
-```
-The packaged application will be located in the `out` folder.
-
-## How it Works
-
-`darkstar` employs a sophisticated, multi-stage process to secure your recovery phrase:
-//... existing code ...
-To decrypt, you need both the **Base64 encoded reverse key** (to reverse the obfuscation) and your **password** (to decrypt the data). This dual-component system significantly enhances the security of your recovery phrase.
-
-## Technologies Used
-
-- [Angular](https://angular.io/)
-- [Angular Material](https://material.angular.io/)
-- [Electron](https://www.electronjs.org/)
-- [Electron Forge](https://www.electronforge.io/)
-- [TypeScript](https://www.typescriptlang.org/)
-
-## Authors
-
-- **Victor Kane** - [https://github.com/Kryklin](https://github.com/Kryklin)
-
-`darkstar` is a powerful, client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase (BIP39 mnemonic). It provides a robust, multi-layered solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your digital assets from both physical and digital threats. Available as both a web application and a cross-platform desktop application built with Electron.
-
-## Features
 
 - **AES-256 Encryption**: Industry-standard encryption to protect your data.
 - **Multi-Layered Obfuscation**: A sophisticated, multi-stage process to secure your recovery phrase.
@@ -107,16 +52,21 @@ To decrypt, you need both the **Base64 encoded reverse key** (to reverse the obf
 
 ### Running the Application
 
--   **Web Version**:
+-   **Web & Desktop Version**:
     ```bash
     npm start
     ```
-    The application will be available at `http://localhost:4200/`.
+    This will start the application in development mode with hot-reloading.
 
--   **Desktop Version**:
-    ```bash
-    npm run electron
-    ```
+## Building and Packaging
+
+This project uses [Electron Forge](https://www.electronforge.io/) to build and package the application for different operating systems.
+
+To create a distributable package for your current OS, run:
+```bash
+npm run make
+```
+The packaged application will be located in the `out` folder.
 
 ## How it Works
 
@@ -134,6 +84,7 @@ To decrypt, you need both the **Base64 encoded reverse key** (to reverse the obf
 - [Angular](https://angular.io/)
 - [Angular Material](https://material.angular.io/)
 - [Electron](https://www.electronjs.org/)
+- [Electron Forge](https://www.electronforge.io/)
 - [TypeScript](https://www.typescriptlang.org/)
 
 ## Authors
