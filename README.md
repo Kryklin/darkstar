@@ -31,7 +31,7 @@
 - **Client-Side Security**: All operations are performed client-side, ensuring your data never leaves your machine.
 - **Light & Dark Theme**: A user-friendly interface with both light and dark themes.
 
-## Getting Started
+## Commands
 
 ### Installation
 
@@ -45,23 +45,28 @@
     npm install
     ```
 
-### Running the Application
+### Development
 
--   **Web & Desktop Version**:
-    ```bash
-    npm start
-    ```
-    This will start the application in development mode with hot-reloading.
+To start the application in development mode with hot-reloading for both web and desktop:
+```bash
+npm start
+```
 
-## Building and Packaging
+### Building
 
-This project uses [Electron Forge](https://www.electronforge.io/) to build and package the application for different operating systems.
-
-To create a distributable package for your current OS, run:
+To create a distributable package for your current operating system:
 ```bash
 npm run make
 ```
 The packaged application will be located in the `out` folder.
+
+### Testing
+
+To run the unit tests using Karma and Jasmine:
+```bash
+npm test
+```
+This command opens a new browser window and runs all the `.spec.ts` files. The results are displayed in the terminal.
 
 ## How it Works
 
