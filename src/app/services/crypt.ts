@@ -75,9 +75,10 @@ export class CryptService {
       const seededIndexes = [9, 13];
       const nonSeededIndexes = functionIndexes.filter(i => !seededIndexes.includes(i));
 
-      this.shuffleArray(nonSeededIndexes, password + word); // Shuffle for variety
+      // Shuffle for variety using a seed that is NOT dependent on the word itself
+      this.shuffleArray(nonSeededIndexes, password); 
 
-      const randomSeededIndex = seededIndexes[Math.floor(this.seededRandom(password + word + 's')() * seededIndexes.length)];
+      const randomSeededIndex = seededIndexes[Math.floor(this.seededRandom(password + 's')() * seededIndexes.length)];
       const selectedFunctions = [randomSeededIndex];
 
       const numFunctions = 11; // 11 + 1 seeded = 12
@@ -85,13 +86,16 @@ export class CryptService {
         selectedFunctions.push(nonSeededIndexes[i]);
       }
 
-      this.shuffleArray(selectedFunctions, password + word + 'f'); // Shuffle the final function list
+      // Shuffle the final function list using a seed that is NOT dependent on the word
+      this.shuffleArray(selectedFunctions, password + 'f'); 
 
       let currentWord = word;
       const wordReverseKey: number[] = [];
 
       for (const funcIndex of selectedFunctions) {
         const func = this.obfuscationFunctions[funcIndex];
+        // The seed must be consistent and available during both encryption and decryption.
+        // Using just the password ensures this.
         currentWord = func(currentWord, password);
         wordReverseKey.push(funcIndex);
       }
@@ -145,6 +149,7 @@ export class CryptService {
         if (!func) {
           throw new Error(`Invalid deobfuscation function index: ${funcIndex}`);
         }
+        // Use the password as the seed, consistent with encryption
         currentWord = func(currentWord, password);
       }
       deobfuscatedWords.push(currentWord);
@@ -290,8 +295,9 @@ export class CryptService {
   obfuscateByInterleaving(input: string, seed?: string): string {
     const randomChars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
+    let rng = this.seededRandom(seed! + input); // Use a seeded RNG
     for (const char of input) {
-      const randomChar = randomChars.charAt(Math.floor(Math.random() * randomChars.length));
+      const randomChar = randomChars.charAt(Math.floor(rng() * randomChars.length));
       result += char + randomChar;
     }
     return result;
