@@ -1,44 +1,66 @@
 <div class="container">
-  <mat-card>
-    <mat-card-header>
-      <mat-card-title>Decrypt Data</mat-card-title>
-      <mat-card-subtitle>Enter the encrypted data, reverse key, and password to decrypt your mnemonic phrase.</mat-card-subtitle>
-    </mat-card-header>
-    <mat-card-content>
-      <form [formGroup]="form" (ngSubmit)="onSubmit()">
-        <mat-form-field appearance="fill">
-          <mat-label>Encrypted Data</mat-label>
-          <textarea matInput formControlName="encryptedData" cdkTextareaAutosize cdkAutosizeMinRows="3" placeholder="Paste the encrypted data here"></textarea>
-          @if (form.controls['encryptedData'].hasError('required')) {
-            <mat-error>Encrypted data is required.</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field appearance="fill">
-          <mat-label>Reverse Key</mat-label>
-          <textarea matInput formControlName="reverseKey" cdkTextareaAutosize cdkAutosizeMinRows="2" placeholder="Paste the reverse key here"></textarea>
-          @if (form.controls['reverseKey'].hasError('required')) {
-            <mat-error>Reverse key is required.</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field appearance="fill">
-          <mat-label>Password</mat-label>
-          <input matInput formControlName="password" type="password" placeholder="Enter your password">
-          @if (form.controls['password'].hasError('required')) {
-            <mat-error>Password is required.</mat-error>
-          }
-        </mat-form-field>
-
-        <div class="button-row">
-          <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid">Decrypt</button>
-          <button mat-button color="warn" type="button" (click)="reset()">Reset</button>
-        </div>
-      </form>
-    </mat-card-content>
-  </mat-card>
-
-  @if (showResult) {
+  @if (!showResult) {
+    <mat-card class="decrypt-card">
+      <mat-card-header>
+        <mat-card-title>Decrypt Data</mat-card-title>
+        <mat-card-subtitle>Enter the encrypted data, reverse key, and password to decrypt your mnemonic phrase.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-stepper linear #stepper>
+          <mat-step [stepControl]="firstFormGroup">
+            <form [formGroup]="firstFormGroup">
+              <ng-template matStepLabel>Enter Encrypted Data</ng-template>
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>Encrypted Data</mat-label>
+                <textarea matInput formControlName="encryptedData" cdkTextareaAutosize cdkAutosizeMinRows="3" placeholder="Paste the encrypted data here"></textarea>
+                @if (firstFormGroup.controls['encryptedData'].hasError('required')) {
+                  <mat-error>Encrypted data is required.</mat-error>
+                }
+              </mat-form-field>
+              <div class="stepper-buttons">
+                <button mat-button matStepperNext>Next</button>
+              </div>
+            </form>
+          </mat-step>
+          <mat-step [stepControl]="secondFormGroup">
+            <form [formGroup]="secondFormGroup">
+              <ng-template matStepLabel>Enter Reverse Key</ng-template>
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>Reverse Key</mat-label>
+                <textarea matInput formControlName="reverseKey" cdkTextareaAutosize cdkAutosizeMinRows="2" placeholder="Paste the reverse key here"></textarea>
+                @if (secondFormGroup.controls['reverseKey'].hasError('required')) {
+                  <mat-error>Reverse key is required.</mat-error>
+                }
+              </mat-form-field>
+              <div class="stepper-buttons">
+                <button mat-button matStepperPrevious>Back</button>
+                <button mat-button matStepperNext>Next</button>
+              </div>
+            </form>
+          </mat-step>
+          <mat-step [stepControl]="thirdFormGroup">
+            <form [formGroup]="thirdFormGroup">
+              <ng-template matStepLabel>Enter Password</ng-template>
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>Password</mat-label>
+                <input matInput formControlName="password" type="password" placeholder="Enter your password">
+                @if (thirdFormGroup.controls['password'].hasError('required')) {
+                  <mat-error>Password is required.</mat-error>
+                }
+              </mat-form-field>
+              <div class="stepper-buttons">
+                <button mat-button matStepperPrevious>Back</button>
+                <button mat-raised-button color="primary" (click)="onSubmit()">Decrypt</button>
+              </div>
+            </form>
+          </mat-step>
+        </mat-stepper>
+      </mat-card-content>
+      <mat-card-footer>
+        <p class="footer-text">Decryption is performed locally in your browser. Your private data is never transmitted.</p>
+      </mat-card-footer>
+    </mat-card>
+  } @else {
     <mat-card class="result-card">
       <mat-card-header>
         @if (error) {
@@ -59,6 +81,9 @@
           </div>
         }
       </mat-card-content>
+      <mat-card-actions class="result-actions">
+        <button mat-button (click)="reset()">Reset</button>
+      </mat-card-actions>
     </mat-card>
   }
 </div>

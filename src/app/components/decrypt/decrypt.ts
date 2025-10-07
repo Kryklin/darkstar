@@ -19,22 +19,30 @@ import { CommonModule } from '@angular/common';
   styleUrl: './decrypt.scss'
 })
 export class Decrypt {
-  form: FormGroup;
+  firstFormGroup: FormGroup;
+  secondFormGroup: FormGroup;
+  thirdFormGroup: FormGroup;
   showResult = false;
   decryptedMnemonic: string = '';
   error: string = '';
 
   constructor(private fb: FormBuilder, private cryptService: CryptService) {
-    this.form = this.fb.group({
+    this.firstFormGroup = this.fb.group({
       encryptedData: ['', Validators.required],
+    });
+    this.secondFormGroup = this.fb.group({
       reverseKey: ['', Validators.required],
+    });
+    this.thirdFormGroup = this.fb.group({
       password: ['', Validators.required]
     });
   }
 
   onSubmit() {
-    if (this.form.valid) {
-      const { encryptedData, reverseKey, password } = this.form.value;
+    if (this.firstFormGroup.valid && this.secondFormGroup.valid && this.thirdFormGroup.valid) {
+      const { encryptedData } = this.firstFormGroup.value;
+      const { reverseKey } = this.secondFormGroup.value;
+      const { password } = this.thirdFormGroup.value;
       try {
         this.decryptedMnemonic = this.cryptService.decrypt(encryptedData, reverseKey, password);
         this.error = '';
@@ -48,7 +56,9 @@ export class Decrypt {
   }
 
   reset() {
-    this.form.reset();
+    this.firstFormGroup.reset();
+    this.secondFormGroup.reset();
+    this.thirdFormGroup.reset();
     this.showResult = false;
     this.decryptedMnemonic = '';
     this.error = '';
