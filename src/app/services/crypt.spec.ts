@@ -1,11 +1,20 @@
 import { TestBed } from '@angular/core/testing';
 import { CryptService } from './crypt';
+import * as BIP39 from '../../assets/BIP39.json';
 
 describe('CryptService', () => {
   let service: CryptService;
-  // A 12-word mnemonic for faster testing
-  const testMnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+  let testMnemonic: string;
   const testPassword = 'mysecretpassword';
+
+  beforeAll(() => {
+    const words = BIP39.words;
+    const randomWords = [];
+    for (let i = 0; i < 12; i++) {
+      randomWords.push(words[Math.floor(Math.random() * words.length)]);
+    }
+    testMnemonic = randomWords.join(' ');
+  });
 
   beforeEach(() => {
     TestBed.configureTestingModule({
