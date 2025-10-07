@@ -14,6 +14,7 @@ export class Theme {
     }
     this.updateBodyClass();
     this.updateLogo();
+    this.updateFavicon();
   }
 
   setDarkTheme(isDark: boolean) {
@@ -21,6 +22,7 @@ export class Theme {
     localStorage.setItem('isDarkTheme', JSON.stringify(isDark));
     this.updateBodyClass();
     this.updateLogo();
+    this.updateFavicon();
   }
 
   private updateBodyClass() {
@@ -35,5 +37,12 @@ export class Theme {
 
   private updateLogo() {
     this.logoSrc.set(this.isDarkTheme() ? 'assets/img/logo-white.png' : 'assets/img/logo-black.png');
+  }
+
+  private updateFavicon() {
+    const favicon = document.getElementById('favicon') as HTMLLinkElement;
+    if (favicon) {
+      favicon.href = this.isDarkTheme() ? 'assets/img/logo-white.png' : 'assets/img/logo-black.png';
+    }
   }
 }

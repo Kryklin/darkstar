@@ -4,6 +4,7 @@ import { Theme } from './theme';
 describe('Theme', () => {
   let service: Theme;
   let store: { [key: string]: string } = {};
+  let favicon: HTMLLinkElement;
 
   beforeEach(() => {
     // Mock localStorage
@@ -15,6 +16,12 @@ describe('Theme', () => {
       store[key] = value;
     });
 
+    // Create a mock favicon element
+    favicon = document.createElement('link');
+    favicon.id = 'favicon';
+    favicon.rel = 'icon';
+    document.head.appendChild(favicon);
+
     TestBed.configureTestingModule({});
     // Create a new service for each test to ensure a clean state
     service = TestBed.inject(Theme);
@@ -23,6 +30,8 @@ describe('Theme', () => {
   afterEach(() => {
     // Clean up body classes
     document.body.classList.remove('dark-theme', 'light-theme');
+    // Remove the mock favicon
+    document.head.removeChild(favicon);
   });
 
   it('should be created', () => {
@@ -34,6 +43,7 @@ describe('Theme', () => {
     expect(service.logoSrc()).toBe('assets/img/logo-black.png');
     expect(document.body.classList.contains('light-theme')).toBeTrue();
     expect(document.body.classList.contains('dark-theme')).toBeFalse();
+    expect(favicon.href).toContain('assets/img/logo-black.png');
   });
 
   it('should initialize with dark theme if localStorage is set to true', () => {
@@ -44,6 +54,7 @@ describe('Theme', () => {
     expect(newService.logoSrc()).toBe('assets/img/logo-white.png');
     expect(document.body.classList.contains('dark-theme')).toBeTrue();
     expect(document.body.classList.contains('light-theme')).toBeFalse();
+    expect(favicon.href).toContain('assets/img/logo-white.png');
   });
 
   it('should set dark theme', () => {
@@ -53,6 +64,7 @@ describe('Theme', () => {
     expect(localStorage.setItem).toHaveBeenCalledWith('isDarkTheme', 'true');
     expect(document.body.classList.contains('dark-theme')).toBeTrue();
     expect(document.body.classList.contains('light-theme')).toBeFalse();
+    expect(favicon.href).toContain('assets/img/logo-white.png');
   });
 
   it('should set light theme', () => {
@@ -65,5 +77,6 @@ describe('Theme', () => {
     expect(localStorage.setItem).toHaveBeenCalledWith('isDarkTheme', 'false');
     expect(document.body.classList.contains('light-theme')).toBeTrue();
     expect(document.body.classList.contains('dark-theme')).toBeFalse();
+    expect(favicon.href).toContain('assets/img/logo-black.png');
   });
 });
