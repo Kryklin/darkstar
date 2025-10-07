@@ -1,43 +1,65 @@
 <div class="container">
   <mat-card>
     <mat-card-header>
-      <mat-card-title>Decrypt Mnemonic</mat-card-title>
-      <mat-card-subtitle>Enter the details below to decrypt your mnemonic phrase.</mat-card-subtitle>
+      <mat-card-title>Decrypt Data</mat-card-title>
+      <mat-card-subtitle>Enter the encrypted data, reverse key, and password to decrypt your mnemonic phrase.</mat-card-subtitle>
     </mat-card-header>
     <mat-card-content>
-      <form class="decrypt-form">
-        <mat-form-field class="full-width">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <mat-form-field appearance="fill">
           <mat-label>Encrypted Data</mat-label>
-          <textarea matInput placeholder="Paste your encrypted data here..." [ngModel]="encryptedData()" (ngModelChange)="encryptedData.set($event)"></textarea>
+          <textarea matInput formControlName="encryptedData" cdkTextareaAutosize cdkAutosizeMinRows="3" placeholder="Paste the encrypted data here"></textarea>
+          @if (form.controls['encryptedData'].hasError('required')) {
+            <mat-error>Encrypted data is required.</mat-error>
+          }
         </mat-form-field>
 
-        <mat-form-field class="full-width">
+        <mat-form-field appearance="fill">
           <mat-label>Reverse Key</mat-label>
-          <input matInput placeholder="Paste your Base64 reverse key here..." [ngModel]="reverseKey()" (ngModelChange)="reverseKey.set($event)">
+          <textarea matInput formControlName="reverseKey" cdkTextareaAutosize cdkAutosizeMinRows="2" placeholder="Paste the reverse key here"></textarea>
+          @if (form.controls['reverseKey'].hasError('required')) {
+            <mat-error>Reverse key is required.</mat-error>
+          }
         </mat-form-field>
 
-        <mat-form-field class="full-width">
+        <mat-form-field appearance="fill">
           <mat-label>Password</mat-label>
-          <input matInput [type]="hidePassword() ? 'password' : 'text'" placeholder="Enter your password" [ngModel]="password()" (ngModelChange)="password.set($event)">
-          <button mat-icon-button matSuffix (click)="togglePasswordVisibility()" [attr.aria-label]="'Hide password'" [attr.aria-pressed]="hidePassword()">
-            <mat-icon>{{hidePassword() ? 'visibility_off' : 'visibility'}}</mat-icon>
-          </button>
+          <input matInput formControlName="password" type="password" placeholder="Enter your password">
+          @if (form.controls['password'].hasError('required')) {
+            <mat-error>Password is required.</mat-error>
+          }
         </mat-form-field>
-      </form>
 
-      <div class="result-container" *ngIf="decryptedMnemonic()">
-        <h3>Decrypted Mnemonic:</h3>
-        <div class="mnemonic-display">
-          <p>{{ decryptedMnemonic() }}</p>
-          <button mat-icon-button (click)="copyToClipboard()" matTooltip="Copy to clipboard">
-            <mat-icon>content_copy</mat-icon>
-          </button>
+        <div class="button-row">
+          <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid">Decrypt</button>
+          <button mat-button color="warn" type="button" (click)="reset()">Reset</button>
         </div>
-      </div>
-
+      </form>
     </mat-card-content>
-    <mat-card-actions>
-      <button mat-raised-button color="primary" (click)="decrypt()">Decrypt</button>
-    </mat-card-actions>
   </mat-card>
+
+  @if (showResult) {
+    <mat-card class="result-card">
+      <mat-card-header>
+        @if (error) {
+          <mat-card-title class="error-title">Decryption Failed</mat-card-title>
+        } @else {
+          <mat-card-title>Decryption Successful</mat-card-title>
+        }
+      </mat-card-header>
+      <mat-card-content>
+        @if (error) {
+          <div class="error-content">
+            <p>{{ error }}</p>
+          </div>
+        } @else {
+          <div class="result-content">
+            <p><strong>Decrypted Mnemonic:</strong></p>
+            <p class="mnemonic-phrase">{{ decryptedMnemonic }}</p>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
 </div>
+

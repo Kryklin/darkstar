@@ -1,49 +1,56 @@
-import { Component, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
-import { CryptService } from '../../services/crypt';
+import { Component } from '@angular/core';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { TextFieldModule } from '@angular/cdk/text-field';
 import { MaterialModule } from '../../modules/material/material';
+import { CryptService } from '../../services/crypt';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-decrypt',
+  standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
+    ReactiveFormsModule,
+    TextFieldModule,
     MaterialModule,
+    CommonModule
   ],
   templateUrl: './decrypt.html',
   styleUrl: './decrypt.scss'
 })
 export class Decrypt {
-  encryptedData = signal('');
-  reverseKey = signal('');
-  password = signal('');
-  hidePassword = signal(true);
-  decryptedMnemonic = signal('');
+  form: FormGroup;
+  showResult = false;
+  decryptedMnemonic: string = '';
+  error: string = '';
 
-  constructor(private cryptService: CryptService) {}
-
-  togglePasswordVisibility(): void {
-    this.hidePassword.set(!this.hidePassword());
+  constructor(private fb: FormBuilder, private cryptService: CryptService) {
+    this.form = this.fb.group({
+      encryptedData: ['', Validators.required],
+      reverseKey: ['', Validators.required],
+      password: ['', Validators.required]
+    });
   }
 
-  decrypt(): void {
-    try {
-      const decrypted = this.cryptService.decrypt(
-        this.encryptedData(),
-        this.reverseKey(),
-        this.password()
-      );
-      this.decryptedMnemonic.set(decrypted);
-    } catch (e) {
-      console.error('Decryption failed', e);
-      this.decryptedMnemonic.set('Error: Decryption failed. Please check your inputs and try again.');
+  onSubmit() {
+    if (this.form.valid) {
+      const { encryptedData, reverseKey, password } = this.form.value;
+      try {
+        this.decryptedMnemonic = this.cryptService.decrypt(encryptedData, reverseKey, password);
+        this.error = '';
+        this.showResult = true;
+      } catch (e: any) {
+        this.error = `Decryption failed: ${e.message}`;
+        this.decryptedMnemonic = '';
+        this.showResult = true;
+      }
     }
   }
 
-  copyToClipboard(): void {
-    if (this.decryptedMnemonic()) {
-      navigator.clipboard.writeText(this.decryptedMnemonic());
-    }
+  reset() {
+    this.form.reset();
+    this.showResult = false;
+    this.decryptedMnemonic = '';
+    this.error = '';
   }
 }
