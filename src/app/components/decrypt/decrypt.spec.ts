@@ -1,47 +1,36 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { ReactiveFormsModule } from '@angular/forms';
 import { Decrypt } from './decrypt';
 import { CryptService } from '../../services/crypt';
 import { MaterialModule } from '../../modules/material/material';
-import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
 
 describe('Decrypt', () => {
   let component: Decrypt;
   let fixture: ComponentFixture<Decrypt>;
   let cryptService: CryptService;
+  let decryptSpy: jasmine.Spy;
 
-  const testEncryptedData = 'U2FsdGVkX1+...'; // Placeholder
-  const testReverseKey = 'eyJuYW1lIjoiSm...'; // Placeholder
+  const testEncryptedData = 'U2FsdGVkX1/encryptedData';
+  const testReverseKey = 'base64ReverseKey';
   const testPassword = 'password123';
-  const testDecryptedMnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+  const testDecryptedMnemonic = 'word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12';
 
   beforeEach(async () => {
-    // Mock clipboard API
-    const clipboardMock = {
-      writeText: jasmine.createSpy('writeText').and.resolveTo(undefined)
-    };
-    Object.defineProperty(navigator, 'clipboard', {
-      value: clipboardMock,
-      writable: true,
-      configurable: true
-    });
-
     await TestBed.configureTestingModule({
       imports: [
         Decrypt,
         BrowserAnimationsModule,
         MaterialModule,
-        FormsModule,
-        CommonModule
+        ReactiveFormsModule
       ],
       providers: [CryptService]
-    })
-    .compileComponents();
+    }).compileComponents();
 
     fixture = TestBed.createComponent(Decrypt);
     component = fixture.componentInstance;
     cryptService = TestBed.inject(CryptService);
+    decryptSpy = spyOn(cryptService, 'decrypt');
     fixture.detectChanges();
   });
 
@@ -49,75 +38,85 @@ describe('Decrypt', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should call cryptService.decrypt and show mnemonic on success', () => {
-    const decryptSpy = spyOn(cryptService, 'decrypt').and.returnValue(testDecryptedMnemonic);
-
-    // Set signal values
-    component.encryptedData.set(testEncryptedData);
-    component.reverseKey.set(testReverseKey);
-    component.password.set(testPassword);
-
-    // Trigger decryption
-    component.decrypt();
-    fixture.detectChanges();
-
-    // Expect service to be called
-    expect(decryptSpy).toHaveBeenCalledWith(testEncryptedData, testReverseKey, testPassword);
-
-    // Expect result to be in the decryptedMnemonic signal
-    expect(component.decryptedMnemonic()).toBe(testDecryptedMnemonic);
-
-    // Check if the result is rendered in the DOM
-    const resultElement = fixture.nativeElement.querySelector('.decrypted-mnemonic-container');
-    expect(resultElement).toBeTruthy();
-    const p = resultElement.querySelector('p');
-    expect(p.textContent).toContain(testDecryptedMnemonic);
+  it('should initialize three form groups', () => {
+    expect(component.firstFormGroup).toBeDefined();
+    expect(component.secondFormGroup).toBeDefined();
+    expect(component.thirdFormGroup).toBeDefined();
   });
 
-  it('should show an error message in the signal if decryption fails', () => {
-    const error = new Error('Decryption failed');
-    spyOn(cryptService, 'decrypt').and.throwError(error);
-
-    // Set signal values
-    component.encryptedData.set(testEncryptedData);
-    component.reverseKey.set(testReverseKey);
-    component.password.set('wrongpassword');
-
-    // Trigger decryption
-    component.decrypt();
-    fixture.detectChanges();
-
-    // Check that the error message is set in the signal
-    expect(component.decryptedMnemonic()).toContain('Error: Decryption failed');
-
-    // Check if the error is rendered in the DOM
-    const resultElement = fixture.nativeElement.querySelector('.decrypted-mnemonic-container');
-    expect(resultElement).toBeTruthy();
-    const p = resultElement.querySelector('p');
-    expect(p.textContent).toContain('Error: Decryption failed');
+  it('should have invalid form groups initially', () => {
+    expect(component.firstFormGroup.valid).toBeFalsy();
+    expect(component.secondFormGroup.valid).toBeFalsy();
+    expect(component.thirdFormGroup.valid).toBeFalsy();
   });
 
-  it('should toggle password visibility', () => {
-    expect(component.hidePassword()).toBe(true);
-    component.togglePasswordVisibility();
-    expect(component.hidePassword()).toBe(false);
-    component.togglePasswordVisibility();
-    expect(component.hidePassword()).toBe(true);
+  it('should have valid form groups after filling them', () => {
+    component.firstFormGroup.setValue({ encryptedData: testEncryptedData });
+    component.secondFormGroup.setValue({ reverseKey: testReverseKey });
+    component.thirdFormGroup.setValue({ password: testPassword });
+
+    expect(component.firstFormGroup.valid).toBeTruthy();
+    expect(component.secondFormGroup.valid).toBeTruthy();
+    expect(component.thirdFormGroup.valid).toBeTruthy();
   });
 
-  it('should call clipboard.writeText when copyToClipboard is called', () => {
-    component.decryptedMnemonic.set(testDecryptedMnemonic);
+  describe('onSubmit', () => {
+    beforeEach(() => {
+      component.firstFormGroup.setValue({ encryptedData: testEncryptedData });
+      component.secondFormGroup.setValue({ reverseKey: testReverseKey });
+      component.thirdFormGroup.setValue({ password: testPassword });
+    });
 
-    component.copyToClipboard();
+    it('should call cryptService.decrypt and show mnemonic on success', () => {
+      decryptSpy.and.returnValue(testDecryptedMnemonic);
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(testDecryptedMnemonic);
+      component.onSubmit();
+
+      expect(decryptSpy).toHaveBeenCalledWith(testEncryptedData, testReverseKey, testPassword);
+      expect(component.showResult).toBeTrue();
+      expect(component.decryptedMnemonic).toBe(testDecryptedMnemonic);
+      expect(component.error).toBe('');
+    });
+
+    it('should show an error message if decryption fails', () => {
+      const errorMessage = 'Decryption failed';
+      decryptSpy.and.throwError(new Error(errorMessage));
+
+      component.onSubmit();
+
+      expect(decryptSpy).toHaveBeenCalledWith(testEncryptedData, testReverseKey, testPassword);
+      expect(component.showResult).toBeTrue();
+      expect(component.decryptedMnemonic).toBe('');
+      expect(component.error).toContain(errorMessage);
+    });
+
+    it('should not call cryptService.decrypt if forms are invalid', () => {
+      component.firstFormGroup.reset();
+      component.onSubmit();
+      expect(decryptSpy).not.toHaveBeenCalled();
+    });
   });
 
-  it('should not call clipboard.writeText if mnemonic is empty', () => {
-    component.decryptedMnemonic.set('');
+  describe('reset', () => {
+    it('should reset all form groups and result state', () => {
+      component.firstFormGroup.setValue({ encryptedData: testEncryptedData });
+      component.secondFormGroup.setValue({ reverseKey: testReverseKey });
+      component.thirdFormGroup.setValue({ password: testPassword });
+      component.showResult = true;
+      component.decryptedMnemonic = testDecryptedMnemonic;
+      component.error = 'some error';
 
-    component.copyToClipboard();
+      component.reset();
 
-    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+      expect(component.firstFormGroup.pristine).toBeTrue();
+      expect(component.firstFormGroup.value.encryptedData).toBeNull();
+      expect(component.secondFormGroup.pristine).toBeTrue();
+      expect(component.secondFormGroup.value.reverseKey).toBeNull();
+      expect(component.thirdFormGroup.pristine).toBeTrue();
+      expect(component.thirdFormGroup.value.password).toBeNull();
+      expect(component.showResult).toBeFalse();
+      expect(component.decryptedMnemonic).toBe('');
+      expect(component.error).toBe('');
+    });
   });
 });

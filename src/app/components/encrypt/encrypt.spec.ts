@@ -108,8 +108,8 @@ describe('Encrypt', () => {
     expect(component.reverseKey).toBe('');
     
     // Check that the result card is no longer in the DOM
-    const resultCard = fixture.nativeElement.querySelector('mat-card-title');
-    expect(resultCard).toBeFalsy();
+    const resultCardTitle = fixture.nativeElement.querySelector('.result-actions');
+    expect(resultCardTitle).toBeFalsy();
   });
 });
 
