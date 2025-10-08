@@ -92,11 +92,16 @@ export class CryptService {
       let currentWord = word;
       const wordReverseKey: number[] = [];
 
+      // Generate a checksum from the selected function indexes
+      const checksum = this._generateChecksum(selectedFunctions);
+      const combinedSeed = password + checksum;
+
       for (const funcIndex of selectedFunctions) {
         const func = this.obfuscationFunctions[funcIndex];
         // The seed must be consistent and available during both encryption and decryption.
-        // Using just the password ensures this.
-        currentWord = func(currentWord, password);
+        // Use the combined seed for specific functions, otherwise use the password.
+        const seed = [7, 9, 13].includes(funcIndex) ? combinedSeed : password;
+        currentWord = func(currentWord, seed);
         wordReverseKey.push(funcIndex);
       }
 
@@ -142,6 +147,10 @@ export class CryptService {
       let currentWord = obfuscatedWords[i];
       const wordReverseKey = reverseKeyJson[i];
 
+      // Generate the checksum from the reverse key for this word to reconstruct the seed
+      const checksum = this._generateChecksum(wordReverseKey);
+      const combinedSeed = password + checksum;
+
       // Apply deobfuscation functions in reverse order
       for (let j = wordReverseKey.length - 1; j >= 0; j--) {
         const funcIndex = wordReverseKey[j];
@@ -149,13 +158,24 @@ export class CryptService {
         if (!func) {
           throw new Error(`Invalid deobfuscation function index: ${funcIndex}`);
         }
-        // Use the password as the seed, consistent with encryption
-        currentWord = func(currentWord, password);
+        // Use the combined seed for specific functions, consistent with encryption
+        const seed = [7, 9, 13].includes(funcIndex) ? combinedSeed : password;
+        currentWord = func(currentWord, seed);
       }
       deobfuscatedWords.push(currentWord);
     }
 
     return deobfuscatedWords.join(' ');
+  }
+
+  private _generateChecksum(numbers: number[]): number {
+    if (!numbers || numbers.length === 0) {
+      return 0;
+    }
+    // Sum all numbers in the array
+    const sum = numbers.reduce((acc, curr) => acc + curr, 0);
+    // Use a modulo to keep the number in a manageable range, using a prime number
+    return sum % 997; // 997 is a prime number
   }
 
   public obfuscationFunctions: ((input: string, seed?: string) => string)[];
