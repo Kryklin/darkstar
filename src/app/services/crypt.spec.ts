@@ -68,6 +68,10 @@ describe('CryptService', () => {
       
       // The string should be joined by '§', so splitting by it should yield the original number of words
       expect(obfuscatedString.split('§').length).toBe(words.length);
+      // Ensure none of the intermediate words accidentally contain the '§' delimiter
+      obfuscatedString.split('§').forEach(word => {
+        expect(word).not.toContain('§');
+      });
       // Conversely, splitting by a space should not yield the same number of words
       expect(obfuscatedString.split(' ').length).not.toBe(words.length);
     });

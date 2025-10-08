@@ -8,7 +8,7 @@
 <h1 align="center">Darkstar</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.1.0-blue" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-1.2.0-blue" alt="Version"/>
   <img src="https://img.shields.io/badge/Angular-v20.3.0-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Angular%20Material-v20.2.5-blue?logo=angular" alt="Angular Material"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
@@ -71,13 +71,14 @@ This command opens a new browser window and runs all the `.spec.ts` files. The r
 
 `darkstar` employs a sophisticated, multi-stage process to secure your recovery phrase:
 
-1.  **Guaranteed Seeded Obfuscation**: For each word, Darkstar randomly selects 12 unique obfuscation functions from a pool of 24. Crucially, it guarantees that at least one of these is a "seeded" function (e.g., character shuffling) that uses your password, deeply integrating the password into the obfuscation itself.
-2.  **Password and Reverse Key Seeding**: The security model was enhanced to require both the password and the reverse key for decryption. Specific seeded obfuscation functions now use a combined seed derived from both the password and a checksum of the function sequence itself. This ensures that the reverse key is not just a map, but an integral part of the decryption seed, making it impossible to decrypt with the password alone.
-3.  **AES-256 Encryption**: The collection of obfuscated words is joined together and then encrypted using the industry-standard AES-256 algorithm with a user-provided password.
-4.  **Reverse Key Generation**: A "reverse key" is generated, containing the precise sequence of obfuscation functions used for each word.
-5.  **Key Encoding**: This reverse key is then Base64 encoded. This is the final key you need to store.
+1.  **Function Selection & Shuffling**: For each word in the mnemonic, Darkstar takes a curated pool of 12 obfuscation functions (6 seeded, 6 unseeded). It deterministically shuffles the order of these 12 functions based on the password and the word itself, creating a unique, unpredictable chain of operations for every word.
+2.  **Password and Reverse Key Seeding**: The security model requires both the password and the reverse key for decryption. All 6 seeded functions (e.g., Vigenère Cipher, Character Shuffling) use a combined seed derived from both the password and a checksum of the shuffled function sequence. This ensures that the reverse key is not just a map, but an integral part of the decryption seed.
+3.  **Multi-Layered Obfuscation**: The word is passed through the entire shuffled chain of 12 functions, applying complex, layered transformations.
+4.  **AES-256 Encryption**: The final, heavily obfuscated words are joined together and then encrypted using the industry-standard AES-256 algorithm with the user-provided password.
+5.  **Reverse Key Generation**: A "reverse key" is generated, containing the precise (and uniquely shuffled) sequence of obfuscation functions used for each word.
+6.  **Key Encoding**: This reverse key is then Base64 encoded.
 
-To decrypt, you need both the **Base64 encoded reverse key** (to reverse the obfuscation and contribute to the seed) and your **password** (to decrypt the data and contribute to the seed). This dual-component system significantly enhances the security of your recovery phrase.
+To decrypt, you need both the **Base64 encoded reverse key** (to reconstruct the shuffled function order and contribute to the seed) and your **password** (to decrypt the data and contribute to the seed). This dual-component, deeply integrated system provides a robust defense against attempts to compromise the recovery phrase.
 
 ## Authors
 
