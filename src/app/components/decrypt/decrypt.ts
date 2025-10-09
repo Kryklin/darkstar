@@ -4,6 +4,8 @@ import { TextFieldModule } from '@angular/cdk/text-field';
 import { MaterialModule } from '../../modules/material/material';
 import { CryptService } from '../../services/crypt';
 import { CommonModule } from '@angular/common';
+import { Clipboard } from '@angular/cdk/clipboard';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-decrypt',
@@ -26,7 +28,12 @@ export class Decrypt {
   decryptedMnemonic: string = '';
   error: string = '';
 
-  constructor(private fb: FormBuilder, private cryptService: CryptService) {
+  constructor(
+    private fb: FormBuilder, 
+    private cryptService: CryptService,
+    private clipboard: Clipboard,
+    private snackBar: MatSnackBar
+    ) {
     this.firstFormGroup = this.fb.group({
       encryptedData: ['', Validators.required],
     });
@@ -35,6 +42,18 @@ export class Decrypt {
     });
     this.thirdFormGroup = this.fb.group({
       password: ['', Validators.required]
+    });
+  }
+
+  async copyFromClipboard(field: string) {
+    const text = await navigator.clipboard.readText();
+    if (field === 'encryptedData') {
+      this.firstFormGroup.controls['encryptedData'].setValue(text);
+    } else if (field === 'reverseKey') {
+      this.secondFormGroup.controls['reverseKey'].setValue(text);
+    }
+    this.snackBar.open('Pasted from clipboard!', 'Close', {
+      duration: 2000,
     });
   }
 

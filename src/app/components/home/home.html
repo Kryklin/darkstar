@@ -1,34 +1,31 @@
 <div class="home-container">
-  <mat-card class="info-card">
-    <mat-card-header>
-      <img mat-card-avatar [src]="theme.logoSrc()" alt="Darkstar Logo" class="logo">
-      <mat-card-title>Darkstar</mat-card-title>
-      <mat-card-subtitle>Created by Victor Kane</mat-card-subtitle>
-    </mat-card-header>
-    <mat-card-content>
-      <p>
-        A client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase (BIP39 mnemonic). It provides a robust, multi-layered solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your digital assets from both physical and digital threats.
-      </p>
-      
-      <h3>How it Works</h3>
-      <p>Darkstar employs a sophisticated, multi-stage process to secure your recovery phrase:</p>
-      <mat-list role="list">
-        <mat-list-item role="listitem">
-          <strong>1. Guaranteed Seeded Obfuscation:</strong> For each word, Darkstar randomly selects 12 unique obfuscation functions from a pool of 24. Crucially, it guarantees that at least one of these is a "seeded" function (e.g., character shuffling) that uses your password, deeply integrating the password into the obfuscation itself.
-        </mat-list-item>
-        <mat-list-item role="listitem">
-          <strong>2. AES-256 Encryption:</strong> The collection of obfuscated words is joined together and then encrypted using the industry-standard AES-256 algorithm with a user-provided password.
-        </mat-list-item>
-        <mat-list-item role="listitem">
-          <strong>3. Reverse Key Generation:</strong> A "reverse key" is generated, containing the precise sequence of obfuscation functions used for each word.
-        </mat-list-item>
-        <mat-list-item role="listitem">
-          <strong>4. Key Encoding:</strong> This reverse key is then Base64 encoded. This is the final key you need to store.
-        </mat-list-item>
-      </mat-list>
-      <p>To decrypt, you need both the <strong>Base64 encoded reverse key</strong> (to reverse the obfuscation) and your <strong>password</strong> (to decrypt the data). This dual-component system significantly enhances the security of your recovery phrase.</p>
+  @if (loading) {
+  <div class="spinner-container">
+    <mat-spinner></mat-spinner>
+  </div>
+  } @else {
+  <div class="content-wrapper">
+    <mat-card class="info-card">
+      <img [src]="theme.logoSrc()" alt="Darkstar Logo" class="logo" />
+      <mat-card-header>
+        <mat-card-title>Darkstar</mat-card-title>
+        <mat-card-subtitle>Created by Victor Kane</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p class="intro-text">
+          A client-side security tool to safeguard your Bitcoin wallet's
+          recovery phrase (BIP39 mnemonic). It provides a robust, multi-layered
+          solution for obfuscating and encrypting your seed phrase, adding a
+          critical layer of security to protect your digital assets.
+        </p>
+      </mat-card-content>
+    </mat-card>
 
-    </mat-card-content>
-  </mat-card>
+    <footer class="footer">
+      <p>&copy; 2025 Victor Kane. All Rights Reserved.</p>
+      <p>Version 1.2.0</p>
+    </footer>
+  </div>
+  }
 </div>
 

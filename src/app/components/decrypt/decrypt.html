@@ -12,7 +12,10 @@
               <ng-template matStepLabel>Enter Encrypted Data</ng-template>
               <mat-form-field appearance="fill" class="full-width">
                 <mat-label>Encrypted Data</mat-label>
-                <textarea matInput formControlName="encryptedData" cdkTextareaAutosize cdkAutosizeMinRows="3" placeholder="Paste the encrypted data here"></textarea>
+                <textarea matInput formControlName="encryptedData" rows="3" placeholder="Paste the encrypted data here"></textarea>
+                <button mat-icon-button matSuffix (click)="copyFromClipboard('encryptedData')" matTooltip="Paste from clipboard">
+                  <mat-icon>content_paste</mat-icon>
+                </button>
                 @if (firstFormGroup.controls['encryptedData'].hasError('required')) {
                   <mat-error>Encrypted data is required.</mat-error>
                 }
@@ -27,7 +30,10 @@
               <ng-template matStepLabel>Enter Reverse Key</ng-template>
               <mat-form-field appearance="fill" class="full-width">
                 <mat-label>Reverse Key</mat-label>
-                <textarea matInput formControlName="reverseKey" cdkTextareaAutosize cdkAutosizeMinRows="2" placeholder="Paste the reverse key here"></textarea>
+                <textarea matInput formControlName="reverseKey" rows="2" placeholder="Paste the reverse key here"></textarea>
+                <button mat-icon-button matSuffix (click)="copyFromClipboard('reverseKey')" matTooltip="Paste from clipboard">
+                  <mat-icon>content_paste</mat-icon>
+                </button>
                 @if (secondFormGroup.controls['reverseKey'].hasError('required')) {
                   <mat-error>Reverse key is required.</mat-error>
                 }

@@ -4,6 +4,8 @@ import { TextFieldModule } from '@angular/cdk/text-field';
 import { MaterialModule } from '../../modules/material/material'
 import BIP39 from '../../../assets/BIP39.json';
 import { CryptService } from '../../services/crypt';
+import { Clipboard } from '@angular/cdk/clipboard';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-encrypt',
@@ -24,7 +26,12 @@ export class Encrypt {
   encryptedData: string = '';
   reverseKey: string = '';
 
-  constructor(private _formBuilder: FormBuilder, private cryptService: CryptService) {
+  constructor(
+    private _formBuilder: FormBuilder, 
+    private cryptService: CryptService,
+    private clipboard: Clipboard,
+    private snackBar: MatSnackBar
+  ) {
     this.firstFormGroup = this._formBuilder.group({
       firstCtrl: ['', [Validators.required, this.minWordsValidator(24)]]
     });
@@ -44,6 +51,13 @@ export class Encrypt {
       this.reverseKey = reverseKey;
       this.showResult = true;
     }
+  }
+
+  copyToClipboard(text: string) {
+    this.clipboard.copy(text);
+    this.snackBar.open('Copied to clipboard!', 'Close', {
+      duration: 2000,
+    });
   }
 
   minWordsValidator(minWords: number): ValidatorFn {

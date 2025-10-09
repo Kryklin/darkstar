@@ -2,17 +2,17 @@
   <mat-sidenav #drawer class="sidenav" fixedInViewport [mode]="sidenavMode">
     <mat-toolbar class="nav-link-center">DARKSTAR</mat-toolbar>
     <mat-nav-list>
-      <a mat-list-item routerLink="/home" routerLinkActive="active-link">
+      <a mat-list-item routerLink="/home" routerLinkActive="active-link" (click)="drawer.close()">
         <div class="nav-link-center">
           <mat-icon>home</mat-icon>
         </div>
       </a>
-      <a mat-list-item routerLink="/encrypt" routerLinkActive="active-link">
+      <a mat-list-item routerLink="/encrypt" routerLinkActive="active-link" (click)="drawer.close()">
         <div class="nav-link-center">
           <mat-icon fontSet="material-symbols-outlined">encrypted_add_circle</mat-icon>
         </div>
       </a>
-      <a mat-list-item routerLink="/decrypt" routerLinkActive="active-link">
+      <a mat-list-item routerLink="/decrypt" routerLinkActive="active-link" (click)="drawer.close()">
         <div class="nav-link-center">
           <mat-icon fontSet="material-symbols-outlined">encrypted_minus_circle</mat-icon>
         </div>

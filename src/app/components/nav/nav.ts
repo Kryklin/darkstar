@@ -20,8 +20,8 @@ import { MatDrawerMode } from '@angular/material/sidenav';
 export class Nav {
   theme = inject(Theme);
   isElectron = !!(window as any).electronAPI;
-  sidenavMode: MatDrawerMode = this.isElectron ? 'side' : 'push';
-  hasBackdrop = !this.isElectron;
+  sidenavMode: MatDrawerMode = 'over';
+  hasBackdrop = true;
 
   toggleTheme() {
     this.theme.setDarkTheme(!this.theme.isDarkTheme());
