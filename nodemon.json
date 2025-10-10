@@ -1,0 +1,6 @@
+{
+  "watch": ["electron"],
+  "ext": "ts,json",
+  "ignore": ["electron/**/*.spec.ts"],
+  "exec": "npm run electron:build && electron ."
+}

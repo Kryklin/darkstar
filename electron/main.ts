@@ -11,7 +11,14 @@ function createWindow() {
     }
   });
 
-  win.loadFile('dist/darkstar/browser/index.html');
+  const isDev = process.env['NODE_ENV'] !== 'production';
+
+  if (isDev) {
+    win.loadURL('http://localhost:4200');
+    win.webContents.openDevTools();
+  } else {
+    win.loadFile(path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser', 'index.html'));
+  }
 }
 
 app.whenReady().then(() => {

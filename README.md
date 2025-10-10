@@ -44,12 +44,26 @@
     npm install
     ```
 
-### Development
+### Web Application
 
-To start the application in development mode with hot-reloading for both web and desktop:
+To start the Angular development server:
 ```bash
 npm start
 ```
+The application will be available at `http://localhost:4200/`.
+
+### Desktop Application (with Hot-Reloading)
+
+To run the Electron application in development mode with hot-reloading for both the Angular frontend and the Electron main process:
+```bash
+npm run electron:dev
+```
+This command will:
+1. Start the Angular development server.
+2. Wait for the server to be ready on `http://localhost:4200`.
+3. Launch the Electron application, which will load the content from the dev server.
+4. Automatically restart the Electron app when you make changes to the Electron source files (`electron/main.ts`, `electron/preload.ts`).
+5. Automatically reload the Electron window when you make changes to the Angular frontend code.
 
 ### Building
 

@@ -4,12 +4,15 @@
   "main": "dist/electron/main.js",
   "scripts": {
     "ng": "ng",
-    "start": "ng build && electron-forge start",
+    "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "package": "ng build && electron-forge package",
-    "make": "ng build && electron-forge make"
+    "electron:build": "tsc --p tsconfig.electron.json",
+    "electron:dev": "concurrently -k \"ng serve\" \"npm:electron:watch\"",
+    "electron:watch": "wait-on http://localhost:4200 && nodemon --config nodemon.json",
+    "package": "ng build && npm run electron:build && electron-forge package",
+    "make": "ng build && npm run electron:build && electron-forge make"
   },
   "prettier": {
     "printWidth": 100,
@@ -54,6 +57,7 @@
     "@electron/fuses": "^1.8.0",
     "@types/crypto-js": "^4.2.2",
     "@types/jasmine": "~5.1.0",
+    "concurrently": "^9.2.1",
     "electron": "^38.2.0",
     "jasmine-core": "~5.9.0",
     "karma": "~6.4.0",
@@ -61,6 +65,8 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
-    "typescript": "~5.9.2"
+    "nodemon": "^3.1.10",
+    "typescript": "~5.9.2",
+    "wait-on": "^9.0.1"
   }
 }
