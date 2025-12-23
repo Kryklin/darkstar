@@ -18,7 +18,7 @@ describe('CryptService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [CryptService]
+      providers: [CryptService],
     });
     service = TestBed.inject(CryptService);
   });
@@ -57,19 +57,19 @@ describe('CryptService', () => {
       const words = testMnemonic.split(' ');
       // Spy on the internal AES256 encryption method to inspect the data passed to it
       const spy = spyOn(service, 'encryptAES256').and.callThrough();
-      
+
       service.encrypt(testMnemonic, testPassword);
 
       // Check that the spy was called
       expect(spy).toHaveBeenCalled();
-      
+
       // Get the first argument passed to the spy, which is the obfuscated string
       const obfuscatedString = spy.calls.first().args[0];
-      
+
       // The string should be joined by '§', so splitting by it should yield the original number of words
       expect(obfuscatedString.split('§').length).toBe(words.length);
       // Ensure none of the intermediate words accidentally contain the '§' delimiter
-      obfuscatedString.split('§').forEach(word => {
+      obfuscatedString.split('§').forEach((word) => {
         expect(word).not.toContain('§');
       });
       // Conversely, splitting by a space should not yield the same number of words

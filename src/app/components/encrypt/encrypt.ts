@@ -1,7 +1,16 @@
 import { Component, inject } from '@angular/core';
-import { AbstractControl, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { TextFieldModule } from '@angular/cdk/text-field';
-import { MaterialModule } from '../../modules/material/material'
+import { MaterialModule } from '../../modules/material/material';
 import BIP39 from '../../../assets/BIP39.json';
 import { CryptService } from '../../services/crypt';
 import { Clipboard } from '@angular/cdk/clipboard';
@@ -10,15 +19,14 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 @Component({
   selector: 'app-encrypt',
   standalone: true,
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    TextFieldModule,
-    MaterialModule
-  ],
+  imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule],
   templateUrl: './encrypt.html',
-  styleUrl: './encrypt.scss'
+  styleUrl: './encrypt.scss',
 })
+/**
+ * Handles the encryption workflow: accepting mnemonic input, password generation,
+ * and displaying the final encrypted output + reverse key.
+ */
 export class Encrypt {
   firstFormGroup: FormGroup;
   secondFormGroup: FormGroup;
@@ -33,10 +41,10 @@ export class Encrypt {
 
   constructor() {
     this.firstFormGroup = this._formBuilder.group({
-      firstCtrl: ['', [Validators.required, this.minWordsValidator(24)]]
+      firstCtrl: ['', [Validators.required, this.minWordsValidator(24)]],
     });
     this.secondFormGroup = this._formBuilder.group({
-      secondCtrl: ['', Validators.required]
+      secondCtrl: ['', Validators.required],
     });
   }
 

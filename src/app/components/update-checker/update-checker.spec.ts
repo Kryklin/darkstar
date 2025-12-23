@@ -8,9 +8,8 @@ describe('UpdateChecker', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [UpdateChecker]
-    })
-    .compileComponents();
+      imports: [UpdateChecker],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(UpdateChecker);
     component = fixture.componentInstance;

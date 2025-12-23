@@ -11,12 +11,14 @@
             <ng-template matStepLabel>Enter Recovery Phrase</ng-template>
             <mat-form-field class="full-width">
               <mat-label>Insert the 24 word BIP39 keyword set for bitcoin recovery</mat-label>
-              <textarea matInput
-                        formControlName="firstCtrl"
-                        cdkTextareaAutosize
-                        #autosize="cdkTextareaAutosize"
-                        cdkAutosizeMinRows="4"
-                        placeholder="e.g. word1 word2 word3 ..."></textarea>
+              <textarea
+                matInput
+                formControlName="firstCtrl"
+                cdkTextareaAutosize
+                #autosize="cdkTextareaAutosize"
+                cdkAutosizeMinRows="4"
+                placeholder="e.g. word1 word2 word3 ..."
+              ></textarea>
             </mat-form-field>
             <div class="stepper-buttons">
               <button mat-button (click)="generateRandomWords()">Generate Random Words</button>
@@ -29,7 +31,7 @@
             <ng-template matStepLabel>Set Password</ng-template>
             <mat-form-field class="full-width">
               <mat-label>Encryption password</mat-label>
-              <input matInput formControlName="secondCtrl" type="password" required>
+              <input matInput formControlName="secondCtrl" type="password" required />
             </mat-form-field>
             <div class="stepper-buttons">
               <button mat-button matStepperPrevious>Back</button>
@@ -71,5 +73,3 @@
     </mat-card-footer>
   }
 </mat-card>
-
-

@@ -1,8 +1,12 @@
 import { Injectable, signal } from '@angular/core';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
+/**
+ * Manages the application's visual theme (light/dark mode) and associated assets.
+ * Persists user preference to local storage.
+ */
 export class Theme {
   isDarkTheme = signal<boolean>(false);
   logoSrc = signal<string>('assets/img/logo-black.png');

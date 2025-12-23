@@ -2,10 +2,9 @@ import { Injectable } from '@angular/core';
 import CryptoJS from 'crypto-js';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class CryptService {
-
   // --- AES-256 Encryption ---
 
   /**
@@ -17,14 +16,14 @@ export class CryptService {
   encryptAES256(data: string, password: string): string {
     const salt = CryptoJS.lib.WordArray.random(128 / 8);
     const key = CryptoJS.PBKDF2(password, salt, {
-        keySize: 256 / 32,
-        iterations: 1000
+      keySize: 256 / 32,
+      iterations: 1000,
     });
     const iv = CryptoJS.lib.WordArray.random(128 / 8);
     const encrypted = CryptoJS.AES.encrypt(data, key, {
-        iv: iv,
-        padding: CryptoJS.pad.Pkcs7,
-        mode: CryptoJS.mode.CBC
+      iv: iv,
+      padding: CryptoJS.pad.Pkcs7,
+      mode: CryptoJS.mode.CBC,
     });
     // Combine salt, iv and ciphertext for transit
     const transitmessage = salt.toString() + iv.toString() + encrypted.toString();
@@ -44,13 +43,13 @@ export class CryptService {
 
     const key = CryptoJS.PBKDF2(password, salt, {
       keySize: 256 / 32,
-      iterations: 1000
+      iterations: 1000,
     });
 
     const decrypted = CryptoJS.AES.decrypt(encrypted, key, {
       iv: iv,
       padding: CryptoJS.pad.Pkcs7,
-      mode: CryptoJS.mode.CBC
+      mode: CryptoJS.mode.CBC,
     });
     return decrypted.toString(CryptoJS.enc.Utf8);
   }
@@ -58,10 +57,8 @@ export class CryptService {
   // --- Main Encryption/Decryption Logic ---
 
   /**
-   * Encrypts a mnemonic phrase.
-   * @param mnemonic The BIP39 mnemonic phrase.
-   * @param password The password.
-   * @returns An object containing the encrypted data and the reverse key.
+   * Encrypts a mnemonic phrase by shuffling and obfuscating with a seeded password reference.
+   * Returns encrypted data and the reverse key needed for decryption.
    */
   encrypt(mnemonic: string, password: string): { encryptedData: string; reverseKey: string } {
     const words = mnemonic.split(' ');
@@ -104,11 +101,7 @@ export class CryptService {
   }
 
   /**
-   * Decrypts an encrypted mnemonic phrase.
-   * @param encryptedData The encrypted data.
-   * @param reverseKey The Base64 encoded reverse key.
-   * @param password The password.
-   * @returns The decrypted mnemonic phrase.
+   * Decrypts an encrypted mnemonic phrase using the provided reverse key and password.
    */
   decrypt(encryptedData: string, reverseKey: string, password: string): string {
     // 1. Decode the reverse key from Base64
@@ -171,41 +164,41 @@ export class CryptService {
   constructor() {
     this.obfuscationFunctions = [
       // --- 6 Unseeded Functions ---
-      this.obfuscateByReversing.bind(this),              // 0
-      this.obfuscateWithAtbashCipher.bind(this),          // 1
-      this.obfuscateToCharCodes.bind(this),             // 2
-      this.obfuscateToBinary.bind(this),                // 3
-      this.obfuscateWithCaesarCipher.bind(this),          // 4
-      this.obfuscateBySwappingAdjacentChars.bind(this),   // 5
+      this.obfuscateByReversing.bind(this), // 0
+      this.obfuscateWithAtbashCipher.bind(this), // 1
+      this.obfuscateToCharCodes.bind(this), // 2
+      this.obfuscateToBinary.bind(this), // 3
+      this.obfuscateWithCaesarCipher.bind(this), // 4
+      this.obfuscateBySwappingAdjacentChars.bind(this), // 5
 
       // --- 6 Seeded Functions ---
-      this.obfuscateByShuffling.bind(this),             // 6
-      this.obfuscateWithXOR.bind(this),                 // 7
-      this.obfuscateByInterleaving.bind(this),          // 8
-      this.obfuscateWithVigenereCipher.bind(this),      // 9
+      this.obfuscateByShuffling.bind(this), // 6
+      this.obfuscateWithXOR.bind(this), // 7
+      this.obfuscateByInterleaving.bind(this), // 8
+      this.obfuscateWithVigenereCipher.bind(this), // 9
       this.obfuscateWithSeededBlockReversal.bind(this), // 10
-      this.obfuscateWithSeededSubstitution.bind(this)   // 11
+      this.obfuscateWithSeededSubstitution.bind(this), // 11
     ];
     this.deobfuscationFunctions = [
       // --- 6 Unseeded Functions ---
-      this.deobfuscateByReversing.bind(this),              // 0
-      this.deobfuscateWithAtbashCipher.bind(this),          // 1
-      this.deobfuscateFromCharCodes.bind(this),             // 2
-      this.deobfuscateFromBinary.bind(this),                // 3
-      this.deobfuscateWithCaesarCipher.bind(this),          // 4
-      this.deobfuscateBySwappingAdjacentChars.bind(this),   // 5
+      this.deobfuscateByReversing.bind(this), // 0
+      this.deobfuscateWithAtbashCipher.bind(this), // 1
+      this.deobfuscateFromCharCodes.bind(this), // 2
+      this.deobfuscateFromBinary.bind(this), // 3
+      this.deobfuscateWithCaesarCipher.bind(this), // 4
+      this.deobfuscateBySwappingAdjacentChars.bind(this), // 5
 
       // --- 6 Seeded Functions ---
-      this.deobfuscateByShuffling.bind(this),             // 6
-      this.deobfuscateWithXOR.bind(this),                 // 7
-      this.deobfuscateByDeinterleaving.bind(this),          // 8
-      this.deobfuscateWithVigenereCipher.bind(this),      // 9
+      this.deobfuscateByShuffling.bind(this), // 6
+      this.deobfuscateWithXOR.bind(this), // 7
+      this.deobfuscateByDeinterleaving.bind(this), // 8
+      this.deobfuscateWithVigenereCipher.bind(this), // 9
       this.deobfuscateWithSeededBlockReversal.bind(this), // 10
-      this.deobfuscateWithSeededSubstitution.bind(this)   // 11
+      this.deobfuscateWithSeededSubstitution.bind(this), // 11
     ];
   }
 
-  // --- Unseeded Functions ---
+  // --- Unseeded Transformation Functions ---
 
   // 0. Reverse String
   obfuscateByReversing(input: string): string {
@@ -219,9 +212,11 @@ export class CryptService {
   obfuscateWithAtbashCipher(input: string): string {
     return input.replace(/[a-zA-Z]/g, (c) => {
       const code = c.charCodeAt(0);
-      if (code >= 65 && code <= 90) { // Uppercase
+      if (code >= 65 && code <= 90) {
+        // Uppercase
         return String.fromCharCode(90 - (code - 65));
-      } else if (code >= 97 && code <= 122) { // Lowercase
+      } else if (code >= 97 && code <= 122) {
+        // Lowercase
         return String.fromCharCode(122 - (code - 97));
       }
       return c;
@@ -233,18 +228,30 @@ export class CryptService {
 
   // 2. Character Code
   obfuscateToCharCodes(input: string): string {
-    return input.split('').map(char => char.charCodeAt(0)).join(',');
+    return input
+      .split('')
+      .map((char) => char.charCodeAt(0))
+      .join(',');
   }
   deobfuscateFromCharCodes(input: string): string {
-    return input.split(',').map(code => String.fromCharCode(parseInt(code, 10))).join('');
+    return input
+      .split(',')
+      .map((code) => String.fromCharCode(parseInt(code, 10)))
+      .join('');
   }
 
   // 3. Binary
   obfuscateToBinary(input: string): string {
-    return input.split('').map(char => char.charCodeAt(0).toString(2)).join(',');
+    return input
+      .split('')
+      .map((char) => char.charCodeAt(0).toString(2))
+      .join(',');
   }
   deobfuscateFromBinary(input: string): string {
-    return input.split(',').map(bin => String.fromCharCode(parseInt(bin, 2))).join('');
+    return input
+      .split(',')
+      .map((bin) => String.fromCharCode(parseInt(bin, 2)))
+      .join('');
   }
 
   // 4. Caesar Cipher (ROT13)
@@ -302,7 +309,10 @@ export class CryptService {
 
   // 7. XOR Obfuscation
   obfuscateWithXOR(input: string, seed?: string): string {
-    return input.split('').map((char, i) => String.fromCharCode(char.charCodeAt(0) ^ seed!.charCodeAt(i % seed!.length))).join('');
+    return input
+      .split('')
+      .map((char, i) => String.fromCharCode(char.charCodeAt(0) ^ seed!.charCodeAt(i % seed!.length)))
+      .join('');
   }
   deobfuscateWithXOR(input: string, seed?: string): string {
     return this.obfuscateWithXOR(input, seed);
@@ -338,7 +348,7 @@ export class CryptService {
     return codes.join(',');
   }
   deobfuscateWithVigenereCipher(input: string, seed?: string): string {
-    const codes = input.split(',').map(c => parseInt(c, 10));
+    const codes = input.split(',').map((c) => parseInt(c, 10));
     let result = '';
     for (let i = 0; i < codes.length; i++) {
       const keyCode = seed!.charCodeAt(i % seed!.length);
@@ -353,7 +363,11 @@ export class CryptService {
     const blockSize = Math.floor(rng() * (input.length / 2)) + 2;
     let result = '';
     for (let i = 0; i < input.length; i += blockSize) {
-      result += input.substring(i, i + blockSize).split('').reverse().join('');
+      result += input
+        .substring(i, i + blockSize)
+        .split('')
+        .reverse()
+        .join('');
     }
     return result;
   }
@@ -367,14 +381,20 @@ export class CryptService {
     const shuffledChars = [...chars];
     this.shuffleArray(shuffledChars, seed!);
     const subMap = new Map(chars.map((c, i) => [c, shuffledChars[i]]));
-    return input.split('').map(char => subMap.get(char) || char).join('');
+    return input
+      .split('')
+      .map((char) => subMap.get(char) || char)
+      .join('');
   }
   deobfuscateWithSeededSubstitution(input: string, seed?: string): string {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
     const shuffledChars = [...chars];
     this.shuffleArray(shuffledChars, seed!);
     const unsubMap = new Map(shuffledChars.map((c, i) => [c, chars[i]]));
-    return input.split('').map(char => unsubMap.get(char) || char).join('');
+    return input
+      .split('')
+      .map((char) => unsubMap.get(char) || char)
+      .join('');
   }
 
   private shuffleArray<T>(array: T[], seed: string) {
@@ -385,17 +405,17 @@ export class CryptService {
     }
   }
 
-
   private seededRandom(seed: string) {
-    let h = 1779033703, i = 0;
+    let h = 1779033703,
+      i = 0;
     for (i = 0; i < seed.length; i++) {
-        h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+      h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
     }
-    h = h << 13 | h >>> 19;
-    return function() {
-        h = Math.imul(h ^ h >>> 16, 2246822507);
-        h = Math.imul(h ^ h >>> 13, 3266489909);
-        return ((h ^= h >>> 16) >>> 0) / 4294967296;
-    }
+    h = (h << 13) | (h >>> 19);
+    return function () {
+      h = Math.imul(h ^ (h >>> 16), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      return ((h ^= h >>> 16) >>> 0) / 4294967296;
+    };
   }
 }

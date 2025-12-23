@@ -5,7 +5,7 @@ const path = require('path');
 module.exports = {
   packagerConfig: {
     asar: true,
-    icon: path.resolve(__dirname, 'public/favicon')
+    icon: path.resolve(__dirname, 'public/favicon'),
   },
   rebuildConfig: {},
   makers: [
@@ -16,7 +16,7 @@ module.exports = {
         loadingGif: path.resolve(__dirname, 'public/assets/img/splash_installer.gif'),
         createDesktopShortcut: true,
         createStartMenuShortcut: true,
-        setupExe: 'Darkstar Setup.exe'
+        setupExe: 'Darkstar Setup.exe',
       },
     },
     {
@@ -55,11 +55,11 @@ module.exports = {
       config: {
         repository: {
           owner: 'Kryklin',
-          name: 'darkstar'
+          name: 'darkstar',
         },
         prerelease: false,
-        draft: true
-      }
-    }
-  ]
+        draft: true,
+      },
+    },
+  ],
 };

@@ -48,18 +48,23 @@
 ### Web Application
 
 To start the Angular development server:
+
 ```bash
 npm start
 ```
+
 The application will be available at `http://localhost:4200/`.
 
 ### Desktop Application (with Hot-Reloading)
 
 To run the Electron application in development mode with hot-reloading for both the Angular frontend and the Electron main process:
+
 ```bash
 npm run electron:dev
 ```
+
 This command will:
+
 1. Start the Angular development server.
 2. Wait for the server to be ready on `http://localhost:4200`.
 3. Launch the Electron application, which will load the content from the dev server.
@@ -69,17 +74,21 @@ This command will:
 ### Building
 
 To create a distributable package for your current operating system:
+
 ```bash
 npm run make
 ```
+
 The packaged application will be located in the `out` folder.
 
 ### Testing
 
 To run the unit tests using Karma and Jasmine:
+
 ```bash
 npm test
 ```
+
 This command opens a new browser window and runs all the `.spec.ts` files. The results are displayed in the terminal.
 
 ## How it Works

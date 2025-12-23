@@ -6,39 +6,44 @@
 @use '@angular/material' as mat;
 @import 'material-icons/iconfont/material-icons.css';
 
-html, body {
+html,
+body {
   height: 100%;
 }
 
 body {
   margin: 0;
-  font-family: Roboto, "Helvetica Neue", sans-serif;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
 }
 
 .dark-theme {
   color-scheme: dark;
-  @include mat.theme((
-    color: (
-      theme-type: dark,
-      primary: mat.$azure-palette,
-      tertiary: mat.$blue-palette,
-    ),
-    typography: Roboto,
-    density: 0,
-  ));
+  @include mat.theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
 }
 
 .light-theme {
   color-scheme: light;
-  @include mat.theme((
-    color: (
-      theme-type: light,
-      primary: mat.$azure-palette,
-      tertiary: mat.$blue-palette,
-    ),
-    typography: Roboto,
-    density: 0,
-  ));
+  @include mat.theme(
+    (
+      color: (
+        theme-type: light,
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
 }
 
 body {
@@ -51,25 +56,24 @@ body {
 }
 
 .app-title {
-    font-weight: 700;
-    letter-spacing: 2px;
-    background: linear-gradient(
-        to right,
-        var(--mat-sys-on-surface) 20%,
-        var(--mat-sys-primary) 40%,
-        var(--mat-sys-primary) 60%,
-        var(--mat-sys-on-surface) 80%
-    );
-    background-size: 200% auto;
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: shine 5s linear infinite;
+  font-weight: 700;
+  letter-spacing: 2px;
+  background: linear-gradient(
+    to right,
+    var(--mat-sys-on-surface) 20%,
+    var(--mat-sys-primary) 40%,
+    var(--mat-sys-primary) 60%,
+    var(--mat-sys-on-surface) 80%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 5s linear infinite;
 }
 
 @keyframes shine {
-    to {
-        background-position: 200% center;
-    }
+  to {
+    background-position: 200% center;
+  }
 }
-

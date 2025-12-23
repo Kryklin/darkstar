@@ -49,7 +49,7 @@
               <ng-template matStepLabel>Enter Password</ng-template>
               <mat-form-field appearance="fill" class="full-width">
                 <mat-label>Password</mat-label>
-                <input matInput formControlName="password" type="password" placeholder="Enter your password">
+                <input matInput formControlName="password" type="password" placeholder="Enter your password" />
                 @if (thirdFormGroup.controls['password'].hasError('required')) {
                   <mat-error>Password is required.</mat-error>
                 }
@@ -93,4 +93,3 @@
     </mat-card>
   }
 </div>
-

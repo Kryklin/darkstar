@@ -1,10 +1,68 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, dialog, session } from 'electron';
-// eslint-disable-next-line
-if (require('electron-squirrel-startup')) app.quit();
-
-import { updateElectronApp } from 'update-electron-app';
-updateElectronApp();
+import * as childProcess from 'child_process';
 import * as path from 'path';
+import { updateElectronApp } from 'update-electron-app';
+
+/**
+ * Handles Squirrel events for Windows installer lifecycle management.
+ * Explicitly manages shortcuts and app quit/launch behavior.
+ */
+const handleSquirrelEvent = () => {
+  if (process.argv.length === 1) {
+    return false;
+  }
+
+  const appFolder = path.resolve(process.execPath, '..');
+  const rootAtomFolder = path.resolve(appFolder, '..');
+  const updateDotExe = path.resolve(path.join(rootAtomFolder, 'Update.exe'));
+  const exeName = path.basename(process.execPath);
+
+  const spawn = function (command: string, args: string[]) {
+    let spawnedProcess;
+
+    try {
+      spawnedProcess = childProcess.spawn(command, args, { detached: true });
+    } catch (error) {
+      console.warn('Failed to spawn process', error);
+    }
+
+    return spawnedProcess;
+  };
+
+  const spawnUpdate = function (args: string[]) {
+    return spawn(updateDotExe, args);
+  };
+
+  const squirrelEvent = process.argv[1];
+  switch (squirrelEvent) {
+    case '--squirrel-install':
+    case '--squirrel-updated':
+      // Install desktop and start menu shortcuts
+      spawnUpdate(['--createShortcut', exeName]);
+
+      setTimeout(app.quit, 1000);
+      return true;
+
+    case '--squirrel-uninstall':
+      // Remove desktop and start menu shortcuts
+      spawnUpdate(['--removeShortcut', exeName]);
+
+      setTimeout(app.quit, 1000);
+      return true;
+
+    case '--squirrel-obsolete':
+      app.quit();
+      return true;
+  }
+  return false;
+};
+
+if (handleSquirrelEvent()) {
+  // squirrel event handled and app will exit in 1000ms, so don't do anything else
+  process.exit(0);
+}
+
+updateElectronApp();
 
 let tray: Tray | null = null;
 
@@ -15,8 +73,8 @@ function createWindow() {
     frame: false,
     icon: path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser', 'favicon.ico'),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
-    }
+      preload: path.join(__dirname, 'preload.js'),
+    },
   });
 
   if (!app.isPackaged) {
@@ -31,19 +89,22 @@ function createTray() {
   const iconPath = path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser', 'favicon.ico');
   const icon = nativeImage.createFromPath(iconPath);
   tray = new Tray(icon);
-  
+
   const contextMenu = Menu.buildFromTemplate([
     { label: `Version: ${app.getVersion()}`, enabled: false },
     { type: 'separator' },
-    { label: 'Check for Updates', click: () => {
-      const win = BrowserWindow.getFocusedWindow();
-      if (win) {
-        win.webContents.send('initiate-update-check');
-      }
-    }},
+    {
+      label: 'Check for Updates',
+      click: () => {
+        const win = BrowserWindow.getFocusedWindow();
+        if (win) {
+          win.webContents.send('initiate-update-check');
+        }
+      },
+    },
     { type: 'separator' },
-    { 
-      label: 'Reset App', 
+    {
+      label: 'Reset App',
       click: async () => {
         const { response } = await dialog.showMessageBox({
           type: 'warning',
@@ -51,7 +112,7 @@ function createTray() {
           title: 'Reset Application',
           message: 'Are you sure you want to reset the application? This will clear all data and restart the app.',
           defaultId: 0,
-          cancelId: 0
+          cancelId: 0,
         });
 
         if (response === 1) {
@@ -59,15 +120,15 @@ function createTray() {
           app.relaunch();
           app.exit(0);
         }
-      } 
+      },
     },
     { type: 'separator' },
-    { label: 'Exit', click: () => app.quit() }
+    { label: 'Exit', click: () => app.quit() },
   ]);
 
   tray.setToolTip('Darkstar');
   tray.setContextMenu(contextMenu);
-  
+
   tray.on('click', () => {
     const win = BrowserWindow.getAllWindows()[0];
     if (win) {
@@ -135,7 +196,9 @@ ipcMain.on('restart-and-install', () => {
   autoUpdater.quitAndInstall();
 });
 
-// Update Events
+/**
+ * Listen on `autoUpdater` events and relay status to the renderer process via IPC.
+ */
 autoUpdater.on('checking-for-update', () => {
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'checking' });

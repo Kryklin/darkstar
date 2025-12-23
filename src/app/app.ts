@@ -5,7 +5,7 @@ import { Nav } from './components/nav/nav';
   selector: 'app-root',
   imports: [Nav],
   templateUrl: './app.html',
-  styleUrls: ['./app.scss']
+  styleUrls: ['./app.scss'],
 })
 export class App {
   public readonly title = signal('darkstar');

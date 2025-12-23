@@ -13,13 +13,19 @@
     gap: 16px;
 
     mat-icon {
-        font-size: 64px;
-        width: 64px;
-        height: 64px;
-        
-        &.success-icon { color: #4caf50; }
-        &.info-icon { color: #2196f3; }
-        &.error-icon { color: #f44336; }
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+
+      &.success-icon {
+        color: #4caf50;
+      }
+      &.info-icon {
+        color: #2196f3;
+      }
+      &.error-icon {
+        color: #f44336;
+      }
     }
   }
 }

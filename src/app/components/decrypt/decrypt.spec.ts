@@ -18,13 +18,8 @@ describe('Decrypt', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [
-        Decrypt,
-        BrowserAnimationsModule,
-        MaterialModule,
-        ReactiveFormsModule
-      ],
-      providers: [CryptService]
+      imports: [Decrypt, BrowserAnimationsModule, MaterialModule, ReactiveFormsModule],
+      providers: [CryptService],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Decrypt);

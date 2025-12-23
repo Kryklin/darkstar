@@ -9,15 +9,15 @@ describe('Encrypt', () => {
   let cryptService: CryptService;
 
   // Use a 24-word phrase for testing validation
-  const testMnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon';
+  const testMnemonic =
+    'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon';
   const testPassword = 'password123';
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Encrypt, BrowserAnimationsModule],
-      providers: [CryptService] // Provide the real service
-    })
-    .compileComponents();
+      providers: [CryptService], // Provide the real service
+    }).compileComponents();
 
     fixture = TestBed.createComponent(Encrypt);
     component = fixture.componentInstance;
@@ -55,10 +55,10 @@ describe('Encrypt', () => {
     // Set valid form values
     component.firstFormGroup.controls['firstCtrl'].setValue(testMnemonic);
     component.secondFormGroup.controls['secondCtrl'].setValue(testPassword);
-    
+
     // Trigger form submission
     component.onSubmit();
-    
+
     // Expect the spy to have been called with the correct values
     expect(encryptSpy).toHaveBeenCalledWith(testMnemonic, testPassword);
   });
@@ -67,11 +67,11 @@ describe('Encrypt', () => {
     // Set valid form values
     component.firstFormGroup.controls['firstCtrl'].setValue(testMnemonic);
     component.secondFormGroup.controls['secondCtrl'].setValue(testPassword);
-    
+
     // Trigger submission
     component.onSubmit();
     fixture.detectChanges(); // Update the DOM
-    
+
     // Check component properties
     expect(component.showResult).toBe(true);
     expect(component.encryptedData).toBeDefined();
@@ -101,15 +101,14 @@ describe('Encrypt', () => {
     // Check that the form is reset
     expect(component.firstFormGroup.controls['firstCtrl'].value).toBeNull();
     expect(component.secondFormGroup.controls['secondCtrl'].value).toBeNull();
-    
+
     // Check that the result is hidden
     expect(component.showResult).toBe(false);
     expect(component.encryptedData).toBe('');
     expect(component.reverseKey).toBe('');
-    
+
     // Check that the result card is no longer in the DOM
     const resultCardTitle = fixture.nativeElement.querySelector('.result-actions');
     expect(resultCardTitle).toBeFalsy();
   });
 });
-

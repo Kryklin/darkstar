@@ -2,37 +2,51 @@
   <mat-sidenav #drawer class="sidenav" fixedInViewport [mode]="'push'">
     <mat-toolbar class="nav-link-center"><span class="app-title">DARKSTAR</span></mat-toolbar>
     <mat-nav-list>
-      <a mat-list-item routerLink="/home" routerLinkActive="active-link" (click)="drawer.close()" [class.disabled-link]="updateService.isChecking()">
+      <a
+        mat-list-item
+        routerLink="/home"
+        routerLinkActive="active-link"
+        (click)="drawer.close()"
+        [class.disabled-link]="updateService.isChecking()"
+      >
         <div class="nav-link-center">
           <mat-icon>dashboard</mat-icon>
-          <span style="margin-left: 10px;">Home</span>
+          <span style="margin-left: 10px">Home</span>
         </div>
       </a>
-      <a mat-list-item routerLink="/encrypt" routerLinkActive="active-link" (click)="drawer.close()" [class.disabled-link]="updateService.isChecking()">
+      <a
+        mat-list-item
+        routerLink="/encrypt"
+        routerLinkActive="active-link"
+        (click)="drawer.close()"
+        [class.disabled-link]="updateService.isChecking()"
+      >
         <div class="nav-link-center">
           <mat-icon>lock</mat-icon>
-          <span style="margin-left: 10px;">Encrypt</span>
+          <span style="margin-left: 10px">Encrypt</span>
         </div>
       </a>
-      <a mat-list-item routerLink="/decrypt" routerLinkActive="active-link" (click)="drawer.close()" [class.disabled-link]="updateService.isChecking()">
+      <a
+        mat-list-item
+        routerLink="/decrypt"
+        routerLinkActive="active-link"
+        (click)="drawer.close()"
+        [class.disabled-link]="updateService.isChecking()"
+      >
         <div class="nav-link-center">
           <mat-icon>lock_open</mat-icon>
-          <span style="margin-left: 10px;">Decrypt</span>
+          <span style="margin-left: 10px">Decrypt</span>
         </div>
       </a>
     </mat-nav-list>
   </mat-sidenav>
   <mat-sidenav-content>
     <mat-toolbar color="primary">
-        <button
-          type="button"
-          aria-label="Toggle sidenav"
-          mat-icon-button
-          (click)="drawer.toggle()">
-          <mat-icon aria-label="Side nav toggle icon">menu</mat-icon>
-        </button>
+      <button type="button" aria-label="Toggle sidenav" mat-icon-button (click)="drawer.toggle()">
+        <mat-icon aria-label="Side nav toggle icon">menu</mat-icon>
+      </button>
       <span class="spacer"></span>
-      <img [src]="theme.logoSrc()" alt="logo" class="navbar-logo">
+      <img [src]="theme.logoSrc()" alt="logo" class="navbar-logo" />
       <span class="spacer"></span>
       <button mat-icon-button (click)="toggleTheme()">
         <mat-icon>{{ theme.isDarkTheme() ? 'light_mode' : 'dark_mode' }}</mat-icon>
@@ -49,6 +63,6 @@
         </button>
       }
     </mat-toolbar>
-      <router-outlet></router-outlet>
+    <router-outlet></router-outlet>
   </mat-sidenav-content>
 </mat-sidenav-container>

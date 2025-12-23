@@ -20,20 +20,20 @@ export class UpdateChecker implements OnInit {
       const status = this.updateService.updateStatus();
       if (status === 'not-available') {
         setTimeout(() => {
-            this.updateService.resetState();
-            this.router.navigate(['/home']);
+          this.updateService.resetState();
+          this.router.navigate(['/home']);
         }, 2000);
       } else if (status === 'error') {
-          // Stay on page to show error
+        // Stay on page to show error
       }
     });
   }
 
   ngOnInit() {
-    // If we landed here accurately, check should be in progress. 
+    // If we landed here accurately, check should be in progress.
     // If not started (e.g. manual nav), start it.
     if (this.updateService.updateStatus() === 'idle') {
-        this.updateService.checkForUpdates();
+      this.updateService.checkForUpdates();
     }
   }
 

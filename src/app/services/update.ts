@@ -1,13 +1,17 @@
 import { Injectable, signal, inject, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 
+/**
+ * Manages application updates, handling IPC communication with Electron
+ * and maintaining reactive state for UI components.
+ */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class UpdateService {
   router = inject(Router);
   ngZone = inject(NgZone);
-  
+
   isChecking = signal(false);
   updateStatus = signal<string>('idle');
   updateError = signal<string | null>(null);
@@ -23,17 +27,17 @@ export class UpdateService {
   private setupListeners() {
     const api = (window as unknown as ElectronWindow).electronAPI;
 
-    api.onUpdateStatus((data: { status: string, error?: string }) => {
+    api.onUpdateStatus((data: { status: string; error?: string }) => {
       this.ngZone.run(() => {
         this.updateStatus.set(data.status);
         if (data.error) {
           this.updateError.set(data.error);
         }
-        
+
         if (data.status === 'checking') {
           this.isChecking.set(true);
         } else if (['available', 'not-available', 'error', 'downloaded'].includes(data.status)) {
-           // We might want to keep isChecking true until user leaves
+          // We might want to keep isChecking true until user leaves
         }
       });
     });
@@ -48,6 +52,9 @@ export class UpdateService {
     });
   }
 
+  /**
+   * Triggers an update check via Electron's auto-updater.
+   */
   checkForUpdates() {
     if (this.isElectron) {
       this.updateStatus.set('checking');
@@ -74,9 +81,9 @@ interface ElectronWindow extends Window {
     minimize: () => void;
     maximize: () => void;
     close: () => void;
-    onUpdateStatus: (callback: (data: { status: string, error?: string }) => void) => void;
+    onUpdateStatus: (callback: (data: { status: string; error?: string }) => void) => void;
     onInitiateUpdateCheck: (callback: () => void) => void;
     checkForUpdates: () => void;
     restartAndInstall: () => void;
-  }
+  };
 }

@@ -1,30 +1,28 @@
 <div class="home-container">
   @if (loading) {
-  <div class="spinner-container">
-    <mat-spinner></mat-spinner>
-  </div>
+    <div class="spinner-container">
+      <mat-spinner></mat-spinner>
+    </div>
   } @else {
-  <div class="content-wrapper">
-    <mat-card class="info-card">
-      <mat-card-header>
-        <mat-card-title class="app-title">DARKSTAR</mat-card-title>
-        <mat-card-subtitle>Created by Victor Kane</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <p class="intro-text">
-          A client-side security tool to safeguard your Bitcoin wallet's
-          recovery phrase (BIP39 mnemonic). It provides a robust, multi-layered
-          solution for obfuscating and encrypting your seed phrase, adding a
-          critical layer of security to protect your digital assets.
-        </p>
-      </mat-card-content>
-    </mat-card>
+    <div class="content-wrapper">
+      <mat-card class="info-card">
+        <mat-card-header>
+          <mat-card-title class="app-title">DARKSTAR</mat-card-title>
+          <mat-card-subtitle>Created by Victor Kane</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="intro-text">
+            A client-side security tool to safeguard your Bitcoin wallet's recovery phrase (BIP39 mnemonic). It provides a robust,
+            multi-layered solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your
+            digital assets.
+          </p>
+        </mat-card-content>
+      </mat-card>
 
-    <footer class="footer">
-      <p>&copy; 2025 Victor Kane. All Rights Reserved.</p>
-      <p>Version 1.4.0</p>
-    </footer>
-  </div>
+      <footer class="footer">
+        <p>&copy; 2025 Victor Kane. All Rights Reserved.</p>
+        <p>Version 1.4.0</p>
+      </footer>
+    </div>
   }
 </div>
-

@@ -4,9 +4,9 @@
       <mat-spinner diameter="50"></mat-spinner>
       <h2>Checking for updates...</h2>
     } @else if (updateService.updateStatus() === 'available') {
-        <mat-spinner diameter="50"></mat-spinner>
-        <h2>Update available...</h2>
-        <p>Downloading update...</p>
+      <mat-spinner diameter="50"></mat-spinner>
+      <h2>Update available...</h2>
+      <p>Downloading update...</p>
     } @else if (updateService.updateStatus() === 'downloaded') {
       <mat-icon class="success-icon">check_circle</mat-icon>
       <h2>Update Downloaded</h2>

@@ -4,7 +4,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimize: () => ipcRenderer.send('minimize-window'),
   maximize: () => ipcRenderer.send('maximize-window'),
   close: () => ipcRenderer.send('close-window'),
-  onUpdateStatus: (callback: (status: { status: string, error?: string }) => void) => ipcRenderer.on('update-status', (_event, value) => callback(value)),
+  onUpdateStatus: (callback: (status: { status: string; error?: string }) => void) =>
+    ipcRenderer.on('update-status', (_event, value) => callback(value)),
   onInitiateUpdateCheck: (callback: () => void) => ipcRenderer.on('initiate-update-check', callback),
   checkForUpdates: () => ipcRenderer.send('check-for-updates'),
   restartAndInstall: () => ipcRenderer.send('restart-and-install'),

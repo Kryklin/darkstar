@@ -10,16 +10,14 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 @Component({
   selector: 'app-decrypt',
   standalone: true,
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    TextFieldModule,
-    MaterialModule,
-    CommonModule
-  ],
+  imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule, CommonModule],
   templateUrl: './decrypt.html',
-  styleUrl: './decrypt.scss'
+  styleUrl: './decrypt.scss',
 })
+/**
+ * Handles the decryption workflow: validating inputs (encrypted data, reverse key, password)
+ * and recovering the original mnemonic phrase.
+ */
 export class Decrypt {
   firstFormGroup: FormGroup;
   secondFormGroup: FormGroup;
@@ -41,7 +39,7 @@ export class Decrypt {
       reverseKey: ['', Validators.required],
     });
     this.thirdFormGroup = this.fb.group({
-      password: ['', Validators.required]
+      password: ['', Validators.required],
     });
   }
 

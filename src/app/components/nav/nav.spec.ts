@@ -64,4 +64,3 @@ describe('Nav', () => {
     expect(icon?.textContent).toContain('dark_mode');
   });
 });
-

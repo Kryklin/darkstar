@@ -10,12 +10,7 @@ import { MatDrawerMode } from '@angular/material/sidenav';
   standalone: true,
   templateUrl: './nav.html',
   styleUrls: ['./nav.scss'],
-  imports: [
-    MaterialModule,
-    RouterOutlet,
-    RouterLink,
-    RouterLinkActive
-]
+  imports: [MaterialModule, RouterOutlet, RouterLink, RouterLinkActive],
 })
 export class Nav {
   theme = inject(Theme);
@@ -46,5 +41,5 @@ interface ElectronWindow extends Window {
     minimize: () => void;
     maximize: () => void;
     close: () => void;
-  }
+  };
 }

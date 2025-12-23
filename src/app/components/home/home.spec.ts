@@ -12,7 +12,7 @@ describe('Home', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Home, MaterialModule, NoopAnimationsModule],
-      providers: [Theme]
+      providers: [Theme],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Home);
