@@ -64,6 +64,52 @@ if (handleSquirrelEvent()) {
 
 updateElectronApp();
 
+function createShortcut(target: 'desktop' | 'start-menu') {
+  const targetPath = process.execPath;
+  const shortcutName = 'Darkstar.lnk';
+  let script = '';
+
+  if (target === 'desktop') {
+    script = `
+      $ws = New-Object -ComObject WScript.Shell;
+      $path = [System.Environment]::GetFolderPath('Desktop');
+      $s = $ws.CreateShortcut("$path\\${shortcutName}");
+      $s.TargetPath = "${targetPath}";
+      $s.Save()
+    `;
+  } else {
+    script = `
+      $ws = New-Object -ComObject WScript.Shell;
+      $path = [System.Environment]::GetFolderPath('StartMenu');
+      $programsPath = "$path\\Programs";
+      if (!(Test-Path $programsPath)) { New-Item -ItemType Directory -Force -Path $programsPath }
+      $s = $ws.CreateShortcut("$programsPath\\${shortcutName}");
+      $s.TargetPath = "${targetPath}";
+      $s.Save()
+    `;
+  }
+
+  const ps = childProcess.spawn('powershell.exe', ['-Command', script], {
+    windowsHide: true,
+  });
+
+  ps.on('close', (code) => {
+    if (code === 0) {
+      dialog.showMessageBox({
+        type: 'info',
+        title: 'Shortcut Created',
+        message: `Successfully created ${target === 'desktop' ? 'Desktop' : 'Start Menu'} shortcut.`,
+        buttons: ['OK'],
+      });
+    } else {
+      dialog.showErrorBox(
+        'Shortcut Creation Failed',
+        `Failed to create ${target === 'desktop' ? 'Desktop' : 'Start Menu'} shortcut.`,
+      );
+    }
+  });
+}
+
 let tray: Tray | null = null;
 
 function createWindow() {
@@ -101,6 +147,15 @@ function createTray() {
           win.webContents.send('initiate-update-check');
         }
       },
+    },
+    { type: 'separator' },
+    {
+      label: 'Create Desktop Shortcut',
+      click: () => createShortcut('desktop'),
+    },
+    {
+      label: 'Create Start Menu Shortcut',
+      click: () => createShortcut('start-menu'),
     },
     { type: 'separator' },
     {
