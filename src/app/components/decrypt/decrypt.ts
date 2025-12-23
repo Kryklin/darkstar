@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { MaterialModule } from '../../modules/material/material';
@@ -25,15 +25,15 @@ export class Decrypt {
   secondFormGroup: FormGroup;
   thirdFormGroup: FormGroup;
   showResult = false;
-  decryptedMnemonic: string = '';
-  error: string = '';
+  decryptedMnemonic = '';
+  error = '';
 
-  constructor(
-    private fb: FormBuilder, 
-    private cryptService: CryptService,
-    private clipboard: Clipboard,
-    private snackBar: MatSnackBar
-    ) {
+  private fb = inject(FormBuilder);
+  private cryptService = inject(CryptService);
+  private clipboard = inject(Clipboard);
+  private snackBar = inject(MatSnackBar);
+
+  constructor() {
     this.firstFormGroup = this.fb.group({
       encryptedData: ['', Validators.required],
     });
@@ -66,8 +66,12 @@ export class Decrypt {
         this.decryptedMnemonic = this.cryptService.decrypt(encryptedData, reverseKey, password);
         this.error = '';
         this.showResult = true;
-      } catch (e: any) {
-        this.error = `Decryption failed: ${e.message}`;
+      } catch (e: unknown) {
+        let errorMessage = 'An error occurred';
+        if (e instanceof Error) {
+          errorMessage = e.message;
+        }
+        this.error = `Decryption failed: ${errorMessage}`;
         this.decryptedMnemonic = '';
         this.showResult = true;
       }

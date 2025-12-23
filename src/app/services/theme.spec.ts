@@ -3,7 +3,7 @@ import { Theme } from './theme';
 
 describe('Theme', () => {
   let service: Theme;
-  let store: { [key: string]: string } = {};
+  let store: Record<string, string> = {};
   let favicon: HTMLLinkElement;
 
   beforeEach(() => {

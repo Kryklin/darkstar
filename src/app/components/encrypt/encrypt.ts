@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { MaterialModule } from '../../modules/material/material'
@@ -23,15 +23,15 @@ export class Encrypt {
   firstFormGroup: FormGroup;
   secondFormGroup: FormGroup;
   showResult = false;
-  encryptedData: string = '';
-  reverseKey: string = '';
+  encryptedData = '';
+  reverseKey = '';
 
-  constructor(
-    private _formBuilder: FormBuilder, 
-    private cryptService: CryptService,
-    private clipboard: Clipboard,
-    private snackBar: MatSnackBar
-  ) {
+  private _formBuilder = inject(FormBuilder);
+  private cryptService = inject(CryptService);
+  private clipboard = inject(Clipboard);
+  private snackBar = inject(MatSnackBar);
+
+  constructor() {
     this.firstFormGroup = this._formBuilder.group({
       firstCtrl: ['', [Validators.required, this.minWordsValidator(24)]]
     });

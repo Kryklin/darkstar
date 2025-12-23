@@ -277,7 +277,7 @@ export class CryptService {
   obfuscateByShuffling(input: string, seed?: string): string {
     const a = input.split('');
     const n = a.length;
-    let rng = this.seededRandom(seed!);
+    const rng = this.seededRandom(seed!);
     for (let i = n - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
       [a[i], a[j]] = [a[j], a[i]];
@@ -288,7 +288,7 @@ export class CryptService {
     const a = input.split('');
     const n = a.length;
     const indices = Array.from({ length: n }, (_, i) => i);
-    let rng = this.seededRandom(seed!);
+    const rng = this.seededRandom(seed!);
     for (let i = n - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
@@ -312,14 +312,14 @@ export class CryptService {
   obfuscateByInterleaving(input: string, seed?: string): string {
     const randomChars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
-    let rng = this.seededRandom(seed!);
+    const rng = this.seededRandom(seed!);
     for (const char of input) {
       const randomChar = randomChars.charAt(Math.floor(rng() * randomChars.length));
       result += char + randomChar;
     }
     return result;
   }
-  deobfuscateByDeinterleaving(input: string, seed?: string): string {
+  deobfuscateByDeinterleaving(input: string): string {
     let result = '';
     for (let i = 0; i < input.length; i += 2) {
       result += input[i];
@@ -349,7 +349,7 @@ export class CryptService {
 
   // 10. Seeded Block Reversal
   obfuscateWithSeededBlockReversal(input: string, seed?: string): string {
-    let rng = this.seededRandom(seed!);
+    const rng = this.seededRandom(seed!);
     const blockSize = Math.floor(rng() * (input.length / 2)) + 2;
     let result = '';
     for (let i = 0; i < input.length; i += blockSize) {
@@ -377,8 +377,8 @@ export class CryptService {
     return input.split('').map(char => unsubMap.get(char) || char).join('');
   }
 
-  private shuffleArray(array: any[], seed: string) {
-    let rng = this.seededRandom(seed);
+  private shuffleArray<T>(array: T[], seed: string) {
+    const rng = this.seededRandom(seed);
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
       [array[i], array[j]] = [array[j], array[i]];

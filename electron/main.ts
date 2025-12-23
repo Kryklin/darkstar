@@ -1,19 +1,20 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron';
 import * as path from 'path';
+
+let tray: Tray | null = null;
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 800,
     height: 600,
     frame: false,
+    icon: path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser', 'favicon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js')
     }
   });
 
-  const isDev = process.env['NODE_ENV'] !== 'production';
-
-  if (isDev) {
+  if (!app.isPackaged) {
     win.loadURL('http://localhost:4200');
     win.webContents.openDevTools();
   } else {
@@ -21,8 +22,40 @@ function createWindow() {
   }
 }
 
+function createTray() {
+  const iconPath = path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser', 'favicon.ico');
+  const icon = nativeImage.createFromPath(iconPath);
+  tray = new Tray(icon);
+  
+  const contextMenu = Menu.buildFromTemplate([
+    { label: `Version: ${app.getVersion()}`, enabled: false },
+    { type: 'separator' },
+    { label: 'Exit', click: () => app.quit() }
+  ]);
+
+  tray.setToolTip('Darkstar');
+  tray.setContextMenu(contextMenu);
+  
+  tray.on('click', () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+      if (win.isVisible()) {
+        if (win.isMinimized()) {
+          win.restore();
+        } else {
+          win.show();
+        }
+      } else {
+        win.show();
+      }
+      win.focus();
+    }
+  });
+}
+
 app.whenReady().then(() => {
   createWindow();
+  createTray();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
