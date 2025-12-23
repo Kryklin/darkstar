@@ -1,4 +1,7 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, dialog, session } from 'electron';
+// eslint-disable-next-line
+if (require('electron-squirrel-startup')) app.quit();
+
 import { updateElectronApp } from 'update-electron-app';
 updateElectronApp();
 import * as path from 'path';
@@ -32,7 +35,32 @@ function createTray() {
   const contextMenu = Menu.buildFromTemplate([
     { label: `Version: ${app.getVersion()}`, enabled: false },
     { type: 'separator' },
-    { label: 'Check for Updates', click: () => autoUpdater.checkForUpdates() },
+    { label: 'Check for Updates', click: () => {
+      const win = BrowserWindow.getFocusedWindow();
+      if (win) {
+        win.webContents.send('initiate-update-check');
+      }
+    }},
+    { type: 'separator' },
+    { 
+      label: 'Reset App', 
+      click: async () => {
+        const { response } = await dialog.showMessageBox({
+          type: 'warning',
+          buttons: ['Cancel', 'Reset'],
+          title: 'Reset Application',
+          message: 'Are you sure you want to reset the application? This will clear all data and restart the app.',
+          defaultId: 0,
+          cancelId: 0
+        });
+
+        if (response === 1) {
+          await session.defaultSession.clearStorageData();
+          app.relaunch();
+          app.exit(0);
+        }
+      } 
+    },
     { type: 'separator' },
     { label: 'Exit', click: () => app.quit() }
   ]);
@@ -97,4 +125,38 @@ ipcMain.on('close-window', () => {
   if (win) {
     win.close();
   }
+});
+
+ipcMain.on('check-for-updates', () => {
+  autoUpdater.checkForUpdates();
+});
+
+ipcMain.on('restart-and-install', () => {
+  autoUpdater.quitAndInstall();
+});
+
+// Update Events
+autoUpdater.on('checking-for-update', () => {
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win) win.webContents.send('update-status', { status: 'checking' });
+});
+
+autoUpdater.on('update-available', () => {
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win) win.webContents.send('update-status', { status: 'available' });
+});
+
+autoUpdater.on('update-not-available', () => {
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win) win.webContents.send('update-status', { status: 'not-available' });
+});
+
+autoUpdater.on('error', (err) => {
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win) win.webContents.send('update-status', { status: 'error', error: err.message });
+});
+
+autoUpdater.on('update-downloaded', () => {
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win) win.webContents.send('update-status', { status: 'downloaded' });
 });

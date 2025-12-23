@@ -1,20 +1,23 @@
 <mat-sidenav-container class="sidenav-container">
   <mat-sidenav #drawer class="sidenav" fixedInViewport [mode]="'push'">
-    <mat-toolbar class="nav-link-center">DARKSTAR</mat-toolbar>
+    <mat-toolbar class="nav-link-center"><span class="app-title">DARKSTAR</span></mat-toolbar>
     <mat-nav-list>
-      <a mat-list-item routerLink="/home" routerLinkActive="active-link" (click)="drawer.close()">
+      <a mat-list-item routerLink="/home" routerLinkActive="active-link" (click)="drawer.close()" [class.disabled-link]="updateService.isChecking()">
         <div class="nav-link-center">
-          <mat-icon>home</mat-icon>
+          <mat-icon>dashboard</mat-icon>
+          <span style="margin-left: 10px;">Home</span>
         </div>
       </a>
-      <a mat-list-item routerLink="/encrypt" routerLinkActive="active-link" (click)="drawer.close()">
+      <a mat-list-item routerLink="/encrypt" routerLinkActive="active-link" (click)="drawer.close()" [class.disabled-link]="updateService.isChecking()">
         <div class="nav-link-center">
-          <mat-icon fontSet="material-symbols-outlined">encrypted_add_circle</mat-icon>
+          <mat-icon>lock</mat-icon>
+          <span style="margin-left: 10px;">Encrypt</span>
         </div>
       </a>
-      <a mat-list-item routerLink="/decrypt" routerLinkActive="active-link" (click)="drawer.close()">
+      <a mat-list-item routerLink="/decrypt" routerLinkActive="active-link" (click)="drawer.close()" [class.disabled-link]="updateService.isChecking()">
         <div class="nav-link-center">
-          <mat-icon fontSet="material-symbols-outlined">encrypted_minus_circle</mat-icon>
+          <mat-icon>lock_open</mat-icon>
+          <span style="margin-left: 10px;">Decrypt</span>
         </div>
       </a>
     </mat-nav-list>

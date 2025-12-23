@@ -4,6 +4,7 @@
 // Learn more about theming and how to use it for your application's
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
+@import 'material-icons/iconfont/material-icons.css';
 
 html, body {
   height: 100%;
@@ -41,9 +42,34 @@ body {
 }
 
 body {
-  background-color: var(--mat-sys-surface);
+  // Use surface-container for the main background to match the sidebar in dark mode
+  // This gives a consistent gray look across the app
+  background-color: var(--mat-sys-surface-container);
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
   margin: 0;
+}
+
+.app-title {
+    font-weight: 700;
+    letter-spacing: 2px;
+    background: linear-gradient(
+        to right,
+        var(--mat-sys-on-surface) 20%,
+        var(--mat-sys-primary) 40%,
+        var(--mat-sys-primary) 60%,
+        var(--mat-sys-on-surface) 80%
+    );
+    background-size: 200% auto;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shine 5s linear infinite;
+}
+
+@keyframes shine {
+    to {
+        background-position: 200% center;
+    }
 }
 

@@ -1,0 +1,26 @@
+<div class="update-container">
+  <div class="content">
+    @if (updateService.updateStatus() === 'checking') {
+      <mat-spinner diameter="50"></mat-spinner>
+      <h2>Checking for updates...</h2>
+    } @else if (updateService.updateStatus() === 'available') {
+        <mat-spinner diameter="50"></mat-spinner>
+        <h2>Update available...</h2>
+        <p>Downloading update...</p>
+    } @else if (updateService.updateStatus() === 'downloaded') {
+      <mat-icon class="success-icon">check_circle</mat-icon>
+      <h2>Update Downloaded</h2>
+      <p>Restart the application to apply the latest changes.</p>
+      <button mat-raised-button color="primary" (click)="restart()">Restart & Install</button>
+    } @else if (updateService.updateStatus() === 'not-available') {
+      <mat-icon class="info-icon">info</mat-icon>
+      <h2>You are up to date!</h2>
+      <p>Returning to home...</p>
+    } @else if (updateService.updateStatus() === 'error') {
+      <mat-icon class="error-icon">error</mat-icon>
+      <h2>Update Error</h2>
+      <p>{{ updateService.updateError() }}</p>
+      <button mat-button (click)="goHome()">Back to Home</button>
+    }
+  </div>
+</div>

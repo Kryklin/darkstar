@@ -13,7 +13,10 @@ module.exports = {
       name: '@electron-forge/maker-squirrel',
       config: {
         setupIcon: path.resolve(__dirname, 'public/favicon.ico'),
-        loadingGif: path.resolve(__dirname, 'public/assets/img/splash_installer.gif')
+        loadingGif: path.resolve(__dirname, 'public/assets/img/splash_installer.gif'),
+        createDesktopShortcut: true,
+        createStartMenuShortcut: true,
+        setupExe: 'Darkstar Setup.exe'
       },
     },
     {

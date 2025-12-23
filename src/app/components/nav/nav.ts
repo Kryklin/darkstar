@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { MaterialModule } from '../../modules/material/material';
 import { Theme } from '../../services/theme';
-
+import { UpdateService } from '../../services/update';
 import { MatDrawerMode } from '@angular/material/sidenav';
 
 @Component({
@@ -19,6 +19,7 @@ import { MatDrawerMode } from '@angular/material/sidenav';
 })
 export class Nav {
   theme = inject(Theme);
+  updateService = inject(UpdateService);
   isElectron = !!(window as unknown as ElectronWindow).electronAPI;
   sidenavMode: MatDrawerMode = 'over';
   hasBackdrop = true;
