@@ -1,4 +1,6 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater } from 'electron';
+import { updateElectronApp } from 'update-electron-app';
+updateElectronApp();
 import * as path from 'path';
 
 let tray: Tray | null = null;
@@ -29,6 +31,8 @@ function createTray() {
   
   const contextMenu = Menu.buildFromTemplate([
     { label: `Version: ${app.getVersion()}`, enabled: false },
+    { type: 'separator' },
+    { label: 'Check for Updates', click: () => autoUpdater.checkForUpdates() },
     { type: 'separator' },
     { label: 'Exit', click: () => app.quit() }
   ]);
