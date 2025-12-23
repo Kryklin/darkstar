@@ -1,4 +1,11 @@
-# Contributing to Darkstar
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/assets/img/logo-white.png">
+    <img src="public/assets/img/logo-black.png" alt="Darkstar Logo" width="400">
+  </picture>
+</p>
+
+<h1 align="center">Contributing to Darkstar</h1>
 
 First off, thanks for taking the time to contribute! 🎉
 

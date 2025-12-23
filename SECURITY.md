@@ -1,4 +1,11 @@
-# Security Policy
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/assets/img/logo-white.png">
+    <img src="public/assets/img/logo-black.png" alt="Darkstar Logo" width="400">
+  </picture>
+</p>
+
+<h1 align="center">Security Policy</h1>
 
 ## Supported Versions
 
