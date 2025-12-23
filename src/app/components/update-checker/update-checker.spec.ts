@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { UpdateChecker } from './update-checker';
+import { UpdateService } from '../../services/update';
 
 describe('UpdateChecker', () => {
   let component: UpdateChecker;
@@ -9,6 +11,7 @@ describe('UpdateChecker', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [UpdateChecker],
+      providers: [provideRouter([]), UpdateService],
     }).compileComponents();
 
     fixture = TestBed.createComponent(UpdateChecker);

@@ -1,13 +1,16 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
-import { Update } from './update';
+import { UpdateService } from './update';
 
-describe('Update', () => {
-  let service: Update;
+describe('UpdateService', () => {
+  let service: UpdateService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.inject(Update);
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), UpdateService],
+    });
+    service = TestBed.inject(UpdateService);
   });
 
   it('should be created', () => {

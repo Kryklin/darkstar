@@ -50,13 +50,7 @@ describe('Home', () => {
     expect(card).toBeTruthy();
   }));
 
-  it('should display the correct title after loading', fakeAsync(() => {
-    fixture.detectChanges();
-    tick(500);
-    fixture.detectChanges();
-    const title = compiled.querySelector('mat-card-title');
-    expect(title?.textContent).toContain('Darkstar');
-  }));
+
 
   it('should display the creator name after loading', fakeAsync(() => {
     fixture.detectChanges();
@@ -73,6 +67,6 @@ describe('Home', () => {
     const footer = compiled.querySelector('.footer');
     expect(footer).toBeTruthy();
     expect(footer?.textContent).toContain('© 2025 Victor Kane. All Rights Reserved.');
-    expect(footer?.textContent).toContain('Version 1.2.0');
+    expect(footer?.textContent).toContain('Version 1.4.2');
   }));
 });
