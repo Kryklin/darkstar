@@ -3,62 +3,10 @@ import * as childProcess from 'child_process';
 import * as path from 'path';
 import { updateElectronApp } from 'update-electron-app';
 
-/**
- * Handles Squirrel events for Windows installer lifecycle management.
- * Explicitly manages shortcuts and app quit/launch behavior.
- */
-const handleSquirrelEvent = () => {
-  if (process.argv.length === 1) {
-    return false;
-  }
-
-  const appFolder = path.resolve(process.execPath, '..');
-  const rootAtomFolder = path.resolve(appFolder, '..');
-  const updateDotExe = path.resolve(path.join(rootAtomFolder, 'Update.exe'));
-  const exeName = path.basename(process.execPath);
-
-  const spawn = function (command: string, args: string[]) {
-    let spawnedProcess;
-
-    try {
-      spawnedProcess = childProcess.spawn(command, args, { detached: true });
-    } catch (error) {
-      console.warn('Failed to spawn process', error);
-    }
-
-    return spawnedProcess;
-  };
-
-  const spawnUpdate = function (args: string[]) {
-    return spawn(updateDotExe, args);
-  };
-
-  const squirrelEvent = process.argv[1];
-  switch (squirrelEvent) {
-    case '--squirrel-install':
-    case '--squirrel-updated':
-      // Install desktop and start menu shortcuts
-      spawnUpdate(['--createShortcut', exeName]);
-
-      setTimeout(app.quit, 1000);
-      return true;
-
-    case '--squirrel-uninstall':
-      // Remove desktop and start menu shortcuts
-      spawnUpdate(['--removeShortcut', exeName]);
-
-      setTimeout(app.quit, 1000);
-      return true;
-
-    case '--squirrel-obsolete':
-      app.quit();
-      return true;
-  }
-  return false;
-};
-
-if (handleSquirrelEvent()) {
-  // squirrel event handled and app will exit in 1000ms, so don't do anything else
+// Handle creating/removing shortcuts on Windows when installing/uninstalling.
+// eslint-disable-next-line
+if (require('electron-squirrel-startup')) {
+  app.quit();
   process.exit(0);
 }
 
