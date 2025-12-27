@@ -1,0 +1,91 @@
+@use '../../styles/glass';
+
+.settings-container {
+  padding: 40px 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  
+  h1 {
+    font-size: 2.5rem;
+    margin-bottom: 40px;
+    font-weight: 300;
+    text-align: center;
+    letter-spacing: 2px;
+    animation: fadeIn 0.8s ease-out;
+  }
+}
+
+.settings-section {
+  @include glass.glass-card;
+  margin-bottom: 32px;
+  // background: rgba(0, 0, 0, 0.4); // Removed to use mixin default
+  
+  @include glass.animate-entrance;
+  animation-delay: 0.1s;
+
+  h2 {
+    margin: 0 0 24px 0;
+    font-weight: 400;
+    font-size: 1.5rem;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+  }
+
+  mat-divider {
+    display: none; // Handled by header border
+  }
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  padding: 8px 0;
+
+  &:last-child {
+    margin-bottom: 8px;
+  }
+
+  .setting-label {
+    display: flex;
+    flex-direction: column;
+    max-width: 60%;
+    
+    .title {
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .description {
+      font-size: 0.95rem;
+      color: var(--mat-sys-on-surface-variant);
+      line-height: 1.5;
+    }
+  }
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.color-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+}
+
+mat-form-field {
+  min-width: 250px;
+}
+
+.button-group {
+  display: flex;
+  gap: 8px;
+}

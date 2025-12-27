@@ -1,64 +1,13 @@
-.home-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  padding: 2rem;
-  height: calc(100vh - 64px); /* Adjust based on toolbar height */
-  box-sizing: border-box;
-}
+@use '../../styles/glass';
 
-.content-wrapper {
+.home-container {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  flex-grow: 1;
-  width: 100%;
-}
-
-.info-card {
-  max-width: 800px;
-  width: 100%;
-  text-align: center;
-  padding: 2rem;
-}
-
-::ng-deep .mat-mdc-card-header-text {
-  margin: 0 auto;
-}
-
-.logo {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  margin: 0 auto 1rem;
-}
-
-mat-card-title {
-  font-size: 2rem;
-  font-weight: 500;
-}
-
-mat-card-subtitle {
-  font-size: 1.1rem;
-  color: #888;
-  margin-bottom: 1.5rem;
-}
-
-.intro-text {
-  font-size: 1.2rem;
-  line-height: 1.6;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.footer {
-  width: 100%;
-  text-align: center;
-  padding: 1rem 0;
-  color: #888;
-  font-size: 0.9rem;
+  min-height: calc(100vh - 64px);
+  padding: 24px;
+  box-sizing: border-box;
 }
 
 .spinner-container {
@@ -66,8 +15,71 @@ mat-card-subtitle {
   justify-content: center;
   align-items: center;
   height: 100%;
+}
+
+.content-wrapper {
   width: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeIn 0.8s ease-out;
+}
+
+.info-card {
+  @include glass.glass-card;
+  width: 100%;
+  // background: rgba(0, 0, 0, 0.4); // Removed to use mixin default
+  text-align: center;
+  padding: 48px 32px;
+  
+  // Entrance animation for the card
+  @include glass.animate-entrance;
+}
+
+::ng-deep .mat-mdc-card-header-text {
+  margin: 0 auto;
+  .mat-mdc-card-title, .mat-mdc-card-subtitle {
+    margin: 0;
+  }
+}
+
+.app-title {
+  font-size: 3.5rem;
+  margin-bottom: 16px;
+  letter-spacing: 4px;
+  // Gradient text handled by global class, but we can enhance it here
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 1.2; // Fix vertical trimming
+  padding-bottom: 4px; // Handle descenders
+}
+
+mat-card-subtitle {
+  font-size: 1.25rem;
+  color: var(--mat-sys-primary);
+  opacity: 0.9;
+  letter-spacing: 1px;
+  margin-bottom: 32px !important;
+}
+
+.intro-text {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  max-width: 700px;
+  margin: 0 auto;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.footer {
+  margin-top: 48px;
+  text-align: center;
+  opacity: 0.6;
+  font-size: 0.9rem;
+  animation: fadeIn 1s ease-out 0.5s forwards; // delayed fade in
+  opacity: 0; // start invisible
+  
+  p {
+    margin: 4px 0;
+  }
 }

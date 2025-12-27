@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MaterialModule } from '../../modules/material/material';
 import { Theme } from '../../services/theme';
 import { CommonModule } from '@angular/common';
@@ -9,13 +9,6 @@ import { CommonModule } from '@angular/common';
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })
-export class Home implements OnInit {
+export class Home {
   theme = inject(Theme);
-  loading = true;
-
-  ngOnInit() {
-    setTimeout(() => {
-      this.loading = false;
-    }, 500);
-  }
 }

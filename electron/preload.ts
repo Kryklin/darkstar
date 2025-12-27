@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onInitiateUpdateCheck: (callback: () => void) => ipcRenderer.on('initiate-update-check', callback),
   checkForUpdates: () => ipcRenderer.send('check-for-updates'),
   restartAndInstall: () => ipcRenderer.send('restart-and-install'),
+  createShortcut: (target: 'desktop' | 'start-menu') => ipcRenderer.invoke('create-shortcut', target),
+  resetApp: () => ipcRenderer.invoke('reset-app'),
 });
 
 // All of the Node.js APIs are available in the preload process.

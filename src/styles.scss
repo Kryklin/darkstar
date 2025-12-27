@@ -4,6 +4,8 @@
 // Learn more about theming and how to use it for your application's
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
+@use './app/styles/themes';
+@use './app/styles/glass';
 @import 'material-icons/iconfont/material-icons.css';
 
 html,
@@ -13,47 +15,62 @@ body {
 
 body {
   margin: 0;
-  font-family: Roboto, 'Helvetica Neue', sans-serif;
-}
-
-.dark-theme {
-  color-scheme: dark;
-  @include mat.theme(
-    (
-      color: (
-        theme-type: dark,
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
-      ),
-      typography: Roboto,
-      density: 0,
-    )
+  font-family: 'Roboto', sans-serif;
+  overflow: hidden; // Prevent body scroll (app content scrolls)
+  
+  // Dynamic Background using Theme Variables
+  background: linear-gradient(
+    -45deg, 
+    var(--mat-sys-surface-container-lowest),
+    var(--mat-sys-surface-container-low),
+    var(--mat-sys-surface-container),
+    var(--mat-sys-surface-container-high)
   );
-}
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
 
-.light-theme {
-  color-scheme: light;
-  @include mat.theme(
-    (
-      color: (
-        theme-type: light,
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
-      ),
-      typography: Roboto,
-      density: 0,
-    )
-  );
-}
-
-body {
-  // Use surface-container for the main background to match the sidebar in dark mode
-  // This gives a consistent gray look across the app
-  background-color: var(--mat-sys-surface-container);
   color: var(--mat-sys-on-surface);
-  font: var(--mat-sys-body-medium);
-  margin: 0;
 }
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+// Global Glass Variables
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border-color: rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+}
+
+body.dark-theme {
+  --glass-bg: rgba(0, 0, 0, 0.6);
+  --glass-border-color: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+}
+
+// Global Scrollbar Polish
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+@include themes.apply-themes;
 
 .app-title {
   font-weight: 700;

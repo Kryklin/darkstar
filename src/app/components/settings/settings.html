@@ -1,0 +1,79 @@
+<div class="settings-container">
+  <h1>Settings</h1>
+
+  <section class="settings-section">
+    <h2>Appearance</h2>
+    <mat-divider></mat-divider>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span class="title">Dark Mode</span>
+        <span class="description">Toggle between light and dark themes</span>
+      </div>
+      <mat-slide-toggle
+        [checked]="theme.isDarkTheme()"
+        (change)="theme.setDarkTheme($event.checked)"
+        color="primary"
+      >
+      </mat-slide-toggle>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span class="title">Color Theme</span>
+        <span class="description">Select the accent color for the application</span>
+      </div>
+      <mat-form-field appearance="outline">
+        <mat-label>Select Theme</mat-label>
+        <mat-select [value]="theme.selectedTheme()" (selectionChange)="theme.setTheme($event.value)" [compareWith]="compareThemes">
+          <mat-select-trigger>
+            <div class="theme-option">
+              <span class="color-dot" [style.background-color]="theme.selectedTheme().primary"></span>
+              {{ theme.selectedTheme().name }}
+            </div>
+          </mat-select-trigger>
+          @for (t of theme.availableThemes; track t.name) {
+            <mat-option [value]="t">
+              <div class="theme-option">
+                <span class="color-dot" [style.background-color]="t.primary"></span>
+                {{ t.name }}
+              </div>
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h2>System</h2>
+    <mat-divider></mat-divider>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span class="title">Shortcuts</span>
+        <span class="description">Create desktop and start menu shortcuts</span>
+      </div>
+      <div class="button-group">
+        <button mat-stroked-button (click)="createShortcut('desktop')">Desktop Shortcut</button>
+        <button mat-stroked-button (click)="createShortcut('start-menu')">Start Menu Shortcut</button>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span class="title">Updates</span>
+        <span class="description">Check for the latest version</span>
+      </div>
+      <button mat-stroked-button (click)="checkForUpdates()">Check for Updates</button>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span class="title">Reset Application</span>
+        <span class="description">Clear all data and restart</span>
+      </div>
+      <button mat-flat-button color="warn" (click)="resetApp()">Reset App</button>
+    </div>
+  </section>
+</div>

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, dialog, session } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, session } from 'electron';
 import * as childProcess from 'child_process';
 import * as path from 'path';
 import { updateElectronApp } from 'update-electron-app';
@@ -64,49 +64,49 @@ if (handleSquirrelEvent()) {
 
 updateElectronApp();
 
-function createShortcut(target: 'desktop' | 'start-menu') {
-  const targetPath = process.execPath;
-  const shortcutName = 'Darkstar.lnk';
-  let script = '';
+function createShortcut(target: 'desktop' | 'start-menu'): Promise<{ success: boolean; message: string }> {
+  return new Promise((resolve) => {
+    const targetPath = process.execPath;
+    const shortcutName = 'Darkstar.lnk';
+    let script = '';
 
-  if (target === 'desktop') {
-    script = `
-      $ws = New-Object -ComObject WScript.Shell;
-      $path = [System.Environment]::GetFolderPath('Desktop');
-      $s = $ws.CreateShortcut("$path\\${shortcutName}");
-      $s.TargetPath = "${targetPath}";
-      $s.Save()
-    `;
-  } else {
-    script = `
-      $ws = New-Object -ComObject WScript.Shell;
-      $path = [System.Environment]::GetFolderPath('StartMenu');
-      $programsPath = "$path\\Programs";
-      if (!(Test-Path $programsPath)) { New-Item -ItemType Directory -Force -Path $programsPath }
-      $s = $ws.CreateShortcut("$programsPath\\${shortcutName}");
-      $s.TargetPath = "${targetPath}";
-      $s.Save()
-    `;
-  }
-
-  const ps = childProcess.spawn('powershell.exe', ['-Command', script], {
-    windowsHide: true,
-  });
-
-  ps.on('close', (code) => {
-    if (code === 0) {
-      dialog.showMessageBox({
-        type: 'info',
-        title: 'Shortcut Created',
-        message: `Successfully created ${target === 'desktop' ? 'Desktop' : 'Start Menu'} shortcut.`,
-        buttons: ['OK'],
-      });
+    if (target === 'desktop') {
+      script = `
+        $ws = New-Object -ComObject WScript.Shell;
+        $path = [System.Environment]::GetFolderPath('Desktop');
+        $s = $ws.CreateShortcut("$path\\${shortcutName}");
+        $s.TargetPath = "${targetPath}";
+        $s.Save()
+      `;
     } else {
-      dialog.showErrorBox(
-        'Shortcut Creation Failed',
-        `Failed to create ${target === 'desktop' ? 'Desktop' : 'Start Menu'} shortcut.`,
-      );
+      script = `
+        $ws = New-Object -ComObject WScript.Shell;
+        $path = [System.Environment]::GetFolderPath('StartMenu');
+        $programsPath = "$path\\Programs";
+        if (!(Test-Path $programsPath)) { New-Item -ItemType Directory -Force -Path $programsPath }
+        $s = $ws.CreateShortcut("$programsPath\\${shortcutName}");
+        $s.TargetPath = "${targetPath}";
+        $s.Save()
+      `;
     }
+
+    const ps = childProcess.spawn('powershell.exe', ['-Command', script], {
+      windowsHide: true,
+    });
+
+    ps.on('close', (code) => {
+      if (code === 0) {
+        resolve({
+          success: true,
+          message: `Successfully created ${target === 'desktop' ? 'Desktop' : 'Start Menu'} shortcut.`,
+        });
+      } else {
+        resolve({
+          success: false,
+          message: `Failed to create ${target === 'desktop' ? 'Desktop' : 'Start Menu'} shortcut.`,
+        });
+      }
+    });
   });
 }
 
@@ -138,45 +138,6 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     { label: `Version: ${app.getVersion()}`, enabled: false },
-    { type: 'separator' },
-    {
-      label: 'Check for Updates',
-      click: () => {
-        const win = BrowserWindow.getFocusedWindow();
-        if (win) {
-          win.webContents.send('initiate-update-check');
-        }
-      },
-    },
-    { type: 'separator' },
-    {
-      label: 'Create Desktop Shortcut',
-      click: () => createShortcut('desktop'),
-    },
-    {
-      label: 'Create Start Menu Shortcut',
-      click: () => createShortcut('start-menu'),
-    },
-    { type: 'separator' },
-    {
-      label: 'Reset App',
-      click: async () => {
-        const { response } = await dialog.showMessageBox({
-          type: 'warning',
-          buttons: ['Cancel', 'Reset'],
-          title: 'Reset Application',
-          message: 'Are you sure you want to reset the application? This will clear all data and restart the app.',
-          defaultId: 0,
-          cancelId: 0,
-        });
-
-        if (response === 1) {
-          await session.defaultSession.clearStorageData();
-          app.relaunch();
-          app.exit(0);
-        }
-      },
-    },
     { type: 'separator' },
     { label: 'Exit', click: () => app.quit() },
   ]);
@@ -245,6 +206,16 @@ ipcMain.on('close-window', () => {
 
 ipcMain.on('check-for-updates', () => {
   autoUpdater.checkForUpdates();
+});
+
+ipcMain.handle('create-shortcut', async (_event, target: 'desktop' | 'start-menu') => {
+  return await createShortcut(target);
+});
+
+ipcMain.handle('reset-app', async () => {
+  await session.defaultSession.clearStorageData();
+  app.relaunch();
+  app.exit(0);
 });
 
 ipcMain.on('restart-and-install', () => {

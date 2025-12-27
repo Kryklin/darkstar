@@ -1,50 +1,147 @@
+@use '../../styles/glass';
+
 .sidenav-container {
   height: 100%;
+  background: transparent; // Let global background show through
 }
 
 mat-toolbar {
   -webkit-app-region: drag;
-  background: transparent !important; // Match the sidebar background
-
+  background: transparent !important;
+  color: var(--mat-sys-on-surface);
+  
   button {
     -webkit-app-region: no-drag;
-  }
-}
-
-// Restore active link styles
-.active-link {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-left: 3px solid var(--mat-sys-primary);
-
-  mat-icon {
-    color: var(--mat-sys-primary);
+    
+    // Glossy button look
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(4px);
+    }
   }
 }
 
 .sidenav {
-  width: 250px;
-  background-color: var(--mat-sys-surface-container); // Keep this consistent
-  border-right: 1px solid var(--mat-sys-outline-variant);
+  width: 400px; // Significantly increased to contain pill overflow
+  background: transparent; // Remove default material background
+  border: none;
+  padding: 16px;
+  box-sizing: border-box;
+
+  // Aggressively hide scrollbars
+  scrollbar-width: none; // Firefox
+  -ms-overflow-style: none; // IE/Edge
+
+  &::-webkit-scrollbar {
+    display: none; // Chrome/Safari
+  }
+
+  // Forcefully target internal container to hide scrollbars
+  ::ng-deep .mat-drawer-inner-container {
+    overflow: hidden !important; // Prevent scrollbars logically
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
+// The floating glass panel inside the sidebar
+.sidebar-content {
+  @include glass.glass-panel;
+  // Fix layout to be properly contained
+  height: calc(100% - 32px);
+  margin: 16px; 
+  display: flex;
+  flex-direction: column;
+  overflow: visible; // Changed to visible to prevent clipping of highlight glows
+  // Removing massive top margin which caused overflow/breakage
+}
+
+// Navigation Items
+mat-nav-list {
+  padding-top: 0;
+
+  a[mat-list-item] {
+    width: auto; // Force auto width to respect margins
+    display: block; // Ensure it behaves like a block for margin calc
+    box-sizing: border-box; // Include padding in width
+    margin: 4px 16px; // Align with toolbar padding (16px)
+    border-radius: 50px; // Guaranteed pill shape
+    transition: all 0.2s ease;
+    border: none;
+    position: relative;
+    overflow: visible; // Allow glow/shadow to bleed out
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
+      
+      .dark-theme & {
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .light-theme & {
+         background: rgba(0, 0, 0, 0.05);
+      }
+    }
+
+    &.active-link {
+      background: var(--mat-sys-secondary-container);
+      color: var(--mat-sys-on-secondary-container);
+      box-shadow: 0 0 12px rgba(0,0,0,0.2); // Subtle lift
+
+      // Remove the side bar, use the whole shape as indication
+      &::before {
+        display: none;
+      }
+
+      mat-icon, span {
+        color: var(--mat-sys-on-secondary-container);
+        font-weight: 500;
+        text-shadow: none;
+      }
+    }
+  }
+}
+
+.nav-link-center {
+  display: flex;
+  align-items: center;
+  height: 64px; // Explicitly set height to ensure vertical centering works
+  
+  mat-icon {
+    margin-right: 12px;
+    transition: transform 0.3s ease;
+    position: relative;
+    top: -8px;
+  }
+
+  span {
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+    line-height: 1; 
+    position: relative;
+    top: -8px; // Lift text further up
+  }
+}
+
+// Toolbar Title
+.app-title {
+  margin-left: 0; // Removed margin to align with pill start
+  font-size: 1.5rem;
+  line-height: 1; // Fix vertical alignment quirk
+  padding-top: 2px; // Optical adjustment if needed, but 1 usually fixes it
+  letter-spacing: 3px;
+  // Shine animation is global in styles.scss
 }
 
 .navbar-logo {
-  height: 40px;
-  margin-right: 16px;
+  height: 48px;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
   -webkit-app-region: no-drag;
 }
 
 .spacer {
   flex: 1 1 auto;
-}
-
-.disabled-link {
-  pointer-events: none;
-  opacity: 0.5;
-  cursor: default;
-}
-
-.disabled-link {
-  pointer-events: none;
-  opacity: 0.5;
-  cursor: default;
 }

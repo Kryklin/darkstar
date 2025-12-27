@@ -14,5 +14,9 @@ export const routes: Routes = [
     path: 'update-check',
     loadComponent: () => import('./components/update-checker/update-checker').then((m) => m.UpdateChecker),
   },
+  {
+    path: 'settings',
+    loadComponent: () => import('./components/settings/settings').then((m) => m.Settings),
+  },
   { path: '', redirectTo: 'home', pathMatch: 'full' },
 ];

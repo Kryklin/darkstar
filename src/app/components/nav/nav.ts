@@ -15,31 +15,20 @@ import { MatDrawerMode } from '@angular/material/sidenav';
 export class Nav {
   theme = inject(Theme);
   updateService = inject(UpdateService);
-  isElectron = !!(window as unknown as ElectronWindow).electronAPI;
+  isElectron = !!window.electronAPI;
   sidenavMode: MatDrawerMode = 'over';
   hasBackdrop = true;
 
-  toggleTheme() {
-    this.theme.setDarkTheme(!this.theme.isDarkTheme());
-  }
 
   minimize() {
-    (window as unknown as ElectronWindow).electronAPI.minimize();
+    window.electronAPI?.minimize();
   }
 
   maximize() {
-    (window as unknown as ElectronWindow).electronAPI.maximize();
+    window.electronAPI?.maximize();
   }
 
   close() {
-    (window as unknown as ElectronWindow).electronAPI.close();
+    window.electronAPI?.close();
   }
-}
-
-interface ElectronWindow extends Window {
-  electronAPI: {
-    minimize: () => void;
-    maximize: () => void;
-    close: () => void;
-  };
 }

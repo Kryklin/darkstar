@@ -16,7 +16,7 @@ export class UpdateService {
   updateStatus = signal<string>('idle');
   updateError = signal<string | null>(null);
 
-  isElectron = !!(window as unknown as ElectronWindow).electronAPI;
+  isElectron = !!window.electronAPI;
 
   constructor() {
     if (this.isElectron) {
@@ -25,7 +25,7 @@ export class UpdateService {
   }
 
   private setupListeners() {
-    const api = (window as unknown as ElectronWindow).electronAPI;
+    const api = window.electronAPI;
 
     api.onUpdateStatus((data: { status: string; error?: string }) => {
       this.ngZone.run(() => {
@@ -59,13 +59,13 @@ export class UpdateService {
     if (this.isElectron) {
       this.updateStatus.set('checking');
       this.updateError.set(null);
-      (window as unknown as ElectronWindow).electronAPI.checkForUpdates();
+      window.electronAPI.checkForUpdates();
     }
   }
 
   quitAndInstall() {
     if (this.isElectron) {
-      (window as unknown as ElectronWindow).electronAPI.restartAndInstall();
+      window.electronAPI.restartAndInstall();
     }
   }
 
@@ -74,16 +74,4 @@ export class UpdateService {
     this.updateStatus.set('idle');
     this.updateError.set(null);
   }
-}
-
-interface ElectronWindow extends Window {
-  electronAPI: {
-    minimize: () => void;
-    maximize: () => void;
-    close: () => void;
-    onUpdateStatus: (callback: (data: { status: string; error?: string }) => void) => void;
-    onInitiateUpdateCheck: (callback: () => void) => void;
-    checkForUpdates: () => void;
-    restartAndInstall: () => void;
-  };
 }

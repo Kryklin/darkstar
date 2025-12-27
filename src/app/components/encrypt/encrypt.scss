@@ -1,6 +1,12 @@
+@use '../../styles/glass';
+
 .encrypt-card {
-  max-width: 800px;
-  margin: 2rem auto;
+  @include glass.glass-card;
+  max-width: 900px;
+  margin: 40px auto;
+  // background: rgba(0, 0, 0, 0.4); // Removed to use mixin default
+  
+  @include glass.animate-entrance;
 }
 
 .full-width {
@@ -8,29 +14,47 @@
 }
 
 mat-form-field {
-  margin-bottom: 1rem;
+  margin-bottom: 24px;
+}
+
+// Enhance stepper styles to blend with glass
+::ng-deep .mat-step-header .mat-step-icon-selected, 
+::ng-deep .mat-step-header .mat-step-icon-state-done, 
+::ng-deep .mat-step-header .mat-step-icon-state-edit {
+  background-color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
 }
 
 .stepper-buttons {
-  margin-top: 16px;
+  margin-top: 32px;
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 16px;
 }
 
 .footer-text {
   padding: 16px;
   text-align: center;
-  font-size: 0.8rem;
-  color: #666;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+  opacity: 0.7;
 }
 
 .result-actions {
   display: flex;
   justify-content: center;
-  padding-bottom: 16px;
+  padding-bottom: 24px;
 }
 
 .encrypt-card mat-card-content {
-  padding-top: 1rem;
+  padding-top: 24px;
+}
+
+mat-card-header {
+  margin-bottom: 16px;
+  
+  mat-card-title {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+  }
 }
