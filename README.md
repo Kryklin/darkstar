@@ -8,7 +8,7 @@
 <h1 align="center">Darkstar</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.6.3-blue" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-1.6.4-blue" alt="Version"/>
   <img src="https://img.shields.io/badge/Angular-v20.3.0-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Angular%20Material-v20.2.5-blue?logo=angular" alt="Angular Material"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
