@@ -54,7 +54,7 @@ module.exports = {
       name: '@electron-forge/publisher-github',
       config: {
         repository: {
-          owner: 'Kryklin',
+          owner: 'Victor Kane',
           name: 'darkstar',
         },
         prerelease: false,

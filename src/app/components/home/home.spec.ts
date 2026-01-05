@@ -27,28 +27,11 @@ describe('Home', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should show a spinner while loading', () => {
-    fixture.detectChanges(); // ngOnInit is called here
-    const spinner = compiled.querySelector('mat-spinner');
-    expect(spinner).toBeTruthy();
-    const card = compiled.querySelector('mat-card.info-card');
-    expect(card).toBeFalsy();
-  });
-
-  it('should show the info card after loading', fakeAsync(() => {
-    fixture.detectChanges(); // ngOnInit is called here
-    let spinner = compiled.querySelector('mat-spinner');
-    expect(spinner).toBeTruthy();
-
-    tick(500);
+  it('should show the info card immediately', () => {
     fixture.detectChanges();
-
-    spinner = compiled.querySelector('mat-spinner');
-    expect(spinner).toBeFalsy();
-
     const card = compiled.querySelector('mat-card.info-card');
     expect(card).toBeTruthy();
-  }));
+  });
 
 
 
@@ -67,6 +50,6 @@ describe('Home', () => {
     const footer = compiled.querySelector('.footer');
     expect(footer).toBeTruthy();
     expect(footer?.textContent).toContain('© 2025 Victor Kane. All Rights Reserved.');
-    expect(footer?.textContent).toContain('Version 1.4.2');
+    expect(footer?.textContent).toContain('Version 1.6.0');
   }));
 });

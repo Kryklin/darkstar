@@ -1,0 +1,154 @@
+@use '../../styles/glass';
+
+.about-container {
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center; // Center vertically as well
+  min-height: calc(100vh - 64px); // Full height minus navbar
+}
+
+mat-card {
+  @include glass.glass-card;
+  max-width: 600px;
+  width: 100%;
+  
+  // Entrance animation for the card
+  @include glass.animate-entrance;
+  
+  mat-card-header {
+    justify-content: center;
+    margin-bottom: 16px;
+    
+    mat-card-title {
+      font-size: 2rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      opacity: 0; // Start invisible for animation
+      animation: fadeIn 0.8s ease-out 0.3s forwards;
+    }
+  }
+}
+
+mat-card-content {
+  margin-top: 16px;
+  line-height: 1.6;
+
+  h3 {
+    margin-top: 24px;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--mat-sys-primary);
+    opacity: 0;
+    animation: slideInRight 0.5s ease-out 0.4s forwards;
+  }
+
+  p {
+    opacity: 0;
+    animation: fadeIn 0.6s ease-out 0.5s forwards;
+  }
+
+  ul {
+    margin-bottom: 24px;
+    padding-left: 20px;
+    
+    li {
+      margin-bottom: 4px;
+      opacity: 0;
+      transform: translateX(-10px);
+      animation: slideInItem 0.4s ease-out forwards;
+
+      @for $i from 1 through 4 {
+        &:nth-child(#{$i}) {
+          animation-delay: #{0.6 + ($i * 0.1)}s;
+        }
+      }
+    }
+  }
+
+  .meta-info {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    opacity: 0;
+    animation: fadeIn 0.6s ease-out 1s forwards;
+  }
+
+  .donation-section {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    opacity: 0;
+    animation: fadeIn 0.6s ease-out 1.2s forwards;
+
+    h3 {
+       // Reset specific animation for this nested h3 if needed, or let it inherit common delay
+       animation-delay: 1.3s;
+    }
+    
+    // Override paragraph fade in for this section
+    p {
+        animation-delay: 1.4s;
+    }
+
+    .btc-address-container {
+      margin-top: 12px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      word-break: break-all;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: 1px solid transparent;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.05);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        border-color: rgba(var(--mat-sys-primary-rgb), 0.3);
+
+        .btc-address {
+            color: var(--mat-sys-primary);
+            text-shadow: 0 0 8px rgba(var(--mat-sys-primary-rgb), 0.4);
+        }
+      }
+
+      .btc-label {
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .btc-address {
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.9em;
+        color: #69f0ae; // A nice accent color (green-ish)
+        transition: color 0.3s ease;
+      }
+    }
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInItem {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

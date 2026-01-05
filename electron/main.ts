@@ -189,6 +189,10 @@ autoUpdater.on('update-not-available', () => {
 });
 
 autoUpdater.on('error', (err) => {
+  // Ignore "update check already running" errors
+  if (err.message && (err.message.includes('Update check already running') || err.message.includes('already running'))) {
+    return;
+  }
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'error', error: err.message });
 });

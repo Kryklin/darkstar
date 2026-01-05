@@ -2,8 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ReactiveFormsModule } from '@angular/forms';
 import { Decrypt } from './decrypt';
-import { CryptService } from '../../services/crypt';
-import { MaterialModule } from '../../modules/material/material';
+import { CryptService } from '../../../services/crypt';
+import { MaterialModule } from '../../../modules/material/material';
 
 describe('Decrypt', () => {
   let component: Decrypt;

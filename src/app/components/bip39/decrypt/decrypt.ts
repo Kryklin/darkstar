@@ -1,8 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TextFieldModule } from '@angular/cdk/text-field';
-import { MaterialModule } from '../../modules/material/material';
-import { CryptService } from '../../services/crypt';
+import { MaterialModule } from '../../../modules/material/material';
+import { CryptService } from '../../../services/crypt';
 import { CommonModule } from '@angular/common';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatSnackBar } from '@angular/material/snack-bar';

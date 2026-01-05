@@ -57,6 +57,11 @@ export class UpdateService {
    */
   checkForUpdates() {
     if (this.isElectron) {
+      const currentStatus = this.updateStatus();
+      if (['checking', 'downloading', 'downloaded', 'available'].includes(currentStatus)) {
+        return;
+      }
+
       this.updateStatus.set('checking');
       this.updateError.set(null);
       window.electronAPI.checkForUpdates();

@@ -29,12 +29,30 @@
 .info-card {
   @include glass.glass-card;
   width: 100%;
-  // background: rgba(0, 0, 0, 0.4); // Removed to use mixin default
   text-align: center;
   padding: 48px 32px;
   
-  // Entrance animation for the card
+  // Entrance animation
   @include glass.animate-entrance;
+  
+  // Gentle float animation after entrance
+  // We use a delay to let the entrance finish, but standard CSS doesn't sequence well like this without complex keyframes.
+  // Instead, let's make the float distinct or override.
+  // Actually, to avoid conflict with animate-entrance (transform) and glass-card hover (transform),
+  // we can treat this card specially.
+  animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards, float 6s ease-in-out infinite 1s;
+
+  &:hover {
+    // Disable standard glass hover transform to avoid conflict with float
+    transform: none; 
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); // Enhance shadow on hover instead
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+  100% { transform: translateY(0px); }
 }
 
 ::ng-deep .mat-mdc-card-header-text {
@@ -45,22 +63,39 @@
 }
 
 .app-title {
-  font-size: 3.5rem;
-  margin-bottom: 16px;
-  letter-spacing: 4px;
-  // Gradient text handled by global class, but we can enhance it here
+  font-size: 4.5rem;
+  margin-bottom: 24px;
+  letter-spacing: 6px;
   font-weight: 900;
   text-transform: uppercase;
-  line-height: 1.2; // Fix vertical trimming
-  padding-bottom: 4px; // Handle descenders
+  line-height: 1.1;
+  padding-bottom: 8px;
+  
+  // Flashy effect
+  background: linear-gradient(135deg, #ffffff 0%, #a5a5a5 50%, #ffffff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.4));
+  animation: shimmer 3s infinite linear;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
 }
 
 mat-card-subtitle {
   font-size: 1.25rem;
   color: var(--mat-sys-primary);
-  opacity: 0.9;
+  opacity: 0; // Start invisible
   letter-spacing: 1px;
   margin-bottom: 32px !important;
+  animation: slideUp 0.8s ease-out 0.5s forwards; // Delayed entrance
 }
 
 .intro-text {

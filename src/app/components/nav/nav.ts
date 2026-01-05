@@ -19,6 +19,12 @@ export class Nav {
   sidenavMode: MatDrawerMode = 'over';
   hasBackdrop = true;
 
+  bip39Expanded = false;
+
+  toggleBip39() {
+    this.bip39Expanded = !this.bip39Expanded;
+  }
+
 
   minimize() {
     window.electronAPI?.minimize();

@@ -2,7 +2,7 @@
   @if (!showResult) {
     <mat-card-header>
       <mat-card-title>BIP39 Mnemonic Encryption</mat-card-title>
-      <mat-card-subtitle>Securely encrypt your 24-word recovery phrase</mat-card-subtitle>
+      <mat-card-subtitle>Securely encrypt your 24 or 12 word recovery phrase</mat-card-subtitle>
     </mat-card-header>
     <mat-card-content>
       <mat-stepper linear #stepper>
@@ -10,7 +10,7 @@
           <form [formGroup]="firstFormGroup">
             <ng-template matStepLabel>Enter Recovery Phrase</ng-template>
             <mat-form-field class="full-width">
-              <mat-label>Insert the 24 word BIP39 keyword set for bitcoin recovery</mat-label>
+              <mat-label>Insert the 24 or 12 word BIP39 keyword set for bitcoin recovery</mat-label>
               <textarea
                 matInput
                 formControlName="firstCtrl"

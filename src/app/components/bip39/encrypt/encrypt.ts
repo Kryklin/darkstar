@@ -10,9 +10,9 @@ import {
   Validators,
 } from '@angular/forms';
 import { TextFieldModule } from '@angular/cdk/text-field';
-import { MaterialModule } from '../../modules/material/material';
-import BIP39 from '../../../assets/BIP39.json';
-import { CryptService } from '../../services/crypt';
+import { MaterialModule } from '../../../modules/material/material';
+import BIP39 from '../../../../assets/BIP39.json';
+import { CryptService } from '../../../services/crypt';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
@@ -41,7 +41,7 @@ export class Encrypt {
 
   constructor() {
     this.firstFormGroup = this._formBuilder.group({
-      firstCtrl: ['', [Validators.required, this.minWordsValidator(24)]],
+      firstCtrl: ['', [Validators.required, this.allowedWordCountsValidator([12, 24])]],
     });
     this.secondFormGroup = this._formBuilder.group({
       secondCtrl: ['', Validators.required],
@@ -68,14 +68,16 @@ export class Encrypt {
     });
   }
 
-  minWordsValidator(minWords: number): ValidatorFn {
+  allowedWordCountsValidator(allowedCounts: number[]): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const value = control.value as string;
       if (!value) {
         return null;
       }
       const words = value.trim().split(/[ ,]+/).filter(Boolean);
-      return words.length >= minWords ? null : { minWords: { required: minWords, actual: words.length } };
+      return allowedCounts.includes(words.length)
+        ? null
+        : { allowedWordCounts: { required: allowedCounts, actual: words.length } };
     };
   }
 

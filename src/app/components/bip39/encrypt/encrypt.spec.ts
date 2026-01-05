@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { Encrypt } from './encrypt';
-import { CryptService } from '../../services/crypt';
+import { CryptService } from '../../../services/crypt';
 
 describe('Encrypt', () => {
   let component: Encrypt;
@@ -29,13 +29,19 @@ describe('Encrypt', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should have an invalid form if the recovery phrase is less than 24 words', () => {
+  it('should have an invalid form if the recovery phrase is not 12 or 24 words', () => {
     component.firstFormGroup.controls['firstCtrl'].setValue('one two three');
     expect(component.firstFormGroup.valid).toBeFalsy();
   });
 
   it('should have a valid form if the recovery phrase has 24 words', () => {
     component.firstFormGroup.controls['firstCtrl'].setValue(testMnemonic);
+    expect(component.firstFormGroup.valid).toBeTruthy();
+  });
+
+  it('should have a valid form if the recovery phrase has 12 words', () => {
+    const twelveWords = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon';
+    component.firstFormGroup.controls['firstCtrl'].setValue(twelveWords);
     expect(component.firstFormGroup.valid).toBeTruthy();
   });
 

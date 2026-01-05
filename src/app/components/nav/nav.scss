@@ -145,3 +145,30 @@ mat-nav-list {
 .spacer {
   flex: 1 1 auto;
 }
+
+// Styles for the expandable header
+.nav-group-header {
+  cursor: pointer;
+  
+  .expand-icon {
+    transition: transform 0.3s ease;
+    margin-right: 0; // Override default margin if needed
+    
+    &.expanded {
+      transform: rotate(180deg);
+    }
+  }
+}
+
+// Styles for nested items
+.nested-item {
+  margin-left: 32px !important; // Indent nested items
+  width: auto !important; // Maintain auto width
+  margin-right: 16px !important;
+  font-size: 0.95em;
+  
+  // Optional: make them slightly smaller or different color
+  .nav-link-center mat-icon {
+    transform: scale(0.9);
+  }
+}

@@ -1,9 +1,9 @@
 {
   "name": "darkstar",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "productName": "Darkstar",
   "description": "Darkstar Application",
-  "author": "Kryklin",
+  "author": "Victor Kane",
   "main": "dist/electron/main.js",
   "repository": {
     "type": "git",
