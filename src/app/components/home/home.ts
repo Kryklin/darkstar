@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { MaterialModule } from '../../modules/material/material';
 import { Theme } from '../../services/theme';
 import { CommonModule } from '@angular/common';
+import packageJson from '../../../../package.json';
 
 @Component({
   selector: 'app-home',
@@ -11,4 +12,5 @@ import { CommonModule } from '@angular/common';
 })
 export class Home {
   theme = inject(Theme);
+  version = packageJson.version;
 }

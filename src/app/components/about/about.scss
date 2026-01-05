@@ -131,6 +131,33 @@ mat-card-content {
   }
 }
 
+// Light Theme Overrides
+body.light-theme {
+  .about-container mat-card mat-card-content .donation-section .btc-address-container {
+    background: rgba(0, 0, 0, 0.08); // Lighter background
+    border: 1px solid rgba(0, 0, 0, 0.1);
+
+    .btc-label {
+      color: rgba(0, 0, 0, 0.7); // Darker label
+    }
+
+    .btc-address {
+      color: #006064; // Darker cyan/teal for readability
+      font-weight: 500;
+    }
+
+    &:hover {
+        background: rgba(0, 0, 0, 0.12);
+        border-color: rgba(var(--mat-sys-primary-rgb), 0.5);
+
+         .btc-address {
+            color: var(--mat-sys-primary); 
+            text-shadow: none; // Remove glow in light mode or make it subtle
+        }
+    }
+  }
+}
+
 @keyframes slideInRight {
   from {
     opacity: 0;

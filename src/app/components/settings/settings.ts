@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MaterialModule } from '../../modules/material/material';
 import { Theme, ThemeDef } from '../../services/theme';
+import { UpdateService } from '../../services/update';
 import { MatDialog } from '@angular/material/dialog';
 import { GenericDialog, DialogButton } from '../dialogs/generic-dialog/generic-dialog';
 
@@ -15,6 +16,7 @@ import { GenericDialog, DialogButton } from '../dialogs/generic-dialog/generic-d
 })
 export class Settings {
   theme = inject(Theme);
+  updateService = inject(UpdateService);
   dialog = inject(MatDialog);
   ngZone = inject(NgZone);
 
@@ -32,6 +34,10 @@ export class Settings {
   }
 
   async checkForUpdates() {
+    if (this.updateService.versionLocked()) {
+      this.openDialog('Update Check Skipped', 'Version locking is enabled. Please disable it to check for updates.', [{ label: 'OK', value: true }]);
+      return;
+    }
     this.openDialog('Checking for Updates', 'Please wait...', []);
 
     window.electronAPI.onUpdateStatus((status) => {

@@ -1,6 +1,8 @@
 import { Injectable, signal, inject, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { MatSnackBar } from '@angular/material/snack-bar';
+
 /**
  * Manages application updates, handling IPC communication with Electron
  * and maintaining reactive state for UI components.
@@ -11,10 +13,12 @@ import { Router } from '@angular/router';
 export class UpdateService {
   router = inject(Router);
   ngZone = inject(NgZone);
+  private snackBar = inject(MatSnackBar);
 
   isChecking = signal(false);
   updateStatus = signal<string>('idle');
   updateError = signal<string | null>(null);
+  versionLocked = signal(false);
 
   isElectron = !!window.electronAPI;
 
@@ -22,6 +26,27 @@ export class UpdateService {
     if (this.isElectron) {
       this.setupListeners();
     }
+    this.loadSettings();
+  }
+
+  private loadSettings() {
+    const stored = localStorage.getItem('versionLocked');
+    // Default to true if not set (first run), otherwise use stored value
+    const locked = stored === null ? true : stored === 'true';
+    this.versionLocked.set(locked);
+
+    if (locked) {
+      this.snackBar.open('Updater is version locked. Disable in Settings to update.', 'Dismiss', {
+        duration: 5000,
+        verticalPosition: 'top',
+      });
+    }
+  }
+
+  toggleVersionLock() {
+    const newState = !this.versionLocked();
+    this.versionLocked.set(newState);
+    localStorage.setItem('versionLocked', String(newState));
   }
 
   private setupListeners() {
@@ -44,6 +69,14 @@ export class UpdateService {
 
     api.onInitiateUpdateCheck(() => {
       this.ngZone.run(() => {
+        // Respect the lock even for manual/external triggers if desired,
+        // but often manual overrides are expected. For now, let's enforce it
+        // or notify. Given the user request, let's block it.
+        if (this.versionLocked()) {
+           console.log('Update check skipped due to version lock.');
+           return;
+        }
+
         this.isChecking.set(true);
         this.updateStatus.set('checking');
         this.router.navigate(['/update-check']);
@@ -56,6 +89,12 @@ export class UpdateService {
    * Triggers an update check via Electron's auto-updater.
    */
   checkForUpdates() {
+    if (this.versionLocked()) {
+      console.log('Update check blocked: Version is locked.');
+      // Optionally set a status to inform the UI, but for now just return.
+      return;
+    }
+
     if (this.isElectron) {
       const currentStatus = this.updateStatus();
       if (['checking', 'downloading', 'downloaded', 'available'].includes(currentStatus)) {

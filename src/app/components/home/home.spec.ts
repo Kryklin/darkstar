@@ -4,6 +4,8 @@ import { MaterialModule } from '../../modules/material/material';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Theme } from '../../services/theme';
 
+import packageJson from '../../../../package.json';
+
 describe('Home', () => {
   let component: Home;
   let fixture: ComponentFixture<Home>;
@@ -50,6 +52,6 @@ describe('Home', () => {
     const footer = compiled.querySelector('.footer');
     expect(footer).toBeTruthy();
     expect(footer?.textContent).toContain('© 2025 Victor Kane. All Rights Reserved.');
-    expect(footer?.textContent).toContain('Version 1.6.0');
+    expect(footer?.textContent).toContain(`Version ${packageJson.version}`);
   }));
 });

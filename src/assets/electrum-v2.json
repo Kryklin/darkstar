@@ -1,8 +1,8 @@
 {
-  "name": "BIP39",
-  "title": "BIP39 Mnemonic",
-  "link": "https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki",
-  "summary": "The industry standard for deterministic keys starting from a mnemonic sentence.",
+  "name": "Electrum V2 (SegWit)",
+  "title": "Electrum V2 Seed",
+  "link": "https://electrum.readthedocs.io/en/latest/seedphrase.html#version-system",
+  "summary": "Modern Electrum seed phrase format.",
   "words": [
     "abandon",
     "ability",

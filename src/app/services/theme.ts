@@ -33,6 +33,14 @@ export class Theme {
     { name: 'Sakura Breeze', primary: '#C2185B', className: 'theme-sakura-breeze' },
     { name: 'Golden Sands', primary: '#5D4037', className: 'theme-golden-sands' },
     { name: 'Midnight Slate', primary: '#263238', className: 'theme-midnight-slate' },
+    // New Creative Themes
+    { name: 'Barbie Pink', primary: '#E0218A', className: 'theme-barbie-pink' },
+    { name: 'Toxic Sludge', primary: '#76FF03', className: 'theme-toxic-sludge' },
+    { name: 'Vapor Wave', primary: '#6200EA', className: 'theme-vapor-wave' },
+    { name: 'Electric Violet', primary: '#651FFF', className: 'theme-electric-violet' },
+    { name: 'Sunset Drive', primary: '#FF3D00', className: 'theme-sunset-drive' },
+    { name: 'Arctic Frost', primary: '#00BCD4', className: 'theme-arctic-frost' },
+    { name: 'Obsidian Shard', primary: '#000000', className: 'theme-obsidian-shard' },
   ];
 
   constructor() {
