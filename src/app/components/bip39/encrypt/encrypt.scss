@@ -4,9 +4,19 @@
   @include glass.glass-card;
   max-width: 900px;
   margin: 40px auto;
-  // background: rgba(0, 0, 0, 0.4); // Removed to use mixin default
+  opacity: 0;
   
   @include glass.animate-entrance;
+
+  mat-card-header {
+    opacity: 0;
+    animation: fadeIn 0.5s ease-out 0.3s forwards;
+  }
+
+  mat-card-content {
+    opacity: 0;
+    animation: fadeIn 0.5s ease-out 0.5s forwards;
+  }
 }
 
 .full-width {

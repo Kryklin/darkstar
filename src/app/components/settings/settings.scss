@@ -18,10 +18,14 @@
 .settings-section {
   @include glass.glass-card;
   margin-bottom: 32px;
-  // background: rgba(0, 0, 0, 0.4); // Removed to use mixin default
+  opacity: 0;
   
   @include glass.animate-entrance;
-  animation-delay: 0.1s;
+
+  // Stagger multiple sections
+  &:nth-child(2) { animation-delay: 0.1s; }
+  &:nth-child(3) { animation-delay: 0.2s; }
+  &:nth-child(4) { animation-delay: 0.3s; }
 
   h2 {
     margin: 0 0 24px 0;
@@ -29,6 +33,8 @@
     font-size: 1.5rem;
     padding-bottom: 16px;
     border-bottom: 1px solid var(--mat-sys-outline-variant);
+    opacity: 0;
+    animation: fadeIn 0.5s ease-out 0.3s forwards;
   }
 
   mat-divider {
@@ -42,6 +48,15 @@
   align-items: center;
   margin-bottom: 32px;
   padding: 8px 0;
+  opacity: 0;
+  animation: slideInRow 0.4s ease-out forwards;
+
+  // Stagger row animations
+  @for $i from 1 through 6 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{0.4 + ($i * 0.08)}s;
+    }
+  }
 
   &:last-child {
     margin-bottom: 8px;

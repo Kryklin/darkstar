@@ -8,7 +8,7 @@
 <h1 align="center">Darkstar</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.6.2-blue" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-1.6.3-blue" alt="Version"/>
   <img src="https://img.shields.io/badge/Angular-v20.3.0-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Angular%20Material-v20.2.5-blue?logo=angular" alt="Angular Material"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
@@ -17,19 +17,24 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License"/>
 </p>
 
-`darkstar` is a powerful, client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase (BIP39 mnemonic). It provides a robust, multi-layered solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your digital assets from both physical and digital threats. Available as both a web application and a cross-platform desktop application built with Electron.
+`darkstar` is a powerful, client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase. It provides a robust, multi-layered solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your digital assets from both physical and digital threats. Available as both a web application and a cross-platform desktop application built with Electron.
 
 ## Features
 
+- **Multi-Protocol Support**: Robust support for major recovery phrase standards:
+  - **BIP39**: The industry standard for mnemonics.
+  - **Electrum**: Native support for Electrum Legacy and V2 seed phrases.
+  - **SLIP39**: Support for Shamir's Secret-Sharing mnemonics.
 - **AES-256 Encryption**: Industry-standard encryption to protect your data.
-- **Multi-Layered Obfuscation**: A sophisticated, multi-stage process to secure your recovery phrase.
-- **Cross-Platform Desktop App**: Available as a desktop application for Windows, macOS, and Linux, built with Electron.
-  - **Frameless Window**: A modern, clean look without the default window frame.
-  - **Custom Window Controls**: Custom-built window controls for minimizing, maximizing, and closing the application.
-  - **Draggable Area**: The top navigation bar acts as a draggable area.
-- **Client-Side Security**: All operations are performed client-side, ensuring your data never leaves your machine.
-- **Auto-Updates**: Automatically checks for updates on startup. You can also manually check via the system tray menu.
-- **Light & Dark Theme**: A user-friendly interface with both light and dark themes.
+- **Advanced Obfuscation**: A sophisticated, deterministic 12-stage process to secure your recovery phrase.
+- **Anti-Forensic Memory Protection**: Sensitive data is cleared from memory immediately after use, mitigating forensic recovery risks.
+- **Modern Glassmorphism UI**: A premium, responsive interface featuring:
+  - **Sticky Navigation**: Blurred glass effect top bar for easy access.
+  - **Light & Dark Themes**: Fully optimized visual modes for any environment.
+  - **Draggable Header**: Custom frameless window support for desktop.
+- **Client-Side Security**: All operations are performed locally on your device; no data ever leaves your machine.
+- **Auto-Updates**: Integrated update checker for the latest security patches.
+- **Donation Support**: Built-in support for BTC project contributions.
 
 ## Commands
 

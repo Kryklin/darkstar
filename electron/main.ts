@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, session } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, session, shell } from 'electron';
 import * as childProcess from 'child_process';
 import * as path from 'path';
 import { updateElectronApp } from 'update-electron-app';
@@ -68,7 +68,15 @@ function createWindow() {
     icon: path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser', 'favicon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      devTools: !app.isPackaged,
     },
+  });
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https:') || url.startsWith('http:')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
   });
 
   if (!app.isPackaged) {
@@ -153,6 +161,13 @@ ipcMain.on('close-window', () => {
 });
 
 ipcMain.on('check-for-updates', () => {
+  console.log('IPC: check-for-updates received');
+  try {
+    const feedUrl = autoUpdater.getFeedURL();
+    console.log('Current Feed URL:', feedUrl);
+  } catch (e) {
+    console.log('Error getting feed URL:', e);
+  }
   autoUpdater.checkForUpdates();
 });
 
@@ -167,6 +182,7 @@ ipcMain.handle('reset-app', async () => {
 });
 
 ipcMain.on('restart-and-install', () => {
+  console.log('IPC: restart-and-install received');
   autoUpdater.quitAndInstall();
 });
 
@@ -174,21 +190,25 @@ ipcMain.on('restart-and-install', () => {
  * Listen on `autoUpdater` events and relay status to the renderer process via IPC.
  */
 autoUpdater.on('checking-for-update', () => {
+  console.log('AutoUpdater: checking-for-update');
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'checking' });
 });
 
 autoUpdater.on('update-available', () => {
+  console.log('AutoUpdater: update-available');
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'available' });
 });
 
 autoUpdater.on('update-not-available', () => {
+  console.log('AutoUpdater: update-not-available');
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'not-available' });
 });
 
 autoUpdater.on('error', (err) => {
+  console.error('AutoUpdater: error', err);
   // Ignore "update check already running" errors
   if (err.message && (err.message.includes('Update check already running') || err.message.includes('already running'))) {
     return;
@@ -197,7 +217,8 @@ autoUpdater.on('error', (err) => {
   if (win) win.webContents.send('update-status', { status: 'error', error: err.message });
 });
 
-autoUpdater.on('update-downloaded', () => {
+autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName, releaseDate, updateURL) => {
+  console.log('AutoUpdater: update-downloaded', { releaseName, releaseDate, updateURL });
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'downloaded' });
 });
