@@ -58,7 +58,7 @@ module.exports = {
           name: 'darkstar',
         },
         prerelease: false,
-        draft: true,
+        draft: false,
       },
     },
   ],
