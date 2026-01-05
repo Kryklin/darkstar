@@ -35,8 +35,6 @@ describe('Home', () => {
     expect(card).toBeTruthy();
   });
 
-
-
   it('should display the creator name after loading', fakeAsync(() => {
     fixture.detectChanges();
     tick(500);

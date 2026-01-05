@@ -5,7 +5,7 @@
   max-width: 900px;
   margin: 40px auto;
   opacity: 0;
-  
+
   @include glass.animate-entrance;
 
   mat-card-header {
@@ -27,8 +27,8 @@ mat-form-field {
   margin-bottom: 24px;
 }
 
-::ng-deep .mat-step-header .mat-step-icon-selected, 
-::ng-deep .mat-step-header .mat-step-icon-state-done, 
+::ng-deep .mat-step-header .mat-step-icon-selected,
+::ng-deep .mat-step-header .mat-step-icon-state-done,
 ::ng-deep .mat-step-header .mat-step-icon-state-edit {
   background-color: var(--mat-sys-primary);
   color: var(--mat-sys-on-primary);
@@ -65,7 +65,8 @@ mat-card-header {
   align-items: flex-start;
   margin-bottom: 16px;
 
-  ::ng-deep .mat-card-header-text, ::ng-deep .mat-mdc-card-header-text {
+  ::ng-deep .mat-card-header-text,
+  ::ng-deep .mat-mdc-card-header-text {
     margin: 0;
     flex: 1;
   }

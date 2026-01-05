@@ -42,16 +42,19 @@ We welcome suggestions for new features and improvements to existing functionali
 ## Development Setup
 
 1.  **Install dependencies**:
+
     ```bash
     npm install
     ```
 
 2.  **Run in development mode (Angular + Electron)**:
+
     ```bash
     npm run electron:dev
     ```
 
 3.  **Linting**:
+
     ```bash
     npm run lint
     ```
@@ -65,13 +68,13 @@ We welcome suggestions for new features and improvements to existing functionali
 
 ### Git Commit Messages
 
-*   Use the present tense ("Add feature" not "Added feature")
-*   Use the imperative mood ("Move cursor to..." not "Moves cursor to...")
-*   Limit the first line to 72 characters or less
-*   Reference issues and pull requests liberally after the first line
+- Use the present tense ("Add feature" not "Added feature")
+- Use the imperative mood ("Move cursor to..." not "Moves cursor to...")
+- Limit the first line to 72 characters or less
+- Reference issues and pull requests liberally after the first line
 
 ### Coding Standards
 
-*   We use **Prettier** for formatting.
-*   We use **ESLint** for linting.
-*   Please ensure `npm run lint` passes before submitting.
+- We use **Prettier** for formatting.
+- We use **ESLint** for linting.
+- Please ensure `npm run lint` passes before submitting.

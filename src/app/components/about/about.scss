@@ -12,14 +12,14 @@ mat-card {
   @include glass.glass-card;
   max-width: 600px;
   width: 100%;
-  
+
   // Entrance animation for the card
   @include glass.animate-entrance;
-  
+
   mat-card-header {
     justify-content: center;
     margin-bottom: 16px;
-    
+
     mat-card-title {
       font-size: 2rem;
       letter-spacing: 1px;
@@ -110,79 +110,79 @@ mat-card-content {
     animation: fadeIn 0.6s ease-out 1s forwards;
 
     .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      &.click-action {
+        cursor: pointer;
+        transition: opacity 0.2s;
+
+        &:hover {
+          opacity: 0.8;
+          .action-text {
+            text-decoration: underline;
+          }
+        }
+      }
+
+      .label {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .value {
+        font-weight: 500;
         display: flex;
-        flex-direction: column;
+        align-items: center;
         gap: 4px;
 
-        &.click-action {
-            cursor: pointer;
-            transition: opacity 0.2s;
-
-            &:hover {
-                opacity: 0.8;
-                .action-text {
-                    text-decoration: underline;
-                }
-            }
-        }
-        
-        .label {
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.6);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        &.action-text {
+          color: var(--mat-sys-primary);
         }
 
-        .value {
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-
-            &.action-text {
-                color: var(--mat-sys-primary);
-            }
-            
-            .text-icon {
-                font-size: 16px;
-                width: 16px;
-                height: 16px;
-            }
+        .text-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
         }
+      }
     }
   }
 
   .tech-section {
-      margin-top: 24px;
-      opacity: 0;
-      animation: fadeIn 0.6s ease-out 1.2s forwards;
-      
-      h3 {
-          margin-top: 0;
-          font-size: 1.1rem;
+    margin-top: 24px;
+    opacity: 0;
+    animation: fadeIn 0.6s ease-out 1.2s forwards;
+
+    h3 {
+      margin-top: 0;
+      font-size: 1.1rem;
+    }
+
+    .tech-chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+
+      .chip {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 0.85rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: rgba(var(--mat-sys-primary-rgb), 0.15);
+          border-color: rgba(var(--mat-sys-primary-rgb), 0.3);
+          transform: translateY(-1px);
+        }
       }
-
-      .tech-chips {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-          margin-top: 12px;
-
-          .chip {
-              background: rgba(255, 255, 255, 0.08);
-              padding: 4px 12px;
-              border-radius: 16px;
-              font-size: 0.85rem;
-              border: 1px solid rgba(255, 255, 255, 0.1);
-              transition: all 0.2s ease;
-
-              &:hover {
-                  background: rgba(var(--mat-sys-primary-rgb), 0.15);
-                  border-color: rgba(var(--mat-sys-primary-rgb), 0.3);
-                  transform: translateY(-1px);
-              }
-          }
-      }
+    }
   }
 
   .donation-section {
@@ -193,13 +193,13 @@ mat-card-content {
     animation: fadeIn 0.6s ease-out 1.4s forwards;
 
     h3 {
-       // Reset specific animation for this nested h3 if needed, or let it inherit common delay
-       animation-delay: 1.5s;
+      // Reset specific animation for this nested h3 if needed, or let it inherit common delay
+      animation-delay: 1.5s;
     }
-    
+
     // Override paragraph fade in for this section
     p {
-        animation-delay: 1.6s;
+      animation-delay: 1.6s;
     }
 
     .btc-address-container {
@@ -224,16 +224,18 @@ mat-card-content {
         padding: 4px;
       }
 
-      &:hover, &:focus { // Added focus state
+      &:hover,
+      &:focus {
+        // Added focus state
         background: rgba(255, 255, 255, 0.05);
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         border-color: rgba(var(--mat-sys-primary-rgb), 0.3);
         outline: none; // Remove default outline if focus styles are handled
 
         .btc-address {
-            color: var(--mat-sys-primary);
-            text-shadow: 0 0 8px rgba(var(--mat-sys-primary-rgb), 0.4);
+          color: var(--mat-sys-primary);
+          text-shadow: 0 0 8px rgba(var(--mat-sys-primary-rgb), 0.4);
         }
       }
 
@@ -251,125 +253,124 @@ mat-card-content {
       }
     }
   }
-  
+
   .legal-section {
-      margin-top: 32px;
-      padding-top: 16px;
-      border-top: 1px solid rgba(255, 255, 255, 0.12);
-      text-align: center;
-      opacity: 0;
-      animation: fadeIn 0.6s ease-out 1.8s forwards;
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    text-align: center;
+    opacity: 0;
+    animation: fadeIn 0.6s ease-out 1.8s forwards;
 
-      .disclaimer {
-          font-size: 0.7rem;
-          color: rgba(255, 255, 255, 0.4);
-          line-height: 1.4;
-          margin-bottom: 8px;
-      }
+    .disclaimer {
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.4);
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
 
-      .copyright {
-          font-size: 0.8rem;
-          color: rgba(255, 255, 255, 0.6);
-      }
+    .copyright {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
   }
 }
 
-// Light Theme Overrides
-body.light-theme {
-    .about-container {
-        mat-card {
-            // Global text colors for light mode
-            mat-card-title {
-                color: rgba(0, 0, 0, 0.87) !important;
-            }
+// Light Theme Overrides using host-context for robust targeting
+:host-context(body.light-theme) {
+  .about-container {
+    mat-card {
+      background: rgba(255, 255, 255, 0.9);
+      color: rgba(0, 0, 0, 0.87);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 
-            mat-card-content {
-                h3 {
-                    color: var(--mat-sys-primary) !important;
-                }
+      mat-card-title {
+        color: rgba(0, 0, 0, 0.87) !important;
+      }
 
-                > p {
-                    color: rgba(0, 0, 0, 0.7) !important;
-                }
-            }
+      mat-card-content {
+        h3 {
+          color: var(--mat-sys-primary) !important;
         }
 
-        mat-card mat-card-content {
-            .meta-section {
-                border-color: rgba(0,0,0,0.1);
-                
-                .meta-item {
-                    .label { color: rgba(0,0,0,0.6) !important; }
-                    .value { color: rgba(0,0,0,0.87) !important; }
-                    &.click-action .value.action-text { color: var(--mat-sys-primary) !important; }
-                }
-            }
-            
-            .features-grid .feature-item {
-                background: rgba(0,0,0,0.03);
-                border-color: rgba(0,0,0,0.08);
-
-                &:hover {
-                    background: rgba(0,0,0,0.06);
-                }
-
-                h4 {
-                    color: rgba(0, 0, 0, 0.87) !important;
-                }
-
-                p {
-                    color: rgba(0,0,0,0.6) !important;
-                }
-            }
-
-            .donation-section {
-                border-color: rgba(0,0,0,0.1);
-
-                h3 {
-                    color: var(--mat-sys-primary) !important;
-                }
-
-                > p {
-                    color: rgba(0, 0, 0, 0.7) !important;
-                }
-
-                .btc-address-container {
-                    background: #ffffff !important;
-                    border: 1px solid rgba(0, 0, 0, 0.15) !important;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-
-                    .btc-qr {
-                        background: white;
-                    }
-
-                    .btc-label {
-                        color: rgba(0, 0, 0, 0.7) !important;
-                    }
-
-                    .btc-address {
-                        color: #00695c !important;
-                        font-weight: 500;
-                    }
-
-                    &:hover, &:focus {
-                        background: #ffffff !important;
-                        border-color: var(--mat-sys-primary) !important;
-                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-
-                        .btc-address {
-                            color: var(--mat-sys-primary) !important;
-                        }
-                    }
-                }
-            }
-
-            .legal-section {
-                border-color: rgba(0,0,0,0.1);
-                .disclaimer { color: rgba(0,0,0,0.5) !important; }
-                .copyright { color: rgba(0,0,0,0.7) !important; }
-            }
+        p {
+          color: rgba(0, 0, 0, 0.7) !important;
         }
+      }
     }
+
+    .features-grid .feature-item {
+      background: rgba(0, 0, 0, 0.04);
+      border-color: rgba(0, 0, 0, 0.1);
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.08);
+      }
+
+      h4 {
+        color: rgba(0, 0, 0, 0.87) !important;
+      }
+
+      p {
+        color: rgba(0, 0, 0, 0.6) !important;
+      }
+    }
+
+    .meta-section {
+      border-color: rgba(0, 0, 0, 0.1);
+
+      .meta-item {
+        .label {
+          color: rgba(0, 0, 0, 0.6) !important;
+        }
+        .value {
+          color: rgba(0, 0, 0, 0.87) !important;
+        }
+        &.click-action .value.action-text {
+          color: var(--mat-sys-primary) !important;
+        }
+      }
+    }
+
+    .donation-section {
+      border-color: rgba(0, 0, 0, 0.1);
+
+      .btc-address-container {
+        background: #ffffff !important;
+        border: 1px solid rgba(0, 0, 0, 0.15) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+        .btc-label {
+          color: rgba(0, 0, 0, 0.7) !important;
+        }
+
+        .btc-address {
+          color: #00695c !important;
+        }
+
+        &:hover,
+        &:focus {
+          background: #ffffff !important;
+          border-color: var(--mat-sys-primary) !important;
+
+          .btc-address {
+            color: var(--mat-sys-primary) !important;
+          }
+        }
+      }
+    }
+
+    .legal-section {
+      border-top-color: rgba(0, 0, 0, 0.1);
+
+      .disclaimer {
+        color: rgba(0, 0, 0, 0.5) !important;
+      }
+      .copyright {
+        color: rgba(0, 0, 0, 0.7) !important;
+      }
+    }
+  }
 }
 
 @keyframes slideInRight {

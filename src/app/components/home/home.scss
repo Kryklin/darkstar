@@ -31,33 +31,42 @@
   width: 100%;
   text-align: center;
   padding: 48px 32px;
-  
+
   // Entrance animation
   @include glass.animate-entrance;
-  
+
   // Gentle float animation after entrance
   // We use a delay to let the entrance finish, but standard CSS doesn't sequence well like this without complex keyframes.
   // Instead, let's make the float distinct or override.
   // Actually, to avoid conflict with animate-entrance (transform) and glass-card hover (transform),
   // we can treat this card specially.
-  animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards, float 6s ease-in-out infinite 1s;
+  animation:
+    slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+    float 6s ease-in-out infinite 1s;
 
   &:hover {
     // Disable standard glass hover transform to avoid conflict with float
-    transform: none; 
+    transform: none;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); // Enhance shadow on hover instead
   }
 }
 
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-12px); }
-  100% { transform: translateY(0px); }
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
 }
 
 ::ng-deep .mat-mdc-card-header-text {
   margin: 0 auto;
-  .mat-mdc-card-title, .mat-mdc-card-subtitle {
+  .mat-mdc-card-title,
+  .mat-mdc-card-subtitle {
     margin: 0;
   }
 }
@@ -70,7 +79,7 @@
   text-transform: uppercase;
   line-height: 1.1;
   padding-bottom: 8px;
-  
+
   // Flashy effect
   background: linear-gradient(135deg, #ffffff 0%, #a5a5a5 50%, #ffffff 100%);
   -webkit-background-clip: text;
@@ -113,7 +122,7 @@ mat-card-subtitle {
   font-size: 0.9rem;
   animation: fadeIn 1s ease-out 0.5s forwards; // delayed fade in
   opacity: 0; // start invisible
-  
+
   p {
     margin: 4px 0;
   }

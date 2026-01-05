@@ -4,12 +4,13 @@
   padding: 24px;
 }
 
-.decrypt-card, .result-card {
+.decrypt-card,
+.result-card {
   @include glass.glass-card;
   max-width: 900px;
   margin: 20px auto;
   opacity: 0;
-  
+
   @include glass.animate-entrance;
 
   mat-card-header {
@@ -66,7 +67,8 @@ mat-card-header {
   align-items: flex-start;
   margin-bottom: 16px;
 
-  ::ng-deep .mat-card-header-text, ::ng-deep .mat-mdc-card-header-text {
+  ::ng-deep .mat-card-header-text,
+  ::ng-deep .mat-mdc-card-header-text {
     margin: 0;
     flex: 1;
   }

@@ -13,7 +13,6 @@ export interface ThemeDef {
  * Manages the application's visual theme (light/dark mode) and associated assets.
  * Persists user preference to local storage.
  */
-
 export class Theme {
   isDarkTheme = signal<boolean>(false);
   logoSrc = signal<string>('assets/img/logo-black.png');
@@ -79,7 +78,7 @@ export class Theme {
   private updateBodyClass() {
     // Remove all theme classes
     this.availableThemes.forEach((t) => document.body.classList.remove(t.className));
-    
+
     // Add selected theme class
     document.body.classList.add(this.selectedTheme().className);
 

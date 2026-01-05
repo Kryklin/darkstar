@@ -73,8 +73,8 @@ export class UpdateService {
         // but often manual overrides are expected. For now, let's enforce it
         // or notify. Given the user request, let's block it.
         if (this.versionLocked()) {
-           console.log('Update check skipped due to version lock.');
-           return;
+          console.log('Update check skipped due to version lock.');
+          return;
         }
 
         this.isChecking.set(true);

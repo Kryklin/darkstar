@@ -17,10 +17,10 @@ body {
   margin: 0;
   font-family: 'Roboto', sans-serif;
   overflow: hidden; // Prevent body scroll (app content scrolls)
-  
+
   // Dynamic Background using Theme Variables
   background: linear-gradient(
-    -45deg, 
+    -45deg,
     var(--mat-sys-surface-container-lowest),
     var(--mat-sys-surface-container-low),
     var(--mat-sys-surface-container),
@@ -33,9 +33,15 @@ body {
 }
 
 @keyframes gradientBG {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 // Global Glass Variables
@@ -64,7 +70,7 @@ body.dark-theme {
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  
+
   &:hover {
     background: rgba(255, 255, 255, 0.2);
   }
@@ -90,12 +96,7 @@ body.dark-theme {
 }
 
 body.light-theme .app-title {
-  background: linear-gradient(
-    to right,
-    var(--mat-sys-primary) 0%,
-    var(--mat-sys-tertiary) 50%,
-    var(--mat-sys-primary) 100%
-  );
+  background: linear-gradient(to right, var(--mat-sys-primary) 0%, var(--mat-sys-tertiary) 50%, var(--mat-sys-primary) 100%);
   background-size: 200% auto;
   background-clip: text;
   -webkit-background-clip: text;

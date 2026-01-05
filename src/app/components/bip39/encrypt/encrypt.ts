@@ -79,9 +79,7 @@ export class Encrypt {
         return null;
       }
       const words = value.trim().split(/[ ,]+/).filter(Boolean);
-      return allowedCounts.includes(words.length)
-        ? null
-        : { allowedWordCounts: { required: allowedCounts, actual: words.length } };
+      return allowedCounts.includes(words.length) ? null : { allowedWordCounts: { required: allowedCounts, actual: words.length } };
     };
   }
 

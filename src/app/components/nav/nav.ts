@@ -33,7 +33,6 @@ export class Nav {
     return this.expandedSection === section;
   }
 
-
   minimize() {
     window.electronAPI?.minimize();
   }

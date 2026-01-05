@@ -10,12 +10,7 @@
         <span class="title">Dark Mode</span>
         <span class="description">Toggle between light and dark themes</span>
       </div>
-      <mat-slide-toggle
-        [checked]="theme.isDarkTheme()"
-        (change)="theme.setDarkTheme($event.checked)"
-        color="primary"
-      >
-      </mat-slide-toggle>
+      <mat-slide-toggle [checked]="theme.isDarkTheme()" (change)="theme.setDarkTheme($event.checked)" color="primary"> </mat-slide-toggle>
     </div>
 
     <div class="setting-row">
@@ -65,11 +60,7 @@
         <span class="title">Version Locking</span>
         <span class="description">Prevent automatic updates and stay on the current version</span>
       </div>
-      <mat-slide-toggle
-        [checked]="updateService.versionLocked()"
-        (change)="updateService.toggleVersionLock()"
-        color="warn"
-      >
+      <mat-slide-toggle [checked]="updateService.versionLocked()" (change)="updateService.toggleVersionLock()" color="warn">
       </mat-slide-toggle>
     </div>
 

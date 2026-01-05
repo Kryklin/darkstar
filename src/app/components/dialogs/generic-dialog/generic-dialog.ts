@@ -19,17 +19,19 @@ export interface DialogData {
   standalone: true,
   imports: [MaterialModule],
   templateUrl: './generic-dialog.html',
-  styles: [`
-    mat-dialog-content {
-      font-family: 'Roboto', sans-serif;
-      font-size: 16px;
-    }
-  `]
+  styles: [
+    `
+      mat-dialog-content {
+        font-family: 'Roboto', sans-serif;
+        font-size: 16px;
+      }
+    `,
+  ],
 })
 export class GenericDialog {
   constructor(
     public dialogRef: MatDialogRef<GenericDialog>,
-    @Inject(MAT_DIALOG_DATA) public data: DialogData
+    @Inject(MAT_DIALOG_DATA) public data: DialogData,
   ) {}
 
   close(value: any): void {

@@ -56,34 +56,30 @@ export class ElectrumV2Encrypt {
         return null;
       }
       const words = value.trim().split(/[ ,]+/).filter(Boolean);
-      return allowedCounts.includes(words.length)
-        ? null
-        : { allowedWordCounts: { required: allowedCounts, actual: words.length } };
+      return allowedCounts.includes(words.length) ? null : { allowedWordCounts: { required: allowedCounts, actual: words.length } };
     };
   }
-
-
 
   generateRandomWords() {
     const words = ElectrumV2.words;
     let randomWords = '';
     // Electrum V2 standard is typically 12 words
     for (let i = 0; i < 12; i++) {
-        randomWords += words[Math.floor(Math.random() * words.length)] + ' ';
+      randomWords += words[Math.floor(Math.random() * words.length)] + ' ';
     }
     this.firstFormGroup.controls['firstCtrl'].setValue(randomWords.trim());
   }
 
   onSubmit() {
     if (this.secondFormGroup.valid && this.firstFormGroup.valid) {
-       const mnemonic = this.firstFormGroup.controls['firstCtrl'].value;
-       const password = this.secondFormGroup.controls['secondCtrl'].value;
+      const mnemonic = this.firstFormGroup.controls['firstCtrl'].value;
+      const password = this.secondFormGroup.controls['secondCtrl'].value;
 
-       const { encryptedData, reverseKey } = this.cryptService.encrypt(mnemonic, password);
+      const { encryptedData, reverseKey } = this.cryptService.encrypt(mnemonic, password);
 
-       this.encryptedData = encryptedData;
-       this.reverseKey = reverseKey;
-       this.showResult = true;
+      this.encryptedData = encryptedData;
+      this.reverseKey = reverseKey;
+      this.showResult = true;
     }
   }
 

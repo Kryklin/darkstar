@@ -15,7 +15,7 @@ export class About {
   repoUrl = packageJson.repository.url.replace('.git', '');
   licenseType = 'MIT License';
   donationUrl = 'https://blockstream.info/address/bc1qsstnef7gh3rl593t4lm9276zk43rjl3mux9m5f72xp4cvr5gep5skam5hx';
-  
+
   openLink(url: string) {
     window.open(url, '_blank');
   }

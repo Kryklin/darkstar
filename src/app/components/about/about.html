@@ -6,9 +6,8 @@
     <mat-card-content>
       <h3>Description</h3>
       <p>
-        A client-side security tool to safeguard your Bitcoin wallet's recovery phrase (BIP39 mnemonic). It provides a robust,
-        multi-layered solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your
-        digital assets.
+        A client-side security tool to safeguard your Bitcoin wallet's recovery phrase (BIP39 mnemonic). It provides a robust, multi-layered
+        solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your digital assets.
       </p>
 
       <h3>Key Features</h3>
@@ -47,33 +46,47 @@
 
       <div class="meta-section">
         <div class="meta-item">
-            <span class="label">Version</span>
-            <span class="value">{{ version }}</span>
+          <span class="label">Version</span>
+          <span class="value">{{ version }}</span>
         </div>
-         <div class="meta-item click-action" tabindex="0" role="button" (click)="openLink(repoUrl)" (keydown.enter)="openLink(repoUrl)" (keydown.space)="openLink(repoUrl)">
-            <span class="label">Repository</span>
-             <span class="value action-text">GitHub <span class="material-icons text-icon">open_in_new</span></span>
+        <div
+          class="meta-item click-action"
+          tabindex="0"
+          role="button"
+          (click)="openLink(repoUrl)"
+          (keydown.enter)="openLink(repoUrl)"
+          (keydown.space)="openLink(repoUrl)"
+        >
+          <span class="label">Repository</span>
+          <span class="value action-text">GitHub <span class="material-icons text-icon">open_in_new</span></span>
         </div>
         <div class="meta-item">
-             <span class="label">License</span>
-            <span class="value">{{ licenseType }}</span>
+          <span class="label">License</span>
+          <span class="value">{{ licenseType }}</span>
         </div>
       </div>
 
       <div class="donation-section">
         <h3>Support Darkstar</h3>
         <p>If you find this tool useful, consider donating.</p>
-        <div class="btc-address-container" tabindex="0" role="button" (click)="openLink(donationUrl)" (keydown.enter)="openLink(donationUrl)" (keydown.space)="openLink(donationUrl)">
+        <div
+          class="btc-address-container"
+          tabindex="0"
+          role="button"
+          (click)="openLink(donationUrl)"
+          (keydown.enter)="openLink(donationUrl)"
+          (keydown.space)="openLink(donationUrl)"
+        >
           <img src="assets/img/donate.png" alt="BTC Donation QR Code" class="btc-qr" />
           <span class="btc-label">BTC Address:</span>
           <code class="btc-address">bc1qsstnef7gh3rl593t4lm9276zk43rjl3mux9m5f72xp4cvr5gep5skam5hx</code>
         </div>
       </div>
-      
+
       <div class="legal-section">
         <p class="disclaimer">
-            <strong>DISCLAIMER:</strong> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. 
-            IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY.
+          <strong>DISCLAIMER:</strong> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. IN NO EVENT SHALL
+          THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY.
         </p>
         <p class="copyright">© 2025 Victor Kane</p>
       </div>

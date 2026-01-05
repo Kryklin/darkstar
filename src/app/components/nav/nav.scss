@@ -10,7 +10,7 @@ mat-toolbar {
   top: 0;
   z-index: 1000;
   -webkit-app-region: drag;
-  
+
   // sticky glass effect
   background: transparent !important;
   backdrop-filter: blur(12px);
@@ -18,10 +18,10 @@ mat-toolbar {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
   color: var(--mat-sys-on-surface);
-  
+
   button {
     -webkit-app-region: no-drag;
-    
+
     // Glossy button look
     &:hover {
       background: rgba(255, 255, 255, 0.1);
@@ -50,7 +50,7 @@ mat-toolbar {
     overflow: hidden !important; // Prevent scrollbars logically
     scrollbar-width: none;
     -ms-overflow-style: none;
-    
+
     &::-webkit-scrollbar {
       display: none;
     }
@@ -62,7 +62,7 @@ mat-toolbar {
   @include glass.glass-panel;
   // Fix layout to be properly contained
   height: calc(100% - 32px);
-  margin: 16px; 
+  margin: 16px;
   display: flex;
   flex-direction: column;
   overflow: visible; // Changed to visible to prevent clipping of highlight glows
@@ -86,26 +86,27 @@ mat-nav-list {
 
     &:hover {
       background: rgba(255, 255, 255, 0.05);
-      
+
       .dark-theme & {
         background: rgba(255, 255, 255, 0.05);
       }
       .light-theme & {
-         background: rgba(0, 0, 0, 0.05);
+        background: rgba(0, 0, 0, 0.05);
       }
     }
 
     &.active-link {
       background: var(--mat-sys-secondary-container);
       color: var(--mat-sys-on-secondary-container);
-      box-shadow: 0 0 12px rgba(0,0,0,0.2); // Subtle lift
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.2); // Subtle lift
 
       // Remove the side bar, use the whole shape as indication
       &::before {
         display: none;
       }
 
-      mat-icon, span {
+      mat-icon,
+      span {
         color: var(--mat-sys-on-secondary-container);
         font-weight: 500;
         text-shadow: none;
@@ -118,7 +119,7 @@ mat-nav-list {
   display: flex;
   align-items: center;
   height: 64px; // Explicitly set height to ensure vertical centering works
-  
+
   mat-icon {
     margin-right: 12px;
     transition: transform 0.3s ease;
@@ -129,7 +130,7 @@ mat-nav-list {
   span {
     font-size: 1.1rem;
     letter-spacing: 0.5px;
-    line-height: 1; 
+    line-height: 1;
     position: relative;
     top: -8px; // Lift text further up
   }
@@ -158,11 +159,11 @@ mat-nav-list {
 // Styles for the expandable header
 .nav-group-header {
   cursor: pointer;
-  
+
   .expand-icon {
     transition: transform 0.3s ease;
     margin-right: 0; // Override default margin if needed
-    
+
     &.expanded {
       transform: rotate(180deg);
     }
@@ -175,7 +176,7 @@ mat-nav-list {
   width: auto !important; // Maintain auto width
   margin-right: 16px !important;
   font-size: 0.95em;
-  
+
   // Optional: make them slightly smaller or different color
   .nav-link-center mat-icon {
     transform: scale(0.9);
