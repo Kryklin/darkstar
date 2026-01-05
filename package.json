@@ -1,6 +1,6 @@
 {
   "name": "darkstar",
-  "version": "1.6.4",
+  "version": "1.6.5",
   "productName": "Darkstar",
   "description": "Darkstar Application",
   "author": "Victor Kane",
@@ -20,6 +20,7 @@
     "electron:build": "tsc --p tsconfig.electron.json",
     "electron:dev": "concurrently -k \"ng serve\" \"npm:electron:watch\"",
     "electron:watch": "wait-on http://localhost:4200 && nodemon --config nodemon.json",
+    "electron:prod": "npm run build:all && set ELECTRON_PROD_DEBUG=true && electron .",
     "build:all": "ng build --configuration production --base-href ./ && npm run electron:build",
     "package": "npm run build:all && electron-forge package",
     "make": "npm run build:all && electron-forge make",

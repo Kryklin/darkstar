@@ -68,7 +68,7 @@ function createWindow() {
     icon: path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser', 'favicon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      devTools: !app.isPackaged,
+      devTools: !app.isPackaged && !process.env['ELECTRON_PROD_DEBUG'],
     },
   });
 
@@ -79,7 +79,7 @@ function createWindow() {
     return { action: 'deny' };
   });
 
-  if (!app.isPackaged) {
+  if (!app.isPackaged && !process.env['ELECTRON_PROD_DEBUG']) {
     win.loadURL('http://localhost:4200');
     win.webContents.openDevTools();
   } else {
