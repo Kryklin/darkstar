@@ -19,18 +19,18 @@ export class Nav {
   sidenavMode: MatDrawerMode = 'over';
   hasBackdrop = true;
 
-  expandedSections = new Set<string>();
+  expandedSection: string | null = null;
 
   toggleSection(section: string) {
-    if (this.expandedSections.has(section)) {
-      this.expandedSections.delete(section);
+    if (this.expandedSection === section) {
+      this.expandedSection = null;
     } else {
-      this.expandedSections.add(section);
+      this.expandedSection = section;
     }
   }
 
   isExpanded(section: string): boolean {
-    return this.expandedSections.has(section);
+    return this.expandedSection === section;
   }
 
 

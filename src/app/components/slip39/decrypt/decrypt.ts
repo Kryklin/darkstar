@@ -6,20 +6,16 @@ import { CryptService } from '../../../services/crypt';
 import { CommonModule } from '@angular/common';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import BIP39 from '../../../../assets/BIP39.json';
+import Slip39 from '../../../../assets/slip39.json';
 
 @Component({
-  selector: 'app-decrypt',
+  selector: 'app-slip39-decrypt',
   standalone: true,
   imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule, CommonModule],
   templateUrl: './decrypt.html',
   styleUrl: './decrypt.scss',
 })
-/**
- * Handles the decryption workflow: validating inputs (encrypted data, reverse key, password)
- * and recovering the original mnemonic phrase.
- */
-export class Decrypt {
+export class Slip39Decrypt {
   firstFormGroup: FormGroup;
   secondFormGroup: FormGroup;
   thirdFormGroup: FormGroup;
@@ -32,9 +28,9 @@ export class Decrypt {
   private clipboard = inject(Clipboard);
   private snackBar = inject(MatSnackBar);
 
-  protocolTitle = BIP39.title;
-  protocolSummary = BIP39.summary;
-  protocolLink = BIP39.link;
+  protocolTitle = Slip39.title;
+  protocolSummary = Slip39.summary;
+  protocolLink = Slip39.link;
 
   constructor() {
     this.firstFormGroup = this.fb.group({
@@ -55,38 +51,33 @@ export class Decrypt {
     } else if (field === 'reverseKey') {
       this.secondFormGroup.controls['reverseKey'].setValue(text);
     }
-    this.snackBar.open('Pasted from clipboard!', 'Close', {
-      duration: 2000,
-    });
+    this.snackBar.open('Pasted from clipboard', 'Close', { duration: 2000 });
   }
 
   onSubmit() {
     if (this.firstFormGroup.valid && this.secondFormGroup.valid && this.thirdFormGroup.valid) {
-      const { encryptedData } = this.firstFormGroup.value;
-      const { reverseKey } = this.secondFormGroup.value;
-      const { password } = this.thirdFormGroup.value;
+      const encryptedData = this.firstFormGroup.controls['encryptedData'].value;
+      const reverseKey = this.secondFormGroup.controls['reverseKey'].value;
+      const password = this.thirdFormGroup.controls['password'].value;
+
       try {
         this.decryptedMnemonic = this.cryptService.decrypt(encryptedData, reverseKey, password);
-        this.error = '';
         this.showResult = true;
-      } catch (e: unknown) {
-        let errorMessage = 'An error occurred';
-        if (e instanceof Error) {
-          errorMessage = e.message;
-        }
-        this.error = `Decryption failed: ${errorMessage}`;
-        this.decryptedMnemonic = '';
+        this.error = '';
+      } catch (e) {
+        this.error = 'Decryption failed. Please check your inputs and password.';
+        console.error(e);
         this.showResult = true;
       }
     }
   }
 
   reset() {
+    this.showResult = false;
+    this.error = '';
+    this.decryptedMnemonic = '';
     this.firstFormGroup.reset();
     this.secondFormGroup.reset();
     this.thirdFormGroup.reset();
-    this.showResult = false;
-    this.decryptedMnemonic = '';
-    this.error = '';
   }
 }

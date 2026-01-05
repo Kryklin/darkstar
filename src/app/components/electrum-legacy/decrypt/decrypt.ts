@@ -6,20 +6,16 @@ import { CryptService } from '../../../services/crypt';
 import { CommonModule } from '@angular/common';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import BIP39 from '../../../../assets/BIP39.json';
+import ElectrumLegacy from '../../../../assets/electrum-legacy.json';
 
 @Component({
-  selector: 'app-decrypt',
+  selector: 'app-electrum-legacy-decrypt',
   standalone: true,
   imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule, CommonModule],
   templateUrl: './decrypt.html',
   styleUrl: './decrypt.scss',
 })
-/**
- * Handles the decryption workflow: validating inputs (encrypted data, reverse key, password)
- * and recovering the original mnemonic phrase.
- */
-export class Decrypt {
+export class ElectrumLegacyDecrypt {
   firstFormGroup: FormGroup;
   secondFormGroup: FormGroup;
   thirdFormGroup: FormGroup;
@@ -32,9 +28,9 @@ export class Decrypt {
   private clipboard = inject(Clipboard);
   private snackBar = inject(MatSnackBar);
 
-  protocolTitle = BIP39.title;
-  protocolSummary = BIP39.summary;
-  protocolLink = BIP39.link;
+  protocolTitle = ElectrumLegacy.title;
+  protocolSummary = ElectrumLegacy.summary;
+  protocolLink = ElectrumLegacy.link;
 
   constructor() {
     this.firstFormGroup = this.fb.group({
@@ -55,38 +51,24 @@ export class Decrypt {
     } else if (field === 'reverseKey') {
       this.secondFormGroup.controls['reverseKey'].setValue(text);
     }
-    this.snackBar.open('Pasted from clipboard!', 'Close', {
-      duration: 2000,
-    });
+    this.snackBar.open('Pasted from clipboard', 'Close', { duration: 2000 });
   }
 
   onSubmit() {
     if (this.firstFormGroup.valid && this.secondFormGroup.valid && this.thirdFormGroup.valid) {
-      const { encryptedData } = this.firstFormGroup.value;
-      const { reverseKey } = this.secondFormGroup.value;
-      const { password } = this.thirdFormGroup.value;
-      try {
-        this.decryptedMnemonic = this.cryptService.decrypt(encryptedData, reverseKey, password);
-        this.error = '';
-        this.showResult = true;
-      } catch (e: unknown) {
-        let errorMessage = 'An error occurred';
-        if (e instanceof Error) {
-          errorMessage = e.message;
-        }
-        this.error = `Decryption failed: ${errorMessage}`;
-        this.decryptedMnemonic = '';
-        this.showResult = true;
-      }
+      this.snackBar.open('Decryption logic coming soon', 'Close', { duration: 3000 });
+      // Mock logic
+      // this.decryptedMnemonic = "mock words here";
+      // this.showResult = true;
     }
   }
 
   reset() {
+    this.showResult = false;
+    this.error = '';
+    this.decryptedMnemonic = '';
     this.firstFormGroup.reset();
     this.secondFormGroup.reset();
     this.thirdFormGroup.reset();
-    this.showResult = false;
-    this.decryptedMnemonic = '';
-    this.error = '';
   }
 }

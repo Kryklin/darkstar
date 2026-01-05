@@ -4,7 +4,6 @@
   @include glass.glass-card;
   max-width: 900px;
   margin: 40px auto;
-  // background: rgba(0, 0, 0, 0.4); // Removed to use mixin default
   
   @include glass.animate-entrance;
 }
@@ -17,7 +16,6 @@ mat-form-field {
   margin-bottom: 24px;
 }
 
-// Enhance stepper styles to blend with glass
 ::ng-deep .mat-step-header .mat-step-icon-selected, 
 ::ng-deep .mat-step-header .mat-step-icon-state-done, 
 ::ng-deep .mat-step-header .mat-step-icon-state-edit {
@@ -56,20 +54,19 @@ mat-card-header {
   align-items: flex-start;
   margin-bottom: 16px;
 
-  // Target the internal wrapper for title/subtitle
   ::ng-deep .mat-card-header-text, ::ng-deep .mat-mdc-card-header-text {
-    margin: 0;       // Remove default margin
-    flex: 1;         // Allow text to take up space
+    margin: 0;
+    flex: 1;
   }
 
   .learn-more-btn {
     margin-left: 16px;
-    margin-top: 4px; // Optical alignment with title text
-    flex-shrink: 0;  // Prevent button squishing
+    margin-top: 4px;
+    flex-shrink: 0;
   }
-  
-  mat-card-title {
-    font-size: 1.8rem;
-    margin-bottom: 8px;
-  }
+}
+
+mat-card-title {
+  font-size: 1.8rem;
+  margin-bottom: 8px;
 }

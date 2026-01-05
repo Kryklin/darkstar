@@ -7,8 +7,7 @@
 .decrypt-card, .result-card {
   @include glass.glass-card;
   max-width: 900px;
-  margin: 20px auto; // slightly closer to top
-  // background: rgba(0, 0, 0, 0.4); // Removed to use mixin default
+  margin: 20px auto; 
   
   @include glass.animate-entrance;
 }
@@ -69,7 +68,6 @@ mat-card-title {
   margin-bottom: 8px;
 }
 
-// Result Specifics
 .error-title {
   color: var(--mat-sys-error);
 }

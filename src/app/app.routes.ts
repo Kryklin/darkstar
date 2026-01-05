@@ -10,6 +10,33 @@ export const routes: Routes = [
     path: 'decrypt',
     loadComponent: () => import('./components/bip39/decrypt/decrypt').then((m) => m.Decrypt),
   },
+  // Electrum Legacy
+  {
+    path: 'electrum-legacy/encrypt',
+    loadComponent: () => import('./components/electrum-legacy/encrypt/encrypt').then((m) => m.ElectrumLegacyEncrypt),
+  },
+  {
+    path: 'electrum-legacy/decrypt',
+    loadComponent: () => import('./components/electrum-legacy/decrypt/decrypt').then((m) => m.ElectrumLegacyDecrypt),
+  },
+  // Electrum V2
+  {
+    path: 'electrum-v2/encrypt',
+    loadComponent: () => import('./components/electrum-v2/encrypt/encrypt').then((m) => m.ElectrumV2Encrypt),
+  },
+  {
+    path: 'electrum-v2/decrypt',
+    loadComponent: () => import('./components/electrum-v2/decrypt/decrypt').then((m) => m.ElectrumV2Decrypt),
+  },
+  // SLIP39
+  {
+    path: 'slip39/encrypt',
+    loadComponent: () => import('./components/slip39/encrypt/encrypt').then((m) => m.Slip39Encrypt),
+  },
+  {
+    path: 'slip39/decrypt',
+    loadComponent: () => import('./components/slip39/decrypt/decrypt').then((m) => m.Slip39Decrypt),
+  },
   {
     path: 'update-check',
     loadComponent: () => import('./components/update-checker/update-checker').then((m) => m.UpdateChecker),

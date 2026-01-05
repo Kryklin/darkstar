@@ -1,6 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { CryptService } from './crypt';
 import * as BIP39 from '../../assets/BIP39.json';
+import * as ElectrumLegacy from '../../assets/electrum-legacy.json';
+import * as ElectrumV2 from '../../assets/electrum-v2.json';
+import * as Slip39 from '../../assets/slip39.json';
 
 describe('CryptService', () => {
   let service: CryptService;
@@ -8,6 +11,7 @@ describe('CryptService', () => {
   const testPassword = 'mysecretpassword';
 
   beforeAll(() => {
+    // Generate a predictable mnemonic for general testing
     const words = BIP39.words;
     const randomWords = [];
     for (let i = 0; i < 12; i++) {
@@ -103,6 +107,33 @@ describe('CryptService', () => {
       const obfuscated = service.obfuscateByShuffling(testString, seed);
       const deobfuscated = service.deobfuscateByShuffling(obfuscated, seed);
       expect(deobfuscated).toBe(testString);
+    });
+  });
+
+  describe('Wordlist Compatibility', () => {
+    const wordlists = [
+      { name: 'BIP39', words: BIP39.words },
+      { name: 'Electrum Legacy', words: ElectrumLegacy.words },
+      { name: 'Electrum V2', words: ElectrumV2.words },
+      { name: 'SLIP39', words: Slip39.words },
+    ];
+
+    wordlists.forEach((list) => {
+      it(`should encrypt and decrypt a random phrase from ${list.name}`, () => {
+        let randomPhrase = '';
+        // Generate a 12-word phrase from the current list
+        for (let i = 0; i < 12; i++) {
+          randomPhrase += list.words[Math.floor(Math.random() * list.words.length)] + ' ';
+        }
+        randomPhrase = randomPhrase.trim();
+
+        const { encryptedData, reverseKey } = service.encrypt(randomPhrase, testPassword);
+        expect(encryptedData).toBeTruthy();
+        expect(reverseKey).toBeTruthy();
+
+        const decrypted = service.decrypt(encryptedData, reverseKey, testPassword);
+        expect(decrypted).toBe(randomPhrase);
+      });
     });
   });
 });

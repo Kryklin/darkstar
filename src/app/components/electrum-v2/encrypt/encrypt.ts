@@ -11,23 +11,19 @@ import {
 } from '@angular/forms';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { MaterialModule } from '../../../modules/material/material';
-import BIP39 from '../../../../assets/BIP39.json';
+import ElectrumV2 from '../../../../assets/electrum-v2.json';
 import { CryptService } from '../../../services/crypt';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
-  selector: 'app-encrypt',
+  selector: 'app-electrum-v2-encrypt',
   standalone: true,
   imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule],
   templateUrl: './encrypt.html',
   styleUrl: './encrypt.scss',
 })
-/**
- * Handles the encryption workflow: accepting mnemonic input, password generation,
- * and displaying the final encrypted output + reverse key.
- */
-export class Encrypt {
+export class ElectrumV2Encrypt {
   firstFormGroup: FormGroup;
   secondFormGroup: FormGroup;
   showResult = false;
@@ -37,38 +33,19 @@ export class Encrypt {
   private _formBuilder = inject(FormBuilder);
   private cryptService = inject(CryptService);
   private clipboard = inject(Clipboard);
+
   private snackBar = inject(MatSnackBar);
 
-  protocolTitle = BIP39.title;
-  protocolSummary = BIP39.summary;
-  protocolLink = BIP39.link;
+  protocolTitle = ElectrumV2.title;
+  protocolSummary = ElectrumV2.summary;
+  protocolLink = ElectrumV2.link;
 
   constructor() {
     this.firstFormGroup = this._formBuilder.group({
-      firstCtrl: ['', [Validators.required, this.allowedWordCountsValidator([12, 24])]],
+      firstCtrl: ['', [Validators.required]],
     });
     this.secondFormGroup = this._formBuilder.group({
       secondCtrl: ['', Validators.required],
-    });
-  }
-
-  onSubmit() {
-    if (this.firstFormGroup.valid && this.secondFormGroup.valid) {
-      const mnemonic = this.firstFormGroup.controls['firstCtrl'].value;
-      const password = this.secondFormGroup.controls['secondCtrl'].value;
-
-      const { encryptedData, reverseKey } = this.cryptService.encrypt(mnemonic, password);
-
-      this.encryptedData = encryptedData;
-      this.reverseKey = reverseKey;
-      this.showResult = true;
-    }
-  }
-
-  copyToClipboard(text: string) {
-    this.clipboard.copy(text);
-    this.snackBar.open('Copied to clipboard!', 'Close', {
-      duration: 2000,
     });
   }
 
@@ -85,20 +62,39 @@ export class Encrypt {
     };
   }
 
+
+
   generateRandomWords() {
-    const words = BIP39.words;
+    const words = ElectrumV2.words;
     let randomWords = '';
-    for (let i = 0; i < 24; i++) {
-      randomWords += words[Math.floor(Math.random() * words.length)] + ' ';
+    // Electrum V2 standard is typically 12 words
+    for (let i = 0; i < 12; i++) {
+        randomWords += words[Math.floor(Math.random() * words.length)] + ' ';
     }
     this.firstFormGroup.controls['firstCtrl'].setValue(randomWords.trim());
   }
 
+  onSubmit() {
+    if (this.secondFormGroup.valid && this.firstFormGroup.valid) {
+       const mnemonic = this.firstFormGroup.controls['firstCtrl'].value;
+       const password = this.secondFormGroup.controls['secondCtrl'].value;
+
+       const { encryptedData, reverseKey } = this.cryptService.encrypt(mnemonic, password);
+
+       this.encryptedData = encryptedData;
+       this.reverseKey = reverseKey;
+       this.showResult = true;
+    }
+  }
+
+  copyToClipboard(content: string) {
+    this.clipboard.copy(content);
+    this.snackBar.open('Copied to clipboard', 'Close', { duration: 2000 });
+  }
+
   reset() {
+    this.showResult = false;
     this.firstFormGroup.reset();
     this.secondFormGroup.reset();
-    this.showResult = false;
-    this.encryptedData = '';
-    this.reverseKey = '';
   }
 }

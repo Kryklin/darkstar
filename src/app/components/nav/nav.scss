@@ -6,8 +6,17 @@
 }
 
 mat-toolbar {
+  position: sticky !important; // Ensure it sticks
+  top: 0;
+  z-index: 1000;
   -webkit-app-region: drag;
+  
+  // sticky glass effect
   background: transparent !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
   color: var(--mat-sys-on-surface);
   
   button {
