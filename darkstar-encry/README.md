@@ -1,105 +1,127 @@
+<p align="center">
+  <img src="../public/assets/img/logo-black.png" alt="Darkstar Logo" width="180">
+</p>
+
 # Darkstar Encryption Suite
+> **Defense-in-Depth for Digital Mnemonic Assets**
 
-**Version**: 1.0.0
-**Encryption Schema**: V2 (Dynamic Obfuscation + AES-256-CBC)
+The **Darkstar Encryption Suite** is a high-performance, multi-language implementation of the Darkstar V2 security protocol. It is designed to bridge the gap between user-friendly wallet interfaces and hardened backend/utility systems, providing a consistent cryptographic standard across **Go**, **Rust**, **Python**, and **Node.js**.
 
-The Darkstar Encryption Suite provides a robust, multi-language implementation of the Darkstar V2 encryption protocol. This protocol combines a dynamic, seed-based obfuscation pipeline with standard AES-256-CBC encryption to provide defense system-grade security for mnemonic phrases and sensitive data.
+---
 
-## Features
+## 🛡️ Security Architecture
 
-- **Dynamic Obfuscation**: Uses a 12-layer obfuscation pipeline where the order of operations is uniquely determined by the password and data content itself.
-- **Deterministic PRNG**: Implements `Mulberry32` for consistent cross-language pseudo-random number generation.
-- **Standard Crypto**: Utilizes AES-256-CBC with PBKDF2 (HMAC-SHA256) for the core cryptographic layer.
-- **integrity**: Obfuscation layers include checksums to validate decryption integrity.
-- **Cross-Compatible**: All implementations (Node.js, Python, Go, Rust) are fully interoperable.
+Darkstar V2 employs a dual-layered security model that fundamentally differs from standard "encrypt-and-store" approaches:
 
-## Implementations
+1.  **Dynamic Obfuscation Pool**: Data is passed through a 12-stage transformation pipeline. The selection and order of these functions are determined by a deterministic shuffle seeded by the user's password and the data itself.
+2.  **Military-Grade AES**: The obfuscated high-entropy blob is encapsulated and encrypted using AES-256-CBC with 600,000 PBKDF2 iterations.
 
-This repository contains implementations in four languages:
+| Feature | Description |
+| :--- | :--- |
+| **Entropy Injection** | Obfuscation layers maximize data chaos before AES encryption. |
+| **Cross-Language** | Standardized `Mulberry32` PRNG ensures bit-perfect interop. |
+| **CLI Ready** | Optimized for secure, air-gapped terminal operations. |
+| **Integrity Checks** | Built-in checksums validate the successful reversal of all 12 layers. |
 
+---
 
-### 1. Node.js
+## 🚀 Integration Guide
 
-Located in `./node`
-- **File**: `darkstar_crypt.js`
-- **Usage**: Import `DarkstarCrypt` class.
-- **Dependencies**: Native `crypto` (Node 19+ or polyfill).
+Integrating Darkstar into your project is straightforward. Choose your platform below for specific implementation steps.
+
+### 🔷 Go Implementation
+**Target**: Performance critical backends and microservices.
+- **Source**: `go/main.go`
+- **Dependency**: `golang.org/x/crypto/pbkdf2`
+
+```bash
+# Register dependency
+go get golang.org/x/crypto/pbkdf2
+```
+
+**Integration Snippet**:
+```go
+import "darkstar/go/pkg" // Reference implementation in go/main.go
+dc := NewDarkstarCrypt()
+result, _ := dc.Encrypt("phrase", "password")
+fmt.Println(result["encryptedData"])
+```
+
+### 🦀 Rust Implementation
+**Target**: System-level integration and high-security crates.
+- **Source**: `rust/src/main.rs`
+- **Dependencies**: `aes`, `cbc`, `pbkdf2`, `serde_json`
+
+```bash
+# Build standalone binary
+cd rust && cargo build --release
+```
+
+**Integration Snippet**:
+```rust
+let dc = DarkstarCrypt::new();
+let json_output = dc.encrypt("phrase", "password");
+```
+
+### 🐍 Python Implementation
+**Target**: Data science, scripting, and rapid prototyping.
+- **Source**: `python/darkstar_crypt.py`
+- **Dependency**: `cryptography`
+
+```bash
+pip install cryptography
+```
+
+**Integration Snippet**:
+```python
+from darkstar_crypt import DarkstarCrypt
+dc = DarkstarCrypt()
+encrypted = dc.encrypt("secret", "password")
+```
+
+### 🟢 Node.js Implementation
+**Target**: Web backends and desktop applications.
+- **Source**: `node/darkstar_crypt.js`
+- **Dependency**: Native `crypto` module (Node 19+)
 
 ```javascript
-import { DarkstarCrypt } from './node/darkstar_crypt.js';
+import { DarkstarCrypt } from './darkstar_crypt.js';
 const crypt = new DarkstarCrypt();
-const encrypted = await crypt.encrypt("my secret phrase", "password123");
+const { encryptedData, reverseKey } = await crypt.encrypt("phrase", "pass");
 ```
 
+---
 
-### 2. Python
+## ⌨️ CLI Usage
 
-Located in `./python`
-- **File**: `darkstar_crypt.py`
-- **Usage**: Import `DarkstarCrypt` class.
-- **Dependencies**: `cryptography`
+Both Go and Rust implementations are pre-configured for terminal usage:
 
-  ```bash
-  pip install cryptography
-  ```
+```bash
+# General Syntax
+./darkstar-cli <command> <payload> <password>
 
-```python
-from python.darkstar_crypt import DarkstarCrypt
-crypt = DarkstarCrypt()
-encrypted = crypt.encrypt("my secret phrase", "password123")
+# Examples
+./darkstar-cli encrypt "my secret" "mypass"
+./darkstar-cli test
 ```
 
+---
 
-### 3. Go
+## 📜 Data Format specification
 
-Located in `./go`
-- **File**: `main.go`
-- **Build**: `go build -o darkstar-go main.go`
-- **CLI Usage**:
-  ```bash
-  # Encrypt
-  go run main.go encrypt "my secret phrase" "password123"
+Standard output is a JSON-encapsulated object:
 
-  # Decrypt
-  go run main.go decrypt '{"v":2,"data":"..."}' "<reverse_key>" "password123"
+```json
+{
+  "v": 2,
+  "data": "SALT(32)IV(32)CIPHERTEXT(B64)"
+}
+```
 
-  # Test
-  go run main.go test
-  ```
+> [!IMPORTANT]
+> A **Reverse Key** (base64 encoded mapping) is produced during encryption. This key is **stateless** and must be stored securely alongside the encrypted data to enable decryption.
 
+---
 
-### 4. Rust
-
-Located in `./rust`
-- **File**: `src/main.rs`
-- **Build**: `cargo build --release`
-- **CLI Usage**:
-  ```bash
-  # Encrypt
-  cargo run -- encrypt "my secret phrase" "password123"
-
-  # Decrypt
-  cargo run -- decrypt '{"v":2,"data":"..."}' "<reverse_key>" "password123"
-
-  # Test
-  cargo run -- test
-  ```
-
-## Integration Guide
-
-To integrate Darkstar into your project:
-
-1.  **Choose your language** folder.
-2.  **Copy the core file** (`darkstar_crypt.js`, `darkstar_crypt.py`, etc.) into your project's utility or crypto directory.
-3.  **Install dependencies** listed above.
-4.  **Instantiate and use** the `encrypt` and `decrypt` methods.
-
-## Data Format
-
-The output of the encryption is a JSON object (stringified) containing:
-- `v`: Version number (2)
-- `data`: AES encrypted string (containing the obfuscated blob)
-
-Along with a strict `reverseKey` (Base64) which is required for decryption.
-
-**Note**: The obfuscation layer adds significant entropy and structure hiding before the data even reaches the AES encryption step.
+## ⚖️ License
+The Darkstar Encryption Suite is released under the **MIT License**.

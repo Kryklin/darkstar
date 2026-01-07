@@ -19,6 +19,9 @@
 > [!NOTE]
 > **Architecture Overview**: Curious how it works? View the [Visual Architecture Guide](DARKSTAR_ARCHITECTURE.md).
 
+> [!TIP]
+> **Multi-Language Suite**: Looking to integrate Darkstar into your own backend or tools? Check out the [Multi-Language Encryption Suite](darkstar-encry/README.md) featuring Go, Rust, Python, and Node.js implementations.
+
 ## Key Features
 
 - **Multi-Protocol Support**: BIP39, Electrum (Legacy/V2), and SLIP39.
