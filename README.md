@@ -14,10 +14,10 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License"/>
 </p>
 
+`darkstar` is a defense-grade client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase. It combines a dynamic, 12-stage obfuscation pipeline with military-grade AES-256 encryption to protect your digital assets.
+
 > [!NOTE]
 > **Architecture Overview**: Curious how it works? View the [Visual Architecture Guide](DARKSTAR_ARCHITECTURE.md).
-
-`darkstar` is a defense-grade client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase. It combines a dynamic, 12-stage obfuscation pipeline with military-grade AES-256 encryption to protect your digital assets.
 
 ## Key Features
 
@@ -57,9 +57,6 @@ npm install
 4.  **Keying**: A "Reverse Key" map is generated to track the unique shuffle order, which is required alongside the password to reverse the process.
 
 This ensures that even if the AES layer were hypothetically bypassed, the underlying data remains a chaotic, structured mess without the specific function map.
-
-> [!TIP]
-> **Deep Dive**: For a visual explanation of the encryption flow and obfuscation pipeline, see [DARKSTAR_ARCHITECTURE.md](DARKSTAR_ARCHITECTURE.md).
 
 ## Authors
 
