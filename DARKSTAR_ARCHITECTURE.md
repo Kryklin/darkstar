@@ -49,10 +49,10 @@ flowchart TD
     NewList --> Loop(Execute Functions in Order)
     
     subgraph "The Gauntlet (12 Layers)"
-        Loop --> F1[Function 1 (e.g. Shuffle)]
-        F1 --> F2[Function 2 (e.g. XOR)]
-        F2 --> F...[...]
-        F... --> F12[Function 12 (e.g. Binary)]
+        Loop --> F1["Function 1 (e.g. Shuffle)"]
+        F1 --> F2["Function 2 (e.g. XOR)"]
+        F2 --> F...["..."]
+        F... --> F12["Function 12 (e.g. Binary)"]
     end
     
     F12 --> Result(Obfuscated Word Blob)

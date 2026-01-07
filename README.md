@@ -17,6 +17,9 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License"/>
 </p>
 
+> [!NOTE]
+> **Architecture Overview**: Curious how it works? View the [Visual Architecture Guide](DARKSTAR_ARCHITECTURE.md).
+
 `darkstar` is a powerful, client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase. It provides a robust, multi-layered solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your digital assets from both physical and digital threats. Available as both a web application and a cross-platform desktop application built with Electron.
 
 ## Features
