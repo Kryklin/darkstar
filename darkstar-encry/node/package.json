@@ -1,8 +1,23 @@
 {
-  "name": "darkstar-crypt-node",
+  "name": "@kryklin/darkstar-crypt-node",
   "version": "1.0.0",
   "description": "Standalone Node.js implementation of Darkstar Encryption",
   "main": "darkstar_crypt.js",
   "type": "module",
+  "bin": {
+    "darkstar-crypt": "darkstar_crypt.js"
+  },
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "darkstar",
+    "encryption",
+    "cryptography",
+    "aes",
+    "cli"
+  ],
+  "author": "Victor Kane",
+  "license": "MIT",
   "dependencies": {}
 }
