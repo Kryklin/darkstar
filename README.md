@@ -8,7 +8,7 @@
 <h1 align="center">Darkstar</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.6.5-blue" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-1.7.0-blue" alt="Version"/>
   <img src="https://img.shields.io/badge/Angular-v20.3.0-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Angular%20Material-v20.2.5-blue?logo=angular" alt="Angular Material"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
@@ -26,8 +26,10 @@
   - **Electrum**: Native support for Electrum Legacy and V2 seed phrases.
   - **SLIP39**: Support for Shamir's Secret-Sharing mnemonics.
 - **AES-256 Encryption**: Industry-standard encryption to protect your data.
+- **High-Performance Encryption (V2)**: Powered by the **Web Crypto API**, delivering **600,000 PBKDF2 iterations** for military-grade protection against brute-force attacks without compromising UI responsiveness.
+- **Legacy Support**: Automatic detection and backward compatibility for V1 encryption, with active security warnings for legacy formats.
 - **Advanced Obfuscation**: A sophisticated, deterministic 12-stage process to secure your recovery phrase.
-- **Anti-Forensic Memory Protection**: Sensitive data is cleared from memory immediately after use, mitigating forensic recovery risks.
+- **Anti-Forensic Memory Protection**: Sensitive data is processed using zeroed-out `Uint8Array` buffers to prevent memory residency and mitigate forensic verification.
 - **Modern Glassmorphism UI**: A premium, responsive interface featuring:
   - **Sticky Navigation**: Blurred glass effect top bar for easy access.
   - **Light & Dark Themes**: Fully optimized visual modes for any environment.
@@ -103,7 +105,7 @@ This command opens a new browser window and runs all the `.spec.ts` files. The r
 1.  **Function Selection & Shuffling**: For each word in the mnemonic, Darkstar takes a curated pool of 12 obfuscation functions (6 seeded, 6 unseeded). It deterministically shuffles the order of these 12 functions based on the password and the word itself, creating a unique, unpredictable chain of operations for every word.
 2.  **Password and Reverse Key Seeding**: The security model requires both the password and the reverse key for decryption. All 6 seeded functions (e.g., Vigenère Cipher, Character Shuffling) use a combined seed derived from both the password and a checksum of the shuffled function sequence. This ensures that the reverse key is not just a map, but an integral part of the decryption seed.
 3.  **Multi-Layered Obfuscation**: The word is passed through the entire shuffled chain of 12 functions, applying complex, layered transformations.
-4.  **AES-256 Encryption**: The final, heavily obfuscated words are joined together and then encrypted using the industry-standard AES-256 algorithm with the user-provided password.
+4.  **AES-256 Encryption (V2)**: The final, heavily obfuscated words are encrypted using **AES-256-CBC** with **600,000 PBKDF2** iterations via the native Web Crypto API.
 5.  **Reverse Key Generation**: A "reverse key" is generated, containing the precise (and uniquely shuffled) sequence of obfuscation functions used for each word.
 6.  **Key Encoding**: This reverse key is then Base64 encoded.
 

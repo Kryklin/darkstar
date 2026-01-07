@@ -52,12 +52,12 @@ export class Encrypt {
     });
   }
 
-  onSubmit() {
+  async onSubmit() {
     if (this.firstFormGroup.valid && this.secondFormGroup.valid) {
       const mnemonic = this.firstFormGroup.controls['firstCtrl'].value;
       const password = this.secondFormGroup.controls['secondCtrl'].value;
 
-      const { encryptedData, reverseKey } = this.cryptService.encrypt(mnemonic, password);
+      const { encryptedData, reverseKey } = await this.cryptService.encrypt(mnemonic, password);
 
       this.encryptedData = encryptedData;
       this.reverseKey = reverseKey;
@@ -85,9 +85,13 @@ export class Encrypt {
 
   generateRandomWords() {
     const words = BIP39.words;
+    const array = new Uint32Array(24);
+    window.crypto.getRandomValues(array);
+
     let randomWords = '';
     for (let i = 0; i < 24; i++) {
-      randomWords += words[Math.floor(Math.random() * words.length)] + ' ';
+      const index = array[i] % words.length;
+      randomWords += words[index] + ' ';
     }
     this.firstFormGroup.controls['firstCtrl'].setValue(randomWords.trim());
   }

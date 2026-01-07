@@ -54,12 +54,36 @@ export class ElectrumLegacyDecrypt {
     this.snackBar.open('Pasted from clipboard', 'Close', { duration: 2000 });
   }
 
-  onSubmit() {
+  async onSubmit() {
     if (this.firstFormGroup.valid && this.secondFormGroup.valid && this.thirdFormGroup.valid) {
-      this.snackBar.open('Decryption logic coming soon', 'Close', { duration: 3000 });
-      // Mock logic
-      // this.decryptedMnemonic = "mock words here";
-      // this.showResult = true;
+      const encryptedData = this.firstFormGroup.controls['encryptedData'].value;
+      const reverseKey = this.secondFormGroup.controls['reverseKey'].value;
+      const password = this.thirdFormGroup.controls['password'].value;
+
+      try {
+        const result = await this.cryptService.decrypt(encryptedData, reverseKey, password);
+        this.decryptedMnemonic = result.decrypted;
+
+        if (result.isLegacy) {
+          this.snackBar.open('Notice: Legacy encryption detected. Please re-encrypt your data for enhanced security.', 'OK', {
+            duration: 10000,
+            panelClass: ['legacy-warning-snackbar'],
+            verticalPosition: 'top',
+            horizontalPosition: 'center',
+          });
+        }
+
+        this.showResult = true;
+        this.error = '';
+      } catch (e: unknown) {
+        let errorMessage = 'An error occurred';
+        if (e instanceof Error) {
+          errorMessage = e.message;
+        }
+        this.error = `Decryption failed: ${errorMessage}`;
+        this.decryptedMnemonic = '';
+        this.showResult = true;
+      }
     }
   }
 

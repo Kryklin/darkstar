@@ -62,10 +62,10 @@ describe('Decrypt', () => {
       component.thirdFormGroup.setValue({ password: testPassword });
     });
 
-    it('should call cryptService.decrypt and show mnemonic on success', () => {
-      decryptSpy.and.returnValue(testDecryptedMnemonic);
+    it('should call cryptService.decrypt and show mnemonic on success', async () => {
+      decryptSpy.and.returnValue({ decrypted: testDecryptedMnemonic, isLegacy: false });
 
-      component.onSubmit();
+      await component.onSubmit();
 
       expect(decryptSpy).toHaveBeenCalledWith(testEncryptedData, testReverseKey, testPassword);
       expect(component.showResult).toBeTrue();
@@ -73,11 +73,11 @@ describe('Decrypt', () => {
       expect(component.error).toBe('');
     });
 
-    it('should show an error message if decryption fails', () => {
+    it('should show an error message if decryption fails', async () => {
       const errorMessage = 'Decryption failed';
       decryptSpy.and.throwError(new Error(errorMessage));
 
-      component.onSubmit();
+      await component.onSubmit();
 
       expect(decryptSpy).toHaveBeenCalledWith(testEncryptedData, testReverseKey, testPassword);
       expect(component.showResult).toBeTrue();
@@ -85,9 +85,9 @@ describe('Decrypt', () => {
       expect(component.error).toContain(errorMessage);
     });
 
-    it('should not call cryptService.decrypt if forms are invalid', () => {
+    it('should not call cryptService.decrypt if forms are invalid', async () => {
       component.firstFormGroup.reset();
-      component.onSubmit();
+      await component.onSubmit();
       expect(decryptSpy).not.toHaveBeenCalled();
     });
   });

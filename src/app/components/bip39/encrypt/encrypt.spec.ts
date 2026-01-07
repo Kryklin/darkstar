@@ -54,7 +54,7 @@ describe('Encrypt', () => {
     expect(component.secondFormGroup.valid).toBeTruthy();
   });
 
-  it('should call the cryptService.encrypt method on valid form submission', () => {
+  it('should call the cryptService.encrypt method on valid form submission', async () => {
     // Spy on the service method to ensure it's called
     const encryptSpy = spyOn(cryptService, 'encrypt').and.callThrough();
 
@@ -63,19 +63,19 @@ describe('Encrypt', () => {
     component.secondFormGroup.controls['secondCtrl'].setValue(testPassword);
 
     // Trigger form submission
-    component.onSubmit();
+    await component.onSubmit();
 
     // Expect the spy to have been called with the correct values
     expect(encryptSpy).toHaveBeenCalledWith(testMnemonic, testPassword);
   });
 
-  it('should display the result card with encrypted data after submission', () => {
+  it('should display the result card with encrypted data after submission', async () => {
     // Set valid form values
     component.firstFormGroup.controls['firstCtrl'].setValue(testMnemonic);
     component.secondFormGroup.controls['secondCtrl'].setValue(testPassword);
 
     // Trigger submission
-    component.onSubmit();
+    await component.onSubmit();
     fixture.detectChanges(); // Update the DOM
 
     // Check component properties

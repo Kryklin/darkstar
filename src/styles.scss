@@ -108,3 +108,31 @@ body.light-theme .app-title {
     background-position: 200% center;
   }
 }
+
+// Legacy Warning Snackbar
+.legacy-warning-snackbar {
+  --mdc-snackbar-container-color: #d32f2f; // Material Red 700
+  --mdc-snackbar-supporting-text-color: #ffffff;
+  --mat-snack-bar-button-color: #ffffff;
+
+  .mdc-snackbar__surface {
+    border: 2px solid #ffcdd2; // Light Red Border
+    box-shadow: 0px 4px 20px rgba(211, 47, 47, 0.4);
+    animation: snackbar-pulse 2s infinite;
+  }
+}
+
+@keyframes snackbar-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.7);
+  }
+  70% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 10px rgba(211, 47, 47, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(211, 47, 47, 0);
+  }
+}

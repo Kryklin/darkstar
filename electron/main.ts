@@ -1,5 +1,4 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, session, shell } from 'electron';
-import * as childProcess from 'child_process';
 import * as path from 'path';
 import { updateElectronApp } from 'update-electron-app';
 
@@ -16,45 +15,31 @@ function createShortcut(target: 'desktop' | 'start-menu'): Promise<{ success: bo
   return new Promise((resolve) => {
     const targetPath = process.execPath;
     const shortcutName = 'Darkstar.lnk';
-    let script = '';
+    let shortcutPath = '';
 
     if (target === 'desktop') {
-      script = `
-        $ws = New-Object -ComObject WScript.Shell;
-        $path = [System.Environment]::GetFolderPath('Desktop');
-        $s = $ws.CreateShortcut("$path\\${shortcutName}");
-        $s.TargetPath = "${targetPath}";
-        $s.Save()
-      `;
+      shortcutPath = path.join(app.getPath('desktop'), shortcutName);
     } else {
-      script = `
-        $ws = New-Object -ComObject WScript.Shell;
-        $path = [System.Environment]::GetFolderPath('StartMenu');
-        $programsPath = "$path\\Programs";
-        if (!(Test-Path $programsPath)) { New-Item -ItemType Directory -Force -Path $programsPath }
-        $s = $ws.CreateShortcut("$programsPath\\${shortcutName}");
-        $s.TargetPath = "${targetPath}";
-        $s.Save()
-      `;
+      shortcutPath = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', shortcutName);
     }
 
-    const ps = childProcess.spawn('powershell.exe', ['-Command', script], {
-      windowsHide: true,
+    const operation = shell.writeShortcutLink(shortcutPath, 'create', {
+      target: targetPath,
+      cwd: path.dirname(targetPath),
+      description: 'Darkstar Application'
     });
 
-    ps.on('close', (code) => {
-      if (code === 0) {
-        resolve({
-          success: true,
-          message: `Successfully created ${target === 'desktop' ? 'Desktop' : 'Start Menu'} shortcut.`,
-        });
-      } else {
-        resolve({
-          success: false,
-          message: `Failed to create ${target === 'desktop' ? 'Desktop' : 'Start Menu'} shortcut.`,
-        });
-      }
-    });
+    if (operation) {
+      resolve({
+        success: true,
+        message: `Successfully created ${target === 'desktop' ? 'Desktop' : 'Start Menu'} shortcut.`,
+      });
+    } else {
+      resolve({
+        success: false,
+        message: `Failed to create ${target === 'desktop' ? 'Desktop' : 'Start Menu'} shortcut.`,
+      });
+    }
   });
 }
 
@@ -69,6 +54,8 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       devTools: !app.isPackaged && !process.env['ELECTRON_PROD_DEBUG'],
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
