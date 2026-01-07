@@ -1,0 +1,67 @@
+name: Darkstar Test Suite
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+    
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Build Go
+      run: |
+        cd go
+        go build -o darkstar main.go
+
+    - name: Build Rust
+      run: |
+        cd rust
+        cargo build
+
+    - name: Install Python Dependencies
+      run: |
+        cd python
+        pip install -r requirements.txt
+
+    - name: Install Node Dependencies
+      run: |
+        cd node
+        npm install
+
+    - name: Run Individual Tests
+      run: |
+        cd go && go test ./...
+        cd rust && cargo test
+        cd python && python darkstar_crypt.py test
+        cd node && node darkstar_crypt.js test
+
+    - name: Run Interop Verification
+      run: |
+        python scripts/verify_interop.py
+      env:
+        # Override paths for Linux in the script if needed, 
+        # or just make the script more robust.
+        PROJECT_ROOT: "."

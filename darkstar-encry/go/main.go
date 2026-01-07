@@ -623,6 +623,11 @@ func (dc *DarkstarCrypt) encryptAES256(data, password string, iterations int) (s
 	mode := cipher.NewCBCEncrypter(block, iv)
 	mode.CryptBlocks(ciphertext, paddedData)
 
+	// Zeroize sensitive materials
+	for i := range key {
+		key[i] = 0
+	}
+
 	// salt(hex) + iv(hex) + content(base64)
 	saltHex := fmt.Sprintf("%x", salt)
 	ivHex := fmt.Sprintf("%x", iv)
@@ -667,6 +672,11 @@ func (dc *DarkstarCrypt) decryptAES256(transitMessage, password string, iteratio
 	mode := cipher.NewCBCDecrypter(block, iv)
 	plaintext := make([]byte, len(ciphertext))
 	mode.CryptBlocks(plaintext, ciphertext)
+
+	// Zeroize sensitive materials
+	for i := range key {
+		key[i] = 0
+	}
 
 	// Unpad
 	if len(plaintext) == 0 {

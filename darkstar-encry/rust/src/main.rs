@@ -61,9 +61,12 @@ impl Mulberry32 {
     }
 }
 
+use zeroize::Zeroize;
+
 // --- DarkstarCrypt ---
 
-type ObfuscationFn = fn(&[u8], Option<&[u8]>, &dyn Fn(&str) -> Mulberry32) -> Vec<u8>;
+type ObfuscationResult = Result<Vec<u8>, Box<dyn std::error::Error>>;
+type ObfuscationFn = fn(&[u8], Option<&[u8]>, &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult;
 
 struct DarkstarCrypt {
     obfuscation_functions_v2: Vec<ObfuscationFn>,
@@ -116,15 +119,15 @@ impl DarkstarCrypt {
 
     // --- Obfuscation Functions (V2) ---
 
-    fn obfuscate_by_reversing_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
-        input.iter().rev().cloned().collect()
+    fn obfuscate_by_reversing_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
+        Ok(input.iter().rev().cloned().collect())
     }
-    fn deobfuscate_by_reversing_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn deobfuscate_by_reversing_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         Self::obfuscate_by_reversing_v2(input, seed, prng_factory)
     }
 
-    fn obfuscate_with_atbash_cipher_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
-        input.iter().map(|&b| {
+    fn obfuscate_with_atbash_cipher_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
+        Ok(input.iter().map(|&b| {
             if b >= 65 && b <= 90 {
                 90 - (b - 65)
             } else if b >= 97 && b <= 122 {
@@ -132,13 +135,13 @@ impl DarkstarCrypt {
             } else {
                 b
             }
-        }).collect()
+        }).collect())
     }
-    fn deobfuscate_with_atbash_cipher_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn deobfuscate_with_atbash_cipher_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         Self::obfuscate_with_atbash_cipher_v2(input, seed, prng_factory)
     }
 
-    fn obfuscate_to_char_codes_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn obfuscate_to_char_codes_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         let mut parts = Vec::new();
         for (i, &b) in input.iter().enumerate() {
             if i > 0 {
@@ -147,19 +150,20 @@ impl DarkstarCrypt {
             let str_val = b.to_string();
             parts.extend_from_slice(str_val.as_bytes());
         }
-        parts
+        Ok(parts)
     }
 
-    fn deobfuscate_from_char_codes_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
-        let s = String::from_utf8_lossy(input);
-        if s.is_empty() { return Vec::new(); }
-        s.split(',')
+    fn deobfuscate_from_char_codes_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
+        let s = String::from_utf8(input.to_vec())?;
+        if s.is_empty() { return Ok(Vec::new()); }
+        let res = s.split(',')
             .filter(|p| !p.is_empty())
-            .filter_map(|p| p.parse::<u8>().ok())
-            .collect()
+            .map(|p| p.parse::<u8>().map_err(|e| e.into()))
+            .collect::<Result<Vec<u8>, Box<dyn std::error::Error>>>()?;
+        Ok(res)
     }
 
-    fn obfuscate_to_binary_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn obfuscate_to_binary_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         let mut parts = Vec::new();
         for (i, &b) in input.iter().enumerate() {
             if i > 0 {
@@ -168,20 +172,21 @@ impl DarkstarCrypt {
             let str_val = format!("{:b}", b);
             parts.extend_from_slice(str_val.as_bytes());
         }
-        parts
+        Ok(parts)
     }
 
-    fn deobfuscate_from_binary_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
-        let s = String::from_utf8_lossy(input);
-        if s.is_empty() { return Vec::new(); }
-        s.split(',')
+    fn deobfuscate_from_binary_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
+        let s = String::from_utf8(input.to_vec())?;
+        if s.is_empty() { return Ok(Vec::new()); }
+        let res = s.split(',')
             .filter(|p| !p.is_empty())
-            .filter_map(|p| u8::from_str_radix(p, 2).ok())
-            .collect()
+            .map(|p| u8::from_str_radix(p, 2).map_err(|e| e.into()))
+            .collect::<Result<Vec<u8>, Box<dyn std::error::Error>>>()?;
+        Ok(res)
     }
 
-    fn obfuscate_with_caesar_cipher_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
-        input.iter().map(|&b| {
+    fn obfuscate_with_caesar_cipher_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
+        Ok(input.iter().map(|&b| {
             if b >= 65 && b <= 90 {
                 ((b - 65 + 13) % 26) + 65
             } else if b >= 97 && b <= 122 {
@@ -189,38 +194,38 @@ impl DarkstarCrypt {
             } else {
                 b
             }
-        }).collect()
+        }).collect())
     }
-    fn deobfuscate_with_caesar_cipher_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn deobfuscate_with_caesar_cipher_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         Self::obfuscate_with_caesar_cipher_v2(input, seed, prng_factory)
     }
 
-    fn obfuscate_by_swapping_adjacent_bytes_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn obfuscate_by_swapping_adjacent_bytes_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         let mut output = input.to_vec();
         for i in (0..output.len().saturating_sub(1)).step_by(2) {
             output.swap(i, i + 1);
         }
-        output
+        Ok(output)
     }
-    fn deobfuscate_by_swapping_adjacent_bytes_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn deobfuscate_by_swapping_adjacent_bytes_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         Self::obfuscate_by_swapping_adjacent_bytes_v2(input, seed, prng_factory)
     }
 
-    fn obfuscate_by_shuffling_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn obfuscate_by_shuffling_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         let mut output = input.to_vec();
-        let seed_str = String::from_utf8_lossy(seed.unwrap_or(&[])).to_string();
+        let seed_str = String::from_utf8(seed.unwrap_or(&[]).to_vec())?;
         let mut rng = prng_factory(&seed_str);
         for i in (1..output.len()).rev() {
             let j = (rng.next() * (i + 1) as f64) as usize;
             output.swap(i, j);
         }
-        output
+        Ok(output)
     }
 
-    fn deobfuscate_by_shuffling_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn deobfuscate_by_shuffling_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         let n = input.len();
         let mut indices: Vec<usize> = (0..n).collect();
-        let seed_str = String::from_utf8_lossy(seed.unwrap_or(&[])).to_string();
+        let seed_str = String::from_utf8(seed.unwrap_or(&[]).to_vec())?;
         let mut rng = prng_factory(&seed_str);
         for i in (1..n).rev() {
             let j = (rng.next() * (i + 1) as f64) as usize;
@@ -230,21 +235,21 @@ impl DarkstarCrypt {
         for i in 0..n {
             output[indices[i]] = input[i];
         }
-        output
+        Ok(output)
     }
 
-    fn obfuscate_with_xor_v2(input: &[u8], seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn obfuscate_with_xor_v2(input: &[u8], seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         let seed = seed.unwrap_or(&[]);
-        if seed.is_empty() { return input.to_vec(); }
-        input.iter().enumerate().map(|(i, &b)| b ^ seed[i % seed.len()]).collect()
+        if seed.is_empty() { return Ok(input.to_vec()); }
+        Ok(input.iter().enumerate().map(|(i, &b)| b ^ seed[i % seed.len()]).collect())
     }
-    fn deobfuscate_with_xor_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn deobfuscate_with_xor_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         Self::obfuscate_with_xor_v2(input, seed, prng_factory)
     }
 
-    fn obfuscate_by_interleaving_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn obfuscate_by_interleaving_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         let random_chars = b"abcdefghijklmnopqrstuvwxyz0123456789";
-        let seed_str = String::from_utf8_lossy(seed.unwrap_or(&[])).to_string();
+        let seed_str = String::from_utf8(seed.unwrap_or(&[]).to_vec())?;
         let mut rng = prng_factory(&seed_str);
         let mut output = Vec::with_capacity(input.len() * 2);
         for &b in input {
@@ -252,16 +257,16 @@ impl DarkstarCrypt {
             let rand_idx = (rng.next() * random_chars.len() as f64) as usize;
             output.push(random_chars[rand_idx]);
         }
-        output
+        Ok(output)
     }
 
-    fn deobfuscate_by_deinterleaving_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
-        input.iter().step_by(2).cloned().collect()
+    fn deobfuscate_by_deinterleaving_v2(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
+        Ok(input.iter().step_by(2).cloned().collect())
     }
 
-    fn obfuscate_with_vigenere_cipher_v2(input: &[u8], seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn obfuscate_with_vigenere_cipher_v2(input: &[u8], seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         let seed = seed.unwrap_or(&[]);
-        if seed.is_empty() { return input.to_vec(); } // Should not happen given logic
+        if seed.is_empty() { return Ok(input.to_vec()); }
         let mut parts = Vec::new();
         for (i, &b) in input.iter().enumerate() {
             if i > 0 {
@@ -272,52 +277,53 @@ impl DarkstarCrypt {
             let val_str = val.to_string();
             parts.extend_from_slice(val_str.as_bytes());
         }
-        parts
+        Ok(parts)
     }
 
-    fn deobfuscate_with_vigenere_cipher_v2(input: &[u8], seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn deobfuscate_with_vigenere_cipher_v2(input: &[u8], seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         let seed = seed.unwrap_or(&[]);
-        let s = String::from_utf8_lossy(input);
-        if s.is_empty() { return Vec::new(); }
-        s.split(',')
+        let s = String::from_utf8(input.to_vec())?;
+        if s.is_empty() { return Ok(Vec::new()); }
+        let res = s.split(',')
             .enumerate()
-            .filter_map(|(i, p)| {
-                if p.is_empty() { return None; }
-                let val: u16 = p.parse().ok()?;
+            .map(|(i, p)| {
+                if p.is_empty() { return Ok(0u8); }
+                let val: u16 = p.parse()?;
                 let key_code = seed[i % seed.len()] as u16;
-                Some((val - key_code) as u8)
+                Ok((val - key_code) as u8)
             })
-            .collect()
+            .collect::<Result<Vec<u8>, Box<dyn std::error::Error>>>()?;
+        Ok(res)
     }
 
-    fn obfuscate_with_seeded_block_reversal_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
-        let seed_str = String::from_utf8_lossy(seed.unwrap_or(&[])).to_string();
+    fn obfuscate_with_seeded_block_reversal_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
+        let seed_str = String::from_utf8(seed.unwrap_or(&[]).to_vec())?;
         let mut rng = prng_factory(&seed_str);
         let block_size = (rng.next() * (input.len() / 2) as f64) as usize + 2;
         let mut output = input.to_vec();
         for chunk in output.chunks_mut(block_size) {
             chunk.reverse();
         }
-        output
+        Ok(output)
     }
-    fn deobfuscate_with_seeded_block_reversal_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn deobfuscate_with_seeded_block_reversal_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         Self::obfuscate_with_seeded_block_reversal_v2(input, seed, prng_factory)
     }
 
-    fn obfuscate_with_seeded_substitution_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn obfuscate_with_seeded_substitution_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         let mut chars: Vec<u8> = (0..=255).collect();
-        let seed_str = String::from_utf8_lossy(seed.unwrap_or(&[])).to_string();
+        let seed_str = String::from_utf8(seed.unwrap_or(&[]).to_vec())?;
         let mut rng = prng_factory(&seed_str);
         for i in (1..=255).rev() {
             let j = (rng.next() * (i + 1) as f64) as usize;
             chars.swap(i, j);
         }
-        input.iter().map(|&b| chars[b as usize]).collect()
+        Ok(input.iter().map(|&b| chars[b as usize]).collect())
     }
 
-    fn deobfuscate_with_seeded_substitution_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> Vec<u8> {
+    fn deobfuscate_with_seeded_substitution_v2(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> Mulberry32) -> ObfuscationResult {
         let mut chars: Vec<u8> = (0..=255).collect();
-        let seed_str = String::from_utf8_lossy(seed.unwrap_or(&[])).to_string();
+        let seed_str = String::from_utf8(seed.unwrap_or(&[]).to_vec())?;
         let mut rng = prng_factory(&seed_str);
         for i in (1..=255).rev() {
             let j = (rng.next() * (i + 1) as f64) as usize;
@@ -327,13 +333,11 @@ impl DarkstarCrypt {
         for (i, &c) in chars.iter().enumerate() {
             unsub_map[c as usize] = i as u8;
         }
-        input.iter().map(|&b| unsub_map[b as usize]).collect()
+        Ok(input.iter().map(|&b| unsub_map[b as usize]).collect())
     }
 
-    // --- Encrypt/Decrypt ---
-
     /// Encrypts a mnemonic phrase using the Darkstar encryption scheme.
-    fn encrypt(&self, mnemonic: &str, password: &str) -> String {
+    fn encrypt(&self, mnemonic: &str, password: &str) -> Result<String, Box<dyn std::error::Error>> {
         let words: Vec<&str> = mnemonic.split(' ').collect();
         let mut obfuscated_words = Vec::new();
         let mut reverse_key = Vec::new();
@@ -364,7 +368,7 @@ impl DarkstarCrypt {
                 let seed = if is_seeded { Some(combined_seed.as_slice()) } else { None };
 
                 let func = self.obfuscation_functions_v2[func_index];
-                current_word_bytes = func(&current_word_bytes, seed, &prng_factory);
+                current_word_bytes = func(&current_word_bytes, seed, &prng_factory)?;
                 word_reverse_key.push(func_index);
             }
             obfuscated_words.push(current_word_bytes);
@@ -381,9 +385,9 @@ impl DarkstarCrypt {
         }
 
         let base64_content = general_purpose::STANDARD.encode(&final_blob);
-        let encrypted_content = self.encrypt_aes256(&base64_content, password, ITERATIONS_V2).expect("Encryption Failed");
+        let encrypted_content = self.encrypt_aes256(&base64_content, password, ITERATIONS_V2)?;
 
-        let reverse_key_json = serde_json::to_string(&reverse_key).unwrap();
+        let reverse_key_json = serde_json::to_string(&reverse_key)?;
         let encoded_reverse_key = general_purpose::STANDARD.encode(reverse_key_json);
 
         let result_obj = serde_json::json!({
@@ -391,16 +395,18 @@ impl DarkstarCrypt {
             "data": encrypted_content
         });
 
-        serde_json::to_string(&serde_json::json!({
+        let final_json = serde_json::to_string(&serde_json::json!({
             "encryptedData": result_obj.to_string(),
             "reverseKey": encoded_reverse_key
-        })).unwrap()
+        }))?;
+
+        Ok(final_json)
     }
 
     /// Decrypts the encrypted data back to the original mnemonic.
-    fn decrypt(&self, encrypted_data_raw: &str, reverse_key_b64: &str, password: &str) -> String {
-        let rk_bytes = general_purpose::STANDARD.decode(reverse_key_b64).expect("Invalid reverse key b64");
-        let reverse_key: Vec<Vec<usize>> = serde_json::from_slice(&rk_bytes).expect("Invalid reverse key json");
+    fn decrypt(&self, encrypted_data_raw: &str, reverse_key_b64: &str, password: &str) -> Result<String, Box<dyn std::error::Error>> {
+        let rk_bytes = general_purpose::STANDARD.decode(reverse_key_b64)?;
+        let reverse_key: Vec<Vec<usize>> = serde_json::from_slice(&rk_bytes)?;
 
         let mut encrypted_content = String::new();
         if let Ok(value) = serde_json::from_str::<serde_json::Value>(encrypted_data_raw) {
@@ -414,9 +420,9 @@ impl DarkstarCrypt {
             encrypted_content = encrypted_data_raw.to_string();
         }
 
-        let decrypted_base64_bytes = self.decrypt_aes256(&encrypted_content, password, ITERATIONS_V2).expect("AES Decryption failed");
-        let binary_string = String::from_utf8(decrypted_base64_bytes).expect("Invalid utf8 from AES");
-        let full_blob = general_purpose::STANDARD.decode(binary_string).expect("Failed to decode inner blob");
+        let decrypted_base64_bytes = self.decrypt_aes256(&encrypted_content, password, ITERATIONS_V2)?;
+        let binary_string = String::from_utf8(decrypted_base64_bytes)?;
+        let full_blob = general_purpose::STANDARD.decode(binary_string)?;
 
         let mut deobfuscated_words = Vec::new();
         let password_bytes = password.as_bytes();
@@ -445,14 +451,14 @@ impl DarkstarCrypt {
                 let func = self.deobfuscation_functions_v2[func_index];
                 let is_seeded = func_index >= 6;
                 let seed = if is_seeded { Some(combined_seed.as_slice()) } else { None };
-                current_word_bytes = func(&current_word_bytes, seed, &prng_factory);
+                current_word_bytes = func(&current_word_bytes, seed, &prng_factory)?;
             }
 
-            deobfuscated_words.push(String::from_utf8(current_word_bytes).unwrap());
+            deobfuscated_words.push(String::from_utf8(current_word_bytes)?);
             word_index += 1;
         }
 
-        deobfuscated_words.join(" ")
+        Ok(deobfuscated_words.join(" "))
     }
 
     fn encrypt_aes256(&self, data: &str, password: &str, iterations: u32) -> Result<String, Box<dyn std::error::Error>> {
@@ -460,16 +466,14 @@ impl DarkstarCrypt {
         rand::thread_rng().fill(&mut salt);
         
         let mut key = [0u8; KEY_SIZE];
-        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), &salt, iterations, &mut key).unwrap();
+        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), &salt, iterations, &mut key)?;
 
         let mut iv = [0u8; IV_SIZE_BYTES];
         rand::thread_rng().fill(&mut iv);
 
         type Aes256CbcEnc = cbc::Encryptor<Aes256>;
         let mut buf = data.as_bytes().to_vec();
-        // PKCS7 padding manually or via helper? cbc crate has magic for it if used with block-padding
-        // But let's stick to using the block-padding crate or manual. 
-        // Or simpler: extend buffer.
+        
         let residue = buf.len() % 16;
         let padding = 16 - residue;
         for _ in 0..padding {
@@ -481,11 +485,11 @@ impl DarkstarCrypt {
             std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut cbc::cipher::generic_array::GenericArray<u8, cbc::cipher::consts::U16>, buf.len() / 16)
         });
 
-        let ciphertext = buf;
-        
+        key.zeroize();
+
         let salt_hex = hex::encode(salt);
         let iv_hex = hex::encode(iv);
-        let content_base64 = general_purpose::STANDARD.encode(ciphertext);
+        let content_base64 = general_purpose::STANDARD.encode(buf);
 
         Ok(format!("{}{}{}", salt_hex, iv_hex, content_base64))
     }
@@ -501,7 +505,7 @@ impl DarkstarCrypt {
         let mut ciphertext = general_purpose::STANDARD.decode(encrypted_base64)?;
 
         let mut key = [0u8; KEY_SIZE];
-        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), &salt, iterations, &mut key).unwrap();
+        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), &salt, iterations, &mut key)?;
 
         type Aes256CbcDec = cbc::Decryptor<Aes256>;
         let iv_arr = cbc::cipher::generic_array::GenericArray::from_slice(&iv);
@@ -513,11 +517,11 @@ impl DarkstarCrypt {
             std::slice::from_raw_parts_mut(ciphertext.as_mut_ptr() as *mut cbc::cipher::generic_array::GenericArray<u8, cbc::cipher::consts::U16>, ciphertext.len() / 16)
         });
 
+        key.zeroize();
+
         // Unpad
         let padding_len = ciphertext.last().copied().unwrap_or(0) as usize;
         if padding_len == 0 || padding_len > 16 { return Err("Invalid padding".into()); }
-        
-        // Validation could be added here
         
         Ok(ciphertext[..ciphertext.len() - padding_len].to_vec())
     }
@@ -549,8 +553,13 @@ fn main() {
             }
             let mnemonic = &args[2];
             let password = &args[3];
-            let result = dc.encrypt(mnemonic, password);
-            println!("{}", result);
+            match dc.encrypt(mnemonic, password) {
+                Ok(result) => println!("{}", result),
+                Err(e) => {
+                    eprintln!("Encryption Error: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
         "decrypt" => {
             if args.len() != 5 {
@@ -560,8 +569,13 @@ fn main() {
             let data = &args[2];
             let reverse_key = &args[3];
             let password = &args[4];
-            let decrypted = dc.decrypt(data, reverse_key, password);
-            println!("{}", decrypted);
+            match dc.decrypt(data, reverse_key, password) {
+                Ok(decrypted) => println!("{}", decrypted),
+                Err(e) => {
+                    eprintln!("Decryption Error: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
         "test" => {
             let mnemonic = "cat dog fish bird";
@@ -570,7 +584,13 @@ fn main() {
             println!("--- Darkstar Rust Self-Test ---");
             println!("Plaintext: {}", mnemonic);
             
-            let result_json = dc.encrypt(mnemonic, password);
+            let result_json = match dc.encrypt(mnemonic, password) {
+                Ok(json) => json,
+                Err(e) => {
+                    eprintln!("Test Encryption Failed: {}", e);
+                    std::process::exit(1);
+                }
+            };
             let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
             
             let encrypted_data = result["encryptedData"].as_str().unwrap();
@@ -578,7 +598,13 @@ fn main() {
 
             println!("Encrypted: {}", encrypted_data);
             
-            let decrypted = dc.decrypt(encrypted_data, reverse_key, password);
+            let decrypted = match dc.decrypt(encrypted_data, reverse_key, password) {
+                Ok(d) => d,
+                Err(e) => {
+                    eprintln!("Test Decryption Failed: {}", e);
+                    std::process::exit(1);
+                }
+            };
             println!("Decrypted: {}", decrypted);
 
             if decrypted == mnemonic {

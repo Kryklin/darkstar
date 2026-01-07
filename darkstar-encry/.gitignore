@@ -4,6 +4,9 @@
 node/node_modules/
 
 # Rust
+# Binaries
+*.exe
+darkstar
 rust/target/
 
 # Python
@@ -14,6 +17,10 @@ python/.venv/
 python/env/
 python/venv/
 python/ENV/
+
+# General Exclusions
+.env
+*.log
 
 # OS Specific
 .DS_Store

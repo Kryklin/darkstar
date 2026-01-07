@@ -61,9 +61,7 @@ class DarkstarCrypt:
             # t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
             term2 = (t ^ (t >> 7)) & 0xFFFFFFFF
             term2 = (term2 * (61 | t)) & 0xFFFFFFFF
-            t = (t + term2) & 0xFFFFFFFF
-            t_after_add = (t + term2) & 0xFFFFFFFF 
-            t = t_after_add ^ t
+            t = ((t + term2) & 0xFFFFFFFF) ^ t
             
             # ((t ^ (t >>> 14)) >>> 0) / 4294967296
             res = (t ^ (t >> 14)) & 0xFFFFFFFF
@@ -351,6 +349,10 @@ class DarkstarCrypt:
         iv_hex = iv.hex()
         cipher_b64 = base64.b64encode(ciphertext).decode('ascii')
         
+        # Best effort zeroing
+        if isinstance(key, bytearray):
+            for i in range(len(key)): key[i] = 0
+            
         return salt_hex + iv_hex + cipher_b64
 
     def _decrypt_aes256(self, transit_message, password, iterations):
@@ -381,6 +383,10 @@ class DarkstarCrypt:
             unpadder = padding.PKCS7(128).unpadder()
             data = unpadder.update(padded_data) + unpadder.finalize()
             
+            # Best effort zeroing
+            if isinstance(key, bytearray):
+                for i in range(len(key)): key[i] = 0
+                
             return data
         except Exception as e:
             print(f"Decryption failed: {e}")
@@ -549,18 +555,38 @@ class DarkstarCrypt:
         return " ".join(deobfuscated_words)
 
 if __name__ == "__main__":
-    # Test
+    import sys
+    args = sys.argv[1:]
+    if not args:
+        print("Usage: python darkstar_crypt.py <encrypt|decrypt|test> ...")
+        sys.exit(0)
+
+    command = args[0]
     crypt = DarkstarCrypt()
-    mnemonic = "cat dog fish bird"
-    password = "MySecre!Password123"
-    
-    print(f"Encrypting: '{mnemonic}' with password '{password}'")
-    result = crypt.encrypt(mnemonic, password)
-    print("Encrypted Result:", result)
-    
-    print("Decrypting...")
-    decrypted = crypt.decrypt(result['encryptedData'], result['reverseKey'], password)
-    print(f"Decrypted: '{decrypted}'")
-    
-    assert decrypted == mnemonic
-    print("Test Passed!")
+
+    if command == 'encrypt':
+        if len(args) < 3:
+            print("Usage: encrypt <mnemonic> <password>")
+            sys.exit(1)
+        res = crypt.encrypt(args[1], args[2])
+        print(json.dumps(res))
+    elif command == 'decrypt':
+        if len(args) < 4:
+            print("Usage: decrypt <data> <rk> <password>")
+            sys.exit(1)
+        res = crypt.decrypt(args[1], args[2], args[3])
+        print(res)
+    elif command == 'test':
+        mnemonic = "cat dog fish bird"
+        password = "MySecre!Password123"
+        print(f"--- Darkstar Python Self-Test ---")
+        res = crypt.encrypt(mnemonic, password)
+        decrypted = crypt.decrypt(res['encryptedData'], res['reverseKey'], password)
+        print(f"Decrypted: '{decrypted}'")
+        if decrypted == mnemonic:
+            print("Result: PASSED")
+        else:
+            print("Result: FAILED")
+            sys.exit(1)
+    else:
+        print(f"Unknown command: {command}")

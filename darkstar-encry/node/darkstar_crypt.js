@@ -233,7 +233,7 @@ export class DarkstarCrypt {
     const saltHex = this.buf2hex(salt);
     const ivHex = this.buf2hex(iv);
     const ciphertextBase64 = this.buf2base64(encrypted);
-
+    
     return saltHex + ivHex + ciphertextBase64;
   }
 
@@ -556,4 +556,54 @@ export class DarkstarCrypt {
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
+}
+
+// --- CLI Support ---
+
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(__filename);
+
+if (isMain) {
+    const args = process.argv.slice(2);
+    const command = args[0];
+    const crypt = new DarkstarCrypt();
+
+    if (command === 'encrypt') {
+        const mnemonic = args[1];
+        const password = args[2];
+        crypt.encrypt(mnemonic, password).then(res => {
+            console.log(JSON.stringify(res));
+        }).catch(err => {
+            console.error(err);
+            process.exit(1);
+        });
+    } else if (command === 'decrypt') {
+        const data = args[1];
+        const rk = args[2];
+        const password = args[3];
+        crypt.decrypt(data, rk, password).then(res => {
+            console.log(res);
+        }).catch(err => {
+            console.error(err);
+            process.exit(1);
+        });
+    } else if (command === 'test') {
+        const mnemonic = "cat dog fish bird";
+        const password = "MySecre!Password123";
+        crypt.encrypt(mnemonic, password).then(res => {
+            return crypt.decrypt(res.encryptedData, res.reverseKey, password);
+        }).then(decrypted => {
+            if (decrypted === "cat dog fish bird") {
+                console.log("Test Passed!");
+            } else {
+                console.error("Test Failed!");
+                process.exit(1);
+            }
+        });
+    } else {
+        console.log("Usage: node darkstar_crypt.js <encrypt|decrypt|test> ...");
+    }
 }
