@@ -109,7 +109,12 @@ This command opens a new browser window and runs all the `.spec.ts` files. The r
 5.  **Reverse Key Generation**: A "reverse key" is generated, containing the precise (and uniquely shuffled) sequence of obfuscation functions used for each word.
 6.  **Key Encoding**: This reverse key is then Base64 encoded.
 
+
 To decrypt, you need both the **Base64 encoded reverse key** (to reconstruct the shuffled function order and contribute to the seed) and your **password** (to decrypt the data and contribute to the seed). This dual-component, deeply integrated system provides a robust defense against attempts to compromise the recovery phrase.
+
+> [!TIP]
+> **Deep Dive**: For a visual explanation of the encryption flow and obfuscation pipeline, see [DARKSTAR_ARCHITECTURE.md](DARKSTAR_ARCHITECTURE.md).
+
 
 ## Authors
 

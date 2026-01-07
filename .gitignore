@@ -56,3 +56,6 @@ darkstar-encry/go/darkstar-encry
 darkstar-encry/go/*.exe
 *.log
 
+
+# Plans
+plans/

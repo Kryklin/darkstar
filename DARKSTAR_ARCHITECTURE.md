@@ -1,0 +1,161 @@
+# Darkstar V2 Encryption Architecture
+
+This document illustrates the internal workings of the Darkstar V2 Encryption System. It combines **Dynamic Structural Obfuscation** with standard **AES-256-CBC** to create a defense-grade security layer for mnemonic phrases.
+
+## 1. High-Level Workflow
+
+The system transforms a readable mnemonic into a secure, opaque JSON blob.
+
+```mermaid
+graph LR
+    User([User Input]) -->|Mnemonic + Password| Split(Split Words)
+    Split -->|Word 1| Pipeline[Dynamic Obfuscation Pipeline]
+    Split -->|Word 2| Pipeline
+    Split -->|Word N| Pipeline
+    
+    Pipeline -->|Obfuscated Bytes| Assembler(Blob Assembly)
+    Assembler -->|Binary Blob| Base64[Base64 Encoding]
+    Base64 -->|Payload| AES[AES-256-CBC Encryption]
+    AES -->|Encrypted Data| JSON[Final JSON Output]
+    
+    style User fill:#f9f,stroke:#333
+    style AES fill:#bbf,stroke:#333
+    style Pipeline fill:#bfb,stroke:#333
+```
+
+---
+
+## 2. The Core: Dynamic Obfuscation Pipeline
+
+Unlike standard encryption which applies a static algorithm, Darkstar V2 applies a **unique, chaotic sequence of transformations** to every single word. The order of these transformations is determined by the data itself.
+
+### Per-Word Processing Logic
+
+```mermaid
+flowchart TD
+    Start(Start Word) --> SeedGen{Generate Seed}
+    SeedGen -->|Seed = Password + Word| PRNG[Initialize Mulberry32 PRNG]
+    
+    PRNG --> Shuffle[Shuffle Function List]
+    
+    subgraph "Function Selection (The Shuffle)"
+        List[Default List: 0,1,2...11]
+        Shuffle -->|Randomized by Seed| NewList[Shuffled: 7,2,11,4...]
+    end
+    
+    NewList --> Checksum(Calculate Checksum)
+    Checksum -->|New Seed Component| CombinedSeed[Final Seed: Password + Checksum]
+    
+    NewList --> Loop(Execute Functions in Order)
+    
+    subgraph "The Gauntlet (12 Layers)"
+        Loop --> F1[Function 1 (e.g. Shuffle)]
+        F1 --> F2[Function 2 (e.g. XOR)]
+        F2 --> F...[...]
+        F... --> F12[Function 12 (e.g. Binary)]
+    end
+    
+    F12 --> Result(Obfuscated Word Blob)
+    
+    style SeedGen fill:#ff9,stroke:#333
+    style Shuffle fill:#ff9,stroke:#333
+```
+
+### The "Reverse Key"
+Because the functions are shuffled randomly for every word, we must save the **order** in which they were applied to reverse the process tailored to that specific word.
+
+```mermaid
+classDiagram
+    class EncryptedPackage {
+        +Version: 2
+        +Data: AES_Encrypted_String
+        +ReverseKey: Base64_Encoded_Map
+    }
+    
+    class ReverseKeyMap {
+        +Word1: [7, 2, 11, 4, ...]
+        +Word2: [1, 5, 9, 0, ...]
+        +WordN: [3, 8, 12, 6, ...]
+    }
+    
+    EncryptedPackage --> ReverseKeyMap : Contains
+```
+
+---
+
+## 3. The 12 Obfuscation Layers
+
+Each word passes through all 12 of these layers. Some are structural (changing the format), some are entropic (increasing noise).
+
+| Type | Function | Visual Effect |
+| :--- | :--- | :--- |
+| **Structure** | `ObfuscateToBinary` | `A` -> `01000001` |
+| **Structure** | `ObfuscateToCharCodes` | `A` -> `65` |
+| **Cipher** | `AtbashCipher` | `A` -> `Z` |
+| **Cipher** | `CaesarCipher` | `A` -> `N` (ROT13) |
+| **Cipher** | `VigenereCipher` | Uses seed to shift values |
+| **Chaos** | `Shuffle` | Randomizes byte positions |
+| **Chaos** | `Interleave` | Injects random noise characters |
+| **Chaos** | `BlockReversal` | Flips chunks of data |
+| **Chaos** | `SwapAdjacent` | Swaps neighbors `AB` -> `BA` |
+| **Bitwise** | `XOR` | Flips bits using seed |
+| **Substitution** | `SeededSubstitution` | Maps bytes to new values |
+| **Simple** | `Reverse` | Reverses the entire array |
+
+---
+
+## 4. Final Data Assembly
+
+Once obfuscated, the data isn't just concatenated. It's packed into a structured binary format before encryption.
+
+```mermaid
+erDiagram
+    FINAL_BLOB {
+        byte Length_High
+        byte Length_Low
+        bytes Obfuscated_Word_Data
+    }
+    
+    FINAL_BLOB ||--o{ WORD_1 : contains
+    FINAL_BLOB ||--o{ WORD_2 : contains
+```
+
+**Example Binary Structure:**
+`[00 05 HELLO] [00 05 WORLD]`
+
+1. **Pack**: All words are packed into this binary stream.
+2. **Encode**: The stream is Base64 encoded.
+3. **Encrypt**: The Base64 string is encrypted via **AES-256-CBC**.
+    - **Key**: Derived from Password + Random Salt (PBKDF2).
+    - **IV**: Random 16 bytes.
+4. **Output**: `Salt (Hex) + IV (Hex) + Ciphertext (Base64)`
+
+---
+
+## 5. Decryption Flow
+
+Reversing the process requires the `ReverseKey`.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant App
+    participant AES
+    participant Deobfuscator
+    
+    User->>App: Input Output JSON + Password
+    App->>App: Extract Salt & IV
+    App->>AES: Decrypt(Data, Password, Salt, IV)
+    AES-->>App: Base64 String
+    App->>App: Decode Base64 -> Binary Blob
+    
+    loop For Each Word in Binary Blob
+        App->>App: Read Length Header
+        App->>App: Extract Word Chunk
+        App->>App: Get Function Order from ReverseKey
+        App->>Deobfuscator: Apply Functions in REVERSE order
+        Deobfuscator-->>App: Original Word
+    end
+    
+    App-->>User: "cat dog fish bird"
+```
