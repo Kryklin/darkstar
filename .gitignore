@@ -42,3 +42,17 @@ testem.log
 Thumbs.db
 
 /out
+
+# Standalone Encryption Ignores
+darkstar-encry/**/node_modules
+darkstar-encry/**/__pycache__
+
+
+# Added by cargo
+
+/target
+darkstar-encry/rust/target
+darkstar-encry/go/darkstar-encry
+darkstar-encry/go/*.exe
+*.log
+

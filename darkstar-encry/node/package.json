@@ -1,0 +1,8 @@
+{
+  "name": "darkstar-crypt-node",
+  "version": "1.0.0",
+  "description": "Standalone Node.js implementation of Darkstar Encryption",
+  "main": "darkstar_crypt.js",
+  "type": "module",
+  "dependencies": {}
+}
