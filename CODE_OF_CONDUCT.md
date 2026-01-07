@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="public/assets/img/logo-white.png">
-    <img src="public/assets/img/logo-black.png" alt="Darkstar Logo" width="400">
+    <img src="public/assets/img/logo-black.png" alt="Darkstar Logo" width="220">
   </picture>
 </p>
 

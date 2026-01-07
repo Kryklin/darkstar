@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/Rust-2021-000000?logo=rust" alt="Rust"/>
   <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python" alt="Python"/>
   <img src="https://img.shields.io/badge/Node.js-v19%2B-339933?logo=node.js" alt="Node.js"/>
+  <img src="https://img.shields.io/badge/docker-%230db7ed.svg?style=flat-square&logo=docker&logoColor=white" alt="Docker"/>
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License"/>
 </p>
 
