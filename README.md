@@ -1,18 +1,15 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="public/assets/img/logo-white.png">
-    <img src="public/assets/img/logo-black.png" alt="Darkstar Logo" width="400">
+    <img src="public/assets/img/logo-black.png" alt="Darkstar Logo" width="220">
   </picture>
 </p>
-
-<h1 align="center">Darkstar</h1>
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.7.0-blue" alt="Version"/>
   <img src="https://img.shields.io/badge/Angular-v20.3.0-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Angular%20Material-v20.2.5-blue?logo=angular" alt="Angular Material"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
-  <img src="https://img.shields.io/badge/Electron%20Forge-v7.9.0-blue?logo=electron" alt="Electron Forge"/>
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript"/>
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License"/>
 </p>
@@ -20,105 +17,50 @@
 > [!NOTE]
 > **Architecture Overview**: Curious how it works? View the [Visual Architecture Guide](DARKSTAR_ARCHITECTURE.md).
 
-`darkstar` is a powerful, client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase. It provides a robust, multi-layered solution for obfuscating and encrypting your seed phrase, adding a critical layer of security to protect your digital assets from both physical and digital threats. Available as both a web application and a cross-platform desktop application built with Electron.
+`darkstar` is a defense-grade client-side security tool designed to safeguard your Bitcoin wallet's recovery phrase. It combines a dynamic, 12-stage obfuscation pipeline with military-grade AES-256 encryption to protect your digital assets.
 
-## Features
+## Key Features
 
-- **Multi-Protocol Support**: Robust support for major recovery phrase standards:
-  - **BIP39**: The industry standard for mnemonics.
-  - **Electrum**: Native support for Electrum Legacy and V2 seed phrases.
-  - **SLIP39**: Support for Shamir's Secret-Sharing mnemonics.
-- **AES-256 Encryption**: Industry-standard encryption to protect your data.
-- **High-Performance Encryption (V2)**: Powered by the **Web Crypto API**, delivering **600,000 PBKDF2 iterations** for military-grade protection against brute-force attacks without compromising UI responsiveness.
-- **Legacy Support**: Automatic detection and backward compatibility for V1 encryption, with active security warnings for legacy formats.
-- **Advanced Obfuscation**: A sophisticated, deterministic 12-stage process to secure your recovery phrase.
-- **Anti-Forensic Memory Protection**: Sensitive data is processed using zeroed-out `Uint8Array` buffers to prevent memory residency and mitigate forensic verification.
-- **Modern Glassmorphism UI**: A premium, responsive interface featuring:
-  - **Sticky Navigation**: Blurred glass effect top bar for easy access.
-  - **Light & Dark Themes**: Fully optimized visual modes for any environment.
-  - **Draggable Header**: Custom frameless window support for desktop.
-- **Client-Side Security**: All operations are performed locally on your device; no data ever leaves your machine.
-- **Auto-Updates**: Integrated update checker for the latest security patches.
-- **Donation Support**: Built-in support for BTC project contributions.
+- **Multi-Protocol Support**: BIP39, Electrum (Legacy/V2), and SLIP39.
+- **Dynamic Obfuscation**: A unique, randomized 12-stage transformation chain for *every single word*, determined by the password + data itself.
+- **V2 Encryption Engine**: Powered by Web Crypto API with **600,000 PBKDF2 iterations** for maximum brute-force resistance.
+- **Anti-Forensic Memory**: Sensitive operations use zeroed-out `Uint8Array` buffers to prevent memory residency.
+- **Modern UI**: A premium, responsive Glassmorphism interface with light/dark theme support.
+- **Offline First**: Zero telemetry. All operations occur locally on your device.
 
-## Commands
+## Getting Started
 
 ### Installation
 
-1.  Clone the repository:
-    ```bash
-    git clone https://github.com/Kryklin/darkstar.git
-    ```
-2.  Install dependencies:
-    ```bash
-    cd darkstar
-    npm install
-    ```
-
-### Web Application
-
-To start the Angular development server:
-
 ```bash
-npm start
+git clone https://github.com/Kryklin/darkstar.git
+cd darkstar
+npm install
 ```
 
-The application will be available at `http://localhost:4200/`.
+### Development
 
-### Desktop Application (with Hot-Reloading)
-
-To run the Electron application in development mode with hot-reloading for both the Angular frontend and the Electron main process:
-
-```bash
-npm run electron:dev
-```
-
-This command will:
-
-1. Start the Angular development server.
-2. Wait for the server to be ready on `http://localhost:4200`.
-3. Launch the Electron application, which will load the content from the dev server.
-4. Automatically restart the Electron app when you make changes to the Electron source files (`electron/main.ts`, `electron/preload.ts`).
-5. Automatically reload the Electron window when you make changes to the Angular frontend code.
-
-### Building
-
-To create a distributable package for your current operating system:
-
-```bash
-npm run make
-```
-
-The packaged application will be located in the `out` folder.
-
-### Testing
-
-To run the unit tests using Karma and Jasmine:
-
-```bash
-npm test
-```
-
-This command opens a new browser window and runs all the `.spec.ts` files. The results are displayed in the terminal.
+| Command | Description |
+| :--- | :--- |
+| `npm start` | Start Angular dev server (Web) |
+| `npm run electron:dev` | Start Electron app with Hot Reloading |
+| `npm run make` | Build distributable package for your OS |
+| `npm test` | Run unit tests (Karma/Jasmine) |
 
 ## How it Works
 
-`darkstar` employs a sophisticated, multi-stage process to secure your recovery phrase:
+`darkstar` employs a "Defense in Depth" strategy:
 
-1.  **Function Selection & Shuffling**: For each word in the mnemonic, Darkstar takes a curated pool of 12 obfuscation functions (6 seeded, 6 unseeded). It deterministically shuffles the order of these 12 functions based on the password and the word itself, creating a unique, unpredictable chain of operations for every word.
-2.  **Password and Reverse Key Seeding**: The security model requires both the password and the reverse key for decryption. All 6 seeded functions (e.g., Vigenère Cipher, Character Shuffling) use a combined seed derived from both the password and a checksum of the shuffled function sequence. This ensures that the reverse key is not just a map, but an integral part of the decryption seed.
-3.  **Multi-Layered Obfuscation**: The word is passed through the entire shuffled chain of 12 functions, applying complex, layered transformations.
-4.  **AES-256 Encryption (V2)**: The final, heavily obfuscated words are encrypted using **AES-256-CBC** with **600,000 PBKDF2** iterations via the native Web Crypto API.
-5.  **Reverse Key Generation**: A "reverse key" is generated, containing the precise (and uniquely shuffled) sequence of obfuscation functions used for each word.
-6.  **Key Encoding**: This reverse key is then Base64 encoded.
+1.  **Selection**: A pool of 12 obfuscation functions is **shuffled deterministically** based on your password and the word being encrypted.
+2.  **Transformation**: The word passes through this unique chain, undergoing 12 layers of structural and entropic changes (Binary conversion, Ciphers, Bitwise XOR, etc.).
+3.  **Encryption**: The resulting high-entropy blob is encapsulated and encrypted using **AES-256-CBC**.
+4.  **Keying**: A "Reverse Key" map is generated to track the unique shuffle order, which is required alongside the password to reverse the process.
 
-
-To decrypt, you need both the **Base64 encoded reverse key** (to reconstruct the shuffled function order and contribute to the seed) and your **password** (to decrypt the data and contribute to the seed). This dual-component, deeply integrated system provides a robust defense against attempts to compromise the recovery phrase.
+This ensures that even if the AES layer were hypothetically bypassed, the underlying data remains a chaotic, structured mess without the specific function map.
 
 > [!TIP]
 > **Deep Dive**: For a visual explanation of the encryption flow and obfuscation pipeline, see [DARKSTAR_ARCHITECTURE.md](DARKSTAR_ARCHITECTURE.md).
 
-
 ## Authors
 
-- **Victor Kane** - [https://github.com/Kryklin](https://github.com/Kryklin)
+**Victor Kane** - [https://github.com/Kryklin](https://github.com/Kryklin)
