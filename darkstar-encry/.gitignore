@@ -1,0 +1,20 @@
+# Darkstar Encryption Suite - Global Gitignore
+
+# Node.js
+node/node_modules/
+
+# Rust
+rust/target/
+
+# Python
+python/__pycache__/
+*.py[cod]
+*$py.class
+python/.venv/
+python/env/
+python/venv/
+python/ENV/
+
+# OS Specific
+.DS_Store
+Thumbs.db
