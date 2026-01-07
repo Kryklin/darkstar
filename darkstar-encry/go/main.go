@@ -14,11 +14,11 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 
@@ -722,33 +722,95 @@ func unhex(c byte) byte {
 
 // --- Main ---
 
+func printUsage() {
+	fmt.Println("Usage:")
+	fmt.Println("  encrypt <mnemonic> <password>                   - Encrypt a mnemonic phrase")
+	fmt.Println("  decrypt <encrypted_json> <reverse_key> <password> - Decrypt a phrase")
+	fmt.Println("  test                                            - Run self-test")
+}
+
 func main() {
+	if len(os.Args) < 2 {
+		printUsage()
+		return
+	}
+
 	dc := NewDarkstarCrypt()
-	mnemonic := "cat dog fish bird"
-	password := "MySecre!Password123"
+	command := os.Args[1]
 
-	fmt.Printf("Encrypting: '%s' with password '%s'\n", mnemonic, password)
-	result, err := dc.Encrypt(mnemonic, password)
-	if err != nil {
-		panic(err)
-	}
+	switch command {
+	case "encrypt":
+		if len(os.Args) != 4 {
+			fmt.Println("Error: 'encrypt' requires <mnemonic> and <password>")
+			return
+		}
+		mnemonic := os.Args[2]
+		password := os.Args[3]
+		result, err := dc.Encrypt(mnemonic, password)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		jsonRes, _ := json.Marshal(result)
+		fmt.Println(string(jsonRes))
 
-	encryptedData := result["encryptedData"].(string)
-	reverseKey := result["reverseKey"].(string)
+	case "decrypt":
+		if len(os.Args) != 5 {
+			fmt.Println("Error: 'decrypt' requires <encrypted_json_or_data> <reverse_key> <password>")
+			return
+		}
+		data := os.Args[2]
+		reverseKey := os.Args[3]
+		password := os.Args[4]
+		decrypted, err := dc.Decrypt(data, reverseKey, password)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(decrypted)
 
-	fmt.Println("Encrypted Result:", encryptedData)
+	case "test":
+		mnemonic := "cat dog fish bird"
+		password := "MySecre!Password123"
 
-	fmt.Println("Decrypting...")
-	decrypted, err := dc.Decrypt(encryptedData, reverseKey, password)
-	if err != nil {
-		panic(err)
-	}
+		fmt.Println("--- Darkstar Go Self-Test ---")
+		fmt.Printf("Plaintext: %s\n", mnemonic)
 
-	fmt.Printf("Decrypted: '%s'\n", decrypted)
+		result, err := dc.Encrypt(mnemonic, password)
+		if err != nil {
+			panic(err)
+		}
 
-	if decrypted == mnemonic {
-		fmt.Println("Test Passed!")
-	} else {
-		fmt.Println("Test Failed!")
+		encryptedDataRaw := result["encryptedData"].(string)
+		reverseKey := result["reverseKey"].(string)
+
+		// Parse the JSON inside encryptedData if it exists
+		var parsedData map[string]interface{}
+		var encryptedData string
+		if err := json.Unmarshal([]byte(encryptedDataRaw), &parsedData); err == nil {
+			encryptedData = parsedData["data"].(string)
+		} else {
+			encryptedData = encryptedDataRaw
+		}
+
+		fmt.Println("Encrypted:", encryptedData)
+
+		decrypted, err := dc.Decrypt(encryptedDataRaw, reverseKey, password)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("Decrypted: '%s'\n", decrypted)
+
+		if decrypted == mnemonic {
+			fmt.Println("Result: PASSED")
+		} else {
+			fmt.Println("Result: FAILED")
+			os.Exit(1)
+		}
+
+	default:
+		fmt.Printf("Error: Unknown command '%s'\n", command)
+		printUsage()
 	}
 }

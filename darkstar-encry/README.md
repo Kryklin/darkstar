@@ -10,14 +10,16 @@ The Darkstar Encryption Suite provides a robust, multi-language implementation o
 - **Dynamic Obfuscation**: Uses a 12-layer obfuscation pipeline where the order of operations is uniquely determined by the password and data content itself.
 - **Deterministic PRNG**: Implements `Mulberry32` for consistent cross-language pseudo-random number generation.
 - **Standard Crypto**: Utilizes AES-256-CBC with PBKDF2 (HMAC-SHA256) for the core cryptographic layer.
-- ** integrity**: Obfuscation layers include checksums to validate decryption integrity.
+- **integrity**: Obfuscation layers include checksums to validate decryption integrity.
 - **Cross-Compatible**: All implementations (Node.js, Python, Go, Rust) are fully interoperable.
 
 ## Implementations
 
 This repository contains implementations in four languages:
 
+
 ### 1. Node.js
+
 Located in `./node`
 - **File**: `darkstar_crypt.js`
 - **Usage**: Import `DarkstarCrypt` class.
@@ -29,11 +31,14 @@ const crypt = new DarkstarCrypt();
 const encrypted = await crypt.encrypt("my secret phrase", "password123");
 ```
 
+
 ### 2. Python
+
 Located in `./python`
 - **File**: `darkstar_crypt.py`
 - **Usage**: Import `DarkstarCrypt` class.
 - **Dependencies**: `cryptography`
+
   ```bash
   pip install cryptography
   ```
@@ -44,27 +49,41 @@ crypt = DarkstarCrypt()
 encrypted = crypt.encrypt("my secret phrase", "password123")
 ```
 
-### 3. Go
-Located in `./go`
-- **File**: `main.go` (package `main`)
-- **Usage**: Build or import as package (requires slight modification to `package main` if importing).
-- **Dependencies**: `golang.org/x/crypto/pbkdf2`
 
-```bash
-cd go
-go run main.go
-```
+### 3. Go
+
+Located in `./go`
+- **File**: `main.go`
+- **Build**: `go build -o darkstar-go main.go`
+- **CLI Usage**:
+  ```bash
+  # Encrypt
+  go run main.go encrypt "my secret phrase" "password123"
+
+  # Decrypt
+  go run main.go decrypt '{"v":2,"data":"..."}' "<reverse_key>" "password123"
+
+  # Test
+  go run main.go test
+  ```
+
 
 ### 4. Rust
+
 Located in `./rust`
 - **File**: `src/main.rs`
-- **Usage**: `cargo run` or build release binary.
-- **Dependencies**: `aes`, `cbc`, `pbkdf2`, `hmac`, `sha2`, `serde`, `serde_json`, `rand`
+- **Build**: `cargo build --release`
+- **CLI Usage**:
+  ```bash
+  # Encrypt
+  cargo run -- encrypt "my secret phrase" "password123"
 
-```bash
-cd rust
-cargo run
-```
+  # Decrypt
+  cargo run -- decrypt '{"v":2,"data":"..."}' "<reverse_key>" "password123"
+
+  # Test
+  cargo run -- test
+  ```
 
 ## Integration Guide
 

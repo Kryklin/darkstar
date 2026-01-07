@@ -523,27 +523,74 @@ impl DarkstarCrypt {
     }
 }
 
+fn print_usage() {
+    println!("Usage:");
+    println!("  encrypt <mnemonic> <password>                   - Encrypt a mnemonic phrase");
+    println!("  decrypt <encrypted_json> <reverse_key> <password> - Decrypt a phrase");
+    println!("  test                                            - Run self-test");
+}
+
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 2 {
+        print_usage();
+        return;
+    }
+
     let dc = DarkstarCrypt::new();
-    let mnemonic = "cat dog fish bird";
-    let password = "MySecre!Password123";
+    let command = &args[1];
 
-    println!("Encrypting: '{}' with password '{}'", mnemonic, password);
-    let result_json = dc.encrypt(mnemonic, password);
-    
-    let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
-    let reverse_key = result["reverseKey"].as_str().unwrap();
+    match command.as_str() {
+        "encrypt" => {
+            if args.len() != 4 {
+                println!("Error: 'encrypt' requires <mnemonic> and <password>");
+                println!("Example: encrypt \"cat dog fish bird\" \"mypass123\"");
+                return;
+            }
+            let mnemonic = &args[2];
+            let password = &args[3];
+            let result = dc.encrypt(mnemonic, password);
+            println!("{}", result);
+        }
+        "decrypt" => {
+            if args.len() != 5 {
+                println!("Error: 'decrypt' requires <encrypted_json_or_data> <reverse_key> <password>");
+                return;
+            }
+            let data = &args[2];
+            let reverse_key = &args[3];
+            let password = &args[4];
+            let decrypted = dc.decrypt(data, reverse_key, password);
+            println!("{}", decrypted);
+        }
+        "test" => {
+            let mnemonic = "cat dog fish bird";
+            let password = "MySecre!Password123";
 
-    println!("Encrypted Result: {}", encrypted_data);
+            println!("--- Darkstar Rust Self-Test ---");
+            println!("Plaintext: {}", mnemonic);
+            
+            let result_json = dc.encrypt(mnemonic, password);
+            let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
+            
+            let encrypted_data = result["encryptedData"].as_str().unwrap();
+            let reverse_key = result["reverseKey"].as_str().unwrap();
 
-    println!("Decrypting...");
-    let decrypted = dc.decrypt(&encrypted_data, reverse_key, password);
-    
-    println!("Decrypted: '{}'", decrypted);
+            println!("Encrypted: {}", encrypted_data);
+            
+            let decrypted = dc.decrypt(encrypted_data, reverse_key, password);
+            println!("Decrypted: {}", decrypted);
 
-    if decrypted == mnemonic {
-        println!("Test Passed!");
-    } else {
-        println!("Test Failed!");
+            if decrypted == mnemonic {
+                println!("Result: PASSED");
+            } else {
+                println!("Result: FAILED");
+                std::process::exit(1);
+            }
+        }
+        _ => {
+            println!("Error: Unknown command '{}'", command);
+            print_usage();
+        }
     }
 }
