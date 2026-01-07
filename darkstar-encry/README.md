@@ -29,8 +29,29 @@ Darkstar V2 employs a dual-layered security model that fundamentally differs fro
 
 Integrating Darkstar into your project is straightforward. Choose your platform below for specific implementation steps.
 
+### 🟢 Node.js Implementation
+
+**Target**: Web backends and desktop applications.
+- **npm Package**: `@kryklin/darkstar-crypt-node`
+- **Docker**: `docker build -t darkstar-node ./node`
+
+```bash
+# Install via npm
+npm install @kryklin/darkstar-crypt-node
+```
+
+**Integration Snippet**:
+
+```javascript
+import { DarkstarCrypt } from '@kryklin/darkstar-crypt-node';
+const crypt = new DarkstarCrypt();
+const { encryptedData, reverseKey } = await crypt.encrypt("phrase", "pass");
+```
+
 ### 🔷 Go Implementation
+
 **Target**: Performance critical backends and microservices.
+- **Docker**: `docker build -t darkstar-go ./go`
 - **Source**: `go/main.go`
 - **Dependency**: `golang.org/x/crypto/pbkdf2`
 
@@ -40,6 +61,7 @@ go get golang.org/x/crypto/pbkdf2
 ```
 
 **Integration Snippet**:
+
 ```go
 import "darkstar/go/pkg" // Reference implementation in go/main.go
 dc := NewDarkstarCrypt()
@@ -48,7 +70,9 @@ fmt.Println(result["encryptedData"])
 ```
 
 ### 🦀 Rust Implementation
+
 **Target**: System-level integration and high-security crates.
+- **Docker**: `docker build -t darkstar-rust ./rust`
 - **Source**: `rust/src/main.rs`
 - **Dependencies**: `aes`, `cbc`, `pbkdf2`, `serde_json`
 
@@ -58,13 +82,16 @@ cd rust && cargo build --release
 ```
 
 **Integration Snippet**:
+
 ```rust
 let dc = DarkstarCrypt::new();
 let json_output = dc.encrypt("phrase", "password");
 ```
 
 ### 🐍 Python Implementation
+
 **Target**: Data science, scripting, and rapid prototyping.
+- **Docker**: `docker build -t darkstar-python ./python`
 - **Source**: `python/darkstar_crypt.py`
 - **Dependency**: `cryptography`
 
@@ -73,36 +100,47 @@ pip install cryptography
 ```
 
 **Integration Snippet**:
+
 ```python
 from darkstar_crypt import DarkstarCrypt
 dc = DarkstarCrypt()
 encrypted = dc.encrypt("secret", "password")
 ```
 
-### 🟢 Node.js Implementation
-**Target**: Web backends and desktop applications.
-- **Source**: `node/darkstar_crypt.js`
-- **Dependency**: Native `crypto` module (Node 19+)
-
-```javascript
-import { DarkstarCrypt } from './darkstar_crypt.js';
-const crypt = new DarkstarCrypt();
-const { encryptedData, reverseKey } = await crypt.encrypt("phrase", "pass");
-```
-
 ---
 
 ## ⌨️ CLI Usage
 
-Both Go and Rust implementations are pre-configured for terminal usage:
+The Go, Rust, and Node.js implementations are pre-configured for terminal usage.
+
+### Standard CLI (Go/Rust)
 
 ```bash
-# General Syntax
 ./darkstar-cli <command> <payload> <password>
+```
 
-# Examples
-./darkstar-cli encrypt "my secret" "mypass"
-./darkstar-cli test
+### Node.js CLI
+
+If installed via npm:
+
+```bash
+npx darkstar-crypt <command> <payload> <password>
+```
+
+### Docker CLI
+
+```bash
+docker run --rm darkstar-<lang> <command> <payload> <password>
+```
+
+**Examples**:
+
+```bash
+# Encrypt using Docker
+docker run --rm darkstar-node encrypt "my secret" "mypass"
+
+# Run internal tests
+docker run --rm darkstar-rust test
 ```
 
 ---
@@ -124,4 +162,6 @@ Standard output is a JSON-encapsulated object:
 ---
 
 ## ⚖️ License
+
 The Darkstar Encryption Suite is released under the **MIT License**.
+
