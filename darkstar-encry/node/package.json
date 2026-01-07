@@ -1,6 +1,6 @@
 {
   "name": "@kryklin/darkstar-crypt-node",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Standalone Node.js implementation of Darkstar Encryption",
   "main": "darkstar_crypt.js",
   "type": "module",
