@@ -169,7 +169,9 @@ Standard output is a JSON-encapsulated object:
 ```
 
 > [!IMPORTANT]
-> A **Reverse Key** (base64 encoded mapping) is produced during encryption. This key is **stateless** and must be stored securely alongside the encrypted data to enable decryption.
+> A **Reverse Key** is produced during encryption. In V2.1+, this key is **compressed** (binary packed & Base64 encoded) to reduce size by ~75%.
+> The implementations are **backward compatible** and will automatically detect and accept legacy JSON-formatted reverse keys.
+> This key is **stateless** and must be stored securely alongside the encrypted data to enable decryption.
 
 ---
 

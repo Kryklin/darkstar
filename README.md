@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.7.0-blue" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-1.7.1-blue" alt="Version"/>
   <img src="https://img.shields.io/badge/Angular-v20.3.0-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript"/>
@@ -30,6 +30,8 @@
 
 - **Multi-Protocol Support**: BIP39, Electrum (Legacy/V2), and SLIP39.
 - **Dynamic Obfuscation**: A unique, randomized 12-stage transformation chain for *every single word*, determined by the password + data itself.
+- **Reverse Key Compression (New)**: Optimizes the "Reverse Key" size by ~75% using binary packing, ensuring faster shared handling.
+- **Structural Steganography (New)**: "Stealth Export" allows you to disguise your encrypted vault as common system files (Logs, CSVs, JSON configs) for plausible deniability.
 - **V2 Encryption Engine**: Powered by Web Crypto API with **600,000 PBKDF2 iterations** for maximum brute-force resistance.
 - **Anti-Forensic Memory**: Sensitive operations use zeroed-out `Uint8Array` buffers to prevent memory residency.
 - **Modern UI**: A premium, responsive Glassmorphism interface with light/dark theme support.
