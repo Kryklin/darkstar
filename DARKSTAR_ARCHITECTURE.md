@@ -41,6 +41,9 @@ graph LR
     style User fill:#f9f,stroke:#333
     style AES fill:#bbf,stroke:#333
     style Pipeline fill:#bfb,stroke:#333
+    
+    %% Spacing Fixes
+    linkStyle default interpolate basis
 ```
 
 ---
@@ -59,8 +62,9 @@ flowchart TD
     PRNG --> Shuffle[Shuffle Function List]
     
     subgraph "Function Selection (The Shuffle)"
+        direction TB
         List[Default List: 0,1,2...11]
-        Shuffle -->|Randomized by Seed| NewList[Shuffled: 7,2,11,4...]
+        Shuffle -->|Randomized| NewList[Shuffled: 7,2,11,4...]
     end
     
     NewList --> Checksum(Calculate Checksum)
@@ -69,6 +73,7 @@ flowchart TD
     NewList --> Loop(Execute Functions in Order)
     
     subgraph "The Gauntlet (12 Layers)"
+        direction TB
         Loop --> F1["Function 1 (e.g. Shuffle)"]
         F1 --> F2["Function 2 (e.g. XOR)"]
         F2 --> F...["..."]
@@ -79,17 +84,23 @@ flowchart TD
     
     style SeedGen fill:#ff9,stroke:#333
     style Shuffle fill:#ff9,stroke:#333
+
+    %% Spacing adjustments
+    classDef spaced padding:20px;
 ```
 
 ### The "Reverse Key"
 Because the functions are shuffled randomly for every word, we must save the **order** in which they were applied to reverse the process tailored to that specific word.
+
+**New in V2.1: Reverse Key Compression**
+To improve efficiency, the reverse key (a sequence of integers) is now compressed using binary packing (4 bits per value) instead of plain JSON. This reduces the key size by ~75%.
 
 ```mermaid
 classDiagram
     class EncryptedPackage {
         +Version: 2
         +Data: AES_Encrypted_String
-        +ReverseKey: Base64_Encoded_Map
+        +ReverseKey: Packed_Binary_Base64
     }
     
     class ReverseKeyMap {
@@ -98,7 +109,7 @@ classDiagram
         +WordN: [3, 8, 12, 6, ...]
     }
     
-    EncryptedPackage --> ReverseKeyMap : Contains
+    EncryptedPackage --> ReverseKeyMap : Encodes (Compressed)
 ```
 
 ---
@@ -149,6 +160,39 @@ erDiagram
     - **Key**: Derived from Password + Random Salt (PBKDF2).
     - **IV**: Random 16 bytes.
 4. **Output**: `Salt (Hex) + IV (Hex) + Ciphertext (Base64)`
+
+---
+
+## 5. Structural Steganography (Stealth Export)
+
+New in V2.1, this optional layer allows the encrypted blob to be hidden inside common file formats to provide plausible deniability.
+
+```mermaid
+graph TD
+    EncryptedBlob[Standard Encrypted Blob] --> Transmuter{Stego Transmuter}
+    
+    Transmuter -->|Mode: Log| LogFile[System.log]
+    Transmuter -->|Mode: CSV| CsvFile[SensorData.csv]
+    Transmuter -->|Mode: JSON| JsonFile[Config.json]
+    
+    subgraph "Mimicry Generation"
+        LogFile -- Contains --> FakeEntries[Fake Errors/Warnings]
+        CsvFile -- Contains --> FakeData[Fake Sensor Readings]
+        JsonFile -- Contains --> FakeConfig[Fake App Settings]
+    end
+    
+    FakeEntries -. Hides .-> EncryptedBlob
+    FakeData -. Hides .-> EncryptedBlob
+    FakeConfig -. Hides .-> EncryptedBlob
+    
+    style Transmuter fill:#f96,stroke:#333
+    classDef spaced padding:20px;
+```
+
+**Mechanisms:**
+- **Logs**: Payload is split and appended to realistic-looking log lines as "error codes" or "trace IDs".
+- **CSV**: Payload is injected into a specific "hash" or "comment" column amidst generated sensor data.
+- **JSON**: Payload is distributed across multiple deep fields (e.g., `telemetry.id`, `cache.hash`) in a generated configuration file.
 
 ---
 
