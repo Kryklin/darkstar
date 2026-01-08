@@ -8,9 +8,9 @@ PROJECT_ROOT = r"c:\darkstar\darkstar-encry"
 LANGS = ["go", "rust", "python", "node"]
 
 CLI_COMMANDS = {
-    "go": [os.path.join(PROJECT_ROOT, "go", "darkstar.exe")],
-    "rust": [os.path.join(PROJECT_ROOT, "rust", "target", "debug", "darkstar-encry.exe")],
-    "python": ["python", os.path.join(PROJECT_ROOT, "python", "darkstar_crypt.py")],
+    "go": ["go", "run", "-C", os.path.join(PROJECT_ROOT, "go"), "."],
+    "rust": ["cargo", "run", "--manifest-path", os.path.join(PROJECT_ROOT, "rust", "Cargo.toml"), "--quiet", "--release", "--"],
+    "python": ["python", "-u", os.path.join(PROJECT_ROOT, "python", "darkstar_crypt.py")],
     "node": ["node", os.path.join(PROJECT_ROOT, "node", "darkstar_crypt.js")]
 }
 

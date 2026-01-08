@@ -4,19 +4,40 @@
       <mat-card-header>
         <mat-card-title>Decrypt {{ protocolTitle }}</mat-card-title>
         <mat-card-subtitle>Decrypt your {{ protocolTitle }} seed phrase</mat-card-subtitle>
-        <a mat-button color="accent" [href]="protocolLink" target="_blank" class="learn-more-btn">
-          Learn More <mat-icon>open_in_new</mat-icon>
-        </a>
+        <a mat-button color="accent" [href]="protocolLink" target="_blank" class="learn-more-btn"> Learn More <mat-icon>open_in_new</mat-icon> </a>
       </mat-card-header>
       <mat-card-content>
         <mat-stepper linear #stepper>
           <mat-step [stepControl]="firstFormGroup">
             <form [formGroup]="firstFormGroup">
               <ng-template matStepLabel>Enter Encrypted Data</ng-template>
+
+              <div class="input-mode-container">
+                <mat-button-toggle-group [(ngModel)]="inputType" [ngModelOptions]="{ standalone: true }" aria-label="Input Mode">
+                  <mat-button-toggle value="text">Paste Text</mat-button-toggle>
+                  <mat-button-toggle value="file">Upload File</mat-button-toggle>
+                </mat-button-toggle-group>
+              </div>
+
+              @if (inputType === 'file') {
+                <div class="file-upload-area">
+                  <div class="upload-controls">
+                    <button mat-stroked-button color="primary" (click)="fileInput.click()"><mat-icon>upload_file</mat-icon> Choose File</button>
+                    <span class="file-name">{{ fileName || 'No file selected' }}</span>
+                  </div>
+                  <input #fileInput type="file" (change)="onFileSelected($event)" style="display: none" />
+                  <p class="hint-text">Supported Formats: .log (System Log), .csv (Dataset), .json (Config), .txt</p>
+
+                  @if (isFileProcessing) {
+                    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                  }
+                </div>
+              }
+
               <mat-form-field appearance="fill" class="full-width">
-                <mat-label>Encrypted Data</mat-label>
-                <textarea matInput formControlName="encryptedData" rows="3" placeholder="Paste the encrypted data here"></textarea>
-                <button mat-icon-button matSuffix (click)="copyFromClipboard('encryptedData')" matTooltip="Paste from clipboard">
+                <mat-label>{{ inputType === 'file' ? 'Extracted Payload' : 'Encrypted Data' }}</mat-label>
+                <textarea matInput formControlName="encryptedData" rows="3" [placeholder]="inputType === 'file' ? 'Payload will appear here after upload' : 'Paste the encrypted data here'"></textarea>
+                <button mat-icon-button matSuffix (click)="copyFromClipboard('encryptedData')" matTooltip="Paste from clipboard" [disabled]="inputType === 'file'">
                   <mat-icon>content_paste</mat-icon>
                 </button>
                 @if (firstFormGroup.controls['encryptedData'].hasError('required')) {

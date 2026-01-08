@@ -116,3 +116,57 @@ mat-card-title {
   margin-top: 12px;
   border: 1px dashed var(--mat-sys-outline);
 }
+
+// Input Mode Toggle & File Upload
+.input-mode-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.file-upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  border: 2px dashed var(--mat-sys-outline);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  background-color: rgba(255, 255, 255, 0.02);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--mat-sys-primary);
+  }
+
+  .file-name {
+    margin-top: 12px;
+    font-weight: 500;
+    color: var(--mat-sys-primary);
+  }
+
+  .hint-text {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: var(--mat-sys-on-surface-variant);
+    opacity: 0.7;
+  }
+
+  mat-progress-bar {
+    margin-top: 16px;
+    width: 200px;
+  }
+}
+
+.upload-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+// Hide the textarea when in file mode, but keep it in DOM for form control
+mat-form-field.hidden-input {
+  display: none;
+}

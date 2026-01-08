@@ -169,9 +169,9 @@ export class CryptService {
     return new Uint8Array(hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
   }
 
-  private buf2base64(buffer: ArrayBuffer): string {
+  private buf2base64(buffer: ArrayBuffer | Uint8Array): string {
     let binary = '';
-    const bytes = new Uint8Array(buffer);
+    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     const len = bytes.byteLength;
     for (let i = 0; i < len; i++) {
       binary += String.fromCharCode(bytes[i]);
@@ -300,8 +300,10 @@ export class CryptService {
       data: encryptedContent,
     };
 
-    const reverseKeyString = JSON.stringify(reverseKey);
-    const encodedReverseKey = btoa(reverseKeyString);
+    // Compress the reverse key using binary packing (4 bits per value)
+    // Previously: JSON.stringify + btoa (~400 chars)
+    // New: Packed binary + btoa (~100 chars)
+    const encodedReverseKey = this.packReverseKey(reverseKey);
 
     return { encryptedData: JSON.stringify(resultObj), reverseKey: encodedReverseKey };
   }
@@ -332,11 +334,30 @@ export class CryptService {
       // Not JSON, assume V1 legacy string
     }
 
-    // 1. Decode the reverse key from Base64
-    const reverseKeyString = atob(reverseKey);
-    const reverseKeyJson: number[][] = JSON.parse(reverseKeyString);
+    // 1. Decode the reverse key
+    let reverseKeyJson: number[][];
+    try {
+      // Try to detect Legacy/V2 JSON key format
+      // Decode base64
+      const reversedKeyString = atob(reverseKey);
+      // Check for JSON start
+      if (reversedKeyString.trim().startsWith('[')) {
+         reverseKeyJson = JSON.parse(reversedKeyString);
+      } else {
+         // Assume Packed Binary
+         reverseKeyJson = this.unpackReverseKey(reverseKey);
+      }
+    } catch {
+      // Fallback: Try unpack if JSON parse failed but it wasn't packed?
+      // Or if atob failed (invalid input).
+      try {
+        reverseKeyJson = this.unpackReverseKey(reverseKey);
+      } catch (e) {
+         console.error("Reverse Key Parsing Failed", e);
+         throw new Error("Invalid Reverse Key format.");
+      }
+    }
 
-    // 2. Decrypt the main data block
     // 2. Decrypt the main data block
     let decryptedObfuscatedString = '';
 
@@ -445,6 +466,68 @@ export class CryptService {
 
       return { decrypted: deobfuscatedWords.join(' '), isLegacy };
     }
+  }
+
+  // --- Compression Helpers (Reverse Key) ---
+
+  /**
+   * Packs the reverse key (array of arrays) into a compressed base64 binary format.
+   * Compresses 12 ints (0-15) into 6 bytes per word.
+   */
+  private packReverseKey(reverseKey: number[][]): string {
+    const wordCount = reverseKey.length;
+    // 12 numbers per word, 4 bits each -> 6 bytes
+    const packedSize = wordCount * 6; 
+    const buffer = new Uint8Array(packedSize);
+
+    let offset = 0;
+    for (const wordKey of reverseKey) {
+        // Fallback for unexpected size? V2 assumes 12.
+        // If V1 was used, size might differ? 
+        // But encrypt() is strictly V2 logic now.
+        if (wordKey.length !== 12) {
+             throw new Error("Cannot compress non-standard reverse key length.");
+        }
+        
+        for (let i = 0; i < 12; i += 2) {
+            const high = wordKey[i]; // 0-11
+            const low = wordKey[i+1]; // 0-11
+            // Pack into one byte
+            buffer[offset++] = (high << 4) | (low & 0x0F);
+        }
+    }
+    return this.buf2base64(buffer);
+  }
+
+  /**
+   * Unpacks a compressed reverse key from base64 string back to number[][].
+   */
+  private unpackReverseKey(base64: string): number[][] {
+    // Decode base64 to bytes
+    const binary = atob(base64);
+    const buffer = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      buffer[i] = binary.charCodeAt(i);
+    }
+    
+    // Unpack
+    const reverseKey: number[][] = [];
+    // 6 bytes per word
+    const wordCount = buffer.length / 6;
+
+    let offset = 0;
+    for (let w = 0; w < wordCount; w++) {
+      const wordKey: number[] = [];
+      for (let i = 0; i < 6; i++) {
+        const byte = buffer[offset++];
+        const high = (byte >> 4) & 0x0F;
+        const low = byte & 0x0F;
+        wordKey.push(high, low);
+      }
+      reverseKey.push(wordKey);
+    }
+    
+    return reverseKey;
   }
 
   private _generateChecksum(numbers: number[]): number {

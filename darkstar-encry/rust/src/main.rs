@@ -336,6 +336,44 @@ impl DarkstarCrypt {
         Ok(input.iter().map(|&b| unsub_map[b as usize]).collect())
     }
 
+    // --- Compression Helpers ---
+
+    fn pack_reverse_key(reverse_key: &Vec<Vec<usize>>) -> Result<String, Box<dyn std::error::Error>> {
+        let mut buffer = Vec::new();
+        for word_key in reverse_key {
+            if word_key.len() != 12 {
+                return Err("Invalid word key length for packing".into());
+            }
+            for chunk in word_key.chunks(2) {
+                let high = (chunk[0] & 0x0F) as u8;
+                let low = (chunk[1] & 0x0F) as u8;
+                buffer.push((high << 4) | low);
+            }
+        }
+        Ok(general_purpose::STANDARD.encode(&buffer))
+    }
+
+    fn unpack_reverse_key(b64: &str) -> Result<Vec<Vec<usize>>, Box<dyn std::error::Error>> {
+        let bytes = general_purpose::STANDARD.decode(b64)?;
+        let mut reverse_key = Vec::new();
+        // 6 bytes per word
+        if bytes.len() % 6 != 0 {
+             return Err("Invalid packed key length".into());
+        }
+        
+        for chunk in bytes.chunks(6) {
+            let mut word_key = Vec::new();
+            for &b in chunk {
+                let high = ((b >> 4) & 0x0F) as usize;
+                let low = (b & 0x0F) as usize;
+                word_key.push(high);
+                word_key.push(low);
+            }
+            reverse_key.push(word_key);
+        }
+        Ok(reverse_key)
+    }
+
     /// Encrypts a mnemonic phrase using the Darkstar encryption scheme.
     fn encrypt(&self, mnemonic: &str, password: &str) -> Result<String, Box<dyn std::error::Error>> {
         let words: Vec<&str> = mnemonic.split(' ').collect();
@@ -387,8 +425,8 @@ impl DarkstarCrypt {
         let base64_content = general_purpose::STANDARD.encode(&final_blob);
         let encrypted_content = self.encrypt_aes256(&base64_content, password, ITERATIONS_V2)?;
 
-        let reverse_key_json = serde_json::to_string(&reverse_key)?;
-        let encoded_reverse_key = general_purpose::STANDARD.encode(reverse_key_json);
+        // Packed Binary Reverse Key
+        let encoded_reverse_key = Self::pack_reverse_key(&reverse_key)?;
 
         let result_obj = serde_json::json!({
             "v": 2,
@@ -405,8 +443,16 @@ impl DarkstarCrypt {
 
     /// Decrypts the encrypted data back to the original mnemonic.
     fn decrypt(&self, encrypted_data_raw: &str, reverse_key_b64: &str, password: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let rk_bytes = general_purpose::STANDARD.decode(reverse_key_b64)?;
-        let reverse_key: Vec<Vec<usize>> = serde_json::from_slice(&rk_bytes)?;
+        // 1. Decode Reverse Key (Auto-detect Legacy JSON vs Packed Binary)
+        let reverse_key: Vec<Vec<usize>> = if let Ok(bytes) = general_purpose::STANDARD.decode(reverse_key_b64) {
+            if let Ok(rk) = serde_json::from_slice::<Vec<Vec<usize>>>(&bytes) {
+                rk
+            } else {
+                Self::unpack_reverse_key(reverse_key_b64)?
+            }
+        } else {
+             return Err("Invalid base64 in reverse key".into());
+        };
 
         let mut encrypted_content = String::new();
         if let Ok(value) = serde_json::from_str::<serde_json::Value>(encrypted_data_raw) {

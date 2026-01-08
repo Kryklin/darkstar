@@ -121,8 +121,8 @@ export class DarkstarCrypt {
       data: encryptedContent,
     };
 
-    const reverseKeyString = JSON.stringify(reverseKey);
-    const encodedReverseKey = btoa(reverseKeyString);
+    // Compress the reverse key using binary packing (4 bits per value)
+    const encodedReverseKey = this.packReverseKey(reverseKey);
 
     return { encryptedData: JSON.stringify(resultObj), reverseKey: encodedReverseKey };
   }
@@ -159,8 +159,19 @@ export class DarkstarCrypt {
     for(let i=0; i<binaryString.length; i++) fullBlob[i] = binaryString.charCodeAt(i);
 
     // Decode Reverse Key
-    const reverseKeyString = atob(reverseKeyB64);
-    const reverseKeyJson = JSON.parse(reverseKeyString);
+    let reverseKeyJson;
+    try {
+      // Try to detect Legacy/V2 JSON key format
+      const reversedKeyString = atob(reverseKeyB64);
+      if (reversedKeyString.trim().startsWith('[')) {
+         reverseKeyJson = JSON.parse(reversedKeyString);
+      } else {
+         reverseKeyJson = this.unpackReverseKey(reverseKeyB64);
+      }
+    } catch (e) {
+      // Fallback
+      reverseKeyJson = this.unpackReverseKey(reverseKeyB64);
+    }
 
     const deobfuscatedWords = [];
     const passwordBytes = this.stringToBytes(password);
@@ -295,6 +306,57 @@ export class DarkstarCrypt {
       binary += String.fromCharCode(bytes[i]);
     }
     return btoa(binary);
+  }
+
+  // --- Compression Helpers ---
+
+  packReverseKey(reverseKey) {
+    const wordCount = reverseKey.length;
+    // 12 numbers per word, 4 bits each -> 6 bytes
+    const packedSize = wordCount * 6;
+    const buffer = new Uint8Array(packedSize);
+
+    let offset = 0;
+    for (const wordKey of reverseKey) {
+        if (wordKey.length !== 12) throw new Error("Cannot compress non-standard reverse key length.");
+        
+        for (let i = 0; i < 12; i += 2) {
+            const high = wordKey[i]; // 0-11
+            const low = wordKey[i+1]; // 0-11
+            // Pack into one byte
+            buffer[offset++] = (high << 4) | (low & 0x0F);
+        }
+    }
+    return this.buf2base64(buffer);
+  }
+
+  unpackReverseKey(base64) {
+    // Decode base64 to bytes
+    const binary = atob(base64);
+    const buffer = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      buffer[i] = binary.charCodeAt(i);
+    }
+    
+    // Unpack
+    const reverseKey = [];
+    // 6 bytes per word
+    const wordCount = buffer.length / 6;
+
+    let offset = 0;
+    for (let w = 0; w < wordCount; w++) {
+      const wordKey = [];
+      for (let i = 0; i < 6; i++) {
+        const byte = buffer[offset++];
+        const high = (byte >> 4) & 0x0F;
+        const low = byte & 0x0F;
+        wordKey.push(high);
+        wordKey.push(low);
+      }
+      reverseKey.push(wordKey);
+    }
+    
+    return reverseKey;
   }
 
   stringToBytes(str) {

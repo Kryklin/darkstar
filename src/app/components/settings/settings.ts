@@ -31,9 +31,7 @@ export class Settings {
 
   async checkForUpdates() {
     if (this.updateService.versionLocked()) {
-      this.openDialog('Update Check Skipped', 'Version locking is enabled. Please disable it to check for updates.', [
-        { label: 'OK', value: true },
-      ]);
+      this.openDialog('Update Check Skipped', 'Version locking is enabled. Please disable it to check for updates.', [{ label: 'OK', value: true }]);
       return;
     }
     this.openDialog('Checking for Updates', 'Please wait...', []);

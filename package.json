@@ -1,9 +1,10 @@
 {
   "name": "darkstar",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "productName": "Darkstar",
   "description": "Darkstar Application",
   "author": "Victor Kane",
+  "private": true,
   "main": "dist/electron/main.js",
   "repository": {
     "type": "git",
@@ -27,7 +28,7 @@
     "publish": "npm run build:all && electron-forge publish"
   },
   "prettier": {
-    "printWidth": 140,
+    "printWidth": 200,
     "singleQuote": true,
     "overrides": [
       {
@@ -38,7 +39,7 @@
       }
     ]
   },
-  "private": true,
+
   "dependencies": {
     "@angular/animations": "^20.3.15",
     "@angular/cdk": "^20.2.14",

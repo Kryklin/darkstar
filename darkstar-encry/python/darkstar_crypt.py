@@ -465,8 +465,8 @@ class DarkstarCrypt:
             "data": encrypted_content
         }
         
-        reverse_key_json = json.dumps(reverse_key, separators=(',', ':'))
-        encoded_reverse_key = base64.b64encode(self._to_bytes(reverse_key_json)).decode('ascii')
+        # Compress Reverse Key
+        encoded_reverse_key = self._pack_reverse_key(reverse_key)
         
         return {
             "encryptedData": json.dumps(result_obj, separators=(',', ':')),
@@ -476,10 +476,15 @@ class DarkstarCrypt:
     def decrypt(self, encrypted_data_raw, reverse_key_b64, password):
         # 1. Decode Reverse Key
         try:
-            reverse_key_json_bytes = base64.b64decode(reverse_key_b64)
-            reverse_key = json.loads(reverse_key_json_bytes)
-        except:
-            raise ValueError("Invalid reverse key")
+            # Try to decode as packed binary first (or auto-detect)
+            decoded_b64 = base64.b64decode(reverse_key_b64)
+            if decoded_b64.strip().startswith(b'['):
+                reverse_key = json.loads(decoded_b64)
+            else:
+                reverse_key = self._unpack_reverse_key(reverse_key_b64)
+        except Exception:
+             # Fallback
+             reverse_key = self._unpack_reverse_key(reverse_key_b64)
 
         # 2. Check header
         iterations = self.ITERATIONS_V2 # Default V2
@@ -491,10 +496,9 @@ class DarkstarCrypt:
                 if parsed.get('v') == 2 and parsed.get('data'):
                     encrypted_content = parsed['data']
         except:
-            pass # Assume legacy if fail, but this script only supports V2 for now (or matches JS logic)
+            pass 
 
         # 3. Decrypt AES
-        # AES returns bytes
         decrypted_base64_bytes = self._decrypt_aes256(encrypted_content, password, iterations)
         
         if not decrypted_base64_bytes:
@@ -502,9 +506,8 @@ class DarkstarCrypt:
 
         # 4. Decode the Base64 Blob
         try:
-            binary_string = base64.b64decode(decrypted_base64_bytes) # This is the "finalBlob"
+            binary_string = base64.b64decode(decrypted_base64_bytes)
         except:
-             # Maybe it was legacy string?
              raise ValueError("Failed to decode inner base64 blob")
              
         full_blob = binary_string
@@ -553,6 +556,44 @@ class DarkstarCrypt:
             word_index += 1
             
         return " ".join(deobfuscated_words)
+
+    # --- Compression Helpers ---
+    def _pack_reverse_key(self, reverse_key):
+        buffer = bytearray()
+        for word_key in reverse_key:
+            if len(word_key) != 12:
+                raise ValueError("Cannot pack reverse key: invalid word length")
+            
+            for i in range(0, 12, 2):
+                high = word_key[i] & 0x0F
+                low = word_key[i+1] & 0x0F
+                buffer.append((high << 4) | low)
+        
+        return base64.b64encode(buffer).decode('ascii')
+
+    def _unpack_reverse_key(self, b64):
+        buffer = base64.b64decode(b64)
+        reverse_key = []
+        
+        # 6 bytes per word
+        if len(buffer) % 6 != 0:
+             raise ValueError("Invalid packed key length")
+             
+        word_count = len(buffer) // 6
+        offset = 0
+        
+        for w in range(word_count):
+            word_key = []
+            for i in range(6):
+                byte = buffer[offset]
+                offset += 1
+                high = (byte >> 4) & 0x0F
+                low = byte & 0x0F
+                word_key.append(high)
+                word_key.append(low)
+            reverse_key.append(word_key)
+            
+        return reverse_key
 
 if __name__ == "__main__":
     import sys

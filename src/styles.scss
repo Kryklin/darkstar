@@ -19,13 +19,7 @@ body {
   overflow: hidden; // Prevent body scroll (app content scrolls)
 
   // Dynamic Background using Theme Variables
-  background: linear-gradient(
-    -45deg,
-    var(--mat-sys-surface-container-lowest),
-    var(--mat-sys-surface-container-low),
-    var(--mat-sys-surface-container),
-    var(--mat-sys-surface-container-high)
-  );
+  background: linear-gradient(-45deg, var(--mat-sys-surface-container-lowest), var(--mat-sys-surface-container-low), var(--mat-sys-surface-container), var(--mat-sys-surface-container-high));
   background-size: 400% 400%;
   animation: gradientBG 15s ease infinite;
 
@@ -81,13 +75,7 @@ body.dark-theme {
 .app-title {
   font-weight: 700;
   letter-spacing: 2px;
-  background: linear-gradient(
-    to right,
-    var(--mat-sys-on-surface) 20%,
-    var(--mat-sys-primary) 40%,
-    var(--mat-sys-primary) 60%,
-    var(--mat-sys-on-surface) 80%
-  );
+  background: linear-gradient(to right, var(--mat-sys-on-surface) 20%, var(--mat-sys-primary) 40%, var(--mat-sys-primary) 60%, var(--mat-sys-on-surface) 80%);
   background-size: 200% auto;
   background-clip: text;
   -webkit-background-clip: text;

@@ -8,6 +8,8 @@ import { Clipboard } from '@angular/cdk/clipboard';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import BIP39 from '../../../../assets/BIP39.json';
 
+import { SteganographyService } from '../../../services/steganography.service';
+
 @Component({
   selector: 'app-decrypt',
   standalone: true,
@@ -27,8 +29,13 @@ export class Decrypt {
   decryptedMnemonic = '';
   error = '';
 
+  inputType: 'text' | 'file' = 'text';
+  fileName = '';
+  isFileProcessing = false;
+
   private fb = inject(FormBuilder);
   private cryptService = inject(CryptService);
+  private steganographyService = inject(SteganographyService);
   private clipboard = inject(Clipboard);
   private snackBar = inject(MatSnackBar);
 
@@ -46,6 +53,53 @@ export class Decrypt {
     this.thirdFormGroup = this.fb.group({
       password: ['', Validators.required],
     });
+  }
+
+  // File Upload Handler
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) {
+      return;
+    }
+    const file = input.files[0];
+
+    if (file) {
+      this.fileName = file.name;
+      this.isFileProcessing = true;
+
+      const reader = new FileReader();
+
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        try {
+          const content = e.target?.result as string;
+
+          if (!content) return;
+
+          // Detect Mode
+          const mode = this.steganographyService.detectMode(file.name, content);
+
+          if (mode) {
+            const extractedData = this.steganographyService.extract(content, mode);
+            if (extractedData) {
+              this.firstFormGroup.controls['encryptedData'].setValue(extractedData);
+              this.snackBar.open(`Extracted payload from ${mode.toUpperCase()} file`, 'OK', { duration: 3000 });
+            } else {
+              this.snackBar.open('Could not find hidden payload in file', 'Error', { duration: 3000 });
+            }
+          } else {
+            this.firstFormGroup.controls['encryptedData'].setValue(content.trim());
+            this.snackBar.open('Loaded file content', 'OK', { duration: 3000 });
+          }
+        } catch (error) {
+          console.error(error);
+          this.snackBar.open('Error reading file', 'Close', { duration: 3000 });
+        } finally {
+          this.isFileProcessing = false;
+        }
+      };
+
+      reader.readAsText(file);
+    }
   }
 
   async copyFromClipboard(field: string) {

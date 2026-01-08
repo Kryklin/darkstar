@@ -4,25 +4,50 @@
       <mat-card-header>
         <mat-card-title>Decrypt {{ protocolTitle }}</mat-card-title>
         <mat-card-subtitle>Decrypt your {{ protocolTitle }} seed phrase</mat-card-subtitle>
-        <a mat-button color="accent" [href]="protocolLink" target="_blank" class="learn-more-btn">
-          Learn More <mat-icon>open_in_new</mat-icon>
-        </a>
+        <a mat-button color="accent" [href]="protocolLink" target="_blank" class="learn-more-btn"> Learn More <mat-icon>open_in_new</mat-icon> </a>
       </mat-card-header>
       <mat-card-content>
         <mat-stepper linear #stepper>
           <mat-step [stepControl]="firstFormGroup">
             <form [formGroup]="firstFormGroup">
               <ng-template matStepLabel>Enter Encrypted Data</ng-template>
-              <mat-form-field appearance="fill" class="full-width">
-                <mat-label>Encrypted Data</mat-label>
-                <textarea matInput formControlName="encryptedData" rows="3" placeholder="Paste the encrypted data here"></textarea>
-                <button mat-icon-button matSuffix (click)="copyFromClipboard('encryptedData')" matTooltip="Paste from clipboard">
+
+              <div class="input-mode-container">
+                <mat-button-toggle-group [(ngModel)]="inputType" [ngModelOptions]="{ standalone: true }" aria-label="Input Mode">
+                  <mat-button-toggle value="text">Paste Text</mat-button-toggle>
+                  <mat-button-toggle value="file">Upload File</mat-button-toggle>
+                </mat-button-toggle-group>
+              </div>
+
+              @if (inputType === 'file') {
+                <div class="file-upload-area">
+                  <button mat-stroked-button color="primary" (click)="fileInput.click()"><mat-icon>upload_file</mat-icon> Choose Stealth File</button>
+                  <input #fileInput type="file" (change)="onFileSelected($event)" style="display: none" accept=".log,.csv,.json,.txt" />
+                  <span class="file-name">{{ fileName || 'No file selected' }}</span>
+                  <p class="hint-text">Upload a file exported with Stealth Export.</p>
+
+                  @if (isFileProcessing) {
+                    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                  }
+                </div>
+              }
+
+              <mat-form-field appearance="fill" class="full-width" [class.hidden-input]="inputType === 'file'">
+                <mat-label>{{ inputType === 'file' ? 'Extracted Data' : 'Encrypted Data' }}</mat-label>
+                <textarea
+                  matInput
+                  formControlName="encryptedData"
+                  rows="3"
+                  [placeholder]="inputType === 'file' ? 'Data extracted from file will appear here' : 'Paste the encrypted data here'"
+                ></textarea>
+                <button mat-icon-button matSuffix (click)="copyFromClipboard('encryptedData')" matTooltip="Paste from clipboard" [disabled]="inputType === 'file'">
                   <mat-icon>content_paste</mat-icon>
                 </button>
                 @if (firstFormGroup.controls['encryptedData'].hasError('required')) {
                   <mat-error>Encrypted data is required.</mat-error>
                 }
               </mat-form-field>
+
               <div class="stepper-buttons">
                 <button mat-button matStepperNext>Next</button>
               </div>

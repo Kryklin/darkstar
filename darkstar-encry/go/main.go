@@ -482,12 +482,11 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, password string) (map[string]interfac
 		return nil, err
 	}
 
-	// Reverse Key serialization
-	rkBytes, err := json.Marshal(reverseKey)
+	// Reverse Key serialization (Packed)
+	encodedReverseKey, err := dc.packReverseKey(reverseKey)
 	if err != nil {
 		return nil, err
 	}
-	encodedReverseKey := base64.StdEncoding.EncodeToString(rkBytes)
 
 	// Construct result structure
 	resultObj := map[string]interface{}{
@@ -513,9 +512,15 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 	if err != nil {
 		return "", errors.New("invalid reverse key base64")
 	}
+
 	var reverseKey [][]int
+	// Try JSON first (Legacy)
 	if err := json.Unmarshal(rkBytes, &reverseKey); err != nil {
-		return "", errors.New("invalid reverse key json")
+		// Not JSON, try Packed (V2 Compressed)
+		reverseKey, err = dc.unpackReverseKey(reverseKeyB64)
+		if err != nil {
+			return "", errors.New("invalid reverse key format (json or packed)")
+		}
 	}
 
 	// 2. Parse encrypted data
@@ -591,6 +596,48 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 	}
 
 	return strings.Join(deobfuscatedWords, " "), nil
+}
+
+// --- Compression Helpers ---
+
+func (dc *DarkstarCrypt) packReverseKey(reverseKey [][]int) (string, error) {
+	var buffer []byte
+	for _, wordKey := range reverseKey {
+		if len(wordKey) != 12 {
+			return "", errors.New("cannot pack reverse key: invalid word length")
+		}
+		for i := 0; i < 12; i += 2 {
+			high := byte(wordKey[i] & 0x0F)
+			low := byte(wordKey[i+1] & 0x0F)
+			buffer = append(buffer, (high<<4)|low)
+		}
+	}
+	return base64.StdEncoding.EncodeToString(buffer), nil
+}
+
+func (dc *DarkstarCrypt) unpackReverseKey(b64 string) ([][]int, error) {
+	bytes, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return nil, err
+	}
+	var reverseKey [][]int
+	const bytesPerWord = 6
+	if len(bytes)%bytesPerWord != 0 {
+		return nil, errors.New("invalid packed key length")
+	}
+
+	numWords := len(bytes) / bytesPerWord
+	for w := 0; w < numWords; w++ {
+		var wordKey []int
+		chunk := bytes[w*bytesPerWord : (w+1)*bytesPerWord]
+		for _, b := range chunk {
+			high := int((b >> 4) & 0x0F)
+			low := int(b & 0x0F)
+			wordKey = append(wordKey, high, low)
+		}
+		reverseKey = append(reverseKey, wordKey)
+	}
+	return reverseKey, nil
 }
 
 // --- AES Helpers ---
