@@ -56,45 +56,52 @@ Unlike standard encryption which applies a static algorithm, Darkstar V2 applies
 
 ```mermaid
 flowchart TD
-    Start(Start Word) --> SeedGen{Generate Seed}
-    SeedGen -->|Seed = Password + Word| PRNG[Initialize Mulberry32 PRNG]
+    %% Nodes
+    Start(Start: Word Input)
+    SeedGen{Generate Seed}
+    PRNG[Initialize Mulberry32 PRNG]
     
-    PRNG --> ShuffleStep
+    DefaultList[Default Function List: 0..11]
+    Shuffle[Shuffle List using Seed]
+    ShuffledList[Result: 7, 2, 11, 4...]
     
-    subgraph Selection ["Function Selection (The Shuffle)"]
-        direction TB
-        
-        %% Placing 'DefaultList' first to sit under the title
-        DefaultList[Default List: 0,1,2...11]
-        ShuffleStep[Shuffle Function List]
-        ShuffledList[Shuffled: 7,2,11,4...]
-        
-        DefaultList --> ShuffleStep
-        ShuffleStep -->|Randomized| ShuffledList
-    end
+    Checksum(Calculate Checksum)
+    FinalSeed[Final Seed: Password + Checksum]
     
-    ShuffledList --> Checksum(Calculate Checksum)
-    Checksum -->|New Seed Component| CombinedSeed[Final Seed: Password + Checksum]
-    
-    ShuffledList --> Loop(Execute Functions in Order)
-    
-    subgraph Gauntlet ["The Gauntlet (12 Layers)"]
-        direction TB
-        
-        Loop --> F1["Function 1 (e.g. Shuffle)"]
-        F1 --> F2["Function 2 (e.g. XOR)"]
-        F2 --> FN["..."]
-        FN --> F12["Function 12 (e.g. Binary)"]
-    end
-    
-    F12 --> Result(Obfuscated Word Blob)
-    
-    style SeedGen fill:#ff9,stroke:#333
-    style ShuffleStep fill:#ff9,stroke:#333
+    Execute(Execute 12-Stage Gauntlet)
+    Result(Final Obfuscated Blob)
 
-    %% Styling for spacing and readability
-    classDef spaced fill:#fff,stroke:#333,color:#000,padding:20px;
-    class Selection,Gauntlet spaced;
+    %% Connections
+    Start --> SeedGen
+    SeedGen -->|Password + Word| PRNG
+    
+    PRNG --> Shuffle
+    DefaultList --> Shuffle
+    Shuffle -->|Randomized| ShuffledList
+    
+    ShuffledList --> Checksum
+    ShuffledList --> Execute
+    
+    Checksum --> FinalSeed
+    FinalSeed -.-> Execute
+    
+    Execute --> Result
+
+    %% Subgraph for grouping (simplified)
+    subgraph Processing [Dynamic Transformation]
+        direction TB
+        Shuffle
+        ShuffledList
+        Checksum
+        FinalSeed
+        Execute
+    end
+
+    %% Styling
+    style Start fill:#f9f,stroke:#333
+    style SeedGen fill:#ff9,stroke:#333
+    style Result fill:#f9f,stroke:#333
+    style Shuffle fill:#ff9,stroke:#333
 ```
 
 ### The "Reverse Key"
@@ -204,7 +211,7 @@ graph TD
 
 ---
 
-## 5. Decryption Flow
+## 6. Decryption Flow
 
 Reversing the process requires the `ReverseKey`.
 
