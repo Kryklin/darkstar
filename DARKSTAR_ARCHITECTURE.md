@@ -63,15 +63,13 @@ flowchart TD
     
     subgraph Selection ["Function Selection (The Shuffle)"]
         direction TB
-        %% Invisible spacer to push content down from title
-        Spacer1[ ]:::hidden
         
+        %% Placing 'DefaultList' first to sit under the title
         DefaultList[Default List: 0,1,2...11]
         ShuffleStep[Shuffle Function List]
         ShuffledList[Shuffled: 7,2,11,4...]
         
-        Spacer1 --- DefaultList
-        DefaultList ~~~ ShuffleStep
+        DefaultList --> ShuffleStep
         ShuffleStep -->|Randomized| ShuffledList
     end
     
@@ -82,15 +80,11 @@ flowchart TD
     
     subgraph Gauntlet ["The Gauntlet (12 Layers)"]
         direction TB
-        %% Invisible spacer
-        Spacer2[ ]:::hidden
         
         Loop --> F1["Function 1 (e.g. Shuffle)"]
         F1 --> F2["Function 2 (e.g. XOR)"]
         F2 --> FN["..."]
         FN --> F12["Function 12 (e.g. Binary)"]
-        
-        Spacer2 --- F1
     end
     
     F12 --> Result(Obfuscated Word Blob)
@@ -98,9 +92,8 @@ flowchart TD
     style SeedGen fill:#ff9,stroke:#333
     style ShuffleStep fill:#ff9,stroke:#333
 
-    %% Styling to hide spacers and add padding
-    classDef hidden display:none;
-    classDef spaced padding:20px;
+    %% Styling for spacing and readability
+    classDef spaced fill:#fff,stroke:#333,color:#000,padding:20px;
     class Selection,Gauntlet spaced;
 ```
 
