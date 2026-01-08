@@ -59,34 +59,49 @@ flowchart TD
     Start(Start Word) --> SeedGen{Generate Seed}
     SeedGen -->|Seed = Password + Word| PRNG[Initialize Mulberry32 PRNG]
     
-    PRNG --> Shuffle[Shuffle Function List]
+    PRNG --> ShuffleStep
     
-    subgraph "Function Selection (The Shuffle)"
+    subgraph Selection ["Function Selection (The Shuffle)"]
         direction TB
-        List[Default List: 0,1,2...11]
-        Shuffle -->|Randomized| NewList[Shuffled: 7,2,11,4...]
+        %% Invisible spacer to push content down from title
+        Spacer1[ ]:::hidden
+        
+        DefaultList[Default List: 0,1,2...11]
+        ShuffleStep[Shuffle Function List]
+        ShuffledList[Shuffled: 7,2,11,4...]
+        
+        Spacer1 --- DefaultList
+        DefaultList ~~~ ShuffleStep
+        ShuffleStep -->|Randomized| ShuffledList
     end
     
-    NewList --> Checksum(Calculate Checksum)
+    ShuffledList --> Checksum(Calculate Checksum)
     Checksum -->|New Seed Component| CombinedSeed[Final Seed: Password + Checksum]
     
-    NewList --> Loop(Execute Functions in Order)
+    ShuffledList --> Loop(Execute Functions in Order)
     
-    subgraph "The Gauntlet (12 Layers)"
+    subgraph Gauntlet ["The Gauntlet (12 Layers)"]
         direction TB
+        %% Invisible spacer
+        Spacer2[ ]:::hidden
+        
         Loop --> F1["Function 1 (e.g. Shuffle)"]
         F1 --> F2["Function 2 (e.g. XOR)"]
-        F2 --> F...["..."]
-        F... --> F12["Function 12 (e.g. Binary)"]
+        F2 --> FN["..."]
+        FN --> F12["Function 12 (e.g. Binary)"]
+        
+        Spacer2 --- F1
     end
     
     F12 --> Result(Obfuscated Word Blob)
     
     style SeedGen fill:#ff9,stroke:#333
-    style Shuffle fill:#ff9,stroke:#333
+    style ShuffleStep fill:#ff9,stroke:#333
 
-    %% Spacing adjustments
+    %% Styling to hide spacers and add padding
+    classDef hidden display:none;
     classDef spaced padding:20px;
+    class Selection,Gauntlet spaced;
 ```
 
 ### The "Reverse Key"
