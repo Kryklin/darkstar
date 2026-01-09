@@ -1,11 +1,11 @@
 import { Component, EventEmitter, Output, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MaterialModule } from '../../modules/material/material';
 
 @Component({
   selector: 'app-virtual-keyboard',
   standalone: true,
-  imports: [CommonModule, MaterialModule],
+  imports: [MaterialModule],
   templateUrl: './virtual-keyboard.html',
   styleUrl: './virtual-keyboard.scss',
 })

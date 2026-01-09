@@ -1,129 +1,198 @@
-@use '../../styles/glass';
-
 .home-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-height: calc(100vh - 64px);
-  padding: 24px;
-  box-sizing: border-box;
-}
-
-.spinner-container {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100%;
+  background: transparent;
+  position: relative; // For canvas absolute positioning
+  overflow: hidden;
+  
+  &.game-active-pulse {
+      animation: screenPulse 4s infinite ease-in-out;
+      box-shadow: inset 0 0 50px rgba(64, 196, 255, 0.2); // Initial subtle glow
+  }
+}
+
+@keyframes screenPulse {
+    0% {
+        box-shadow: inset 0 0 30px rgba(64, 196, 255, 0.1);
+    }
+    50% {
+        box-shadow: inset 0 0 80px rgba(64, 196, 255, 0.4);
+    }
+    100% {
+        box-shadow: inset 0 0 30px rgba(64, 196, 255, 0.1);
+    }
+}
+
+.matrix-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0; // Behind content if we want content readable? Or 100 to cover?
+              // The user said "hidden features", usually matrix rain is a screensaver or overlay.
+              // Let's put it BEHIND the card, but visible.
+  pointer-events: none; 
+}
+
+// Ensure content is above matrix if we want it readable, or let matrix cover.
+// "Android version mini games" usually take over the screen.
+// Let's make the canvas cover everything for the "Game" feel.
+.matrix-overlay {
+  z-index: 10; 
+  background: black;
 }
 
 .content-wrapper {
-  width: 100%;
-  max-width: 900px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  animation: fadeIn 0.8s ease-out;
+  text-align: center;
+  z-index: 5; // Below matrix if active
+  position: relative;
+    &.fade-in-up {
+    animation: fadeInUp 0.8s ease-out forwards;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .info-card {
-  @include glass.glass-card;
-  width: 100%;
-  text-align: center;
-  padding: 48px 32px;
+  width: 400px;
+  margin-bottom: 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 
-  // Entrance animation
-  @include glass.animate-entrance;
-
-  // Gentle float animation after entrance
-  // We use a delay to let the entrance finish, but standard CSS doesn't sequence well like this without complex keyframes.
-  // Instead, let's make the float distinct or override.
-  // Actually, to avoid conflict with animate-entrance (transform) and glass-card hover (transform),
-  // we can treat this card specially.
-  animation:
-    slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards,
-    float 6s ease-in-out infinite 1s;
-
-  &:hover {
-    // Disable standard glass hover transform to avoid conflict with float
-    transform: none;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); // Enhance shadow on hover instead
+  &.hover-glow:hover {
+     transform: scale(1.02);
+     box-shadow: 0 0 20px rgba(64, 196, 255, 0.2);
+     border-color: rgba(64, 196, 255, 0.3);
   }
-}
-
-@keyframes float {
-  0% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-12px);
-  }
-  100% {
-    transform: translateY(0px);
-  }
-}
-
-::ng-deep .mat-mdc-card-header-text {
-  margin: 0 auto;
-  .mat-mdc-card-title,
-  .mat-mdc-card-subtitle {
-    margin: 0;
+  
+  mat-card-header {
+    justify-content: center;
+    padding-top: 24px;
   }
 }
 
 .app-title {
-  font-size: 4.5rem;
-  margin-bottom: 24px;
-  letter-spacing: 6px;
-  font-weight: 900;
-  text-transform: uppercase;
-  line-height: 1.1;
-  padding-bottom: 8px;
-
-  // Flashy effect
-  background: linear-gradient(135deg, #ffffff 0%, #a5a5a5 50%, #ffffff 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.4));
-  animation: shimmer 3s infinite linear;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% center;
+  font-size: 2.5rem;
+  font-weight: 300;
+  letter-spacing: 4px;
+  color: var(--mat-primary-default);
+  
+  // Glitch Effect on Hover
+  position: relative;
+  
+  &.glitch-on-hover:hover {
+    animation: glitch 0.5s infinite;
   }
-  100% {
-    background-position: 200% center;
+  
+  &.glitch-on-hover:hover::before,
+  &.glitch-on-hover:hover::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  &.glitch-on-hover:hover::before {
+    left: 2px;
+    text-shadow: -1px 0 #ff00c1;
+    clip: rect(44px, 450px, 56px, 0);
+    animation: glitch-anim-1 5s infinite linear alternate-reverse;
+  }
+
+  &.glitch-on-hover:hover::after {
+    left: -2px;
+    text-shadow: -1px 0 #00fff9;
+    clip: rect(44px, 450px, 56px, 0);
+    animation: glitch-anim-2 5s infinite linear alternate-reverse;
   }
 }
 
-mat-card-subtitle {
-  font-size: 1.25rem;
-  color: var(--mat-sys-primary);
-  opacity: 0; // Start invisible
-  letter-spacing: 1px;
-  margin-bottom: 32px !important;
-  animation: slideUp 0.8s ease-out 0.5s forwards; // Delayed entrance
+@keyframes glitch-anim-1 {
+  0% { clip: rect(20px, 9999px, 15px, 0); }
+  20% { clip: rect(65px, 9999px, 88px, 0); }
+  40% { clip: rect(12px, 9999px, 5px, 0); }
+  60% { clip: rect(90px, 9999px, 15px, 0); }
+  80% { clip: rect(10px, 9999px, 85px, 0); }
+  100% { clip: rect(50px, 9999px, 20px, 0); }
 }
 
-.intro-text {
-  font-size: 1.1rem;
-  line-height: 1.8;
-  max-width: 700px;
-  margin: 0 auto;
-  color: var(--mat-sys-on-surface-variant);
+@keyframes glitch-anim-2 {
+  0% { clip: rect(10px, 9999px, 90px, 0); }
+  20% { clip: rect(80px, 9999px, 5px, 0); }
+  40% { clip: rect(15px, 9999px, 40px, 0); }
+  60% { clip: rect(55px, 9999px, 10px, 0); }
+  80% { clip: rect(20px, 9999px, 65px, 0); }
+  100% { clip: rect(40px, 9999px, 80px, 0); }
 }
+
 
 .footer {
-  margin-top: 48px;
-  text-align: center;
-  opacity: 0.6;
+  color: var(--mat-sys-on-surface-variant);
   font-size: 0.9rem;
-  animation: fadeIn 1s ease-out 0.5s forwards; // delayed fade in
-  opacity: 0; // start invisible
-
+  
   p {
     margin: 4px 0;
+  }
+}
+
+.version-badge {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.05);
+
+  &.checking, &.updating {
+    color: #ffd740; // Accent-ish yellow
+    mat-icon { color: #ffd740; font-size: 18px; width: 18px; height: 18px;}
+  }
+
+  &.locked {
+    color: var(--mat-sys-on-surface); // White/High contrast
+    background: #000000;
+    border-color: #333333;
+    mat-icon { color: var(--mat-sys-on-surface); font-size: 18px; width: 18px; height: 18px; }
+  }
+
+  &.up-to-date {
+    color: #69f0ae; // Green
+    mat-icon { color: #69f0ae; font-size: 18px; width: 18px; height: 18px; }
+  }
+
+  &.ready {
+     color: #40c4ff;
+     border-color: #40c4ff;
+     mat-icon { font-size: 18px; width: 18px; height: 18px; }
+     
+     &:hover {
+        background: rgba(64, 196, 255, 0.1);
+     }
   }
 }

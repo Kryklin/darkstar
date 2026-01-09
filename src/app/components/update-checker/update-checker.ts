@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { Router } from '@angular/router';
 import { MaterialModule } from '../../modules/material/material';
 import { UpdateService } from '../../services/update';
@@ -7,7 +7,7 @@ import { UpdateService } from '../../services/update';
 @Component({
   selector: 'app-update-checker',
   standalone: true,
-  imports: [CommonModule, MaterialModule],
+  imports: [MaterialModule],
   templateUrl: './update-checker.html',
   styleUrl: './update-checker.scss',
 })

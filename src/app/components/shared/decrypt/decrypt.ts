@@ -1,6 +1,6 @@
 import { Component, Input, inject } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -13,7 +13,7 @@ import { VirtualKeyboard } from '../../virtual-keyboard/virtual-keyboard';
 @Component({
   selector: 'app-shared-decrypt',
   standalone: true,
-  imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule, CommonModule, VirtualKeyboard],
+  imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule, VirtualKeyboard],
   templateUrl: './decrypt.html',
   styleUrl: './decrypt.scss',
 })

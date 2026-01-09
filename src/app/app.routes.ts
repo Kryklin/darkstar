@@ -50,5 +50,13 @@ export const routes: Routes = [
     path: 'about',
     loadComponent: () => import('./components/about/about').then((m) => m.About),
   },
+  {
+    path: 'secure-notes/encrypt',
+    loadComponent: () => import('./components/secure-notes/encrypt').then((m) => m.SecureNotesEncrypt),
+  },
+  {
+    path: 'secure-notes/decrypt',
+    loadComponent: () => import('./components/secure-notes/decrypt').then((m) => m.SecureNotesDecrypt),
+  },
   { path: '', redirectTo: 'home', pathMatch: 'full' },
 ];
