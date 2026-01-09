@@ -2,6 +2,7 @@ export enum StealthMode {
   LOG = 'log',
   CSV = 'csv',
   JSON = 'json',
+  IMAGE = 'image',
 }
 
 export interface StealthOptions {

@@ -1,0 +1,138 @@
+<div class="container">
+  @if (!showResult) {
+    <mat-card class="decrypt-card">
+      <mat-card-header>
+        <mat-card-title>Decrypt {{ protocolTitle }}</mat-card-title>
+        <mat-card-subtitle>Enter the encrypted data, reverse key, and password to decrypt your mnemonic phrase.</mat-card-subtitle>
+        <a mat-button color="accent" [href]="protocolLink" target="_blank" class="learn-more-btn"> Learn More <mat-icon>open_in_new</mat-icon> </a>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-stepper linear #stepper>
+          <mat-step [stepControl]="firstFormGroup">
+            <form [formGroup]="firstFormGroup">
+              <ng-template matStepLabel>Enter Encrypted Data</ng-template>
+
+              <div class="input-mode-container">
+                <mat-button-toggle-group [(ngModel)]="inputType" [ngModelOptions]="{ standalone: true }" aria-label="Input Mode">
+                  <mat-button-toggle value="text">Paste Text</mat-button-toggle>
+                  <mat-button-toggle value="file">Upload File</mat-button-toggle>
+                </mat-button-toggle-group>
+              </div>
+
+              @if (inputType === 'file') {
+                <div class="file-upload-area">
+                  <button mat-stroked-button color="primary" (click)="fileInput.click()"><mat-icon>upload_file</mat-icon> Choose Stealth File</button>
+                  <input #fileInput type="file" (change)="onFileSelected($event)" style="display: none" accept=".log,.csv,.json,.txt,.png" />
+                  <span class="file-name">{{ fileName || 'No file selected' }}</span>
+                  <p class="hint-text">Upload a file exported with Stealth Export (including PNG images).</p>
+
+                  @if (isFileProcessing) {
+                    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                  }
+                </div>
+              }
+
+              <mat-form-field appearance="fill" class="full-width" [class.hidden-input]="inputType === 'file'">
+                <mat-label>{{ inputType === 'file' ? 'Extracted Data' : 'Encrypted Data' }}</mat-label>
+                <textarea
+                  matInput
+                  formControlName="encryptedData"
+                  rows="3"
+                  [placeholder]="inputType === 'file' ? 'Data extracted from file will appear here' : 'Paste the encrypted data here'"
+                ></textarea>
+                <button mat-icon-button matSuffix (click)="copyFromClipboard('encryptedData')" matTooltip="Paste from clipboard" [disabled]="inputType === 'file'">
+                  <mat-icon>content_paste</mat-icon>
+                </button>
+                @if (firstFormGroup.controls['encryptedData'].hasError('required')) {
+                  <mat-error>Encrypted data is required.</mat-error>
+                }
+              </mat-form-field>
+
+              <div class="stepper-buttons">
+                <button mat-button matStepperNext>Next</button>
+              </div>
+            </form>
+          </mat-step>
+          <mat-step [stepControl]="secondFormGroup">
+            <form [formGroup]="secondFormGroup">
+              <ng-template matStepLabel>Enter Reverse Key</ng-template>
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>Reverse Key</mat-label>
+                <textarea matInput formControlName="reverseKey" rows="2" placeholder="Paste the reverse key here"></textarea>
+                <button mat-icon-button matSuffix (click)="copyFromClipboard('reverseKey')" matTooltip="Paste from clipboard">
+                  <mat-icon>content_paste</mat-icon>
+                </button>
+                @if (secondFormGroup.controls['reverseKey'].hasError('required')) {
+                  <mat-error>Reverse key is required.</mat-error>
+                }
+              </mat-form-field>
+              <div class="stepper-buttons">
+                <button mat-button matStepperPrevious>Back</button>
+                <button mat-button matStepperNext>Next</button>
+              </div>
+            </form>
+          </mat-step>
+          <mat-step [stepControl]="thirdFormGroup">
+            <form [formGroup]="thirdFormGroup">
+              <ng-template matStepLabel>Enter Password</ng-template>
+              
+              <div class="security-controls" style="margin-bottom: 16px;">
+                 <mat-slide-toggle [(ngModel)]="virtualKeyboardEnabled" [ngModelOptions]="{standalone: true}" color="primary">
+                    Enable Anti-Keylogger Mode
+                 </mat-slide-toggle>
+              </div>
+
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>Password</mat-label>
+                <input matInput formControlName="password" type="password" placeholder="Enter your password" [readonly]="virtualKeyboardEnabled" />
+                @if (virtualKeyboardEnabled) {
+                  <mat-hint>Physical keyboard disabled for security</mat-hint>
+                }
+                @if (thirdFormGroup.controls['password'].hasError('required')) {
+                  <mat-error>Password is required.</mat-error>
+                }
+              </mat-form-field>
+
+              @if (virtualKeyboardEnabled) {
+                <app-virtual-keyboard (keyPress)="onVirtualKeyPress($event)" (backspace)="onVirtualBackspace()"></app-virtual-keyboard>
+              }
+
+              <div class="stepper-buttons">
+                <button mat-button matStepperPrevious>Back</button>
+                <button mat-raised-button color="primary" (click)="onSubmit()">Decrypt</button>
+              </div>
+            </form>
+          </mat-step>
+        </mat-stepper>
+      </mat-card-content>
+      <mat-card-footer>
+        <p class="footer-text">Decryption is performed locally on your device. Your private data is never transmitted.</p>
+      </mat-card-footer>
+    </mat-card>
+  } @else {
+    <mat-card class="result-card">
+      <mat-card-header>
+        @if (error) {
+          <mat-card-title class="error-title">Decryption Failed</mat-card-title>
+        } @else {
+          <mat-card-title>Decryption Successful</mat-card-title>
+        }
+      </mat-card-header>
+      <mat-card-content>
+        @if (error) {
+          <div class="error-content">
+            <p>{{ error }}</p>
+          </div>
+        } @else {
+          <div class="result-content">
+            <p><strong>Decrypted Mnemonic:</strong></p>
+            <p class="mnemonic-phrase">{{ decryptedMnemonic }}</p>
+          </div>
+        }
+      </mat-card-content>
+      <mat-card-actions class="result-actions">
+        <button mat-button (click)="reset()">Reset</button>
+      </mat-card-actions>
+    </mat-card>
+  }
+</div>

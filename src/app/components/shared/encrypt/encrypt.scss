@@ -1,0 +1,119 @@
+@use '../../../styles/glass';
+
+.encrypt-card {
+  @include glass.glass-card;
+  max-width: 800px;
+  margin: 40px auto;
+  opacity: 0;
+
+  @include glass.animate-entrance;
+
+  .mat-mdc-card-header {
+    margin-bottom: 20px;
+    align-items: center; /* Vertically align title/subtitle with the button */
+    display: flex;
+    justify-content: space-between; /* Push title/subtitle to left, button to right */
+    opacity: 0;
+    animation: fadeIn 0.5s ease-out 0.3s forwards;
+    
+    /* Ensure the title-group takes up available space but allows the button to sit on the right */
+    ::ng-deep .mat-mdc-card-header-text {
+       margin: 0; 
+       flex: 1; 
+    }
+  }
+
+  .learn-more-btn {
+    margin-left: 16px;
+    margin-top: 4px;
+    flex-shrink: 0; /* Prevent button from shrinking */
+  }
+
+  mat-card-content {
+    opacity: 0;
+    animation: fadeIn 0.5s ease-out 0.5s forwards;
+  }
+
+  .full-width {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .stepper-buttons {
+    margin-top: 32px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+  }
+}
+
+.result-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.footer-text {
+  padding: 16px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+  opacity: 0.7;
+}
+
+.stealth-export-section {
+    margin-top: 20px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+
+    h3 {
+        margin-top: 0;
+        margin-bottom: 8px;
+        color: #fff;
+    }
+
+    .hint-text {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.9em;
+        margin-bottom: 16px;
+    }
+
+    .export-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        .label {
+            min-width: 120px;
+        }
+        mat-slider {
+            flex-grow: 1;
+        }
+    }
+}
+
+.security-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.cover-image-upload {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    
+    .file-name {
+        font-style: italic;
+        color: rgba(255,255,255,0.7);
+    }
+}

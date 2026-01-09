@@ -1,0 +1,159 @@
+@use '../../../styles/glass';
+
+.decrypt-card {
+  @include glass.glass-card;
+  max-width: 900px;
+  margin: 40px auto;
+  opacity: 0;
+
+  @include glass.animate-entrance;
+
+  mat-card-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    opacity: 0;
+    animation: fadeIn 0.5s ease-out 0.3s forwards;
+
+    ::ng-deep .mat-card-header-text,
+    ::ng-deep .mat-mdc-card-header-text {
+      margin: 0;
+      flex: 1;
+    }
+
+    .learn-more-btn {
+      margin-left: 16px;
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+
+    mat-card-title {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+  }
+
+  mat-card-content {
+    opacity: 0;
+    animation: fadeIn 0.5s ease-out 0.5s forwards;
+    padding-top: 24px;
+  }
+}
+
+.full-width {
+  width: 100%;
+}
+
+mat-form-field {
+  margin-bottom: 24px;
+}
+
+// Enhance stepper styles
+::ng-deep .mat-step-header .mat-step-icon-selected,
+::ng-deep .mat-step-header .mat-step-icon-state-done,
+::ng-deep .mat-step-header .mat-step-icon-state-edit {
+  background-color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+}
+
+.stepper-buttons {
+  margin-top: 32px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.footer-text {
+  padding: 16px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+  opacity: 0.7;
+}
+
+.result-card {
+  @include glass.glass-card;
+  max-width: 700px;
+  margin: 40px auto;
+
+  mat-card-header {
+    .error-title {
+      color: var(--mat-sys-error);
+    }
+  }
+
+  .result-content {
+    text-align: center;
+    padding: 32px 0;
+
+    .mnemonic-phrase {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 1.2rem;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: 16px;
+      word-spacing: 0.5em;
+    }
+  }
+
+  .error-content {
+    text-align: center;
+    padding: 32px 0;
+    color: var(--mat-sys-error);
+    font-weight: 500;
+  }
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 24px;
+}
+
+// Input Mode Toggle
+.input-mode-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+// File Upload Area
+.file-upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px;
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin-bottom: 24px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: var(--mat-sys-primary);
+    background: rgba(var(--mat-sys-primary-rgb), 0.05);
+  }
+
+  .file-name {
+    margin-top: 12px;
+    font-weight: 500;
+  }
+
+  .hint-text {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    margin-top: 8px;
+  }
+
+  mat-progress-bar {
+    width: 100%;
+    margin-top: 16px;
+    max-width: 300px;
+  }
+}
+
+.hidden-input {
+  display: none;
+}

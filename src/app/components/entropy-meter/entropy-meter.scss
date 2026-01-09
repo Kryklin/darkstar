@@ -1,0 +1,58 @@
+.entropy-container {
+    margin-top: 8px;
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+  
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+  
+    .label {
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      
+      &.strength-weak { color: #f44336; }
+      &.strength-fair { color: #ffca28; }
+      &.strength-strong { color: #4caf50; }
+      &.strength-defense-grade { color: #2196f3; }
+    }
+  
+    .crack-time {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.8em;
+      
+      .time-icon {
+        font-size: 14px;
+        height: 14px;
+        width: 14px;
+      }
+    }
+  
+    .meter-bar {
+      height: 6px;
+      border-radius: 3px;
+    }
+  
+    .stats {
+      margin-top: 4px;
+      text-align: right;
+      font-size: 0.75em;
+      color: rgba(255, 255, 255, 0.4);
+    }
+  }
+  
+  // Override MatProgressBar colors if needed for specific levels
+  ::ng-deep .strength-defense-grade .mat-progress-bar-fill::after {
+      background-color: #2196f3 !important; // Deep Blue for Defense Grade
+  }
+  
+  ::ng-deep .strength-strong .mat-progress-bar-fill::after {
+      background-color: #4caf50 !important; // Green
+  }

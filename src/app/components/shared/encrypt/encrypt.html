@@ -1,0 +1,127 @@
+<mat-card class="encrypt-card">
+  @if (!showResult) {
+    <mat-card-header>
+      <mat-card-title>{{ protocolTitle }}</mat-card-title>
+      <mat-card-subtitle>{{ protocolSummary }}</mat-card-subtitle>
+      <a mat-button color="accent" [href]="protocolLink" target="_blank" class="learn-more-btn"> Learn More <mat-icon>open_in_new</mat-icon> </a>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-stepper linear #stepper>
+        <mat-step [stepControl]="firstFormGroup">
+          <form [formGroup]="firstFormGroup">
+            <ng-template matStepLabel>Enter Recovery Phrase</ng-template>
+            <mat-form-field class="full-width">
+              <mat-label>{{ mnemonicLabel }}</mat-label>
+              <textarea matInput formControlName="firstCtrl" cdkTextareaAutosize #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="4" [placeholder]="mnemonicPlaceholder"></textarea>
+            </mat-form-field>
+            <div class="stepper-buttons">
+              @if (randomWordsGenerator) {
+                <button mat-button (click)="onGenerateRandomWords()">Generate Random Words</button>
+              }
+              <button mat-button matStepperNext>Next</button>
+            </div>
+          </form>
+        </mat-step>
+        <mat-step [stepControl]="secondFormGroup">
+          <form [formGroup]="secondFormGroup">
+            <ng-template matStepLabel>Set Password</ng-template>
+            
+            <div class="security-controls" style="margin-bottom: 16px;">
+               <mat-slide-toggle [(ngModel)]="virtualKeyboardEnabled" [ngModelOptions]="{standalone: true}" color="primary">
+                  Enable Anti-Keylogger Mode
+               </mat-slide-toggle>
+            </div>
+
+            <mat-form-field class="full-width">
+              <mat-label>Encryption password</mat-label>
+              <input matInput formControlName="secondCtrl" type="password" required [readonly]="virtualKeyboardEnabled" />
+              @if (virtualKeyboardEnabled) {
+                <mat-hint>Physical keyboard disabled for security</mat-hint>
+              }
+            </mat-form-field>
+            
+            <app-entropy-meter [value]="secondFormGroup.controls['secondCtrl'].value || ''"></app-entropy-meter>
+
+            @if (virtualKeyboardEnabled) {
+              <app-virtual-keyboard (keyPress)="onVirtualKeyPress($event)" (backspace)="onVirtualBackspace()"></app-virtual-keyboard>
+            }
+
+            <div class="stepper-buttons">
+              <button mat-button matStepperPrevious>Back</button>
+              <button mat-raised-button color="primary" (click)="onSubmit()">Submit</button>
+            </div>
+          </form>
+        </mat-step>
+      </mat-stepper>
+    </mat-card-content>
+    <mat-card-footer>
+      <p class="footer-text">Encryption is performed locally on your device. Your private data is never transmitted.</p>
+    </mat-card-footer>
+  } @else {
+    <mat-card-header>
+      <mat-card-title>Encryption Successful</mat-card-title>
+      <mat-card-subtitle>Your data has been securely encrypted.</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-form-field class="full-width">
+        <mat-label>Encrypted Data</mat-label>
+        <textarea matInput readonly [value]="encryptedData" rows="8"></textarea>
+        <button mat-icon-button matSuffix (click)="copyToClipboard(encryptedData)" matTooltip="Copy Encrypted Data">
+          <mat-icon>content_copy</mat-icon>
+        </button>
+      </mat-form-field>
+      <mat-form-field class="full-width">
+        <mat-label>Reverse Key</mat-label>
+        <textarea matInput readonly [value]="reverseKey" rows="2"></textarea>
+        <button mat-icon-button matSuffix (click)="copyToClipboard(reverseKey)" matTooltip="Copy Reverse Key">
+          <mat-icon>content_copy</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <mat-divider></mat-divider>
+
+      <div class="stealth-export-section">
+        <h3>Stealth Export</h3>
+        <p class="hint-text">Disguise your encrypted data as a common system file.</p>
+
+        <div class="export-controls">
+          <mat-form-field appearance="outline">
+            <mat-label>Export Format</mat-label>
+            <mat-select [(value)]="stealthMode">
+              @for (mode of stealthModes; track mode) {
+                <mat-option [value]="mode.value">{{ mode.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          @if (stealthMode !== 'standard') {
+            <div class="slider-container">
+              <span class="label">Noise Level: {{ stealthNoiseLevel * 100 }}%</span>
+              <mat-slider min="0.1" max="1.0" step="0.1" showTickMarks>
+                <input matSliderThumb [(ngModel)]="stealthNoiseLevel" />
+              </mat-slider>
+            </div>
+          }
+
+          @if (stealthMode === 'image') {
+            <div class="cover-image-upload">
+               <button mat-stroked-button color="primary" (click)="coverInput.click()"><mat-icon>image</mat-icon> Select Cover Image</button>
+               <input #coverInput type="file" (change)="onCoverImageSelected($event)" style="display: none" accept="image/png, image/jpeg" />
+               <span class="file-name" style="margin-left: 10px; font-size: 0.9em;">{{ selectedCoverImage?.name || 'No image selected' }}</span>
+               <p class="hint-text">Select a PNG or JPEG image to hide your data in.</p>
+            </div>
+          }
+        </div>
+
+        <button mat-flat-button color="accent" (click)="downloadFile()"><mat-icon>download</mat-icon> Download {{ stealthMode === 'standard' ? 'Text' : 'File' }}</button>
+        <button mat-button color="primary" (click)="downloadPaperWallet()" style="margin-left: 8px;"><mat-icon>print</mat-icon> Print Paper Wallet (PDF)</button>
+      </div>
+    </mat-card-content>
+    <mat-card-actions class="result-actions">
+      <button mat-button (click)="reset()">Reset</button>
+    </mat-card-actions>
+    <mat-card-footer>
+      <p class="footer-text">Store both the encrypted data and the reverse key securely. You will need both to decrypt your data.</p>
+    </mat-card-footer>
+  }
+</mat-card>
