@@ -26,7 +26,7 @@ export class SharedEncryptComponent implements OnInit {
   @Input() mnemonicPlaceholder = 'e.g. word1 word2...';
   @Input() mnemonicValidator: ValidatorFn | null = null;
   @Input() randomWordsGenerator: (() => string) | null = null;
-  
+
   // Events
   @Output() generateRandom = new EventEmitter<void>();
 
@@ -118,7 +118,8 @@ export class SharedEncryptComponent implements OnInit {
         this.snackBar.open('Please select a cover image first.', 'Close', { duration: 3000 });
         return;
       }
-      this.steganographyService.hideInImage(this.encryptedData, this.selectedCoverImage)
+      this.steganographyService
+        .hideInImage(this.encryptedData, this.selectedCoverImage)
         .then((blob) => {
           this.downloadBlobObj(blob, 'stego_image.png');
         })
@@ -148,7 +149,7 @@ export class SharedEncryptComponent implements OnInit {
   downloadPaperWallet() {
     this.paperWalletService.generate(this.encryptedData, this.reverseKey, {
       protocolTitle: this.protocolTitle,
-      protocolSummary: this.protocolSummary
+      protocolSummary: this.protocolSummary,
     });
   }
 

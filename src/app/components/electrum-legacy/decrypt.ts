@@ -6,13 +6,7 @@ import ElectrumLegacy from '../../../assets/electrum-legacy.json';
   selector: 'app-electrum-legacy-decrypt',
   standalone: true,
   imports: [SharedDecryptComponent],
-  template: `
-    <app-shared-decrypt
-      [protocolTitle]="protocolTitle"
-      [protocolSummary]="protocolSummary"
-      [protocolLink]="protocolLink"
-    ></app-shared-decrypt>
-  `,
+  template: ` <app-shared-decrypt [protocolTitle]="protocolTitle" [protocolSummary]="protocolSummary" [protocolLink]="protocolLink"></app-shared-decrypt> `,
 })
 export class ElectrumLegacyDecrypt {
   protocolTitle = ElectrumLegacy.title;

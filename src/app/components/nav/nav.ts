@@ -1,16 +1,33 @@
 import { Component, inject } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
-import { MaterialModule } from '../../modules/material/material';
+import { CommonModule } from '@angular/common';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { MatDrawerMode } from '@angular/material/sidenav';
 import { Theme } from '../../services/theme';
 import { UpdateService } from '../../services/update';
-import { MatDrawerMode } from '@angular/material/sidenav';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatListModule } from '@angular/material/list';
+import { MatIconModule } from '@angular/material/icon';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-nav',
   standalone: true,
   templateUrl: './nav.html',
   styleUrls: ['./nav.scss'],
-  imports: [MaterialModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [
+    CommonModule,
+    RouterLink,
+    RouterLinkActive,
+    RouterOutlet,
+    MatSidenavModule,
+    MatListModule,
+    MatIconModule,
+    MatToolbarModule,
+    MatButtonModule,
+    MatTooltipModule,
+  ],
 })
 export class Nav {
   theme = inject(Theme);

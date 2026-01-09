@@ -1,6 +1,6 @@
 {
   "name": "darkstar",
-  "version": "1.7.3",
+  "version": "1.8.0",
   "productName": "Darkstar",
   "description": "Darkstar Application",
   "author": "Victor Kane",
@@ -25,7 +25,8 @@
     "build:all": "ng build --configuration production --base-href ./ && npm run electron:build",
     "package": "npm run build:all && electron-forge package",
     "make": "npm run build:all && electron-forge make",
-    "publish": "npm run build:all && electron-forge publish"
+    "publish": "npm run build:all && electron-forge publish",
+    "format": "npx prettier --write ."
   },
   "prettier": {
     "printWidth": 200,

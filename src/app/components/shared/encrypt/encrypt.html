@@ -25,11 +25,9 @@
         <mat-step [stepControl]="secondFormGroup">
           <form [formGroup]="secondFormGroup">
             <ng-template matStepLabel>Set Password</ng-template>
-            
-            <div class="security-controls" style="margin-bottom: 16px;">
-               <mat-slide-toggle [(ngModel)]="virtualKeyboardEnabled" [ngModelOptions]="{standalone: true}" color="primary">
-                  Enable Anti-Keylogger Mode
-               </mat-slide-toggle>
+
+            <div class="security-controls" style="margin-bottom: 16px">
+              <mat-slide-toggle [(ngModel)]="virtualKeyboardEnabled" [ngModelOptions]="{ standalone: true }" color="primary"> Enable Anti-Keylogger Mode </mat-slide-toggle>
             </div>
 
             <mat-form-field class="full-width">
@@ -39,7 +37,7 @@
                 <mat-hint>Physical keyboard disabled for security</mat-hint>
               }
             </mat-form-field>
-            
+
             <app-entropy-meter [value]="secondFormGroup.controls['secondCtrl'].value || ''"></app-entropy-meter>
 
             @if (virtualKeyboardEnabled) {
@@ -105,16 +103,16 @@
 
           @if (stealthMode === 'image') {
             <div class="cover-image-upload">
-               <button mat-stroked-button color="primary" (click)="coverInput.click()"><mat-icon>image</mat-icon> Select Cover Image</button>
-               <input #coverInput type="file" (change)="onCoverImageSelected($event)" style="display: none" accept="image/png, image/jpeg" />
-               <span class="file-name" style="margin-left: 10px; font-size: 0.9em;">{{ selectedCoverImage?.name || 'No image selected' }}</span>
-               <p class="hint-text">Select a PNG or JPEG image to hide your data in.</p>
+              <button mat-stroked-button color="primary" (click)="coverInput.click()"><mat-icon>image</mat-icon> Select Cover Image</button>
+              <input #coverInput type="file" (change)="onCoverImageSelected($event)" style="display: none" accept="image/png, image/jpeg" />
+              <span class="file-name" style="margin-left: 10px; font-size: 0.9em">{{ selectedCoverImage?.name || 'No image selected' }}</span>
+              <p class="hint-text">Select a PNG or JPEG image to hide your data in.</p>
             </div>
           }
         </div>
 
         <button mat-flat-button color="accent" (click)="downloadFile()"><mat-icon>download</mat-icon> Download {{ stealthMode === 'standard' ? 'Text' : 'File' }}</button>
-        <button mat-button color="primary" (click)="downloadPaperWallet()" style="margin-left: 8px;"><mat-icon>print</mat-icon> Print Paper Wallet (PDF)</button>
+        <button mat-button color="primary" (click)="downloadPaperWallet()" style="margin-left: 8px"><mat-icon>print</mat-icon> Print Paper Wallet (PDF)</button>
       </div>
     </mat-card-content>
     <mat-card-actions class="result-actions">

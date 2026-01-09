@@ -76,9 +76,10 @@ export class SteganographyService {
           const lengthBinary = payload.length.toString(2).padStart(32, '0');
           const fullBinary = lengthBinary + binaryPayload;
 
-          if (fullBinary.length > data.length * 3) { // 3 channels (RGB) per pixel avail for LSB (ignoring Alpha for safety/visibility)
-             // simplified check: utilizing R, G, B channels
-             return reject(new Error('Payload too large for this image'));
+          if (fullBinary.length > data.length * 3) {
+            // 3 channels (RGB) per pixel avail for LSB (ignoring Alpha for safety/visibility)
+            // simplified check: utilizing R, G, B channels
+            return reject(new Error('Payload too large for this image'));
           }
 
           let dataIndex = 0;
@@ -95,8 +96,8 @@ export class SteganographyService {
 
           ctx.putImageData(imgData, 0, 0);
           canvas.toBlob((blob) => {
-             if (blob) resolve(blob);
-             else reject(new Error('Blob creation failed'));
+            if (blob) resolve(blob);
+            else reject(new Error('Blob creation failed'));
           }, 'image/png');
         };
         img.src = event.target?.result as string;
@@ -119,7 +120,7 @@ export class SteganographyService {
         img.onload = () => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
-           if (!ctx) return reject(new Error('Canvas context not supported'));
+          if (!ctx) return reject(new Error('Canvas context not supported'));
 
           canvas.width = img.width;
           canvas.height = img.height;
@@ -129,46 +130,46 @@ export class SteganographyService {
           const data = imgData.data;
 
           let binaryString = '';
-          
+
           // First, read 32 bits for length
           let length = 0;
           let lengthBinary = '';
 
           // Read all LSBs
-          // Optimization: This reads EVERYTHING, which is slow for huge images. 
+          // Optimization: This reads EVERYTHING, which is slow for huge images.
           // Better: Read 32 bits first, parse length, then read exactly that amount.
-          
+
           let state = 'LENGTH'; // 'LENGTH' | 'DATA'
           let payloadBitsNeeded = 0;
 
           for (let i = 0; i < data.length; i += 4) {
-             for (let j = 0; j < 3; j++) {
-                const bit = data[i + j] & 1;
-                
-                if (state === 'LENGTH') {
-                   lengthBinary += bit;
-                   if (lengthBinary.length === 32) {
-                      length = parseInt(lengthBinary, 2);
-                      state = 'DATA';
-                      payloadBitsNeeded = length * 8; // 8 bits per char
-                      if (length === 0 || isNaN(length)) {
-                         // Potentially invalid or empty
-                         return resolve('');
-                      }
-                   }
-                } else if (state === 'DATA') {
-                   binaryString += bit;
-                   if (binaryString.length === payloadBitsNeeded) {
-                      // Done
-                      return resolve(this.binaryToString(binaryString));
-                   }
+            for (let j = 0; j < 3; j++) {
+              const bit = data[i + j] & 1;
+
+              if (state === 'LENGTH') {
+                lengthBinary += bit;
+                if (lengthBinary.length === 32) {
+                  length = parseInt(lengthBinary, 2);
+                  state = 'DATA';
+                  payloadBitsNeeded = length * 8; // 8 bits per char
+                  if (length === 0 || isNaN(length)) {
+                    // Potentially invalid or empty
+                    return resolve('');
+                  }
                 }
-             }
-             if (state === 'DATA' && binaryString.length === payloadBitsNeeded) break;
+              } else if (state === 'DATA') {
+                binaryString += bit;
+                if (binaryString.length === payloadBitsNeeded) {
+                  // Done
+                  return resolve(this.binaryToString(binaryString));
+                }
+              }
+            }
+            if (state === 'DATA' && binaryString.length === payloadBitsNeeded) break;
           }
-           
-           // If we fall through without resolving, data might be corrupted or image too small for claimed length
-           reject(new Error('Failed to extract data: End of image reached improperly'));
+
+          // If we fall through without resolving, data might be corrupted or image too small for claimed length
+          reject(new Error('Failed to extract data: End of image reached improperly'));
         };
         img.src = event.target?.result as string;
       };
@@ -178,13 +179,16 @@ export class SteganographyService {
   }
 
   private stringToBinary(str: string): string {
-    return str.split('').map(char => {
-       return char.charCodeAt(0).toString(2).padStart(8, '0');
-    }).join('');
+    return str
+      .split('')
+      .map((char) => {
+        return char.charCodeAt(0).toString(2).padStart(8, '0');
+      })
+      .join('');
   }
 
   private binaryToString(binary: string): string {
     const bytes = binary.match(/.{1,8}/g) || [];
-    return bytes.map(byte => String.fromCharCode(parseInt(byte, 2))).join('');
+    return bytes.map((byte) => String.fromCharCode(parseInt(byte, 2))).join('');
   }
 }

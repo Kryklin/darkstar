@@ -3,11 +3,10 @@ import { Injectable } from '@angular/core';
 export type StrengthLevel = 'weak' | 'fair' | 'strong' | 'defense-grade';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class EntropyService {
-
-  constructor() { }
+  constructor() {}
 
   /**
    * Calculates the entropy of a given string in bits.
@@ -19,7 +18,7 @@ export class EntropyService {
     if (!input) return 0;
 
     let poolSize = 0;
-    
+
     // Determine pool size
     if (/[a-z]/.test(input)) poolSize += 26;
     if (/[A-Z]/.test(input)) poolSize += 26;
@@ -57,7 +56,7 @@ export class EntropyService {
     if (seconds < 3600) return `${Math.round(seconds / 60)} minutes`;
     if (seconds < 86400) return `${Math.round(seconds / 3600)} hours`;
     if (seconds < 31536000) return `${Math.round(seconds / 86400)} days`;
-    
+
     const years = seconds / 31536000;
     if (years < 1000) return `${Math.round(years)} years`;
     if (years < 1000000) return `${Math.round(years / 1000)}k years`;

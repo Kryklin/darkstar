@@ -19,17 +19,45 @@ export class VirtualKeyboard {
   showCaps = signal(false);
 
   private readonly lowerCaseKeys = [
-    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-    'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
-    'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l',
-    'z', 'x', 'c', 'v', 'b', 'n', 'm'
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    '0',
+    'q',
+    'w',
+    'e',
+    'r',
+    't',
+    'y',
+    'u',
+    'i',
+    'o',
+    'p',
+    'a',
+    's',
+    'd',
+    'f',
+    'g',
+    'h',
+    'j',
+    'k',
+    'l',
+    'z',
+    'x',
+    'c',
+    'v',
+    'b',
+    'n',
+    'm',
   ];
 
-  private readonly specialKeys = [
-    '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
-    '-', '_', '=', '+', '[', ']', '{', '}', '\\', '|',
-    ';', ':', '\'', '"', ',', '.', '<', '>', '/', '?'
-  ];
+  private readonly specialKeys = ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+', '[', ']', '{', '}', '\\', '|', ';', ':', "'", '"', ',', '.', '<', '>', '/', '?'];
 
   constructor() {
     this.shuffleKeys();
@@ -40,18 +68,18 @@ export class VirtualKeyboard {
   }
 
   toggleCaps() {
-    this.showCaps.update(v => !v);
+    this.showCaps.update((v) => !v);
     this.updateKeyDisplay();
   }
 
   toggleSymbols() {
-    this.showSymbols.update(v => !v);
+    this.showSymbols.update((v) => !v);
     this.shuffleKeys(); // Reshuffle when switching modes
   }
 
   shuffleKeys() {
     const source = this.showSymbols() ? [...this.specialKeys] : [...this.lowerCaseKeys];
-    
+
     // Fisher-Yates Shuffle
     for (let i = source.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -67,9 +95,9 @@ export class VirtualKeyboard {
 
     const current = this.keys();
     if (this.showCaps()) {
-      this.keys.set(current.map(k => k.toUpperCase()));
+      this.keys.set(current.map((k) => k.toUpperCase()));
     } else {
-      this.keys.set(current.map(k => k.toLowerCase()));
+      this.keys.set(current.map((k) => k.toLowerCase()));
     }
   }
 

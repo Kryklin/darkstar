@@ -77,19 +77,19 @@ export class SharedDecryptComponent {
           const mode = this.steganographyService.detectMode(file.name, content);
 
           if (mode === 'image') {
-             // Handle Image Extraction
-             try {
-                const extractedData = await this.steganographyService.revealFromImage(file);
-                if (extractedData) {
-                  this.firstFormGroup.controls['encryptedData'].setValue(extractedData);
-                  this.snackBar.open(`Extracted payload from Image`, 'OK', { duration: 3000 });
-                } else {
-                  this.snackBar.open('Could not find hidden payload in image', 'Error', { duration: 3000 });
-                }
-             } catch (err) {
-                console.error(err);
-                this.snackBar.open('Error extracting from image', 'Close', { duration: 3000 });
-             }
+            // Handle Image Extraction
+            try {
+              const extractedData = await this.steganographyService.revealFromImage(file);
+              if (extractedData) {
+                this.firstFormGroup.controls['encryptedData'].setValue(extractedData);
+                this.snackBar.open(`Extracted payload from Image`, 'OK', { duration: 3000 });
+              } else {
+                this.snackBar.open('Could not find hidden payload in image', 'Error', { duration: 3000 });
+              }
+            } catch (err) {
+              console.error(err);
+              this.snackBar.open('Error extracting from image', 'Close', { duration: 3000 });
+            }
           } else if (mode) {
             const extractedData = this.steganographyService.extract(content, mode);
             if (extractedData) {

@@ -15,6 +15,7 @@
 </p>
 
 # Darkstar Encryption Suite
+
 > **Defense-in-Depth for Digital Mnemonic Assets**
 
 The **Darkstar Encryption Suite** is a high-performance, multi-language implementation of the Darkstar V2 security protocol. It is designed to bridge the gap between user-friendly wallet interfaces and hardened backend/utility systems, providing a consistent cryptographic standard across **Go**, **Rust**, **Python**, and **Node.js**.
@@ -28,12 +29,12 @@ Darkstar V2 employs a dual-layered security model that fundamentally differs fro
 1.  **Dynamic Obfuscation Pool**: Data is passed through a 12-stage transformation pipeline. The selection and order of these functions are determined by a deterministic shuffle seeded by the user's password and the data itself.
 2.  **Military-Grade AES**: The obfuscated high-entropy blob is encapsulated and encrypted using AES-256-CBC with 600,000 PBKDF2 iterations.
 
-| Feature | Description |
-| :--- | :--- |
-| **Entropy Injection** | Obfuscation layers maximize data chaos before AES encryption. |
-| **Cross-Language** | Standardized `Mulberry32` PRNG ensures bit-perfect interop. |
-| **CLI Ready** | Optimized for secure, air-gapped terminal operations. |
-| **Integrity Checks** | Built-in checksums validate the successful reversal of all 12 layers. |
+| Feature               | Description                                                           |
+| :-------------------- | :-------------------------------------------------------------------- |
+| **Entropy Injection** | Obfuscation layers maximize data chaos before AES encryption.         |
+| **Cross-Language**    | Standardized `Mulberry32` PRNG ensures bit-perfect interop.           |
+| **CLI Ready**         | Optimized for secure, air-gapped terminal operations.                 |
+| **Integrity Checks**  | Built-in checksums validate the successful reversal of all 12 layers. |
 
 ---
 
@@ -44,6 +45,7 @@ Integrating Darkstar into your project is straightforward. Choose your platform 
 ### 🟢 Node.js Implementation
 
 **Target**: Web backends and desktop applications.
+
 - **npm Package**: `@kryklin/darkstar-crypt-node`
 - **Docker**: `docker build -t darkstar-node ./node`
 
@@ -57,12 +59,13 @@ npm install @kryklin/darkstar-crypt-node
 ```javascript
 import { DarkstarCrypt } from '@kryklin/darkstar-crypt-node';
 const crypt = new DarkstarCrypt();
-const { encryptedData, reverseKey } = await crypt.encrypt("phrase", "pass");
+const { encryptedData, reverseKey } = await crypt.encrypt('phrase', 'pass');
 ```
 
 ### 🔷 Go Implementation
 
 **Target**: Performance critical backends and microservices.
+
 - **Docker**: `docker build -t darkstar-go ./go`
 - **Source**: `go/main.go`
 - **Dependency**: `golang.org/x/crypto/pbkdf2`
@@ -84,6 +87,7 @@ fmt.Println(result["encryptedData"])
 ### 🦀 Rust Implementation
 
 **Target**: System-level integration and high-security crates.
+
 - **Docker**: `docker build -t darkstar-rust ./rust`
 - **Source**: `rust/src/main.rs`
 - **Dependencies**: `aes`, `cbc`, `pbkdf2`, `serde_json`
@@ -103,6 +107,7 @@ let json_output = dc.encrypt("phrase", "password");
 ### 🐍 Python Implementation
 
 **Target**: Data science, scripting, and rapid prototyping.
+
 - **Docker**: `docker build -t darkstar-python ./python`
 - **Source**: `python/darkstar_crypt.py`
 - **Dependency**: `cryptography`
@@ -178,4 +183,3 @@ Standard output is a JSON-encapsulated object:
 ## ⚖️ License
 
 The Darkstar Encryption Suite is released under the **MIT License**.
-

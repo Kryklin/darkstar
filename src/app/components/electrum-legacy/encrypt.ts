@@ -43,9 +43,9 @@ export class ElectrumLegacyEncrypt {
     let randomWords = '';
     // Electrum Legacy standard is typically 12 words
     for (let i = 0; i < 12; i++) {
-        randomWords += words[Math.floor(Math.random() * words.length)] + ' ';
+      randomWords += words[Math.floor(Math.random() * words.length)] + ' ';
     }
     this.sharedEncrypt.setMnemonic(randomWords.trim());
     return randomWords.trim();
-  }
+  };
 }

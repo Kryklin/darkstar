@@ -54,6 +54,8 @@ export class UpdateService {
 
     api.onUpdateStatus((data: { status: string; error?: string }) => {
       this.ngZone.run(() => {
+        if (this.checkTimeout) clearTimeout(this.checkTimeout);
+
         this.updateStatus.set(data.status);
         if (data.error) {
           this.updateError.set(data.error);
@@ -85,13 +87,14 @@ export class UpdateService {
     });
   }
 
+  private checkTimeout: ReturnType<typeof setTimeout> | undefined;
+
   /**
    * Triggers an update check via Electron's auto-updater.
    */
   checkForUpdates() {
     if (this.versionLocked()) {
       console.log('Update check blocked: Version is locked.');
-      // Optionally set a status to inform the UI, but for now just return.
       return;
     }
 
@@ -103,6 +106,20 @@ export class UpdateService {
 
       this.updateStatus.set('checking');
       this.updateError.set(null);
+
+      // Safety timeout: If Electron doesn't respond in 15 seconds, reset.
+      if (this.checkTimeout) clearTimeout(this.checkTimeout);
+      this.checkTimeout = setTimeout(() => {
+        this.ngZone.run(() => {
+          if (this.isChecking() || this.updateStatus() === 'checking') {
+            console.warn('Update check timed out in renderer.');
+            this.updateStatus.set('idle');
+            this.isChecking.set(false);
+            this.updateError.set('Update check timed out. Please try again later.');
+          }
+        });
+      }, 15000);
+
       window.electronAPI.checkForUpdates();
     }
   }

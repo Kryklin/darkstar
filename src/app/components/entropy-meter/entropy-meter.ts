@@ -10,11 +10,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   standalone: true,
   imports: [CommonModule, MatProgressBarModule, MatIconModule, MatTooltipModule],
   templateUrl: './entropy-meter.html',
-  styleUrl: './entropy-meter.scss'
+  styleUrl: './entropy-meter.scss',
 })
 export class EntropyMeter implements OnChanges {
   @Input() value = '';
-  
+
   entropy = 0;
   strength: StrengthLevel = 'weak';
   crackTime = '';
@@ -34,6 +34,13 @@ export class EntropyMeter implements OnChanges {
     this.entropy = this.entropyService.calculateEntropy(this.value);
     this.strength = this.entropyService.getStrengthLevel(this.entropy);
     this.crackTime = this.entropyService.getCrackTimeEstimate(this.entropy);
+
+    if (!this.value) {
+      this.color = 'warn';
+      this.progressValue = 0;
+      this.label = 'Enter Password';
+      return;
+    }
 
     switch (this.strength) {
       case 'weak':
@@ -58,7 +65,7 @@ export class EntropyMeter implements OnChanges {
         break;
     }
   }
-  
+
   // Helper for custom CSS colors if Material palette isn't precise enough
   get cssColorClass(): string {
     return `strength-${this.strength}`;

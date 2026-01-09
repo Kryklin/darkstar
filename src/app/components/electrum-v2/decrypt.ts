@@ -6,13 +6,7 @@ import ElectrumV2 from '../../../assets/electrum-v2.json';
   selector: 'app-electrum-v2-decrypt',
   standalone: true,
   imports: [SharedDecryptComponent],
-  template: `
-    <app-shared-decrypt
-      [protocolTitle]="protocolTitle"
-      [protocolSummary]="protocolSummary"
-      [protocolLink]="protocolLink"
-    ></app-shared-decrypt>
-  `,
+  template: ` <app-shared-decrypt [protocolTitle]="protocolTitle" [protocolSummary]="protocolSummary" [protocolLink]="protocolLink"></app-shared-decrypt> `,
 })
 export class ElectrumV2Decrypt {
   protocolTitle = ElectrumV2.title;

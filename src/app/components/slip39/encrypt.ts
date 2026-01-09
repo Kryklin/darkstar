@@ -43,9 +43,9 @@ export class Slip39Encrypt {
     let randomWords = '';
     // SLIP39 shares often come in 20 or 33 words. We'll generate 20 for this example.
     for (let i = 0; i < 20; i++) {
-        randomWords += words[Math.floor(Math.random() * words.length)] + ' ';
+      randomWords += words[Math.floor(Math.random() * words.length)] + ' ';
     }
     this.sharedEncrypt.setMnemonic(randomWords.trim());
     return randomWords.trim();
-  }
+  };
 }

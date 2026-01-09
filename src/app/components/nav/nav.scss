@@ -2,114 +2,131 @@
 
 .sidenav-container {
   height: 100%;
-  background: transparent; // Let global background show through
+  background: radial-gradient(circle at 0% 0%, rgba(64, 196, 255, 0.05) 0%, transparent 50%), radial-gradient(circle at 100% 100%, rgba(0, 145, 234, 0.05) 0%, transparent 50%);
 }
 
 mat-toolbar {
-  position: sticky !important; // Ensure it sticks
+  position: sticky !important;
   top: 0;
   z-index: 1000;
   -webkit-app-region: drag;
 
-  // sticky glass effect
-  background: transparent !important;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
 
-  color: var(--mat-sys-on-surface);
+  color: var(--glass-text);
 
   button {
     -webkit-app-region: no-drag;
+    transition: all 0.3s ease;
+    color: var(--glass-text);
 
-    // Glossy button look
     &:hover {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(4px);
+      background: rgba(var(--mat-sys-primary-rgb), 0.08);
+      backdrop-filter: blur(8px);
     }
   }
 }
 
 .sidenav {
-  width: 400px; // Significantly increased to contain pill overflow
-  background: transparent; // Remove default material background
+  width: 320px;
+  background: transparent;
   border: none;
-  padding: 16px;
+  padding: 0;
   box-sizing: border-box;
+  overflow: hidden;
 
-  // Aggressively hide scrollbars
-  scrollbar-width: none; // Firefox
-  -ms-overflow-style: none; // IE/Edge
-
-  &::-webkit-scrollbar {
-    display: none; // Chrome/Safari
-  }
-
-  // Forcefully target internal container to hide scrollbars
   ::ng-deep .mat-drawer-inner-container {
-    overflow: hidden !important; // Prevent scrollbars logically
+    overflow: hidden !important;
     scrollbar-width: none;
-    -ms-overflow-style: none;
-
     &::-webkit-scrollbar {
       display: none;
     }
   }
 }
 
-// The floating glass panel inside the sidebar
 .sidebar-content {
-  @include glass.glass-panel;
-  // Fix layout to be properly contained
-  height: calc(100% - 32px);
-  margin: 16px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(25px) saturate(200%);
+  -webkit-backdrop-filter: blur(25px) saturate(200%);
+  border-right: 1px solid var(--glass-border);
+  height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: visible; // Changed to visible to prevent clipping of highlight glows
-  // Removing massive top margin which caused overflow/breakage
+  box-shadow: var(--glass-shadow);
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 20% 30%, var(--glass-bg-accent) 0%, transparent 70%);
+    pointer-events: none;
+  }
 }
 
-// Navigation Items
+.sidebar-header-box {
+  padding: 60px 24px;
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.sidebar-logo {
+  height: 180px;
+  filter: drop-shadow(0 0 30px var(--glass-glow));
+  transition: all 0.4s ease;
+
+  &:hover {
+    transform: scale(1.02);
+    filter: drop-shadow(0 0 40px var(--glass-glow));
+  }
+}
+
 mat-nav-list {
-  padding-top: 0;
+  padding: 10px 16px !important;
 
   a[mat-list-item] {
-    width: auto; // Force auto width to respect margins
-    display: block; // Ensure it behaves like a block for margin calc
-    box-sizing: border-box; // Include padding in width
-    margin: 4px 16px; // Align with toolbar padding (16px)
-    border-radius: 50px; // Guaranteed pill shape
-    transition: all 0.2s ease;
-    border: none;
-    position: relative;
-    overflow: visible; // Allow glow/shadow to bleed out
+    margin: 4px 0;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+    overflow: hidden;
+    animation: slideInRow 0.4s ease forwards;
+    opacity: 0;
+    color: var(--glass-text);
 
-    &:hover {
-      background: rgba(255, 255, 255, 0.05);
-
-      .dark-theme & {
-        background: rgba(255, 255, 255, 0.05);
-      }
-      .light-theme & {
-        background: rgba(0, 0, 0, 0.05);
+    @for $i from 1 through 15 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{$i * 0.05}s;
       }
     }
 
-    &.active-link {
-      background: var(--mat-sys-secondary-container);
-      color: var(--mat-sys-on-secondary-container);
-      box-shadow: 0 0 12px rgba(0, 0, 0, 0.2); // Subtle lift
+    &:hover {
+      background: rgba(var(--mat-sys-primary-rgb), 0.05);
+      border-color: var(--glass-border);
+      transform: translateX(4px);
+    }
 
-      // Remove the side bar, use the whole shape as indication
-      &::before {
-        display: none;
-      }
+    &.active-link {
+      background: rgba(var(--mat-sys-primary-rgb), 0.1);
+      border-color: rgba(var(--mat-sys-primary-rgb), 0.2);
+      box-shadow:
+        var(--glass-shadow),
+        inset 0 0 15px rgba(var(--mat-sys-primary-rgb), 0.1);
 
       mat-icon,
       span {
-        color: var(--mat-sys-on-secondary-container);
-        font-weight: 500;
-        text-shadow: none;
+        color: var(--mat-sys-primary);
+        text-shadow: 0 0 10px var(--glass-glow);
       }
     }
   }
@@ -118,96 +135,88 @@ mat-nav-list {
 .nav-link-center {
   display: flex;
   align-items: center;
-  height: 64px; // Explicitly set height to ensure vertical centering works
+  padding: 8px 0;
 
   mat-icon {
-    margin-right: 12px;
-    transition: transform 0.3s ease;
-    position: relative;
-    top: -8px;
+    margin-right: 16px;
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+    opacity: 0.8;
+    color: var(--glass-text);
   }
 
   span {
-    font-size: 1.1rem;
-    letter-spacing: 0.5px;
-    line-height: 1;
-    position: relative;
-    top: -8px; // Lift text further up
+    font-size: 1rem;
+    font-weight: 300;
+    letter-spacing: 0.8px;
+    color: var(--glass-text);
   }
-}
-
-// Toolbar Title
-.app-title {
-  margin-left: 0; // Removed margin to align with pill start
-  font-size: 1.5rem;
-  line-height: 1; // Fix vertical alignment quirk
-  padding-top: 2px; // Optical adjustment if needed, but 1 usually fixes it
-  letter-spacing: 3px;
-  // Shine animation is global in styles.scss
-}
-
-.navbar-logo {
-  height: 48px;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
-  -webkit-app-region: no-drag;
 }
 
 .spacer {
   flex: 1 1 auto;
 }
 
-// Styles for the expandable header
 .nav-group-header {
-  cursor: pointer;
-
   .expand-icon {
-    transition: transform 0.3s ease;
-    margin-right: 0; // Override default margin if needed
-
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0.5;
     &.expanded {
       transform: rotate(180deg);
+      opacity: 1;
+      color: #40c4ff;
     }
   }
 }
 
-// Styles for nested items
 .nested-item {
-  margin-left: 32px !important; // Indent nested items
-  width: auto !important; // Maintain auto width
-  margin-right: 16px !important;
-  font-size: 0.95em;
+  margin-left: 12px !important;
+  font-size: 0.9em;
+  background: rgba(255, 255, 255, 0.02);
 
-  // Optional: make them slightly smaller or different color
   .nav-link-center mat-icon {
-    transform: scale(0.9);
+    transform: scale(0.85);
+    opacity: 0.6;
   }
 }
 
-// Layout Fix for Scrollbars
 mat-sidenav-content {
   display: flex !important;
   flex-direction: column;
-  overflow: hidden !important; // Prevent global scrollbar
-  height: 100vh; // Ensure it takes full viewport height
+  overflow: hidden !important;
+  height: 100vh;
 }
 
 .content-scroll-container {
   flex: 1;
-  overflow-y: auto; // Enable vertical scrolling
+  overflow-y: auto;
   overflow-x: hidden;
   position: relative;
-  
-  // Custom scrollbar stylings to match app theme
   scrollbar-width: thin;
+
   &::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
   &::-webkit-scrollbar-track {
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    &:hover { background: rgba(255, 255, 255, 0.2); }
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    &:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+  }
+}
+
+@keyframes slideInRow {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }

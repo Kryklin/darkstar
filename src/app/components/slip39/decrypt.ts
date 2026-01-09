@@ -6,13 +6,7 @@ import Slip39 from '../../../assets/slip39.json';
   selector: 'app-slip39-decrypt',
   standalone: true,
   imports: [SharedDecryptComponent],
-  template: `
-    <app-shared-decrypt
-      [protocolTitle]="protocolTitle"
-      [protocolSummary]="protocolSummary"
-      [protocolLink]="protocolLink"
-    ></app-shared-decrypt>
-  `,
+  template: ` <app-shared-decrypt [protocolTitle]="protocolTitle" [protocolSummary]="protocolSummary" [protocolLink]="protocolLink"></app-shared-decrypt> `,
 })
 export class Slip39Decrypt {
   protocolTitle = Slip39.title;

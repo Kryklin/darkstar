@@ -53,5 +53,5 @@ export class Encrypt {
     }
     this.sharedEncrypt.setMnemonic(randomWords.trim());
     return randomWords.trim(); // Just in case we need to return it, though we set it directly via ViewChild
-  }
+  };
 }

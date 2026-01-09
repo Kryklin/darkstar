@@ -6,8 +6,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.7.3-blue" alt="Version"/>
-  <img src="https://img.shields.io/badge/Angular-v20.3.0-dd0031?logo=angular" alt="Angular"/>
+  <img src="https://img.shields.io/badge/version-1.8.0-blue" alt="Version"/>
+  <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript"/>
   <img src="https://img.shields.io/badge/Go-v1.25.5-00ADD8?logo=go" alt="Go"/>
@@ -20,37 +20,36 @@
 
 # Darkstar V2 Encryption Architecture
 
-This document illustrates the internal workings of the Darkstar V2 Encryption System. It combines **Dynamic Structural Obfuscation** with standard **AES-256-CBC** to create a defense-grade security layer for mnemonic phrases.
+This document illustrates the internal workings of the Darkstar V2 Encryption System. It combines **Dynamic Structural Obfuscation** with standard **AES-256-CBC** and **Hardware-Bound Protection** to create a defense-grade security layer for mnemonics and secure notes.
 
 ## 1. High-Level Workflow
 
-The system transforms a readable mnemonic into a secure, opaque JSON blob.
+The system transforms sensitive data into a secure, multi-layered opaque blob.
 
 ```mermaid
 graph LR
-    User([User Input]) -->|Mnemonic + Password| Split(Split Words)
-    Split -->|Word 1| Pipeline[Dynamic Obfuscation Pipeline]
-    Split -->|Word 2| Pipeline
-    Split -->|Word N| Pipeline
+    User([User Input]) -->|Data + Password| Layers[Multi-Layer Protection]
     
-    Pipeline -->|Obfuscated Bytes| Assembler(Blob Assembly)
-    Assembler -->|Binary Blob| Base64[Base64 Encoding]
-    Base64 -->|Payload| AES[AES-256-CBC Encryption]
-    AES -->|Encrypted Data| JSON[Final JSON Output]
-    
+    subgraph Layers [Security Gauntlet]
+        Obf[Dynamic Obfuscation Pipeline]
+        MemH[V2 Memory Hardening: Uint8Array]
+        AES[AES-256-CBC Encryption]
+        Safe[Electron SafeStorage: Hardware Binding]
+    end
+
+    Safe -->|Encrypted Payload| Storage[(Device Storage)]
+
     style User fill:#f9f,stroke:#333
-    style AES fill:#bbf,stroke:#333
-    style Pipeline fill:#bfb,stroke:#333
-    
-    %% Spacing Fixes
-    linkStyle default interpolate basis
+    style Layers fill:#f8f9fa,stroke:#333
+    style Safe fill:#bbf,stroke:#333
+    style Obf fill:#bfb,stroke:#333
 ```
 
 ---
 
-## 2. The Core: Dynamic Obfuscation Pipeline
+## 2. The Core: Dynamic Obfuscation Pipeline (Mnemonic Engine)
 
-Unlike standard encryption which applies a static algorithm, Darkstar V2 applies a **unique, chaotic sequence of transformations** to every single word. The order of these transformations is determined by the data itself.
+Unlike standard encryption which applies a static algorithm, the Mnemonic Engine applies a **unique, chaotic sequence of transformations** to every single word.
 
 ### Per-Word Processing Logic
 
@@ -60,44 +59,33 @@ flowchart TD
     Start(Start: Word Input)
     SeedGen{Generate Seed}
     PRNG[Initialize Mulberry32 PRNG]
-    
+
     DefaultList[Default Function List: 0..11]
     Shuffle[Shuffle List using Seed]
     ShuffledList[Result: 7, 2, 11, 4...]
-    
+
     Checksum(Calculate Checksum)
     FinalSeed[Final Seed: Password + Checksum]
-    
+
     Execute(Execute 12-Stage Gauntlet)
     Result(Final Obfuscated Blob)
 
     %% Connections
     Start --> SeedGen
     SeedGen -->|Password + Word| PRNG
-    
+
     PRNG --> Shuffle
     DefaultList --> Shuffle
     Shuffle -->|Randomized| ShuffledList
-    
+
     ShuffledList --> Checksum
     ShuffledList --> Execute
-    
+
     Checksum --> FinalSeed
     FinalSeed -.-> Execute
-    
+
     Execute --> Result
 
-    %% Subgraph for grouping (simplified)
-    subgraph Processing [Dynamic Transformation]
-        direction TB
-        Shuffle
-        ShuffledList
-        Checksum
-        FinalSeed
-        Execute
-    end
-
-    %% Styling
     style Start fill:#f9f,stroke:#333
     style SeedGen fill:#ff9,stroke:#333
     style Result fill:#f9f,stroke:#333
@@ -105,115 +93,69 @@ flowchart TD
 ```
 
 ### The "Reverse Key"
+
 Because the functions are shuffled randomly for every word, we must save the **order** in which they were applied to reverse the process tailored to that specific word.
 
-**New in V2.1: Reverse Key Compression**
-To improve efficiency, the reverse key (a sequence of integers) is now compressed using binary packing (4 bits per value) instead of plain JSON. This reduces the key size by ~75%.
-
-```mermaid
-classDiagram
-    class EncryptedPackage {
-        +Version: 2
-        +Data: AES_Encrypted_String
-        +ReverseKey: Packed_Binary_Base64
-    }
-    
-    class ReverseKeyMap {
-        +Word1: [7, 2, 11, 4, ...]
-        +Word2: [1, 5, 9, 0, ...]
-        +WordN: [3, 8, 12, 6, ...]
-    }
-    
-    EncryptedPackage --> ReverseKeyMap : Encodes (Compressed)
-```
+**V2.1: Reverse Key Compression**
+The reverse key is compressed using binary packing (4 bits per value), reducing the key size by ~75%.
 
 ---
 
-## 3. The 12 Obfuscation Layers
+## 3. V2 Memory Hardening (Uint8Array)
 
-Each word passes through all 12 of these layers. Some are structural (changing the format), some are entropic (increasing noise).
+New in V1.8.0, Darkstar implements a specialized memory hardening strategy to mitigate sensitive data residency in JavaScript's heap.
 
-| Type | Function | Visual Effect |
-| :--- | :--- | :--- |
-| **Structure** | `ObfuscateToBinary` | `A` -> `01000001` |
-| **Structure** | `ObfuscateToCharCodes` | `A` -> `65` |
-| **Cipher** | `AtbashCipher` | `A` -> `Z` |
-| **Cipher** | `CaesarCipher` | `A` -> `N` (ROT13) |
-| **Cipher** | `VigenereCipher` | Uses seed to shift values |
-| **Chaos** | `Shuffle` | Randomizes byte positions |
-| **Chaos** | `Interleave` | Injects random noise characters |
-| **Chaos** | `BlockReversal` | Flips chunks of data |
-| **Chaos** | `SwapAdjacent` | Swaps neighbors `AB` -> `BA` |
-| **Bitwise** | `XOR` | Flips bits using seed |
-| **Substitution** | `SeededSubstitution` | Maps bytes to new values |
-| **Simple** | `Reverse` | Reverses the entire array |
+- **Strict Buffer Usage**: All encryption, decryption, and obfuscation operations now occur on `Uint8Array` rather than `string`.
+- **Explicit Zeroing**: Sensitive buffers (passwords, intermediate states) are explicitly filled with zeros (`buffer.fill(0)`) immediately after their useful lifespan.
+- **Async Web Crypto**: Leverages the browser's native `SubtleCrypto` for faster and more secure key derivation (PBKDF2) and AES operations.
 
 ---
 
-## 4. Final Data Assembly
+## 4. Hardware-Bound Protection (Electron SafeStorage)
 
-Once obfuscated, the data isn't just concatenated. It's packed into a structured binary format before encryption.
-
-```mermaid
-erDiagram
-    FINAL_BLOB {
-        byte Length_High
-        byte Length_Low
-        bytes Obfuscated_Word_Data
-    }
-    
-    FINAL_BLOB ||--o{ WORD_1 : contains
-    FINAL_BLOB ||--o{ WORD_2 : contains
-```
-
-**Example Binary Structure:**
-`[00 05 HELLO] [00 05 WORLD]`
-
-1. **Pack**: All words are packed into this binary stream.
-2. **Encode**: The stream is Base64 encoded.
-3. **Encrypt**: The Base64 string is encrypted via **AES-256-CBC**.
-    - **Key**: Derived from Password + Random Salt (PBKDF2).
-    - **IV**: Random 16 bytes.
-4. **Output**: `Salt (Hex) + IV (Hex) + Ciphertext (Base64)`
-
----
-
-## 5. Structural Steganography (Stealth Export)
-
-New in V2.1, this optional layer allows the encrypted blob to be hidden inside common file formats to provide plausible deniability.
+For Secure Vault data, Darkstar utilizes **Electron SafeStorage** to provide a final layer of protection that is bound to the user's host machine.
 
 ```mermaid
 graph TD
-    EncryptedBlob[Standard Encrypted Blob] --> Transmuter{Stego Transmuter}
-    
-    Transmuter -->|Mode: Log| LogFile[System.log]
-    Transmuter -->|Mode: CSV| CsvFile[SensorData.csv]
-    Transmuter -->|Mode: JSON| JsonFile[Config.json]
-    
-    subgraph "Mimicry Generation"
-        LogFile -- Contains --> FakeEntries[Fake Errors/Warnings]
-        CsvFile -- Contains --> FakeData[Fake Sensor Readings]
-        JsonFile -- Contains --> FakeConfig[Fake App Settings]
+    Data[JSON Notes] --> AES[AES-256 Master Password]
+    AES --> Safe[Electron SafeStorage Layer]
+    Safe -->|Machine Locked| File[localStorage]
+
+    subgraph "OS Security Entropy"
+        DPAPI[Windows DPAPI]
+        KC[macOS Keychain]
+        KWallet[Linux KWallet/Secret Service]
     end
-    
-    FakeEntries -. Hides .-> EncryptedBlob
-    FakeData -. Hides .-> EncryptedBlob
-    FakeConfig -. Hides .-> EncryptedBlob
-    
-    style Transmuter fill:#f96,stroke:#333
-    classDef spaced padding:20px;
+
+    Safe -.-> DPAPI
+    Safe -.-> KC
+    Safe -.-> KWallet
 ```
 
-**Mechanisms:**
-- **Logs**: Payload is split and appended to realistic-looking log lines as "error codes" or "trace IDs".
-- **CSV**: Payload is injected into a specific "hash" or "comment" column amidst generated sensor data.
-- **JSON**: Payload is distributed across multiple deep fields (e.g., `telemetry.id`, `cache.hash`) in a generated configuration file.
+**Benefits:**
+- **Theft Resistance**: Even if the local storage database is stolen, it cannot be decrypted on any other machine or OS user account.
+- **Offline Hardening**: Renders massive cracking clusters ineffective unless they have physical access to the device's hardware-backed security entropy.
 
 ---
 
-## 6. Decryption Flow
+## 5. Secure Vault: Zero-Knowledge Architecture
 
-Reversing the process requires the `ReverseKey`.
+The Secure Vault is designed so that the application itself has "Zero Knowledge" of the user's secrets between sessions.
+
+- **Session State**: The Master Key and decrypted notes are stored in Angular Signals (volatile memory) and are cleared on page reload or app close.
+- **Multi-Factor Persistence**: 
+    1. **Something You Know**: Master Password (AES-256-CBC).
+    2. **Something You Have**: The specific physical machine hardware (SafeStorage).
+
+---
+
+## 6. Structural Steganography (Stealth Export)
+
+This optional layer allows encrypted blobs to be hidden inside common file formats as "noise" or "metadata" to provide plausible deniability. Supported formats include `.log`, `.csv`, and `.json`.
+
+---
+
+## 7. Decryption Flow (Mnemonic)
 
 ```mermaid
 sequenceDiagram
@@ -221,13 +163,13 @@ sequenceDiagram
     participant App
     participant AES
     participant Deobfuscator
-    
+
     User->>App: Input Output JSON + Password
     App->>App: Extract Salt & IV
     App->>AES: Decrypt(Data, Password, Salt, IV)
     AES-->>App: Base64 String
     App->>App: Decode Base64 -> Binary Blob
-    
+
     loop For Each Word in Binary Blob
         App->>App: Read Length Header
         App->>App: Extract Word Chunk
@@ -235,6 +177,6 @@ sequenceDiagram
         App->>Deobfuscator: Apply Functions in REVERSE order
         Deobfuscator-->>App: Original Word
     end
-    
+
     App-->>User: "cat dog fish bird"
 ```

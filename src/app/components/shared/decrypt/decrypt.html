@@ -75,11 +75,9 @@
           <mat-step [stepControl]="thirdFormGroup">
             <form [formGroup]="thirdFormGroup">
               <ng-template matStepLabel>Enter Password</ng-template>
-              
-              <div class="security-controls" style="margin-bottom: 16px;">
-                 <mat-slide-toggle [(ngModel)]="virtualKeyboardEnabled" [ngModelOptions]="{standalone: true}" color="primary">
-                    Enable Anti-Keylogger Mode
-                 </mat-slide-toggle>
+
+              <div class="security-controls" style="margin-bottom: 16px">
+                <mat-slide-toggle [(ngModel)]="virtualKeyboardEnabled" [ngModelOptions]="{ standalone: true }" color="primary"> Enable Anti-Keylogger Mode </mat-slide-toggle>
               </div>
 
               <mat-form-field appearance="fill" class="full-width">

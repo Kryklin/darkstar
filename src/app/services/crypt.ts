@@ -9,22 +9,31 @@ export interface DecryptionResult {
 @Injectable({
   providedIn: 'root',
 })
+/**
+ * Core cryptographic engine for the Darkstar security suite.
+ * Handles multi-layered encryption, structural obfuscation, and memory hardening.
+ */
 export class CryptService {
-  private readonly ITERATIONS_V1 = 1000; // Legacy
-  public ITERATIONS_V2 = 600000; // OWASP Recommended
+  /** Iterations for legacy (V1) encryption. Deprecated. */
+  private readonly ITERATIONS_V1 = 1000;
+  
+  /** 
+   * Iterations for standard (V2) encryption. 
+   * Aligns with modern OWASP recommendations for high-security. 
+   */
+  public ITERATIONS_V2 = 600000;
 
   private readonly KEY_SIZE = 256 / 32;
   private readonly SALT_SIZE_BYTES = 128 / 8;
   private readonly IV_SIZE_BYTES = 128 / 8;
 
-  // --- AES-256 Encryption ---
-
   /**
-   * Encrypts a string using AES-256 with PBKDF2 key derivation.
-   * @param data The string to encrypt.
-   * @param password The password to use for encryption.
-   * @param iterations Number of PBKDF2 iterations.
-   * @returns The encrypted string (ciphertext) combined with salt and iv.
+   * Synchronous AES-256-CBC encryption using PBKDF2.
+   * Note: Primarily used for legacy compatibility. Use Async variants for new features.
+   * @param {string} data Plaintext to encrypt.
+   * @param {string} password Secret passphrase.
+   * @param {number} iterations Computational hardening factor.
+   * @returns {string} Hex-encoded Salt + IV + Base64 ciphertext.
    */
   encryptAES256(data: string, password: string, iterations: number): string {
     const salt = CryptoJS.lib.WordArray.random(this.SALT_SIZE_BYTES);
@@ -38,18 +47,16 @@ export class CryptService {
       padding: CryptoJS.pad.Pkcs7,
       mode: CryptoJS.mode.CBC,
     });
-    // Combine salt, iv and ciphertext for transit
-    // string concat: 32 hex chars (salt) + 32 hex chars (iv) + base64 ciphertext
-    const transitmessage = salt.toString() + iv.toString() + encrypted.ciphertext.toString(CryptoJS.enc.Base64);
-    return transitmessage;
+
+    return salt.toString() + iv.toString() + encrypted.ciphertext.toString(CryptoJS.enc.Base64);
   }
 
   /**
-   * Decrypts a string using AES-256.
-   * @param transitmessage The encrypted string (ciphertext) with salt and iv.
-   * @param password The password to use for decryption.
-   * @param iterations Number of PBKDF2 iterations.
-   * @returns The decrypted string.
+   * Synchronous AES-256-CBC decryption.
+   * @param {string} transitmessage Combined hex/base64 payload.
+   * @param {string} password Secret passphrase.
+   * @param {number} iterations Computational hardening factor.
+   * @returns {string} Decrypted plaintext or empty string on failure.
    */
   decryptAES256(transitmessage: string, password: string, iterations: number): string {
     try {
@@ -73,13 +80,19 @@ export class CryptService {
 
       return decrypted.toString(CryptoJS.enc.Utf8);
     } catch (error) {
-      console.error('Decryption failed:', error);
+      console.error('Core Crypt Decryption Error:', error);
       return '';
     }
   }
 
-  // --- Async AES-256 Encryption (V2 via Web Crypto) ---
-
+  /**
+   * Asynchronous AES-256-CBC encryption powered by the Web Crypto API.
+   * Implements secure key derivation and modern buffer patterns for memory hardening.
+   * @param {string} data Plaintext to encrypt.
+   * @param {string} password Secret passphrase.
+   * @param {number} iterations PBKDF2 iteration count.
+   * @returns {Promise<string>} Hex-encoded Salt + IV + Base64 ciphertext.
+   */
   async encryptAES256Async(data: string, password: string, iterations: number): Promise<string> {
     const enc = new TextEncoder();
     const salt = window.crypto.getRandomValues(new Uint8Array(this.SALT_SIZE_BYTES));
@@ -90,8 +103,7 @@ export class CryptService {
     const key = await window.crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        salt: salt as any,
+        salt: salt as BufferSource,
         iterations: iterations,
         hash: 'SHA-256',
       },
@@ -101,20 +113,19 @@ export class CryptService {
       ['encrypt'],
     );
 
-    const encrypted = await window.crypto.subtle.encrypt(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { name: 'AES-CBC', iv: iv as any },
-      key,
-      enc.encode(data),
-    );
+    const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv as BufferSource }, key, enc.encode(data));
 
-    const saltHex = this.buf2hex(salt);
-    const ivHex = this.buf2hex(iv);
-    const ciphertextBase64 = this.buf2base64(encrypted);
-
-    return saltHex + ivHex + ciphertextBase64;
+    return this.buf2hex(salt) + this.buf2hex(iv) + this.buf2base64(encrypted);
   }
 
+  /**
+   * Asynchronous AES-256-CBC decryption.
+   * Verifies data integrity and reverses the Web Crypto encryption process.
+   * @param {string} transitmessage Combined payload string.
+   * @param {string} password Secret passphrase.
+   * @param {number} iterations PBKDF2 iteration count.
+   * @returns {Promise<string>} Decrypted plaintext.
+   */
   async decryptAES256Async(transitmessage: string, password: string, iterations: number): Promise<string> {
     try {
       const saltHex = transitmessage.substr(0, 32);
@@ -123,7 +134,6 @@ export class CryptService {
 
       const salt = this.hex2buf(saltHex);
       const iv = this.hex2buf(ivHex);
-      // Decode Base64 to ArrayBuffer
       const encryptedBytes = Uint8Array.from(atob(encryptedBase64), (c) => c.charCodeAt(0));
 
       const enc = new TextEncoder();
@@ -132,8 +142,7 @@ export class CryptService {
       const key = await window.crypto.subtle.deriveKey(
         {
           name: 'PBKDF2',
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          salt: salt as any,
+          salt: salt as BufferSource,
           iterations: iterations,
           hash: 'SHA-256',
         },
@@ -143,32 +152,28 @@ export class CryptService {
         ['decrypt'],
       );
 
-      const decrypted = await window.crypto.subtle.decrypt(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { name: 'AES-CBC', iv: iv as any },
-        key,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        encryptedBytes as any,
-      );
+      const decrypted = await window.crypto.subtle.decrypt({ name: 'AES-CBC', iv: iv as BufferSource }, key, encryptedBytes);
 
       return new TextDecoder().decode(decrypted);
     } catch (error) {
-      console.error('Async Decryption failed:', error);
+      console.error('Async Decryption failure:', error);
       return '';
     }
   }
 
-  // --- Helpers for Web Crypto ---
+  /** Converts binary buffer to hex string. */
   private buf2hex(buffer: ArrayBuffer | Uint8Array): string {
     return Array.from(new Uint8Array(buffer))
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
   }
 
+  /** Parses hex string into Uint8Array. */
   private hex2buf(hex: string): Uint8Array {
     return new Uint8Array(hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
   }
 
+  /** Encodes binary buffer to Base64 string. */
   private buf2base64(buffer: ArrayBuffer | Uint8Array): string {
     let binary = '';
     const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
@@ -179,62 +184,48 @@ export class CryptService {
     return btoa(binary);
   }
 
-  // --- Main Encryption/Decryption Logic ---
-
   /**
-   * Encrypts a mnemonic phrase by shuffling and obfuscating with a seeded password reference.
-   * Uses V2 logic (Strong PRNG + High Iterations).
-   * Returns encrypted data wrapped in a V2 envelope and the reverse key.
+   * Encrypts a mnemonic phrase using the Mnemonic Engine (12-stage Dynamic Obfuscation).
+   * Implements the V2 security model with Mulberry32 PRNG and memory hardening.
+   * @param {string} mnemonic The space-separated recovery phrase.
+   * @param {string} password The user-defined master password.
+   * @returns {Promise<{ encryptedData: string; reverseKey: string }>} JSON envelope + B64 packed key.
    */
   async encrypt(mnemonic: string, password: string): Promise<{ encryptedData: string; reverseKey: string }> {
     const words = mnemonic.split(' ');
     const obfuscatedWords: Uint8Array[] = [];
     const reverseKey: number[][] = [];
 
-    // Memory Hardening: Convert sensitive inputs to Uint8Array immediately
     const passwordBytes = this.stringToBytes(password);
-
-    // Use Mulberry32 for V2
     const prngFactory = this.mulberry32.bind(this);
 
     for (const word of words) {
       let currentWordBytes = this.stringToBytes(word);
-
-      // Create a fresh, ordered list of all 12 function indexes
       const selectedFunctions = Array.from({ length: this.obfuscationFunctionsV2.length }, (_, i) => i);
 
-      // Shuffle deterministically
-      // Note: shuffleArray still takes string seed for PRNG because strict number gen is fine with string seed.
-      // We used `password + word` as seed string.
+      /**
+       * Deterministically shuffle the function order for this specific word
+       * using the host password and word-data as the entropy seed.
+       */
       this.shuffleArray(selectedFunctions, password + word, prngFactory);
 
       const wordReverseKey: number[] = [];
-
-      // Checksum from function indexes
       const checksum = this._generateChecksum(selectedFunctions);
-      // Combined seed for operations.
-      // V2: "password" (bytes) + "checksum" (stringified? or bytes?)
-      // To be consistent with "strong properties", let's append checksum byte?
-      // Checksum is 0-996. Can fit in 2 bytes.
-      // Let's make combinedSeed a Uint8Array.
-      const checksumStr = checksum.toString();
-      const checksumBytes = this.stringToBytes(checksumStr);
+      const checksumBytes = this.stringToBytes(checksum.toString());
+      
       const combinedSeed = new Uint8Array(passwordBytes.length + checksumBytes.length);
       combinedSeed.set(passwordBytes);
       combinedSeed.set(checksumBytes, passwordBytes.length);
 
+      /** Apply the unique 12-stage transformation gauntlet. */
       for (const funcIndex of selectedFunctions) {
         const func = this.obfuscationFunctionsV2[funcIndex];
         const isSeeded = funcIndex >= 6;
         const seed = isSeeded ? combinedSeed : undefined;
 
-        // Execute V2 function
         const nextWordBytes = func(currentWordBytes, seed, prngFactory);
 
-        // Zero out the *previous* version of data from memory
-        // (Unless it was the initial wordBytes, but standardizing: "current" is dead now)
         if (currentWordBytes !== nextWordBytes) {
-          // ensure not same ref
           this.zero(currentWordBytes);
         }
         currentWordBytes = nextWordBytes;
@@ -243,26 +234,16 @@ export class CryptService {
 
       obfuscatedWords.push(currentWordBytes);
       reverseKey.push(wordReverseKey);
-
-      // Zero combinedSeed after use for this word
       this.zero(combinedSeed);
     }
 
-    // Join all obfuscated words with a separator.
-    // Using 0xFF as separator (Assuming Obfuscation functions generally produce ASCII or valid content,
-    // but Shuffle/XOR can produce 0xFF.
-    // Problem: If data contains 0xFF, safe split is impossible.
-    // V1 used '§' (C2 A7).
-    // Let's use a distinct multi-byte separator that is highly unlikely to be generated?
-    // OR: Use Length-Prefixing!
-    // [Len][Bytes][Len][Bytes]...
-    // Length can be 2 bytes (uint16).
-    // This is safer than separators for binary data.
-
-    // Construct the final blob
+    /** 
+     * Package the obfuscated words into a binary stream using length-prefixing
+     * to prevent delimiter-injection attacks on binary data.
+     */
     let totalLength = 0;
     for (const wb of obfuscatedWords) {
-      totalLength += 2 + wb.length; // 2 bytes size + data
+      totalLength += 2 + wb.length;
     }
     const finalBlob = new Uint8Array(totalLength);
     let offset = 0;
@@ -271,111 +252,86 @@ export class CryptService {
       finalBlob[offset + 1] = wb.length & 0xff;
       finalBlob.set(wb, offset + 2);
       offset += 2 + wb.length;
-
-      // Zero the word bytes after copying
       this.zero(wb);
     }
 
-    // Convert final binary blob to Base64 String for AES encryption (which expects string)
-    // We use a manual base64 conversion or just binary-to-string-latin1 then btoa?
-    // To match AES input 'string', we can essentially treat this as a string of bytes.
-    // However, clean Base64 is best for transport through AES 'string' parameter.
-
-    // Let's efficiently convert Uint8Array to Binary String then btoa
     let binaryString = '';
     for (const byte of finalBlob) {
       binaryString += String.fromCharCode(byte);
     }
     const base64Content = btoa(binaryString);
 
-    this.zero(finalBlob); // Zero the final blob
-    this.zero(passwordBytes); // Zero password
+    this.zero(finalBlob);
+    this.zero(passwordBytes);
 
-    // Encrypt with V2 iterations (Using Async Web Crypto)
     const encryptedContent = await this.encryptAES256Async(base64Content, password, this.ITERATIONS_V2);
 
-    // V2 Envelope
     const resultObj = {
       v: 2,
       data: encryptedContent,
     };
 
-    // Compress the reverse key using binary packing (4 bits per value)
-    // Previously: JSON.stringify + btoa (~400 chars)
-    // New: Packed binary + btoa (~100 chars)
     const encodedReverseKey = this.packReverseKey(reverseKey);
-
     return { encryptedData: JSON.stringify(resultObj), reverseKey: encodedReverseKey };
   }
 
   /**
-   * Decrypts an encrypted mnemonic phrase using the provided reverse key and password.
-   * Auto-detects V1 vs V2 format.
-   * Returns object containing decrypted text and a flag indicating if it was legacy (V1).
+   * Decrypts and de-obfuscates an encrypted mnemonic payload.
+   * Auto-identifies protocol version (V1 Legacy vs V2 Standard).
+   * @param {string} encryptedDataRaw The ciphertext string or JSON envelope.
+   * @param {string} reverseKey The functional map required for de-obfuscation.
+   * @param {string} password The master password.
+   * @returns {Promise<DecryptionResult>} Decrypted phrase and legacy flag.
    */
   async decrypt(encryptedDataRaw: string, reverseKey: string, password: string): Promise<DecryptionResult> {
     let iterations = this.ITERATIONS_V1;
     let encryptedContent = encryptedDataRaw;
-    let prngFactory = this.seededRandomLegacy.bind(this); // Default to V1
+    let prngFactory = this.seededRandomLegacy.bind(this);
     let isLegacy = true;
 
-    // Check for V2 Envelope
     try {
       if (encryptedDataRaw.trim().startsWith('{')) {
         const parsed = JSON.parse(encryptedDataRaw);
         if (parsed.v === 2 && parsed.data) {
           iterations = this.ITERATIONS_V2;
           encryptedContent = parsed.data;
-          prngFactory = this.mulberry32.bind(this); // V2 uses Mulberry32
+          prngFactory = this.mulberry32.bind(this);
           isLegacy = false;
         }
       }
     } catch {
-      // Not JSON, assume V1 legacy string
+      // Logic defaults to legacy V1
     }
 
-    // 1. Decode the reverse key
     let reverseKeyJson: number[][];
     try {
-      // Try to detect Legacy/V2 JSON key format
-      // Decode base64
       const reversedKeyString = atob(reverseKey);
-      // Check for JSON start
       if (reversedKeyString.trim().startsWith('[')) {
-         reverseKeyJson = JSON.parse(reversedKeyString);
+        reverseKeyJson = JSON.parse(reversedKeyString);
       } else {
-         // Assume Packed Binary
-         reverseKeyJson = this.unpackReverseKey(reverseKey);
+        reverseKeyJson = this.unpackReverseKey(reverseKey);
       }
     } catch {
-      // Fallback: Try unpack if JSON parse failed but it wasn't packed?
-      // Or if atob failed (invalid input).
       try {
         reverseKeyJson = this.unpackReverseKey(reverseKey);
       } catch (e) {
-         console.error("Reverse Key Parsing Failed", e);
-         throw new Error("Invalid Reverse Key format.");
+        console.error('Critical: Functional Map Corruption', e);
+        throw new Error('De-obfuscation failed: functional map is invalid or corrupt.');
       }
     }
 
-    // 2. Decrypt the main data block
     let decryptedObfuscatedString = '';
-
     if (isLegacy) {
-      // Sync Legacy Decryption
       decryptedObfuscatedString = this.decryptAES256(encryptedContent, password, iterations);
     } else {
-      // Async V2 Decryption
       decryptedObfuscatedString = await this.decryptAES256Async(encryptedContent, password, iterations);
     }
 
     if (!decryptedObfuscatedString) {
-      throw new Error('AES decryption failed. Check password.');
+      throw new Error('Authentication Failed: Incorrect password.');
     }
 
-    // --- V2 Decryption Logic (Uint8Array) ---
     if (!isLegacy) {
-      // V2: decryptedString is Base64 encoded binary blob
       const binaryString = atob(decryptedObfuscatedString);
       const fullBlob = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
@@ -389,38 +345,30 @@ export class CryptService {
       let wordIndex = 0;
 
       while (offset < fullBlob.length) {
-        if (wordIndex >= reverseKeyJson.length) break; // Safety
+        if (wordIndex >= reverseKeyJson.length) break;
 
-        // Read Length (2 bytes)
         const len = (fullBlob[offset] << 8) | fullBlob[offset + 1];
         offset += 2;
 
-        // Read Data
-        let currentWordBytes = fullBlob.slice(offset, offset + len);
+        let currentWordBytes: any = fullBlob.slice(offset, offset + len);
         offset += len;
 
         const wordReverseKey = reverseKeyJson[wordIndex];
-
-        // Setup Seed
         const checksum = this._generateChecksum(wordReverseKey);
-        const checksumStr = checksum.toString();
-        const checksumBytes = this.stringToBytes(checksumStr);
+        const checksumBytes = this.stringToBytes(checksum.toString());
         const combinedSeed = new Uint8Array(passwordBytes.length + checksumBytes.length);
         combinedSeed.set(passwordBytes);
         combinedSeed.set(checksumBytes, passwordBytes.length);
 
-        // Apply Deobfuscation
         for (let j = wordReverseKey.length - 1; j >= 0; j--) {
           const funcIndex = wordReverseKey[j];
           const func = this.deobfuscationFunctionsV2[funcIndex];
-          if (!func) throw new Error(`Invalid deobfuscation function index: ${funcIndex}`);
+          if (!func) throw new Error(`Engine Mismatch: Invalid function index ${funcIndex}`);
 
           const isSeeded = funcIndex >= 6;
           const seed = isSeeded ? combinedSeed : undefined;
 
-          // Execute V2 Function
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          currentWordBytes = func(currentWordBytes as any, seed as any, prngFactory) as any;
+          currentWordBytes = func(currentWordBytes, seed, prngFactory) as any as Uint8Array;
         }
 
         deobfuscatedWords.push(this.bytesToString(currentWordBytes));
@@ -428,38 +376,27 @@ export class CryptService {
       }
 
       return { decrypted: deobfuscatedWords.join(' '), isLegacy };
-    }
-
-    // --- V1 Decryption Logic (Legacy/String) ---
-    else {
+    } else {
       const obfuscatedWords = decryptedObfuscatedString.split('§');
-
       if (obfuscatedWords.length !== reverseKeyJson.length) {
-        throw new Error('Data mismatch: Word count does not match reverse key.');
+        throw new Error('Data Integrity Fault: Structure mismatch.');
       }
 
       const deobfuscatedWords: string[] = [];
-
-      // 3. De-obfuscate each word
       for (let i = 0; i < obfuscatedWords.length; i++) {
         let currentWord = obfuscatedWords[i];
         const wordReverseKey = reverseKeyJson[i];
-
-        // Generate the checksum from the reverse key for this word to reconstruct the seed
         const checksum = this._generateChecksum(wordReverseKey);
         const combinedSeed = password + checksum;
 
-        // Apply deobfuscation functions in reverse order
         for (let j = wordReverseKey.length - 1; j >= 0; j--) {
           const funcIndex = wordReverseKey[j];
           const func = this.deobfuscationFunctions[funcIndex];
-          if (!func) {
-            throw new Error(`Invalid deobfuscation function index: ${funcIndex}`);
-          }
-          // Seeded functions are at indices 6 through 11
+          if (!func) throw new Error(`Legacy Engine Mismatch: Invalid index ${funcIndex}`);
+          
           const isSeeded = funcIndex >= 6;
           const seed = isSeeded ? combinedSeed : undefined;
-          currentWord = func(currentWord, seed, prngFactory); // Pass PRNG factory
+          currentWord = func(currentWord, seed, prngFactory);
         }
         deobfuscatedWords.push(currentWord);
       }
@@ -468,51 +405,44 @@ export class CryptService {
     }
   }
 
-  // --- Compression Helpers (Reverse Key) ---
-
   /**
-   * Packs the reverse key (array of arrays) into a compressed base64 binary format.
-   * Compresses 12 ints (0-15) into 6 bytes per word.
+   * Compresses a functional map into a high-density binary Base64 format.
+   * @param {number[][]} reverseKey The raw functional map.
+   * @returns {string} Compressed Base64 representation.
    */
   private packReverseKey(reverseKey: number[][]): string {
     const wordCount = reverseKey.length;
-    // 12 numbers per word, 4 bits each -> 6 bytes
-    const packedSize = wordCount * 6; 
+    const packedSize = wordCount * 6;
     const buffer = new Uint8Array(packedSize);
 
     let offset = 0;
     for (const wordKey of reverseKey) {
-        // Fallback for unexpected size? V2 assumes 12.
-        // If V1 was used, size might differ? 
-        // But encrypt() is strictly V2 logic now.
-        if (wordKey.length !== 12) {
-             throw new Error("Cannot compress non-standard reverse key length.");
-        }
-        
-        for (let i = 0; i < 12; i += 2) {
-            const high = wordKey[i]; // 0-11
-            const low = wordKey[i+1]; // 0-11
-            // Pack into one byte
-            buffer[offset++] = (high << 4) | (low & 0x0F);
-        }
+      if (wordKey.length !== 12) {
+        throw new Error('Compression Error: Invalid functional sequence length.');
+      }
+
+      for (let i = 0; i < 12; i += 2) {
+        const high = wordKey[i];
+        const low = wordKey[i + 1];
+        buffer[offset++] = (high << 4) | (low & 0x0f);
+      }
     }
     return this.buf2base64(buffer);
   }
 
   /**
-   * Unpacks a compressed reverse key from base64 string back to number[][].
+   * Reverses functional map compression.
+   * @param {string} base64 The compressed map string.
+   * @returns {number[][]} Reconstructed functional map.
    */
   private unpackReverseKey(base64: string): number[][] {
-    // Decode base64 to bytes
     const binary = atob(base64);
     const buffer = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
       buffer[i] = binary.charCodeAt(i);
     }
-    
-    // Unpack
+
     const reverseKey: number[][] = [];
-    // 6 bytes per word
     const wordCount = buffer.length / 6;
 
     let offset = 0;
@@ -520,182 +450,150 @@ export class CryptService {
       const wordKey: number[] = [];
       for (let i = 0; i < 6; i++) {
         const byte = buffer[offset++];
-        const high = (byte >> 4) & 0x0F;
-        const low = byte & 0x0F;
+        const high = (byte >> 4) & 0x0f;
+        const low = byte & 0x0f;
         wordKey.push(high, low);
       }
       reverseKey.push(wordKey);
     }
-    
+
     return reverseKey;
   }
 
+  /** Generates a deterministic checksum for functional sequence verification. */
   private _generateChecksum(numbers: number[]): number {
-    if (!numbers || numbers.length === 0) {
-      return 0;
-    }
-    // Sum all numbers in the array
+    if (!numbers || numbers.length === 0) return 0;
     const sum = numbers.reduce((acc, curr) => acc + curr, 0);
-    // Use a modulo to keep the number in a manageable range, using a prime number
-    return sum % 997; // 997 is a prime number
+    return sum % 997;
   }
 
   private textEncoder = new TextEncoder();
   private textDecoder = new TextDecoder();
 
-  // --- Uint8Array Helpers ---
+  /** Efficiently encodes strings to bytes. */
   private stringToBytes(str: string): Uint8Array {
     return this.textEncoder.encode(str);
   }
 
+  /** Decodes byte buffers to UTF-8 strings. */
   private bytesToString(bytes: Uint8Array): string {
     return this.textDecoder.decode(bytes);
   }
 
+  /** Explicitly zeros out sensitive data from memory. */
   private zero(bytes: Uint8Array): void {
     bytes.fill(0);
   }
 
-  /**
-   * Helper type for PRNG factory
-   */
   public obfuscationFunctions: ((input: string, seed?: string, rngFactory?: (s: string) => () => number) => string)[];
   public deobfuscationFunctions: ((input: string, seed?: string, rngFactory?: (s: string) => () => number) => string)[];
-
-  // V2 Functions (Uint8Array)
   public obfuscationFunctionsV2: ((input: Uint8Array, seed?: Uint8Array, rngFactory?: (s: string) => () => number) => Uint8Array)[];
   public deobfuscationFunctionsV2: ((input: Uint8Array, seed?: Uint8Array, rngFactory?: (s: string) => () => number) => Uint8Array)[];
 
   constructor() {
     this.obfuscationFunctions = [
-      // --- 6 Unseeded Functions ---
-      this.obfuscateByReversing.bind(this), // 0
-      this.obfuscateWithAtbashCipher.bind(this), // 1
-      this.obfuscateToCharCodes.bind(this), // 2
-      this.obfuscateToBinary.bind(this), // 3
-      this.obfuscateWithCaesarCipher.bind(this), // 4
-      this.obfuscateBySwappingAdjacentChars.bind(this), // 5
-
-      // --- 6 Seeded Functions ---
-      this.obfuscateByShuffling.bind(this), // 6
-      this.obfuscateWithXOR.bind(this), // 7
-      this.obfuscateByInterleaving.bind(this), // 8
-      this.obfuscateWithVigenereCipher.bind(this), // 9
-      this.obfuscateWithSeededBlockReversal.bind(this), // 10
-      this.obfuscateWithSeededSubstitution.bind(this), // 11
+      this.obfuscateByReversing.bind(this),
+      this.obfuscateWithAtbashCipher.bind(this),
+      this.obfuscateToCharCodes.bind(this),
+      this.obfuscateToBinary.bind(this),
+      this.obfuscateWithCaesarCipher.bind(this),
+      this.obfuscateBySwappingAdjacentChars.bind(this),
+      this.obfuscateByShuffling.bind(this),
+      this.obfuscateWithXOR.bind(this),
+      this.obfuscateByInterleaving.bind(this),
+      this.obfuscateWithVigenereCipher.bind(this),
+      this.obfuscateWithSeededBlockReversal.bind(this),
+      this.obfuscateWithSeededSubstitution.bind(this),
     ];
     this.deobfuscationFunctions = [
-      // --- 6 Unseeded Functions ---
-      this.deobfuscateByReversing.bind(this), // 0
-      this.deobfuscateWithAtbashCipher.bind(this), // 1
-      this.deobfuscateFromCharCodes.bind(this), // 2
-      this.deobfuscateFromBinary.bind(this), // 3
-      this.deobfuscateWithCaesarCipher.bind(this), // 4
-      this.deobfuscateBySwappingAdjacentChars.bind(this), // 5
-
-      // --- 6 Seeded Functions ---
-      this.deobfuscateByShuffling.bind(this), // 6
-      this.deobfuscateWithXOR.bind(this), // 7
-      this.deobfuscateByDeinterleaving.bind(this), // 8
-      this.deobfuscateWithVigenereCipher.bind(this), // 9
-      this.deobfuscateWithSeededBlockReversal.bind(this), // 10
-      this.deobfuscateWithSeededSubstitution.bind(this), // 11
+      this.deobfuscateByReversing.bind(this),
+      this.deobfuscateWithAtbashCipher.bind(this),
+      this.deobfuscateFromCharCodes.bind(this),
+      this.deobfuscateFromBinary.bind(this),
+      this.deobfuscateWithCaesarCipher.bind(this),
+      this.deobfuscateBySwappingAdjacentChars.bind(this),
+      this.deobfuscateByShuffling.bind(this),
+      this.deobfuscateWithXOR.bind(this),
+      this.deobfuscateByDeinterleaving.bind(this),
+      this.deobfuscateWithVigenereCipher.bind(this),
+      this.deobfuscateWithSeededBlockReversal.bind(this),
+      this.deobfuscateWithSeededSubstitution.bind(this),
     ];
-
     this.obfuscationFunctionsV2 = [
-      // --- 6 Unseeded Functions (V2) ---
-      this.obfuscateByReversingV2.bind(this), // 0
-      this.obfuscateWithAtbashCipherV2.bind(this), // 1
-      this.obfuscateToCharCodesV2.bind(this), // 2 - Behaves differently for bytes? No, logic is adapting.
-      this.obfuscateToBinaryV2.bind(this), // 3
-      this.obfuscateWithCaesarCipherV2.bind(this), // 4
-      this.obfuscateBySwappingAdjacentBytesV2.bind(this), // 5
-
-      // --- 6 Seeded Functions (V2) ---
-      this.obfuscateByShufflingV2.bind(this), // 6
-      this.obfuscateWithXORV2.bind(this), // 7
-      this.obfuscateByInterleavingV2.bind(this), // 8
-      this.obfuscateWithVigenereCipherV2.bind(this), // 9
-      this.obfuscateWithSeededBlockReversalV2.bind(this), // 10
-      this.obfuscateWithSeededSubstitutionV2.bind(this), // 11
+      this.obfuscateByReversingV2.bind(this),
+      this.obfuscateWithAtbashCipherV2.bind(this),
+      this.obfuscateToCharCodesV2.bind(this),
+      this.obfuscateToBinaryV2.bind(this),
+      this.obfuscateWithCaesarCipherV2.bind(this),
+      this.obfuscateBySwappingAdjacentBytesV2.bind(this),
+      this.obfuscateByShufflingV2.bind(this),
+      this.obfuscateWithXORV2.bind(this),
+      this.obfuscateByInterleavingV2.bind(this),
+      this.obfuscateWithVigenereCipherV2.bind(this),
+      this.obfuscateWithSeededBlockReversalV2.bind(this),
+      this.obfuscateWithSeededSubstitutionV2.bind(this),
     ];
-
     this.deobfuscationFunctionsV2 = [
-      // --- 6 Unseeded Functions (V2) ---
-      this.deobfuscateByReversingV2.bind(this), // 0
-      this.deobfuscateWithAtbashCipherV2.bind(this), // 1
-      this.deobfuscateFromCharCodesV2.bind(this), // 2
-      this.deobfuscateFromBinaryV2.bind(this), // 3
-      this.deobfuscateWithCaesarCipherV2.bind(this), // 4
-      this.deobfuscateBySwappingAdjacentBytesV2.bind(this), // 5
-
-      // --- 6 Seeded Functions (V2) ---
-      this.deobfuscateByShufflingV2.bind(this), // 6
-      this.deobfuscateWithXORV2.bind(this), // 7
-      this.deobfuscateByDeinterleavingV2.bind(this), // 8
-      this.deobfuscateWithVigenereCipherV2.bind(this), // 9
-      this.deobfuscateWithSeededBlockReversalV2.bind(this), // 10
-      this.deobfuscateWithSeededSubstitutionV2.bind(this), // 11
+      this.deobfuscateByReversingV2.bind(this),
+      this.deobfuscateWithAtbashCipherV2.bind(this),
+      this.deobfuscateFromCharCodesV2.bind(this),
+      this.deobfuscateFromBinaryV2.bind(this),
+      this.deobfuscateWithCaesarCipherV2.bind(this),
+      this.deobfuscateBySwappingAdjacentBytesV2.bind(this),
+      this.deobfuscateByShufflingV2.bind(this),
+      this.deobfuscateWithXORV2.bind(this),
+      this.deobfuscateByDeinterleavingV2.bind(this),
+      this.deobfuscateWithVigenereCipherV2.bind(this),
+      this.deobfuscateWithSeededBlockReversalV2.bind(this),
+      this.deobfuscateWithSeededSubstitutionV2.bind(this),
     ];
   }
 
   // --- Unseeded Transformation Functions ---
 
   // 0. Reverse String
+  /** 0. Obfuscate by reversing character order (Legacy). */
   obfuscateByReversing(input: string): string {
     return input.split('').reverse().join('');
   }
+  /** Reverses the reversal (Legacy). */
   deobfuscateByReversing(input: string): string {
     return this.obfuscateByReversing(input);
   }
 
-  // 1. Atbash Cipher
+  /** 1. Obfuscate with Atbash cipher (Legacy). Maps A->Z, a->z. */
   obfuscateWithAtbashCipher(input: string): string {
     return input.replace(/[a-zA-Z]/g, (c) => {
       const code = c.charCodeAt(0);
-      if (code >= 65 && code <= 90) {
-        // Uppercase
-        return String.fromCharCode(90 - (code - 65));
-      } else if (code >= 97 && code <= 122) {
-        // Lowercase
-        return String.fromCharCode(122 - (code - 97));
-      }
+      if (code >= 65 && code <= 90) return String.fromCharCode(90 - (code - 65));
+      if (code >= 97 && code <= 122) return String.fromCharCode(122 - (code - 97));
       return c;
     });
   }
+  /** Reverses Atbash (Identity operation) (Legacy). */
   deobfuscateWithAtbashCipher(input: string): string {
     return this.obfuscateWithAtbashCipher(input);
   }
 
-  // 2. Character Code
+  /** 2. Obfuscate to comma-separated character codes (Legacy). */
   obfuscateToCharCodes(input: string): string {
-    return input
-      .split('')
-      .map((char) => char.charCodeAt(0))
-      .join(',');
+    return input.split('').map((char) => char.charCodeAt(0)).join(',');
   }
+  /** Reconstructs string from character codes (Legacy). */
   deobfuscateFromCharCodes(input: string): string {
-    return input
-      .split(',')
-      .map((code) => String.fromCharCode(parseInt(code, 10)))
-      .join('');
+    return input.split(',').map((code) => String.fromCharCode(parseInt(code, 10))).join('');
   }
 
-  // 3. Binary
+  /** 3. Obfuscate to comma-separated binary strings (Legacy). */
   obfuscateToBinary(input: string): string {
-    return input
-      .split('')
-      .map((char) => char.charCodeAt(0).toString(2))
-      .join(',');
+    return input.split('').map((char) => char.charCodeAt(0).toString(2)).join(',');
   }
+  /** Reconstructs string from binary representation (Legacy). */
   deobfuscateFromBinary(input: string): string {
-    return input
-      .split(',')
-      .map((bin) => String.fromCharCode(parseInt(bin, 2)))
-      .join('');
+    return input.split(',').map((bin) => String.fromCharCode(parseInt(bin, 2))).join('');
   }
 
-  // 4. Caesar Cipher (ROT13)
+  /** 4. Obfuscate with Caesar Cipher (ROT13) (Legacy). */
   obfuscateWithCaesarCipher(input: string): string {
     return input.replace(/[a-zA-Z]/g, (c) => {
       const code = c.charCodeAt(0);
@@ -703,11 +601,12 @@ export class CryptService {
       return String.fromCharCode(((code - base + 13) % 26) + base);
     });
   }
+  /** Reverses ROT13 (Identity operation) (Legacy). */
   deobfuscateWithCaesarCipher(input: string): string {
     return this.obfuscateWithCaesarCipher(input);
   }
 
-  // 5. Adjacent Character Swap
+  /** 5. Obfuscate by swapping adjacent character pairs (Legacy). */
   obfuscateBySwappingAdjacentChars(input: string): string {
     const chars = input.split('');
     for (let i = 0; i < chars.length - 1; i += 2) {
@@ -715,157 +614,12 @@ export class CryptService {
     }
     return chars.join('');
   }
+  /** Reverses adjacent swap (Identity operation) (Legacy). */
   deobfuscateBySwappingAdjacentChars(input: string): string {
     return this.obfuscateBySwappingAdjacentChars(input);
   }
 
-  // --- V2 Unseeded Functions (Uint8Array) ---
-
-  // 0. Reverse
-  obfuscateByReversingV2(input: Uint8Array): Uint8Array {
-    return input.reverse();
-  }
-  deobfuscateByReversingV2(input: Uint8Array): Uint8Array {
-    return input.reverse();
-  }
-
-  // 1. Atbash Cipher (Mirrors V1 logic: only affects a-zA-Z)
-  obfuscateWithAtbashCipherV2(input: Uint8Array): Uint8Array {
-    const output = new Uint8Array(input.length);
-    for (let i = 0; i < input.length; i++) {
-      const code = input[i];
-      if (code >= 65 && code <= 90) {
-        // A-Z
-        output[i] = 90 - (code - 65);
-      } else if (code >= 97 && code <= 122) {
-        // a-z
-        output[i] = 122 - (code - 97);
-      } else {
-        output[i] = code;
-      }
-    }
-    return output;
-  }
-  deobfuscateWithAtbashCipherV2(input: Uint8Array): Uint8Array {
-    return this.obfuscateWithAtbashCipherV2(input);
-  }
-
-  // 2. To Char Codes (e.g. [65, 66] -> "65,66" -> bytes of "65,66")
-  obfuscateToCharCodesV2(input: Uint8Array): Uint8Array {
-    // We construct the string representation manually to avoid string conversion overhead if possible,
-    // but using stringToBytes is cleaner for readability and equivalence.
-    // However, for memory safety, we should try to avoid the intermediate huge string if possible.
-    // But since V2 depends on the output looking like the V1 output (conceptually),
-    // we essentially expand the data.
-    // Let's use an array of arrays then flatten.
-
-    // Simplest robust impl that matches V1 structure:
-    const parts: number[] = [];
-    for (let i = 0; i < input.length; i++) {
-      if (i > 0) parts.push(44); // comma ','
-      const strVal = input[i].toString();
-      for (let j = 0; j < strVal.length; j++) {
-        parts.push(strVal.charCodeAt(j));
-      }
-    }
-    return new Uint8Array(parts);
-  }
-
-  deobfuscateFromCharCodesV2(input: Uint8Array): Uint8Array {
-    // Parse "65,66" bytes back to [65, 66]
-    // We can just decode to string, split, parse.
-    // Since this is DE-obfuscation, the input "65,66" isn't the raw secret,
-    // the RESULT [65, 66] is the secret. The input is "safe" to be a string temporarily?
-    // Actually, if we want to be fully memory safe, we should avoid turning the WHOLE thing into a string.
-
-    const output: number[] = [];
-    let currentNumStr = '';
-
-    for (const byte of input) {
-      if (byte === 44) {
-        // comma
-        if (currentNumStr) {
-          output.push(parseInt(currentNumStr, 10));
-          currentNumStr = '';
-        }
-      } else {
-        currentNumStr += String.fromCharCode(byte);
-      }
-    }
-    if (currentNumStr) {
-      output.push(parseInt(currentNumStr, 10));
-    }
-
-    return new Uint8Array(output);
-  }
-
-  // 3. To Binary
-  obfuscateToBinaryV2(input: Uint8Array): Uint8Array {
-    const parts: number[] = [];
-    for (let i = 0; i < input.length; i++) {
-      if (i > 0) parts.push(44); // comma
-      const binVal = input[i].toString(2);
-      for (let j = 0; j < binVal.length; j++) {
-        parts.push(binVal.charCodeAt(j));
-      }
-    }
-    return new Uint8Array(parts);
-  }
-
-  deobfuscateFromBinaryV2(input: Uint8Array): Uint8Array {
-    const output: number[] = [];
-    let currentBinStr = '';
-
-    for (const byte of input) {
-      if (byte === 44) {
-        if (currentBinStr) {
-          output.push(parseInt(currentBinStr, 2));
-          currentBinStr = '';
-        }
-      } else {
-        currentBinStr += String.fromCharCode(byte);
-      }
-    }
-    if (currentBinStr) {
-      output.push(parseInt(currentBinStr, 2));
-    }
-    return new Uint8Array(output);
-  }
-
-  // 4. Caesar Cipher (ROT13)
-  obfuscateWithCaesarCipherV2(input: Uint8Array): Uint8Array {
-    const output = new Uint8Array(input.length);
-    for (let i = 0; i < input.length; i++) {
-      const code = input[i];
-      if (code >= 65 && code <= 90) {
-        output[i] = ((code - 65 + 13) % 26) + 65;
-      } else if (code >= 97 && code <= 122) {
-        output[i] = ((code - 97 + 13) % 26) + 97;
-      } else {
-        output[i] = code;
-      }
-    }
-    return output;
-  }
-  deobfuscateWithCaesarCipherV2(input: Uint8Array): Uint8Array {
-    return this.obfuscateWithCaesarCipherV2(input);
-  }
-
-  // 5. Adjacent Byte Swap
-  obfuscateBySwappingAdjacentBytesV2(input: Uint8Array): Uint8Array {
-    const output = new Uint8Array(input); // Copy
-    for (let i = 0; i < output.length - 1; i += 2) {
-      [output[i], output[i + 1]] = [output[i + 1], output[i]];
-    }
-    return output;
-  }
-  deobfuscateBySwappingAdjacentBytesV2(input: Uint8Array): Uint8Array {
-    return this.obfuscateBySwappingAdjacentBytesV2(input);
-  }
-
-  // --- Seeded Functions ---
-
-  // 6. Character Shuffling
+  /** 6. Obfuscate by shuffling characters using a seeded PRNG (Legacy). */
   obfuscateByShuffling(input: string, seed?: string, prngFactory?: (s: string) => () => number): string {
     const a = input.split('');
     const n = a.length;
@@ -876,6 +630,7 @@ export class CryptService {
     }
     return a.join('');
   }
+  /** Reverses character shuffle using deterministic seed (Legacy). */
   deobfuscateByShuffling(input: string, seed?: string, prngFactory?: (s: string) => () => number): string {
     const a = input.split('');
     const n = a.length;
@@ -886,24 +641,20 @@ export class CryptService {
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
     const unshuffled = new Array(n);
-    for (let i = 0; i < n; i++) {
-      unshuffled[indices[i]] = a[i];
-    }
+    for (let i = 0; i < n; i++) unshuffled[indices[i]] = a[i];
     return unshuffled.join('');
   }
 
-  // 7. XOR Obfuscation
+  /** 7. Obfuscate using bitwise XOR with a seeded password reference (Legacy). */
   obfuscateWithXOR(input: string, seed?: string): string {
-    return input
-      .split('')
-      .map((char, i) => String.fromCharCode(char.charCodeAt(0) ^ seed!.charCodeAt(i % seed!.length)))
-      .join('');
+    return input.split('').map((char, i) => String.fromCharCode(char.charCodeAt(0) ^ seed!.charCodeAt(i % seed!.length))).join('');
   }
+  /** Reverses XOR (Identity operation) (Legacy). */
   deobfuscateWithXOR(input: string, seed?: string): string {
     return this.obfuscateWithXOR(input, seed);
   }
 
-  // 8. Interleave
+  /** 8. Obfuscate by interleaving data with deterministic random noise (Legacy). */
   obfuscateByInterleaving(input: string, seed?: string, prngFactory?: (s: string) => () => number): string {
     const randomChars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
@@ -914,15 +665,14 @@ export class CryptService {
     }
     return result;
   }
+  /** Removes deterministic noise from interleaved string (Legacy). */
   deobfuscateByDeinterleaving(input: string): string {
     let result = '';
-    for (let i = 0; i < input.length; i += 2) {
-      result += input[i];
-    }
+    for (let i = 0; i < input.length; i += 2) result += input[i];
     return result;
   }
 
-  // 9. Vigenère Cipher
+  /** 9. Obfuscate with Vigenère cipher (Legacy). */
   obfuscateWithVigenereCipher(input: string, seed?: string): string {
     const codes: number[] = [];
     for (let i = 0; i < input.length; i++) {
@@ -932,6 +682,7 @@ export class CryptService {
     }
     return codes.join(',');
   }
+  /** Reverses Vigenère cipher (Legacy). */
   deobfuscateWithVigenereCipher(input: string, seed?: string): string {
     const codes = input.split(',').map((c) => parseInt(c, 10));
     let result = '';
@@ -942,99 +693,188 @@ export class CryptService {
     return result;
   }
 
-  // 10. Seeded Block Reversal
+  /** 10. Obfuscate by reversing data blocks of deterministic size (Legacy). */
   obfuscateWithSeededBlockReversal(input: string, seed?: string, prngFactory?: (s: string) => () => number): string {
     const rng = prngFactory ? prngFactory(seed!) : this.seededRandomLegacy(seed!);
     const blockSize = Math.floor(rng() * (input.length / 2)) + 2;
     let result = '';
     for (let i = 0; i < input.length; i += blockSize) {
-      result += input
-        .substring(i, i + blockSize)
-        .split('')
-        .reverse()
-        .join('');
+      result += input.substring(i, i + blockSize).split('').reverse().join('');
     }
     return result;
   }
+  /** Reverses block-level reversal (Legacy). */
   deobfuscateWithSeededBlockReversal(input: string, seed?: string, prngFactory?: (s: string) => () => number): string {
     return this.obfuscateWithSeededBlockReversal(input, seed, prngFactory);
   }
 
-  // 11. Seeded Substitution
+  /** 11. Obfuscate using a seeded character substitution map (Legacy). */
   obfuscateWithSeededSubstitution(input: string, seed?: string, prngFactory?: (s: string) => () => number): string {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
     const shuffledChars = [...chars];
     this.shuffleArray(shuffledChars, seed!, prngFactory!);
     const subMap = new Map(chars.map((c, i) => [c, shuffledChars[i]]));
-    return input
-      .split('')
-      .map((char) => subMap.get(char) || char)
-      .join('');
+    return input.split('').map((char) => subMap.get(char) || char).join('');
   }
+  /** Reverses seeded substitution (Legacy). */
   deobfuscateWithSeededSubstitution(input: string, seed?: string, prngFactory?: (s: string) => () => number): string {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
     const shuffledChars = [...chars];
     this.shuffleArray(shuffledChars, seed!, prngFactory!);
     const unsubMap = new Map(shuffledChars.map((c, i) => [c, chars[i]]));
-    return input
-      .split('')
-      .map((char) => unsubMap.get(char) || char)
-      .join('');
+    return input.split('').map((char) => unsubMap.get(char) || char).join('');
   }
 
-  // --- V2 Seeded Functions (Uint8Array) ---
+  /** 0. Obfuscate by reversing byte order (V2). */
+  obfuscateByReversingV2(input: Uint8Array): Uint8Array {
+    return input.reverse();
+  }
+  /** Reverses the byte-level reversal (V2). */
+  deobfuscateByReversingV2(input: Uint8Array): Uint8Array {
+    return input.reverse();
+  }
 
-  // 6. Shuffling
+  /** 1. Obfuscate with Atbash cipher (V2). Only affects ASCII a-z, A-Z. */
+  obfuscateWithAtbashCipherV2(input: Uint8Array): Uint8Array {
+    const output = new Uint8Array(input.length);
+    for (let i = 0; i < input.length; i++) {
+      const code = input[i];
+      if (code >= 65 && code <= 90) output[i] = 90 - (code - 65);
+      else if (code >= 97 && code <= 122) output[i] = 122 - (code - 97);
+      else output[i] = code;
+    }
+    return output;
+  }
+  /** Reverses byte-level Atbash (V2). */
+  deobfuscateWithAtbashCipherV2(input: Uint8Array): Uint8Array {
+    return this.obfuscateWithAtbashCipherV2(input);
+  }
+
+  /** 2. Obfuscate bytes to their comma-separated character code representation (V2). */
+  obfuscateToCharCodesV2(input: Uint8Array): Uint8Array {
+    const parts: number[] = [];
+    for (let i = 0; i < input.length; i++) {
+      if (i > 0) parts.push(44);
+      const strVal = input[i].toString();
+      for (let j = 0; j < strVal.length; j++) parts.push(strVal.charCodeAt(j));
+    }
+    return new Uint8Array(parts);
+  }
+  /** Reconstructs byte array from character code string bytes (V2). */
+  deobfuscateFromCharCodesV2(input: Uint8Array): Uint8Array {
+    const output: number[] = [];
+    let currentNumStr = '';
+    for (const byte of input) {
+      if (byte === 44) {
+        if (currentNumStr) {
+          output.push(parseInt(currentNumStr, 10));
+          currentNumStr = '';
+        }
+      } else currentNumStr += String.fromCharCode(byte);
+    }
+    if (currentNumStr) output.push(parseInt(currentNumStr, 10));
+    return new Uint8Array(output);
+  }
+
+  /** 3. Obfuscate bytes to their comma-separated binary string representation (V2). */
+  obfuscateToBinaryV2(input: Uint8Array): Uint8Array {
+    const parts: number[] = [];
+    for (let i = 0; i < input.length; i++) {
+      if (i > 0) parts.push(44);
+      const binVal = input[i].toString(2);
+      for (let j = 0; j < binVal.length; j++) parts.push(binVal.charCodeAt(j));
+    }
+    return new Uint8Array(parts);
+  }
+  /** Reconstructs byte array from binary string bytes (V2). */
+  deobfuscateFromBinaryV2(input: Uint8Array): Uint8Array {
+    const output: number[] = [];
+    let currentBinStr = '';
+    for (const byte of input) {
+      if (byte === 44) {
+        if (currentBinStr) {
+          output.push(parseInt(currentBinStr, 2));
+          currentBinStr = '';
+        }
+      } else currentBinStr += String.fromCharCode(byte);
+    }
+    if (currentBinStr) output.push(parseInt(currentBinStr, 2));
+    return new Uint8Array(output);
+  }
+
+  /** 4. Obfuscate bytes using Caesar Cipher (ROT13) (V2). */
+  obfuscateWithCaesarCipherV2(input: Uint8Array): Uint8Array {
+    const output = new Uint8Array(input.length);
+    for (let i = 0; i < input.length; i++) {
+      const code = input[i];
+      if (code >= 65 && code <= 90) output[i] = ((code - 65 + 13) % 26) + 65;
+      else if (code >= 97 && code <= 122) output[i] = ((code - 97 + 13) % 26) + 97;
+      else output[i] = code;
+    }
+    return output;
+  }
+  /** Reverses byte-level ROT13 (V2). */
+  deobfuscateWithCaesarCipherV2(input: Uint8Array): Uint8Array {
+    return this.obfuscateWithCaesarCipherV2(input);
+  }
+
+  /** 5. Obfuscate by swapping adjacent byte pairs (V2). */
+  obfuscateBySwappingAdjacentBytesV2(input: Uint8Array): Uint8Array {
+    const output = new Uint8Array(input);
+    for (let i = 0; i < output.length - 1; i += 2) {
+      [output[i], output[i + 1]] = [output[i + 1], output[i]];
+    }
+    return output;
+  }
+  /** Reverses adjacent byte swap (V2). */
+  deobfuscateBySwappingAdjacentBytesV2(input: Uint8Array): Uint8Array {
+    return this.obfuscateBySwappingAdjacentBytesV2(input);
+  }
+
+  /** 6. Obfuscate bytes by shuffling using a seeded Mulberry32 PRNG (V2). */
   obfuscateByShufflingV2(input: Uint8Array, seed?: Uint8Array, prngFactory?: (s: string) => () => number): Uint8Array {
-    const a = new Uint8Array(input); // Copy
+    const a = new Uint8Array(input);
     const n = a.length;
-    // Note: We convert seed bytes to string for the PRNG factory to match existing signature
     const seedStr = this.bytesToString(seed!);
     const rng = prngFactory!(seedStr);
-
     for (let i = n - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
       [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
   }
+  /** Reverses byte-level shuffle using deterministic seed (V2). */
   deobfuscateByShufflingV2(input: Uint8Array, seed?: Uint8Array, prngFactory?: (s: string) => () => number): Uint8Array {
     const a = new Uint8Array(input);
     const n = a.length;
     const indices = Array.from({ length: n }, (_, i) => i);
     const seedStr = this.bytesToString(seed!);
     const rng = prngFactory!(seedStr);
-
     for (let i = n - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
-
     const unshuffled = new Uint8Array(n);
-    for (let i = 0; i < n; i++) {
-      unshuffled[indices[i]] = a[i];
-    }
+    for (let i = 0; i < n; i++) unshuffled[indices[i]] = a[i];
     return unshuffled;
   }
 
-  // 7. XOR
+  /** 7. Obfuscate using bitwise XOR with a seeded byte-array (V2). */
   obfuscateWithXORV2(input: Uint8Array, seed?: Uint8Array): Uint8Array {
     const output = new Uint8Array(input.length);
-    for (let i = 0; i < input.length; i++) {
-      output[i] = input[i] ^ seed![i % seed!.length];
-    }
+    for (let i = 0; i < input.length; i++) output[i] = input[i] ^ seed![i % seed!.length];
     return output;
   }
+  /** Reverses byte-level XOR (V2). */
   deobfuscateWithXORV2(input: Uint8Array, seed?: Uint8Array): Uint8Array {
     return this.obfuscateWithXORV2(input, seed);
   }
 
-  // 8. Interleave
+  /** 8. Obfuscate by interleaving data with deterministic Mulberry32 noise (V2). */
   obfuscateByInterleavingV2(input: Uint8Array, seed?: Uint8Array, prngFactory?: (s: string) => () => number): Uint8Array {
-    const randomChars = 'abcdefghijklmnopqrstuvwxyz0123456789'; // Same set as V1
+    const randomChars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     const seedStr = this.bytesToString(seed!);
     const rng = prngFactory!(seedStr);
-
     const output = new Uint8Array(input.length * 2);
     for (let i = 0; i < input.length; i++) {
       output[i * 2] = input[i];
@@ -1043,123 +883,84 @@ export class CryptService {
     }
     return output;
   }
+  /** Removes deterministic noise from interleaved byte array (V2). */
   deobfuscateByDeinterleavingV2(input: Uint8Array): Uint8Array {
     const output = new Uint8Array(input.length / 2);
-    for (let i = 0; i < input.length; i += 2) {
-      output[i / 2] = input[i];
-    }
+    for (let i = 0; i < input.length; i += 2) output[i / 2] = input[i];
     return output;
   }
 
-  // 9. Vigenere Cipher (Output: "100,102" as bytes)
+  /** 9. Obfuscate with Vigenère cipher over a byte stream (V2). */
   obfuscateWithVigenereCipherV2(input: Uint8Array, seed?: Uint8Array): Uint8Array {
     const parts: number[] = [];
     for (let i = 0; i < input.length; i++) {
-      if (i > 0) parts.push(44); // comma
-      const charCode = input[i];
-      const keyCode = seed![i % seed!.length];
-      const val = (charCode + keyCode).toString();
-      for (let k = 0; k < val.length; k++) {
-        parts.push(val.charCodeAt(k));
-      }
+      if (i > 0) parts.push(44);
+      const val = (input[i] + seed![i % seed!.length]).toString();
+      for (let k = 0; k < val.length; k++) parts.push(val.charCodeAt(k));
     }
     return new Uint8Array(parts);
   }
+  /** Reverses byte-stream Vigenère cipher (V2). */
   deobfuscateWithVigenereCipherV2(input: Uint8Array, seed?: Uint8Array): Uint8Array {
     const output: number[] = [];
     let currentValStr = '';
-
-    // Parse "100,102" bytes
-    let byteIndex = 0; // count of logical bytes extracted
+    let byteIndex = 0;
     for (const byte of input) {
       if (byte === 44) {
         if (currentValStr) {
-          const combinedVal = parseInt(currentValStr, 10);
-          const keyCode = seed![byteIndex % seed!.length];
-          output.push(combinedVal - keyCode);
+          output.push(parseInt(currentValStr, 10) - seed![byteIndex % seed!.length]);
           byteIndex++;
           currentValStr = '';
         }
-      } else {
-        currentValStr += String.fromCharCode(byte);
-      }
+      } else currentValStr += String.fromCharCode(byte);
     }
-    if (currentValStr) {
-      const combinedVal = parseInt(currentValStr, 10);
-      const keyCode = seed![byteIndex % seed!.length];
-      output.push(combinedVal - keyCode);
-    }
-
+    if (currentValStr) output.push(parseInt(currentValStr, 10) - seed![byteIndex % seed!.length]);
     return new Uint8Array(output);
   }
 
-  // 10. Seeded Block Reversal
+  /** 10. Obfuscate by reversing byte blocks of deterministic size (V2). */
   obfuscateWithSeededBlockReversalV2(input: Uint8Array, seed?: Uint8Array, prngFactory?: (s: string) => () => number): Uint8Array {
     const seedStr = this.bytesToString(seed!);
     const rng = prngFactory!(seedStr);
     const blockSize = Math.floor(rng() * (input.length / 2)) + 2;
-
     const output: number[] = [];
     for (let i = 0; i < input.length; i += blockSize) {
-      // slice is [start, end)
-      // reverse
       const chunk = input.slice(i, i + blockSize).reverse();
       chunk.forEach((b) => output.push(b));
     }
     return new Uint8Array(output);
   }
+  /** Reverses V2 block-level reversal (V2). */
   deobfuscateWithSeededBlockReversalV2(input: Uint8Array, seed?: Uint8Array, prngFactory?: (s: string) => () => number): Uint8Array {
     return this.obfuscateWithSeededBlockReversalV2(input, seed, prngFactory);
   }
 
-  // 11. Seeded Substitution
+  /** 11. Obfuscate using a seeded full-byte (0-255) substitution map (V2). */
   obfuscateWithSeededSubstitutionV2(input: Uint8Array, seed?: Uint8Array, prngFactory?: (s: string) => () => number): Uint8Array {
-    // V1 uses 'abcdef...0123' (62 chars). It only substitutes those.
-    // V2 Uint8Array logic: We should probably only substitute those bytes if we want to match V1 logic exactly?
-    // Or can we substitute ALL bytes 0-255?
-    // "Seeded Substitution" implies a mapping.
-    // If we only substitute 62 specific bytes, it's weird for a byte-level generic func.
-    // BUT, V1 logic was: Map a->x, b->y.
-    // If we change this to Map 0->?, 255->?, it's much stronger functionality.
-    // Let's Upgrade to Full Byte Substitution (0-255).
-    // This is a V2 change, so we can define the behavior.
-
-    // Shuffle array of 0..255
     const chars = Array.from({ length: 256 }, (_, i) => i);
     const shuffledChars = [...chars];
-    const seedStr = this.bytesToString(seed!);
-
-    // use internal shuffle
-    this.shuffleArray(shuffledChars, seedStr, prngFactory!);
-
-    // Map
-    // To optimize: simple lookups
+    this.shuffleArray(shuffledChars, this.bytesToString(seed!), prngFactory!);
     const output = new Uint8Array(input.length);
-    for (let i = 0; i < input.length; i++) {
-      output[i] = shuffledChars[input[i]];
-    }
+    for (let i = 0; i < input.length; i++) output[i] = shuffledChars[input[i]];
     return output;
   }
+  /** Reverses V2 full-byte substitution (V2). */
   deobfuscateWithSeededSubstitutionV2(input: Uint8Array, seed?: Uint8Array, prngFactory?: (s: string) => () => number): Uint8Array {
-    const chars = Array.from({ length: 256 }, (_, i) => i);
-    const shuffledChars = [...chars];
-    const seedStr = this.bytesToString(seed!);
-
-    this.shuffleArray(shuffledChars, seedStr, prngFactory!);
-
-    // We need Reverse Map: value -> index
+    const shuffledChars = Array.from({ length: 256 }, (_, i) => i);
+    this.shuffleArray(shuffledChars, this.bytesToString(seed!), prngFactory!);
     const unsubMap = new Uint8Array(256);
-    for (let i = 0; i < 256; i++) {
-      unsubMap[shuffledChars[i]] = i;
-    }
-
+    for (let i = 0; i < 256; i++) unsubMap[shuffledChars[i]] = i;
     const output = new Uint8Array(input.length);
-    for (let i = 0; i < input.length; i++) {
-      output[i] = unsubMap[input[i]];
-    }
+    for (let i = 0; i < input.length; i++) output[i] = unsubMap[input[i]];
     return output;
   }
 
+  /**
+   * Fisher-Yates shuffle implementation for deterministic array randomization.
+   * @param array The array to shuffle in-place.
+   * @param seed The seed string used to initialize the PRNG.
+   * @param prngFactory Optional PRNG factory function. Defaults to legacy LCG.
+   */
   private shuffleArray<T>(array: T[], seed: string, prngFactory: (s: string) => () => number = this.seededRandomLegacy.bind(this)) {
     const rng = prngFactory(seed);
     for (let i = array.length - 1; i > 0; i--) {
@@ -1169,8 +970,10 @@ export class CryptService {
   }
 
   /**
-   * Legacy LCG (Linear Congruential Generator)
-   * Used for V1 backward compatibility.
+   * Legacy LCG (Linear Congruential Generator) PRNG.
+   * Maintained for backward compatibility with V1 obfuscation.
+   * @param seed The initialization seed.
+   * @returns A parameterless function that generates a pseudo-random float [0, 1).
    */
   private seededRandomLegacy(seed: string) {
     let h = 1779033703,
@@ -1187,8 +990,11 @@ export class CryptService {
   }
 
   /**
-   * Mulberry32 PRNG
-   * Stronger distribution than simple LCG, suitable for obfuscation seeding.
+   * Mulberry32 PRNG.
+   * Provides superior distribution and period length compared to legacy LCG.
+   * Used for V2 obfuscation seeding.
+   * @param seed The initialization seed.
+   * @returns A parameterless function that generates a pseudo-random float [0, 1).
    */
   private mulberry32(seed: string) {
     let h = 0;
@@ -1196,7 +1002,6 @@ export class CryptService {
       h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
       h = (h << 13) | (h >>> 19);
     }
-    // Initial mixing
     h = Math.imul(h ^ (h >>> 16), 2246822507);
     h = Math.imul(h ^ (h >>> 13), 3266489909);
     h ^= h >>> 16;

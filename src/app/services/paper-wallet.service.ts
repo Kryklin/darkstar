@@ -8,11 +8,10 @@ export interface PaperWalletMetadata {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class PaperWalletService {
-
-  constructor() { }
+  constructor() {}
 
   /**
    * Generates and downloads a PDF paper wallet.
@@ -29,11 +28,11 @@ export class PaperWalletService {
     // --- Header ---
     doc.setFillColor(33, 33, 33); // Dark background
     doc.rect(0, 0, pageWidth, 40, 'F');
-    
+
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22);
     doc.text('Darkstar Paper Wallet', margin, 20);
-    
+
     doc.setFontSize(12);
     doc.setTextColor(200, 200, 200);
     doc.text(`Protocol: ${metadata.protocolTitle}`, margin, 32);
@@ -53,11 +52,11 @@ export class PaperWalletService {
 
     doc.setFontSize(10);
     doc.setFont('courier', 'normal');
-    const splitData = doc.splitTextToSize(encryptedData, pageWidth - (margin * 2));
+    const splitData = doc.splitTextToSize(encryptedData, pageWidth - margin * 2);
     doc.text(splitData, margin, y);
-    
+
     // Calculate new Y based on text lines
-    y += (splitData.length * 5) + 10;
+    y += splitData.length * 5 + 10;
 
     // --- Divider ---
     doc.setDrawColor(200, 200, 200);
@@ -72,33 +71,33 @@ export class PaperWalletService {
 
     doc.setFontSize(10);
     doc.setFont('courier', 'normal');
-    const splitKey = doc.splitTextToSize(reverseKey, pageWidth - (margin * 2));
+    const splitKey = doc.splitTextToSize(reverseKey, pageWidth - margin * 2);
     doc.text(splitKey, margin, y);
 
-     y += (splitKey.length * 5) + 20;
+    y += splitKey.length * 5 + 20;
 
     // --- Footer / Instructions ---
     // If getting close to bottom, add a new page? logic for simple text:
     if (y > pageHeight - 50) {
-        doc.addPage();
-        y = 40;
+      doc.addPage();
+      y = 40;
     }
 
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
-    
+
     const instructions = [
-        "IMPORTANT RECOVERY INSTRUCTIONS:",
-        "1. This document contains your encrypted backup.",
-        "2. To recover, you will need BOTH the 'Encrypted Data' and the 'Reverse Key'.",
-        "3. You must also remember your Encryption Password. It is NOT printed here.",
-        "4. Keep this document in a physically secure location (e.g., fireproof safe).",
-        "5. Do not share this document."
+      'IMPORTANT RECOVERY INSTRUCTIONS:',
+      '1. This document contains your encrypted backup.',
+      "2. To recover, you will need BOTH the 'Encrypted Data' and the 'Reverse Key'.",
+      '3. You must also remember your Encryption Password. It is NOT printed here.',
+      '4. Keep this document in a physically secure location (e.g., fireproof safe).',
+      '5. Do not share this document.',
     ];
-    
+
     doc.text(instructions, margin, y);
-    
+
     // Save
     doc.save(`darkstar-paper-wallet-${Date.now()}.pdf`);
   }

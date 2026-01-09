@@ -1,119 +1,132 @@
 @use '../../../styles/glass';
 
 .encrypt-card {
-  @include glass.glass-card;
-  max-width: 800px;
-  margin: 40px auto;
-  opacity: 0;
-
+  @include glass.glass-panel;
   @include glass.animate-entrance;
+  opacity: 0;
+  backdrop-filter: blur(25px) saturate(200%);
+  -webkit-backdrop-filter: blur(25px) saturate(200%);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  max-width: 850px;
+  margin: 40px auto;
+  padding: 30px;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, var(--glass-bg-accent) 0%, transparent 40%);
+    pointer-events: none;
+  }
 
   .mat-mdc-card-header {
-    margin-bottom: 20px;
-    align-items: center; /* Vertically align title/subtitle with the button */
-    display: flex;
-    justify-content: space-between; /* Push title/subtitle to left, button to right */
-    opacity: 0;
-    animation: fadeIn 0.5s ease-out 0.3s forwards;
-    
-    /* Ensure the title-group takes up available space but allows the button to sit on the right */
+    margin-bottom: 30px;
+    padding: 0;
+
     ::ng-deep .mat-mdc-card-header-text {
-       margin: 0; 
-       flex: 1; 
+      margin: 0;
+    }
+
+    mat-card-title {
+      font-size: 2.2rem;
+      font-weight: 200;
+      letter-spacing: 2px;
+      color: var(--glass-text);
+      text-shadow: 0 0 20px var(--glass-glow);
     }
   }
 
   .learn-more-btn {
     margin-left: 16px;
-    margin-top: 4px;
-    flex-shrink: 0; /* Prevent button from shrinking */
-  }
-
-  mat-card-content {
-    opacity: 0;
-    animation: fadeIn 0.5s ease-out 0.5s forwards;
+    background: var(--glass-input-bg) !important;
+    border: 1px solid var(--glass-border) !important;
+    color: var(--glass-text) !important;
+    &:hover {
+      background: rgba(var(--mat-sys-primary-rgb), 0.1) !important;
+    }
   }
 
   .full-width {
     width: 100%;
-    margin-bottom: 10px;
+    margin-bottom: 20px;
+  }
+
+  /* Glass Input Overhaul */
+  ::ng-deep {
+    .mat-mdc-form-field-focus-indicator {
+      display: none;
+    }
+    .mat-mdc-text-field-wrapper {
+      background: var(--glass-input-bg) !important;
+      border: 1px solid var(--glass-border) !important;
+      border-radius: 12px !important;
+      transition: all 0.3s ease !important;
+
+      &:hover {
+        background: rgba(var(--mat-sys-primary-rgb), 0.05) !important;
+        border-color: rgba(var(--mat-sys-primary-rgb), 0.3) !important;
+      }
+    }
+
+    .mat-focused .mat-mdc-text-field-wrapper {
+      background: rgba(var(--mat-sys-primary-rgb), 0.06) !important;
+      border-color: var(--mat-sys-primary) !important;
+      box-shadow: 0 0 20px rgba(var(--mat-sys-primary-rgb), 0.1);
+    }
+
+    .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-line-ripple::before,
+    .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-line-ripple::after {
+      display: none;
+    }
+
+    .mat-mdc-form-field-label {
+      color: var(--glass-text-muted) !important;
+    }
+    .mat-mdc-input-element {
+      color: var(--glass-text) !important;
+    }
   }
 
   .stepper-buttons {
-    margin-top: 32px;
+    margin-top: 40px;
     display: flex;
     justify-content: flex-end;
-    gap: 16px;
+    gap: 20px;
   }
 }
 
-.result-actions {
-  display: flex;
-  justify-content: flex-end;
+.stealth-export-section {
+  margin-top: 30px;
+  padding: 24px;
+  background: var(--glass-input-bg);
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--mat-sys-primary);
+    font-weight: 300;
+    letter-spacing: 1px;
+  }
+
+  .hint-text {
+    color: var(--glass-text-muted);
+    font-size: 0.95em;
+    margin-bottom: 20px;
+  }
 }
 
 .footer-text {
-  padding: 16px;
+  padding: 20px;
   text-align: center;
   font-size: 0.85rem;
-  color: var(--mat-sys-on-surface-variant);
-  opacity: 0.7;
-}
-
-.stealth-export-section {
-    margin-top: 20px;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-
-    h3 {
-        margin-top: 0;
-        margin-bottom: 8px;
-        color: #fff;
-    }
-
-    .hint-text {
-        color: rgba(255, 255, 255, 0.6);
-        font-size: 0.9em;
-        margin-bottom: 16px;
-    }
-
-    .export-controls {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        margin-bottom: 16px;
-    }
-
-    .slider-container {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        .label {
-            min-width: 120px;
-        }
-        mat-slider {
-            flex-grow: 1;
-        }
-    }
-}
-
-.security-controls {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-.cover-image-upload {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 8px;
-    
-    .file-name {
-        font-style: italic;
-        color: rgba(255,255,255,0.7);
-    }
+  color: var(--glass-text-muted);
+  letter-spacing: 0.5px;
 }

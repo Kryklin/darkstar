@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, session, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, session, shell, safeStorage } from 'electron';
 import * as path from 'path';
 import { updateElectronApp } from 'update-electron-app';
 
@@ -26,7 +26,7 @@ function createShortcut(target: 'desktop' | 'start-menu'): Promise<{ success: bo
     const operation = shell.writeShortcutLink(shortcutPath, 'create', {
       target: targetPath,
       cwd: path.dirname(targetPath),
-      description: 'Darkstar Application'
+      description: 'Darkstar Application',
     });
 
     if (operation) {
@@ -79,11 +79,7 @@ function createTray() {
   const icon = nativeImage.createFromPath(iconPath);
   tray = new Tray(icon);
 
-  const contextMenu = Menu.buildFromTemplate([
-    { label: `Version: ${app.getVersion()}`, enabled: false },
-    { type: 'separator' },
-    { label: 'Exit', click: () => app.quit() },
-  ]);
+  const contextMenu = Menu.buildFromTemplate([{ label: `Version: ${app.getVersion()}`, enabled: false }, { type: 'separator' }, { label: 'Exit', click: () => app.quit() }]);
 
   tray.setToolTip('Darkstar');
   tray.setContextMenu(contextMenu);
@@ -166,6 +162,25 @@ ipcMain.handle('reset-app', async () => {
   await session.defaultSession.clearStorageData();
   app.relaunch();
   app.exit(0);
+});
+
+ipcMain.handle('safe-storage-encrypt', async (_event, plainText: string) => {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('Encryption is not available on this system.');
+  }
+  return safeStorage.encryptString(plainText).toString('base64');
+});
+
+ipcMain.handle('safe-storage-decrypt', async (_event, encryptedBase64: string) => {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('Encryption is not available on this system.');
+  }
+  const buffer = Buffer.from(encryptedBase64, 'base64');
+  return safeStorage.decryptString(buffer);
+});
+
+ipcMain.handle('safe-storage-available', () => {
+  return safeStorage.isEncryptionAvailable();
 });
 
 ipcMain.on('restart-and-install', () => {

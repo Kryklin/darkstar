@@ -4,13 +4,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimize: () => ipcRenderer.send('minimize-window'),
   maximize: () => ipcRenderer.send('maximize-window'),
   close: () => ipcRenderer.send('close-window'),
-  onUpdateStatus: (callback: (status: { status: string; error?: string }) => void) =>
-    ipcRenderer.on('update-status', (_event, value) => callback(value)),
+  onUpdateStatus: (callback: (status: { status: string; error?: string }) => void) => ipcRenderer.on('update-status', (_event, value) => callback(value)),
   onInitiateUpdateCheck: (callback: () => void) => ipcRenderer.on('initiate-update-check', callback),
   checkForUpdates: () => ipcRenderer.send('check-for-updates'),
   restartAndInstall: () => ipcRenderer.send('restart-and-install'),
   createShortcut: (target: 'desktop' | 'start-menu') => ipcRenderer.invoke('create-shortcut', target),
   resetApp: () => ipcRenderer.invoke('reset-app'),
+  safeStorageEncrypt: (text: string) => ipcRenderer.invoke('safe-storage-encrypt', text),
+  safeStorageDecrypt: (base64: string) => ipcRenderer.invoke('safe-storage-decrypt', base64),
+  safeStorageAvailable: () => ipcRenderer.invoke('safe-storage-available'),
 });
 
 // All of the Node.js APIs are available in the preload process.

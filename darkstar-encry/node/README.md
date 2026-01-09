@@ -27,12 +27,12 @@ import { DarkstarCrypt } from '@kryklin/darkstar-crypt-node';
 const crypt = new DarkstarCrypt();
 
 // Encrypt
-const { encryptedData, reverseKey } = await crypt.encrypt("my secret phrase", "password123");
+const { encryptedData, reverseKey } = await crypt.encrypt('my secret phrase', 'password123');
 console.log('Encrypted:', encryptedData);
 console.log('Reverse Key:', reverseKey);
 
 // Decrypt
-const decrypted = await crypt.decrypt(encryptedData, "password123", reverseKey);
+const decrypted = await crypt.decrypt(encryptedData, 'password123', reverseKey);
 console.log('Decrypted:', decrypted);
 ```
 

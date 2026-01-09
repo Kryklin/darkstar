@@ -14,11 +14,7 @@ describe('SharedEncryptComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SharedEncryptComponent, BrowserAnimationsModule, MaterialModule, MatSnackBarModule],
-      providers: [
-        CryptService,
-        SteganographyService,
-        PaperWalletService
-      ], 
+      providers: [CryptService, SteganographyService, PaperWalletService],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SharedEncryptComponent);

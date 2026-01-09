@@ -1,7 +1,9 @@
 <mat-sidenav-container class="sidenav-container" [hasBackdrop]="false">
   <mat-sidenav #drawer class="sidenav" fixedInViewport [mode]="'side'">
     <div class="sidebar-content">
-      <mat-toolbar class="nav-link-center"><span class="app-title">DARKSTAR</span></mat-toolbar>
+      <div class="sidebar-header-box">
+        <img [src]="theme.logoSrc()" alt="DARKSTAR" class="sidebar-logo" />
+      </div>
       <mat-nav-list>
         <a mat-list-item routerLink="/home" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()">
           <div class="nav-link-center">
@@ -9,28 +11,13 @@
             <span style="margin-left: 10px">Home</span>
           </div>
         </a>
-        <!-- Secure Notes Group -->
-        <a mat-list-item (click)="toggleSection('secure-notes')" (keydown.enter)="toggleSection('secure-notes')" (keydown.space)="toggleSection('secure-notes')" tabindex="0" class="nav-group-header">
-           <div class="nav-link-center">
-             <mat-icon>description</mat-icon>
-             <span style="margin-left: 10px; flex: 1">Secure Notes</span>
-             <mat-icon class="expand-icon" [class.expanded]="isExpanded('secure-notes')">expand_more</mat-icon>
-           </div>
+        <!-- Secure Vault -->
+        <a mat-list-item routerLink="/vault" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()">
+          <div class="nav-link-center">
+            <mat-icon>enhanced_encryption</mat-icon>
+            <span style="margin-left: 10px">Secure Vault</span>
+          </div>
         </a>
-        @if (isExpanded('secure-notes')) {
-          <a mat-list-item routerLink="/secure-notes/encrypt" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" class="nested-item">
-            <div class="nav-link-center">
-              <mat-icon>lock</mat-icon>
-              <span style="margin-left: 10px">Encrypt</span>
-            </div>
-          </a>
-          <a mat-list-item routerLink="/secure-notes/decrypt" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" class="nested-item">
-            <div class="nav-link-center">
-              <mat-icon>lock_open</mat-icon>
-              <span style="margin-left: 10px">Decrypt</span>
-            </div>
-          </a>
-        }
 
         <!-- BIP39 Group -->
         <a mat-list-item (click)="toggleSection('bip39')" (keydown.enter)="toggleSection('bip39')" (keydown.space)="toggleSection('bip39')" tabindex="0" class="nav-group-header">
@@ -146,7 +133,6 @@
         <mat-icon aria-label="Side nav toggle icon">menu</mat-icon>
       </button>
       <span class="spacer"></span>
-      <img [src]="theme.logoSrc()" alt="logo" class="navbar-logo" />
       <span class="spacer"></span>
       <button mat-icon-button routerLink="/settings" aria-label="Open settings">
         <mat-icon>settings</mat-icon>

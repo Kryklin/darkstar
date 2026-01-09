@@ -42,9 +42,9 @@ export class ElectrumV2Encrypt {
     let randomWords = '';
     // Electrum V2 standard is typically 12 words
     for (let i = 0; i < 12; i++) {
-        randomWords += words[Math.floor(Math.random() * words.length)] + ' ';
+      randomWords += words[Math.floor(Math.random() * words.length)] + ' ';
     }
     this.sharedEncrypt.setMnemonic(randomWords.trim());
     return randomWords.trim();
-  }
+  };
 }

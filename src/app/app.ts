@@ -3,6 +3,7 @@ import { Nav } from './components/nav/nav';
 
 @Component({
   selector: 'app-root',
+  standalone: true,
   imports: [Nav],
   templateUrl: './app.html',
   styleUrls: ['./app.scss'],

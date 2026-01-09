@@ -21,7 +21,7 @@
       font-size: 0.85rem;
       font-weight: 500;
       opacity: 0.8;
-      
+
       mat-icon {
         font-size: 18px;
         width: 18px;
@@ -47,7 +47,7 @@
       font-size: 1.1rem;
       font-weight: 500;
       line-height: 42px;
-      
+
       // Ensure specific styles for the button content to center it
       ::ng-deep .mat-mdc-button-touch-target {
         height: 42px;
@@ -62,7 +62,7 @@
 
     button {
       height: 48px;
-      
+
       &.active-mode {
         background-color: var(--mat-sys-primary-container);
         color: var(--mat-sys-on-primary-container);

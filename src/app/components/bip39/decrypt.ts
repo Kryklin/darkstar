@@ -6,13 +6,7 @@ import BIP39 from '../../../assets/BIP39.json';
   selector: 'app-decrypt',
   standalone: true,
   imports: [SharedDecryptComponent],
-  template: `
-    <app-shared-decrypt
-      [protocolTitle]="protocolTitle"
-      [protocolSummary]="protocolSummary"
-      [protocolLink]="protocolLink"
-    ></app-shared-decrypt>
-  `,
+  template: ` <app-shared-decrypt [protocolTitle]="protocolTitle" [protocolSummary]="protocolSummary" [protocolLink]="protocolLink"></app-shared-decrypt> `,
 })
 export class Decrypt {
   protocolTitle = BIP39.title;

@@ -1,8 +1,6 @@
 <div class="keyboard-container glass-panel">
   <div class="keyboard-header">
-    <span class="security-badge">
-      <mat-icon>security</mat-icon> Secure Scrambled Input
-    </span>
+    <span class="security-badge"> <mat-icon>security</mat-icon> Secure Scrambled Input </span>
     <button mat-icon-button (click)="shuffleKeys()" matTooltip="Reshuffle Keys">
       <mat-icon>shuffle</mat-icon>
     </button>
@@ -20,9 +18,7 @@
     <button mat-stroked-button (click)="toggleSymbols()" [class.active-mode]="showSymbols()">
       {{ showSymbols() ? 'ABC' : '!@#' }}
     </button>
-    <button mat-stroked-button class="space-bar" (click)="onKeyClick(' ')">
-      SPACE
-    </button>
+    <button mat-stroked-button class="space-bar" (click)="onKeyClick(' ')">SPACE</button>
     <button mat-stroked-button (click)="toggleCaps()" [disabled]="showSymbols()" [class.active-mode]="showCaps()">
       <mat-icon>keyboard_capslock</mat-icon>
     </button>
