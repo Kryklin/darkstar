@@ -15,6 +15,7 @@ import BIP39 from '../../../assets/BIP39.json';
       [mnemonicValidator]="mnemonicValidator"
       mnemonicLabel="Insert your BIP39 recovery phrase"
       mnemonicPlaceholder="e.g. army van defense carry..."
+      [randomWordsGenerator]="generateRandomWords"
       (generateRandom)="generateRandomWords()"
     ></app-shared-encrypt>
   `,
