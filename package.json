@@ -2,7 +2,7 @@
   "name": "darkstar",
   "version": "1.8.2",
   "productName": "Darkstar",
-  "description": "Darkstar: Secure Multi-Layered Encryption & Steganography Suite",
+  "description": "Secure Multi-Layered Encryption & Steganography Suite",
   "author": "Victor Kane",
   "private": true,
   "main": "dist/electron/main.js",
