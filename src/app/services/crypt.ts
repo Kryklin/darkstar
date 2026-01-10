@@ -16,10 +16,10 @@ export interface DecryptionResult {
 export class CryptService {
   /** Iterations for legacy (V1) encryption. Deprecated. */
   private readonly ITERATIONS_V1 = 1000;
-  
-  /** 
-   * Iterations for standard (V2) encryption. 
-   * Aligns with modern OWASP recommendations for high-security. 
+
+  /**
+   * Iterations for standard (V2) encryption.
+   * Aligns with modern OWASP recommendations for high-security.
    */
   public ITERATIONS_V2 = 600000;
 
@@ -212,7 +212,7 @@ export class CryptService {
       const wordReverseKey: number[] = [];
       const checksum = this._generateChecksum(selectedFunctions);
       const checksumBytes = this.stringToBytes(checksum.toString());
-      
+
       const combinedSeed = new Uint8Array(passwordBytes.length + checksumBytes.length);
       combinedSeed.set(passwordBytes);
       combinedSeed.set(checksumBytes, passwordBytes.length);
@@ -237,7 +237,7 @@ export class CryptService {
       this.zero(combinedSeed);
     }
 
-    /** 
+    /**
      * Package the obfuscated words into a binary stream using length-prefixing
      * to prevent delimiter-injection attacks on binary data.
      */
@@ -350,7 +350,7 @@ export class CryptService {
         const len = (fullBlob[offset] << 8) | fullBlob[offset + 1];
         offset += 2;
 
-        let currentWordBytes: any = fullBlob.slice(offset, offset + len);
+        let currentWordBytes: Uint8Array = fullBlob.slice(offset, offset + len);
         offset += len;
 
         const wordReverseKey = reverseKeyJson[wordIndex];
@@ -368,7 +368,7 @@ export class CryptService {
           const isSeeded = funcIndex >= 6;
           const seed = isSeeded ? combinedSeed : undefined;
 
-          currentWordBytes = func(currentWordBytes, seed, prngFactory) as any as Uint8Array;
+          currentWordBytes = func(currentWordBytes, seed, prngFactory) as unknown as Uint8Array;
         }
 
         deobfuscatedWords.push(this.bytesToString(currentWordBytes));
@@ -393,7 +393,7 @@ export class CryptService {
           const funcIndex = wordReverseKey[j];
           const func = this.deobfuscationFunctions[funcIndex];
           if (!func) throw new Error(`Legacy Engine Mismatch: Invalid index ${funcIndex}`);
-          
+
           const isSeeded = funcIndex >= 6;
           const seed = isSeeded ? combinedSeed : undefined;
           currentWord = func(currentWord, seed, prngFactory);
@@ -577,20 +577,32 @@ export class CryptService {
 
   /** 2. Obfuscate to comma-separated character codes (Legacy). */
   obfuscateToCharCodes(input: string): string {
-    return input.split('').map((char) => char.charCodeAt(0)).join(',');
+    return input
+      .split('')
+      .map((char) => char.charCodeAt(0))
+      .join(',');
   }
   /** Reconstructs string from character codes (Legacy). */
   deobfuscateFromCharCodes(input: string): string {
-    return input.split(',').map((code) => String.fromCharCode(parseInt(code, 10))).join('');
+    return input
+      .split(',')
+      .map((code) => String.fromCharCode(parseInt(code, 10)))
+      .join('');
   }
 
   /** 3. Obfuscate to comma-separated binary strings (Legacy). */
   obfuscateToBinary(input: string): string {
-    return input.split('').map((char) => char.charCodeAt(0).toString(2)).join(',');
+    return input
+      .split('')
+      .map((char) => char.charCodeAt(0).toString(2))
+      .join(',');
   }
   /** Reconstructs string from binary representation (Legacy). */
   deobfuscateFromBinary(input: string): string {
-    return input.split(',').map((bin) => String.fromCharCode(parseInt(bin, 2))).join('');
+    return input
+      .split(',')
+      .map((bin) => String.fromCharCode(parseInt(bin, 2)))
+      .join('');
   }
 
   /** 4. Obfuscate with Caesar Cipher (ROT13) (Legacy). */
@@ -647,7 +659,10 @@ export class CryptService {
 
   /** 7. Obfuscate using bitwise XOR with a seeded password reference (Legacy). */
   obfuscateWithXOR(input: string, seed?: string): string {
-    return input.split('').map((char, i) => String.fromCharCode(char.charCodeAt(0) ^ seed!.charCodeAt(i % seed!.length))).join('');
+    return input
+      .split('')
+      .map((char, i) => String.fromCharCode(char.charCodeAt(0) ^ seed!.charCodeAt(i % seed!.length)))
+      .join('');
   }
   /** Reverses XOR (Identity operation) (Legacy). */
   deobfuscateWithXOR(input: string, seed?: string): string {
@@ -699,7 +714,11 @@ export class CryptService {
     const blockSize = Math.floor(rng() * (input.length / 2)) + 2;
     let result = '';
     for (let i = 0; i < input.length; i += blockSize) {
-      result += input.substring(i, i + blockSize).split('').reverse().join('');
+      result += input
+        .substring(i, i + blockSize)
+        .split('')
+        .reverse()
+        .join('');
     }
     return result;
   }
@@ -714,7 +733,10 @@ export class CryptService {
     const shuffledChars = [...chars];
     this.shuffleArray(shuffledChars, seed!, prngFactory!);
     const subMap = new Map(chars.map((c, i) => [c, shuffledChars[i]]));
-    return input.split('').map((char) => subMap.get(char) || char).join('');
+    return input
+      .split('')
+      .map((char) => subMap.get(char) || char)
+      .join('');
   }
   /** Reverses seeded substitution (Legacy). */
   deobfuscateWithSeededSubstitution(input: string, seed?: string, prngFactory?: (s: string) => () => number): string {
@@ -722,7 +744,10 @@ export class CryptService {
     const shuffledChars = [...chars];
     this.shuffleArray(shuffledChars, seed!, prngFactory!);
     const unsubMap = new Map(shuffledChars.map((c, i) => [c, chars[i]]));
-    return input.split('').map((char) => unsubMap.get(char) || char).join('');
+    return input
+      .split('')
+      .map((char) => unsubMap.get(char) || char)
+      .join('');
   }
 
   /** 0. Obfuscate by reversing byte order (V2). */

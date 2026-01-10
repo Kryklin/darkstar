@@ -72,11 +72,13 @@ body.dark-theme {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--glass-border);
   border-radius: 4px;
+  transition: all 0.3s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--mat-sys-primary); // Pop with theme color on hover
+    box-shadow: 0 0 10px var(--glass-glow);
   }
 }
 

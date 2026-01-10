@@ -27,5 +27,45 @@
         color: #f44336;
       }
     }
+
+    .alpha-badge {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: rgba(255, 152, 0, 0.1);
+      color: #ff9800;
+      margin-bottom: 8px;
+
+      .alpha-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+      }
+    }
+
+    .alpha-title {
+      color: #ff9800;
+      letter-spacing: 2px;
+      font-weight: bold;
+    }
+
+    .pulse {
+      animation: pulse-glow 2s infinite;
+    }
+
+    @keyframes pulse-glow {
+      0% {
+        box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4);
+      }
+      70% {
+        box-shadow: 0 0 0 20px rgba(255, 152, 0, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(255, 152, 0, 0);
+      }
+    }
   }
 }

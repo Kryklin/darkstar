@@ -10,7 +10,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   standalone: true,
   imports: [CommonModule, MatProgressBarModule, MatIconModule, MatTooltipModule],
   templateUrl: './entropy-meter.html',
-  styleUrl: './entropy-meter.scss',
+  styleUrls: ['./entropy-meter.scss'], // Fixed styleUrl -> styleUrls (plural) which might be the issue
 })
 export class EntropyMeter implements OnChanges {
   @Input() value = '';

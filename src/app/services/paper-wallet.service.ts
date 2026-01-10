@@ -11,8 +11,6 @@ export interface PaperWalletMetadata {
   providedIn: 'root',
 })
 export class PaperWalletService {
-  constructor() {}
-
   /**
    * Generates and downloads a PDF paper wallet.
    * @param encryptedData The main encrypted payload.

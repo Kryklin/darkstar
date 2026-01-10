@@ -6,8 +6,6 @@ export type StrengthLevel = 'weak' | 'fair' | 'strong' | 'defense-grade';
   providedIn: 'root',
 })
 export class EntropyService {
-  constructor() {}
-
   /**
    * Calculates the entropy of a given string in bits.
    * E = L * log2(R)

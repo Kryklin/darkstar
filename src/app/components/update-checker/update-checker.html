@@ -21,6 +21,14 @@
       <h2>Update Error</h2>
       <p>{{ updateService.updateError() }}</p>
       <button mat-button (click)="goHome()">Back to Home</button>
+    } @else if (updateService.updateStatus() === 'alpha') {
+      <div class="alpha-badge pulse">
+        <mat-icon class="alpha-icon">science</mat-icon>
+      </div>
+      <h2 class="alpha-title">DEVELOPER BUILD (ALPHA)</h2>
+      <p>You are running a version ahead of the public release.</p>
+      <button mat-button (click)="goHome()">Back to Home</button>
     }
+    <p style="opacity: 0.5; margin-top: 2rem">Debug Status: {{ updateService.updateStatus() }}</p>
   </div>
 </div>

@@ -23,8 +23,8 @@ export class UpdateChecker implements OnInit {
           this.updateService.resetState();
           this.router.navigate(['/home']);
         }, 2000);
-      } else if (status === 'error') {
-        // Stay on page to show error
+      } else if (status === 'error' || status === 'alpha') {
+        // Stay on page to show error or alpha status
       }
     });
   }

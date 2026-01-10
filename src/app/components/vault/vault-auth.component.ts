@@ -3,25 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { VaultService } from '../../services/vault';
 import { EntropyMeter } from '../entropy-meter/entropy-meter';
-import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MaterialModule } from '../../modules/material/material';
 
 @Component({
   selector: 'app-vault-auth',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatIconModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatProgressSpinnerModule,
-    EntropyMeter,
-  ],
+  imports: [CommonModule, FormsModule, MaterialModule, EntropyMeter],
   template: `
     <div class="vault-auth-container">
       <div class="auth-card">

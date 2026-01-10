@@ -2,24 +2,12 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { VaultService, VaultNote } from '../../services/vault';
-import { MatSidenavModule } from '@angular/material/sidenav';
-import { MatListModule } from '@angular/material/list';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { MaterialModule } from '../../modules/material/material';
 
 @Component({
   selector: 'app-vault-dashboard',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatSidenavModule,
-    MatListModule,
-    MatIconModule,
-    MatButtonModule,
-    MatTooltipModule,
-  ],
+  imports: [CommonModule, FormsModule, MaterialModule],
   template: `
     <div class="vault-container">
       <mat-sidenav-container class="sidenav-container">
@@ -155,11 +143,21 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         animation: slideInRow 0.4s ease forwards;
         opacity: 0;
 
-        &:nth-child(1) { animation-delay: 0.35s; }
-        &:nth-child(2) { animation-delay: 0.40s; }
-        &:nth-child(3) { animation-delay: 0.45s; }
-        &:nth-child(4) { animation-delay: 0.50s; }
-        &:nth-child(5) { animation-delay: 0.55s; }
+        &:nth-child(1) {
+          animation-delay: 0.35s;
+        }
+        &:nth-child(2) {
+          animation-delay: 0.4s;
+        }
+        &:nth-child(3) {
+          animation-delay: 0.45s;
+        }
+        &:nth-child(4) {
+          animation-delay: 0.5s;
+        }
+        &:nth-child(5) {
+          animation-delay: 0.55s;
+        }
 
         &:hover {
           background: rgba(var(--mat-sys-primary-rgb), 0.05) !important;

@@ -1,13 +1,17 @@
 # Darkstar Security Suite
 
-![Darkstar Logo](public/assets/img/logo-white.png)
+<p align="center">
+  <img src="public/assets/img/logo-white.png" width="400" alt="Darkstar Logo">
+</p>
 
-![Version](https://img.shields.io/badge/version-1.8.0-blue)
-![Angular](https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular)
-![Electron](https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron)
-![TypeScript](https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript)
-![Go](https://img.shields.io/badge/Go-v1.25.5-00ADD8?logo=go)
-![Rust](https://img.shields.io/badge/Rust-2021-000000?logo=rust)
+<p align="center">
+  <img src="https://img.shields.io/badge/version-1.8.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular" alt="Angular">
+  <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron">
+  <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Go-v1.25.5-00ADD8?logo=go" alt="Go">
+  <img src="https://img.shields.io/badge/Rust-2021-000000?logo=rust" alt="Rust">
+</p>
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python)
 ![Node.js](https://img.shields.io/badge/Node.js-v19%2B-339933?logo=node.js)
 ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat-square&logo=docker&logoColor=white)

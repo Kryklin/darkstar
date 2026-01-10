@@ -29,7 +29,7 @@ The system transforms sensitive data into a secure, multi-layered opaque blob.
 ```mermaid
 graph LR
     User([User Input]) -->|Data + Password| Layers[Multi-Layer Protection]
-    
+
     subgraph Layers [Security Gauntlet]
         Obf[Dynamic Obfuscation Pipeline]
         MemH[V2 Memory Hardening: Uint8Array]
@@ -133,6 +133,7 @@ graph TD
 ```
 
 **Benefits:**
+
 - **Theft Resistance**: Even if the local storage database is stolen, it cannot be decrypted on any other machine or OS user account.
 - **Offline Hardening**: Renders massive cracking clusters ineffective unless they have physical access to the device's hardware-backed security entropy.
 
@@ -143,9 +144,9 @@ graph TD
 The Secure Vault is designed so that the application itself has "Zero Knowledge" of the user's secrets between sessions.
 
 - **Session State**: The Master Key and decrypted notes are stored in Angular Signals (volatile memory) and are cleared on page reload or app close.
-- **Multi-Factor Persistence**: 
-    1. **Something You Know**: Master Password (AES-256-CBC).
-    2. **Something You Have**: The specific physical machine hardware (SafeStorage).
+- **Multi-Factor Persistence**:
+  1. **Something You Know**: Master Password (AES-256-CBC).
+  2. **Something You Have**: The specific physical machine hardware (SafeStorage).
 
 ---
 

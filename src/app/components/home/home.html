@@ -46,6 +46,11 @@
             <mat-icon>system_update</mat-icon>
             <span>Restart Required</span>
           </div>
+        } @else if (updateService.updateStatus() === 'alpha') {
+          <div class="status-indicator alpha-build">
+            <mat-icon>science</mat-icon>
+            <span>Developer Build</span>
+          </div>
         } @else {
           <div class="status-indicator up-to-date">
             <mat-icon>check_circle</mat-icon>

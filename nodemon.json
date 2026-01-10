@@ -2,5 +2,5 @@
   "watch": ["electron"],
   "ext": "ts,json",
   "ignore": ["electron/**/*.spec.ts"],
-  "exec": "npm run electron:build && electron ."
+  "exec": "tsc --p tsconfig.electron.json && electron ."
 }

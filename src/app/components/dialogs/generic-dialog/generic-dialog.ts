@@ -1,10 +1,10 @@
-import { Component, Inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MaterialModule } from '../../../modules/material/material';
 
 export interface DialogButton {
   label: string;
-  value: any;
+  value: unknown;
   color?: string;
 }
 
@@ -29,12 +29,10 @@ export interface DialogData {
   ],
 })
 export class GenericDialog {
-  constructor(
-    public dialogRef: MatDialogRef<GenericDialog>,
-    @Inject(MAT_DIALOG_DATA) public data: DialogData,
-  ) {}
+  readonly dialogRef = inject(MatDialogRef<GenericDialog>);
+  readonly data = inject<DialogData>(MAT_DIALOG_DATA);
 
-  close(value: any): void {
+  close(value: unknown): void {
     this.dialogRef.close(value);
   }
 }

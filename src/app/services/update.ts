@@ -1,11 +1,11 @@
 import { Injectable, signal, inject, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
-
 import { MatSnackBar } from '@angular/material/snack-bar';
+import pkg from '../../../package.json';
 
 /**
- * Manages application updates, handling IPC communication with Electron
- * and maintaining reactive state for UI components.
+ * Manages application updates by checking GitHub Releases directly.
+ * Bypasses electron-updater for reliable status checks.
  */
 @Injectable({
   providedIn: 'root',
@@ -19,6 +19,7 @@ export class UpdateService {
   updateStatus = signal<string>('idle');
   updateError = signal<string | null>(null);
   versionLocked = signal(false);
+  currentVersion = pkg.version;
 
   isElectron = !!window.electronAPI;
 
@@ -31,7 +32,6 @@ export class UpdateService {
 
   private loadSettings() {
     const stored = localStorage.getItem('versionLocked');
-    // Default to true if not set (first run), otherwise use stored value
     const locked = stored === null ? true : stored === 'true';
     this.versionLocked.set(locked);
 
@@ -52,82 +52,90 @@ export class UpdateService {
   private setupListeners() {
     const api = window.electronAPI;
 
-    api.onUpdateStatus((data: { status: string; error?: string }) => {
-      this.ngZone.run(() => {
-        if (this.checkTimeout) clearTimeout(this.checkTimeout);
-
-        this.updateStatus.set(data.status);
-        if (data.error) {
-          this.updateError.set(data.error);
-        }
-
-        if (data.status === 'checking') {
-          this.isChecking.set(true);
-        } else if (['available', 'not-available', 'error', 'downloaded'].includes(data.status)) {
-          // We might want to keep isChecking true until user leaves
-        }
-      });
-    });
-
+    // Listen for menu clicks/shortcuts to trigger check
     api.onInitiateUpdateCheck(() => {
       this.ngZone.run(() => {
-        // Respect the lock even for manual/external triggers if desired,
-        // but often manual overrides are expected. For now, let's enforce it
-        // or notify. Given the user request, let's block it.
         if (this.versionLocked()) {
           console.log('Update check skipped due to version lock.');
           return;
         }
 
-        this.isChecking.set(true);
-        this.updateStatus.set('checking');
         this.router.navigate(['/update-check']);
         this.checkForUpdates();
       });
     });
   }
 
-  private checkTimeout: ReturnType<typeof setTimeout> | undefined;
-
   /**
-   * Triggers an update check via Electron's auto-updater.
+   * Triggers an update check via GitHub API.
    */
-  checkForUpdates() {
+  async checkForUpdates() {
     if (this.versionLocked()) {
       console.log('Update check blocked: Version is locked.');
       return;
     }
 
-    if (this.isElectron) {
-      const currentStatus = this.updateStatus();
-      if (['checking', 'downloading', 'downloaded', 'available'].includes(currentStatus)) {
-        return;
+    if (this.isChecking()) return;
+
+    this.isChecking.set(true);
+    this.updateStatus.set('checking');
+    this.updateError.set(null);
+
+    try {
+      // Simulate a small delay for UX so it doesn't flash too fast
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      const response = await fetch('https://api.github.com/repos/Kryklin/darkstar/releases/latest');
+      if (!response.ok) {
+        throw new Error(`GitHub API Error: ${response.statusText}`);
       }
 
-      this.updateStatus.set('checking');
-      this.updateError.set(null);
+      const data = await response.json();
+      const remoteTag = data.tag_name.replace(/^v/, ''); // Remove 'v' prefix if present
+      const localVersion = this.currentVersion;
 
-      // Safety timeout: If Electron doesn't respond in 15 seconds, reset.
-      if (this.checkTimeout) clearTimeout(this.checkTimeout);
-      this.checkTimeout = setTimeout(() => {
-        this.ngZone.run(() => {
-          if (this.isChecking() || this.updateStatus() === 'checking') {
-            console.warn('Update check timed out in renderer.');
-            this.updateStatus.set('idle');
-            this.isChecking.set(false);
-            this.updateError.set('Update check timed out. Please try again later.');
-          }
-        });
-      }, 15000);
+      const comparison = this.compareVersions(remoteTag, localVersion);
 
-      window.electronAPI.checkForUpdates();
+      console.log('Update Check Debug:', { remoteTag, localVersion, comparison });
+
+      if (comparison > 0) {
+        this.updateStatus.set('available');
+        // Optionally notify main process to open browser or download
+      } else if (comparison < 0) {
+        this.updateStatus.set('alpha');
+      } else {
+        this.updateStatus.set('not-available');
+      }
+    } catch (err: unknown) {
+      console.error('Update check failed:', err);
+      this.updateStatus.set('error');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to check for updates.';
+      this.updateError.set(errorMessage);
+    } finally {
+      this.isChecking.set(false);
     }
   }
 
-  quitAndInstall() {
-    if (this.isElectron) {
-      window.electronAPI.restartAndInstall();
+  /**
+   * Returns > 0 if v1 > v2, < 0 if v1 < v2, 0 if equal.
+   */
+  private compareVersions(v1: string, v2: string): number {
+    const p1 = v1.split('.').map(Number);
+    const p2 = v2.split('.').map(Number);
+    const len = Math.max(p1.length, p2.length);
+
+    for (let i = 0; i < len; i++) {
+      const num1 = p1[i] || 0;
+      const num2 = p2[i] || 0;
+      if (num1 > num2) return 1;
+      if (num1 < num2) return -1;
     }
+    return 0;
+  }
+
+  quitAndInstall() {
+    // For now, maybe just open the release page since we are doing manual check
+    window.open('https://github.com/Kryklin/darkstar/releases/latest', '_blank');
   }
 
   resetState() {
