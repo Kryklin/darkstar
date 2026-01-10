@@ -5,17 +5,20 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.8.0-blue" alt="Version">
-  <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular" alt="Angular">
-  <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron">
-  <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript">
-  <img src="https://img.shields.io/badge/Go-v1.25.5-00ADD8?logo=go" alt="Go">
-  <img src="https://img.shields.io/badge/Rust-2021-000000?logo=rust" alt="Rust">
+  <img src="https://img.shields.io/badge/version-1.8.1-blue" alt="Version">
+  <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular&logoColor=white" alt="Angular">
+  <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron&logoColor=white" alt="Electron">
+  <img src="https://img.shields.io/badge/TypeScript-v5.9.2-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Go-v1.25.5-00ADD8?logo=go&logoColor=white" alt="Go">
+  <img src="https://img.shields.io/badge/Rust-2021-000000?logo=rust&logoColor=white" alt="Rust">
 </p>
-![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python)
-![Node.js](https://img.shields.io/badge/Node.js-v19%2B-339933?logo=node.js)
-![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat-square&logo=docker&logoColor=white)
-![License](https://img.shields.io/badge/license-MIT-green)
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Node.js-v19%2B-339933?logo=node.js&logoColor=white" alt="Node.js">
+  <img src="https://img.shields.io/badge/docker-%230db7ed?logo=docker&logoColor=white" alt="Docker">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+</p>
 
 `darkstar` is a defense-grade client-side security tool designed to safeguard sensitive recovery phrases and data. It combines a dynamic, 12-stage obfuscation pipeline with military-grade AES-256 encryption and hardware-bound protection to create a defense-in-depth security layer.
 
