@@ -161,6 +161,69 @@ export class CryptService {
     }
   }
 
+  /**
+   * Encrypts binary data (Uint8Array) directly using AES-256-CBC.
+   * Returns a combined Uint8Array: [Salt(16) | IV(16) | Ciphertext(...)].
+   */
+  async encryptBinary(data: Uint8Array, password: string): Promise<Uint8Array> {
+    const salt = window.crypto.getRandomValues(new Uint8Array(this.SALT_SIZE_BYTES));
+    const iv = window.crypto.getRandomValues(new Uint8Array(this.IV_SIZE_BYTES));
+
+    const enc = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
+
+    const key = await window.crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: this.ITERATIONS_V2,
+        hash: 'SHA-256',
+      },
+      keyMaterial,
+      { name: 'AES-CBC', length: 256 },
+      false,
+      ['encrypt'],
+    );
+
+    const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv }, key, data as unknown as BufferSource);
+    const encryptedBytes = new Uint8Array(encrypted);
+
+    const result = new Uint8Array(salt.length + iv.length + encryptedBytes.length);
+    result.set(salt, 0);
+    result.set(iv, salt.length);
+    result.set(encryptedBytes, salt.length + iv.length);
+
+    return result;
+  }
+
+  /**
+   * Decrypts a binary payload (Salt+IV+Ciphertext).
+   */
+  async decryptBinary(payload: Uint8Array, password: string): Promise<Uint8Array> {
+    const salt = payload.slice(0, this.SALT_SIZE_BYTES);
+    const iv = payload.slice(this.SALT_SIZE_BYTES, this.SALT_SIZE_BYTES + this.IV_SIZE_BYTES);
+    const ciphertext = payload.slice(this.SALT_SIZE_BYTES + this.IV_SIZE_BYTES);
+
+    const enc = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
+
+    const key = await window.crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: this.ITERATIONS_V2,
+        hash: 'SHA-256',
+      },
+      keyMaterial,
+      { name: 'AES-CBC', length: 256 },
+      false,
+      ['decrypt'],
+    );
+
+    const decrypted = await window.crypto.subtle.decrypt({ name: 'AES-CBC', iv: iv }, key, ciphertext);
+    return new Uint8Array(decrypted);
+  }
+
   /** Converts binary buffer to hex string. */
   private buf2hex(buffer: ArrayBuffer | Uint8Array): string {
     return Array.from(new Uint8Array(buffer))

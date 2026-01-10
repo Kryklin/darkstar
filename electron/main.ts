@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, session, shell, safeStorage } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs/promises';
 import { updateElectronApp } from 'update-electron-app';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -181,6 +182,56 @@ ipcMain.handle('safe-storage-decrypt', async (_event, encryptedBase64: string) =
 
 ipcMain.handle('safe-storage-available', () => {
   return safeStorage.isEncryptionAvailable();
+});
+
+// --- Vault V2 IPC Handlers ---
+
+const getVaultPath = () => path.join(app.getPath('userData'), 'vault_storage');
+
+ipcMain.handle('vault-ensure-dir', async () => {
+  const vaultPath = getVaultPath();
+  try {
+    await fs.mkdir(vaultPath, { recursive: true });
+    return true;
+  } catch (err) {
+    console.error('Failed to create vault directory:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('vault-save-file', async (_event, filename: string, buffer: Buffer) => {
+  const filePath = path.join(getVaultPath(), filename);
+  // Basic path traversal prevention
+  if (path.basename(filePath) !== filename) {
+    throw new Error('Invalid filename');
+  }
+  await fs.writeFile(filePath, buffer);
+  return true;
+});
+
+ipcMain.handle('vault-read-file', async (_event, filename: string) => {
+  const filePath = path.join(getVaultPath(), filename);
+  if (path.basename(filePath) !== filename) {
+    throw new Error('Invalid filename');
+  }
+  return await fs.readFile(filePath);
+});
+
+ipcMain.handle('vault-delete-file', async (_event, filename: string) => {
+  const filePath = path.join(getVaultPath(), filename);
+  if (path.basename(filePath) !== filename) {
+    throw new Error('Invalid filename');
+  }
+  await fs.unlink(filePath);
+  return true;
+});
+
+ipcMain.handle('vault-list-files', async () => {
+   try {
+     return await fs.readdir(getVaultPath());
+   } catch {
+     return [];
+   }
 });
 
 ipcMain.on('restart-and-install', () => {

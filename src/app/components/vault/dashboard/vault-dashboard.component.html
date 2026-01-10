@@ -1,0 +1,173 @@
+<div class="vault-container">
+  <mat-sidenav-container class="sidenav-container">
+    <!-- SIDEBAR: Note List -->
+    <mat-sidenav mode="side" opened class="notes-sidebar">
+      <div class="sidebar-header">
+        <h3>Notes</h3>
+        <button mat-icon-button (click)="createNote()" matTooltip="New Note">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+      
+      <div class="search-box">
+         <mat-form-field appearance="outline" class="dense-form-field">
+           <mat-icon matPrefix>search</mat-icon>
+           <input matInput placeholder="Search..." [(ngModel)]="searchTerm">
+           @if (searchTerm()) {
+             <button mat-icon-button matSuffix (click)="searchTerm.set('')">
+               <mat-icon>close</mat-icon>
+             </button>
+           }
+         </mat-form-field>
+      </div>
+
+      <mat-nav-list class="custom-scroll">
+        @for (note of filteredNotes(); track note.id) {
+          <a mat-list-item [class.active]="selectedNote()?.id === note.id" (click)="selectNote(note)" (keydown.enter)="selectNote(note)" tabindex="0">
+            <h4 matListItemTitle>{{ note.title || 'Untitled Note' }}</h4>
+            <p matListItemLine class="note-date">{{ note.updatedAt | date: 'short' }}</p>
+            @if (note.tags.length) {
+              <div matListItemLine class="note-tags">
+                 @for (t of note.tags | slice:0:3; track t) {
+                   <span class="mini-tag">#{{t}}</span>
+                 }
+              </div>
+            }
+          </a>
+        }
+        @if (filteredNotes().length === 0) {
+          <div class="empty-state">No notes found.</div>
+        }
+      </mat-nav-list>
+
+      <div class="sidebar-footer">
+        <button mat-button color="warn" (click)="lock()"><mat-icon>lock</mat-icon> Lock Vault</button>
+      </div>
+    </mat-sidenav>
+
+    <!-- MAIN: Editor -->
+    <mat-sidenav-content class="editor-content">
+      @if (selectedNote()) {
+        <div class="editor-wrapper">
+          <div class="editor-header-group">
+              <div class="editor-header">
+                <input class="title-input" [(ngModel)]="currentTitle" (ngModelChange)="onContentChange()" placeholder="Note Title" />
+                
+                <div class="header-actions">
+                    <button mat-icon-button class="action-btn" (click)="togglePreview()" [matTooltip]="showPreview ? 'Edit' : 'Save'">
+                        <mat-icon>{{ showPreview ? 'edit' : 'save' }}</mat-icon>
+                    </button>
+                    <button mat-icon-button class="delete-btn" (click)="deleteCurrentNote()" matTooltip="Delete Note">
+                        <mat-icon>delete</mat-icon>
+                    </button>
+                </div>
+              </div>
+              
+              <!-- TAGS INPUT -->
+              @if (!showPreview) {
+                <div class="tags-input-row">
+                    <mat-form-field appearance="outline" class="tags-field">
+                      <mat-label>Tags</mat-label>
+                      <mat-chip-grid #chipGrid aria-label="Enter tags">
+                        @for (tag of currentTags; track tag) {
+                          <mat-chip-row (removed)="removeTag(tag)">
+                            {{tag}}
+                            <button matChipRemove [attr.aria-label]="'remove ' + tag">
+                              <mat-icon>cancel</mat-icon>
+                            </button>
+                          </mat-chip-row>
+                        }
+                        <input placeholder="New tag..."
+                               [matChipInputFor]="chipGrid"
+                               [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
+                               [matChipInputAddOnBlur]="true"
+                               (matChipInputTokenEnd)="addTag($event)"/>
+                      </mat-chip-grid>
+                    </mat-form-field>
+                </div>
+              }
+              @if (showPreview && currentTags.length) {
+                 <div class="tags-display-row">
+                    <mat-chip-set>
+                        @for (tag of currentTags; track tag) {
+                          <mat-chip>#{{tag}}</mat-chip>
+                        }
+                    </mat-chip-set>
+                 </div>
+              }
+          </div>
+
+          <!-- FORMATTING TOOLBAR (Only in Edit Mode) -->
+          @if (!showPreview) {
+            <div class="editor-toolbar">
+               <button mat-icon-button (click)="insertFormat('bold')" matTooltip="Bold (Ctrl+B)"><mat-icon>format_bold</mat-icon></button>
+               <button mat-icon-button (click)="insertFormat('italic')" matTooltip="Italic (Ctrl+I)"><mat-icon>format_italic</mat-icon></button>
+               <button mat-icon-button (click)="insertFormat('heading')" matTooltip="Heading"><mat-icon>title</mat-icon></button>
+               <div class="divider"></div>
+               <button mat-icon-button (click)="insertFormat('list')" matTooltip="Bullet List"><mat-icon>format_list_bulleted</mat-icon></button>
+               <button mat-icon-button (click)="insertFormat('checklist')" matTooltip="Checklist"><mat-icon>check_box</mat-icon></button>
+               <button mat-icon-button (click)="insertFormat('code')" matTooltip="Code Block"><mat-icon>code</mat-icon></button>
+               <div class="divider"></div>
+               <button mat-icon-button (click)="triggerImageUpload()" matTooltip="Insert Image"><mat-icon>image</mat-icon></button>
+               <button mat-icon-button (click)="fileInput.click()" matTooltip="Attach File"><mat-icon>attach_file</mat-icon></button>
+               <input type="file" #imageInput hidden (change)="handleImageUpload($event)" accept="image/*" />
+               <input type="file" #fileInput hidden (change)="handleFileUpload($event)" />
+            </div>
+          }
+
+          <div class="editor-body">
+            @if (showPreview) {
+              <article class="markdown-preview custom-scroll">
+                 <markdown [data]="currentContent"></markdown>
+                 
+                 <!-- ATTACHMENTS PREVIEW -->
+                 @if (currentAttachments.length > 0) {
+                    <div class="attachments-section">
+                        <h5>Attachments</h5>
+                        <mat-list>
+                            @for (file of currentAttachments; track file.id) {
+                              <mat-list-item>
+                                  <mat-icon matListItemIcon>description</mat-icon>
+                                  <span matListItemTitle>{{file.name}}</span>
+                                  <span matListItemLine>{{ file.size | number }} bytes</span>
+                                  <button mat-icon-button matListItemMeta (click)="downloadFile(file)"><mat-icon>download</mat-icon></button>
+                              </mat-list-item>
+                            }
+                        </mat-list>
+                    </div>
+                 }
+              </article>
+            } @else {
+              <textarea 
+                #editorArea
+                class="content-input custom-scroll" 
+                [(ngModel)]="currentContent" 
+                (ngModelChange)="onContentChange()" 
+                (keydown)="onKeyDown($event)"
+                placeholder="Start typing your secure note..."></textarea>
+                
+                 <!-- ATTACHMENTS EDIT -->
+                 @if (currentAttachments.length > 0) {
+                    <div class="attachments-section edit-mode">
+                        @for (file of currentAttachments; track file.id) {
+                          <div class="attachment-chip">
+                              <mat-icon class="file-icon">description</mat-icon>
+                              <span class="file-name">{{file.name}}</span>
+                              <button mat-icon-button class="remove-file" (click)="deleteFile(file)"><mat-icon>close</mat-icon></button>
+                          </div>
+                        }
+                    </div>
+                 }
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="no-selection-state">
+          <mat-icon class="large-icon">verified_user</mat-icon>
+          <h2>Vault Unlocked</h2>
+          <p>Select a note to view or create a new one.</p>
+        </div>
+      }
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</div>

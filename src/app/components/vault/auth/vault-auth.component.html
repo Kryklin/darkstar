@@ -1,0 +1,45 @@
+<div class="vault-auth-container">
+  <div class="auth-card">
+    <div class="lock-icon">
+      <mat-icon>lock</mat-icon>
+    </div>
+
+    <h2>{{ hasVault() ? 'Unlock Vault' : 'Create Vault' }}</h2>
+    <p class="subtitle">
+      {{ hasVault() ? 'Enter your master password to decrypt your notes.' : 'Set a strong master password. This cannot be recovered if lost.' }}
+    </p>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Master Password</mat-label>
+      <input matInput [type]="hidePassword ? 'password' : 'text'" [(ngModel)]="password" (keyup.enter)="submit()" />
+      <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword">
+        <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+      </button>
+    </mat-form-field>
+
+    @if (!hasVault()) {
+      <app-entropy-meter [value]="password"></app-entropy-meter>
+    }
+
+    <div class="actions">
+      <button mat-flat-button color="primary" [disabled]="loading || !password" (click)="submit()">
+        @if (!loading) {
+          <span>{{ hasVault() ? 'Unlock' : 'Create Vault' }}</span>
+        }
+        @if (loading) {
+          <mat-spinner diameter="20"></mat-spinner>
+        }
+      </button>
+    </div>
+
+    @if (vaultService.error()) {
+      <p class="error-msg">
+        {{ vaultService.error() }}
+      </p>
+    }
+
+    @if (!hasVault()) {
+      <div class="warning"><mat-icon inline>warning</mat-icon> Zero-Knowledge Encryption: We do not store your password.</div>
+    }
+  </div>
+</div>

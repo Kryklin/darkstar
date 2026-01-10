@@ -40,6 +40,12 @@
       color: var(--glass-text);
       text-shadow: 0 0 20px var(--glass-glow);
     }
+
+    mat-card-subtitle {
+      margin-top: 12px !important;
+      color: var(--glass-text-muted);
+      font-weight: 300;
+    }
   }
 
   .learn-more-btn {

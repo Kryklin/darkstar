@@ -1,10 +1,20 @@
 import { Injectable, signal, inject, computed } from '@angular/core';
 import { CryptService } from './crypt';
 
+export interface VaultAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  ref: string; // Filename on disk
+}
+
 export interface VaultNote {
   id: string;
   title: string;
   content: string;
+  tags: string[];
+  attachments: VaultAttachment[];
   updatedAt: number;
 }
 
@@ -18,11 +28,14 @@ interface VaultStorage {
  * Service responsible for managing the Secure Vault.
  * Implements a session-based Zero-Knowledge architecture with optional hardware-bound OS-level encryption.
  */
+import { VaultFileService } from './vault-file.service';
+
 @Injectable({
   providedIn: 'root',
 })
 export class VaultService {
   private crypt = inject(CryptService);
+  private fileService = inject(VaultFileService);
   private storageKey = 'darkstar_vault';
 
   /**
@@ -116,10 +129,15 @@ export class VaultService {
 
       if (!jsonStr) throw new Error('Password mismatch or corrupted data.');
 
-      const notes: VaultNote[] = JSON.parse(jsonStr);
-
+      const parsedNotes: VaultNote[] = JSON.parse(jsonStr);
+      // Migration: Ensure V2 fields exist for legacy notes
+      const migratedNotes = parsedNotes.map(n => ({
+        ...n,
+        tags: n.tags || [],
+        attachments: n.attachments || []
+      }));
+      this.notes.set(migratedNotes);
       this.masterKey.set(password);
-      this.notes.set(notes);
       this.error.set(null);
       return true;
     } catch (e) {
@@ -185,6 +203,8 @@ export class VaultService {
       id: crypto.randomUUID(),
       title,
       content,
+      tags: [],
+      attachments: [],
       updatedAt: Date.now(),
     };
     this.notes.update((n) => [newNote, ...n]);
@@ -196,9 +216,26 @@ export class VaultService {
    * @param {string} id The UUID of the note to update.
    * @param {string} title New title.
    * @param {string} content New content.
+   * @param {string[]} tags Tags.
    */
-  updateNote(id: string, title: string, content: string) {
-    this.notes.update((n) => n.map((note) => (note.id === id ? { ...note, title, content, updatedAt: Date.now() } : note)));
+  updateNote(id: string, title: string, content: string, tags: string[]) {
+    this.notes.update((n) => n.map((note) => (note.id === id ? { ...note, title, content, tags, updatedAt: Date.now() } : note)));
+    this.save();
+  }
+
+  addAttachment(noteId: string, attachment: VaultAttachment) {
+    this.notes.update((n) =>
+      n.map((note) => (note.id === noteId ? { ...note, attachments: [...note.attachments, attachment], updatedAt: Date.now() } : note)),
+    );
+    this.save();
+  }
+
+  removeAttachment(noteId: string, attachmentId: string) {
+    this.notes.update((n) =>
+      n.map((note) =>
+        note.id === noteId ? { ...note, attachments: note.attachments.filter((a) => a.id !== attachmentId), updatedAt: Date.now() } : note,
+      ),
+    );
     this.save();
   }
 
@@ -206,7 +243,17 @@ export class VaultService {
    * Removes a note from the vault.
    * @param {string} id The UUID of the note to delete.
    */
-  deleteNote(id: string) {
+  async deleteNote(id: string) {
+    const note = this.notes().find((n) => n.id === id);
+    if (note && note.attachments) {
+      for (const att of note.attachments) {
+        try {
+          await this.fileService.deleteFile(att);
+        } catch (e) {
+          console.error('Failed to delete attachment:', att.name, e);
+        }
+      }
+    }
     this.notes.update((n) => n.filter((note) => note.id !== id));
     this.save();
   }
@@ -218,5 +265,13 @@ export class VaultService {
   deleteVault() {
     localStorage.removeItem(this.storageKey);
     this.lock();
+  }
+
+  getMasterKey(): string {
+    const key = this.masterKey();
+    if (!key) {
+      throw new Error('Vault is locked');
+    }
+    return key;
   }
 }

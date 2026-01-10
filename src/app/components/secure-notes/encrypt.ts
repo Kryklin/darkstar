@@ -7,9 +7,9 @@ import { SharedEncryptComponent } from '../shared/encrypt/encrypt';
   imports: [SharedEncryptComponent],
   template: `
     <app-shared-encrypt
-      protocolTitle="Secure Notes"
+      protocolTitle="Secure Message"
       protocolSummary="Encrypt arbitrary text, passwords, or small files using Darkstar's defense-grade architecture."
-      mnemonicLabel="Enter Secret Note"
+      mnemonicLabel="Enter Secret Message"
       mnemonicPlaceholder="Type or paste your secret content here..."
     ></app-shared-encrypt>
   `,

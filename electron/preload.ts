@@ -13,6 +13,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   safeStorageEncrypt: (text: string) => ipcRenderer.invoke('safe-storage-encrypt', text),
   safeStorageDecrypt: (base64: string) => ipcRenderer.invoke('safe-storage-decrypt', base64),
   safeStorageAvailable: () => ipcRenderer.invoke('safe-storage-available'),
+  // Vault V2 API
+  vaultEnsureDir: () => ipcRenderer.invoke('vault-ensure-dir'),
+  vaultSaveFile: (filename: string, buffer: Uint8Array) => ipcRenderer.invoke('vault-save-file', filename, buffer),
+  vaultReadFile: (filename: string) => ipcRenderer.invoke('vault-read-file', filename),
+  vaultDeleteFile: (filename: string) => ipcRenderer.invoke('vault-delete-file', filename),
+  vaultListFiles: () => ipcRenderer.invoke('vault-list-files'),
 });
 
 // All of the Node.js APIs are available in the preload process.

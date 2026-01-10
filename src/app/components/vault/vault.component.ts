@@ -1,8 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { VaultService } from '../../services/vault';
-import { VaultAuthComponent } from './vault-auth.component';
-import { VaultDashboardComponent } from './vault-dashboard.component';
+import { VaultAuthComponent } from './auth/vault-auth.component';
+import { VaultDashboardComponent } from './dashboard/vault-dashboard.component';
 
 @Component({
   selector: 'app-vault',
