@@ -54,11 +54,7 @@ npm install
 
 | Command                | Description                             |
 | :--------------------- | :-------------------------------------- |
-| `npm start`            | Start Angular dev server (Web)          |
-| `npm run electron:dev` | Start Electron app with Hot Reloading   |
-| `npm run package`      | Build distributable package for your OS |
-| `npm run format`       | Standardize codebase using Prettier     |
-| `npm test`             | Run unit tests (Karma/Jasmine)          |
+| `npm start`            | Start package manager                   |
 
 ## How it Works
 
