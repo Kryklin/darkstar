@@ -174,7 +174,7 @@ const pkg = require('../package.json');
           console.log(chalk.yellow('ℹ Building before packaging...'));
           await runShell('Building', CMD.BUILD);
           // Preserve build log
-          await runShell('Packaging', CMD.PACKAGE, { clear: false });
+          await runShell('Packaging', CMD.PACKAGE, { clear: true }); // User requested clear back
           break;
         case 'publish':
           const { confirm } = await inquirer.prompt([
