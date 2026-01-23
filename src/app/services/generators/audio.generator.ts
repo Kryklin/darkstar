@@ -21,33 +21,63 @@ export class AudioGenerator implements StegoGenerator {
     const lengthBinary = payload.length.toString(2).padStart(32, '0');
     const fullBinary = lengthBinary + binaryPayload;
 
-    // 2. Generate White Noise Buffer (if no cover)
-    // 44.1kHz, 16-bit, Mono, 5 seconds default or enough for data
+    // 2. Prepare Buffer
+    let buffer: DataView;
     const sampleRate = 44100;
     const bitsPerSample = 16;
-    
-    // Calculate required samples
-    // 1 bit per sample (LSB)
-    const requiredSamples = fullBinary.length;
-    const minSamples = sampleRate * 1; // Minimum 1 second
-    const totalSamples = Math.max(requiredSamples + 1000, minSamples);
-    
-    const buffer = new DataView(new ArrayBuffer(44 + totalSamples * 2));
+    let totalSamples = 0;
+    let offset = 44;
 
-    // 3. Write WAV Header
-    this.writeString(buffer, 0, 'RIFF');
-    buffer.setUint32(4, 36 + totalSamples * 2, true); // ChunkSize
-    this.writeString(buffer, 8, 'WAVE');
-    this.writeString(buffer, 12, 'fmt ');
-    buffer.setUint32(16, 16, true); // Subchunk1Size
-    buffer.setUint16(20, 1, true); // AudioFormat (PCM)
-    buffer.setUint16(22, 1, true); // NumChannels (Mono)
-    buffer.setUint32(24, sampleRate, true); // SampleRate
-    buffer.setUint32(28, sampleRate * 2, true); // ByteRate
-    buffer.setUint16(32, 2, true); // BlockAlign
-    buffer.setUint16(34, bitsPerSample, true); // BitsPerSample
-    this.writeString(buffer, 36, 'data');
-    buffer.setUint32(40, totalSamples * 2, true); // Subchunk2Size
+    if (options.coverFile) {
+        // Use provided cover
+        const coverView = new DataView(options.coverFile);
+        // Verify Header
+        const riff = this.readString(coverView, 0, 4);
+        if (riff !== 'RIFF') throw new Error('Invalid WAV cover file');
+        
+        // Copy cover to new buffer (mutable)
+        // We clone it to avoid mutating original source reference if reused
+        const tmp = new Uint8Array(options.coverFile.byteLength);
+        tmp.set(new Uint8Array(options.coverFile as unknown as ArrayBuffer));
+        buffer = new DataView(tmp.buffer);
+
+        // Parse existing size
+        const subchunk2Size = coverView.getUint32(40, true);
+        totalSamples = subchunk2Size / 2;
+    } else {
+        // Generate White Noise Buffer
+        // Sample calc...
+        // 1 bit per sample (LSB)
+        const requiredSamples = fullBinary.length;
+        const minSamples = sampleRate * 1; // Minimum 1 second
+        totalSamples = Math.max(requiredSamples + 1000, minSamples);
+        
+        buffer = new DataView(new ArrayBuffer(44 + totalSamples * 2));
+
+        // 3. Write WAV Header (Fresh)
+        this.writeString(buffer, 0, 'RIFF');
+        buffer.setUint32(4, 36 + totalSamples * 2, true); // ChunkSize
+        this.writeString(buffer, 8, 'WAVE');
+        this.writeString(buffer, 12, 'fmt ');
+        buffer.setUint32(16, 16, true); // Subchunk1Size
+        buffer.setUint16(20, 1, true); // AudioFormat (PCM)
+        buffer.setUint16(22, 1, true); // NumChannels (Mono)
+        buffer.setUint32(24, sampleRate, true); // SampleRate
+        buffer.setUint32(28, sampleRate * 2, true); // ByteRate
+        buffer.setUint16(32, 2, true); // BlockAlign
+        buffer.setUint16(34, bitsPerSample, true); // BitsPerSample
+        this.writeString(buffer, 36, 'data');
+        buffer.setUint32(40, totalSamples * 2, true); // Subchunk2Size
+    }
+
+    // 4. Write Data
+    // ...
+    // If cover, we just overwrite LSBs. If noise, we gen noise then overwrite.
+    
+    // Check capacity
+    if (fullBinary.length > totalSamples) {
+        throw new Error(`Payload too large for cover audio. Need ${fullBinary.length} samples, have ${totalSamples}.`);
+    }
 
     // 4. Write Data (Noise + LSB)
     // Scale noise based on noiseLevel (default 0.1 if missing/invalid logic, but type says number)
@@ -56,10 +86,16 @@ export class AudioGenerator implements StegoGenerator {
     // noiseLevel 0.1 -> ~3000 amplitude (reasonable background hiss).
     const amplitude = Math.floor(32767 * (options.noiseLevel || 0.1));
     
-    let offset = 44;
     for (let i = 0; i < totalSamples; i++) {
-        // Generate random 16-bit noise
-        let sample = Math.floor((Math.random() * (amplitude * 2)) - amplitude);
+        let sample = 0;
+        
+        if (options.coverFile) {
+             // Read existing sample
+             sample = buffer.getInt16(offset, true);
+        } else {
+             // Generate random 16-bit noise
+             sample = Math.floor((Math.random() * (amplitude * 2)) - amplitude);
+        }
         
         // Inject LSB
         if (i < fullBinary.length) {
@@ -148,7 +184,7 @@ export class AudioGenerator implements StegoGenerator {
     return bytes.map(byte => String.fromCharCode(parseInt(byte, 2))).join('');
   }
 
-  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+  private arrayBufferToBase64(buffer: ArrayBufferLike): string {
     let binary = '';
     const bytes = new Uint8Array(buffer);
     const len = bytes.byteLength;

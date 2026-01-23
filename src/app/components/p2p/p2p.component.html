@@ -74,8 +74,26 @@
               @for (contact of p2pService.contacts(); track contact.onionAddress) {
                   <div class="contact-item" [class.active]="true">
                       <div class="status-dot" [ngClass]="contact.status" [matTooltip]="'Status: ' + contact.status"></div>
-                      <span class="onion-short">{{ contact.onionAddress.substring(0, 16) }}...</span>
+                      <span class="onion-short">
+                          {{ contact.onionAddress.substring(0, 16) }}...
+                          @let rep = reputationService.getReputation(contact.onionAddress);
+                          @if (rep) {
+                              <span class="trust-badge" [class]="reputationService.getClassForScore(rep.score)" [matTooltip]="'Trust Score: ' + rep.score + '%'">
+                                  {{ reputationService.formatScore(rep.score) }}
+                              </span>
+                          }
+                      </span>
                       <div class="contact-actions">
+                        <button mat-icon-button class="mini-btn" [matMenuTriggerFor]="rateMenu" (click)="$event.stopPropagation()">
+                            <mat-icon style="font-size: 16px; width: 16px; height: 16px;">star</mat-icon>
+                        </button>
+                        <mat-menu #rateMenu="matMenu">
+                            <button mat-menu-item (click)="ratePeer(contact, 100)">Trusted (100)</button>
+                            <button mat-menu-item (click)="ratePeer(contact, 70)">Good (70)</button>
+                            <button mat-menu-item (click)="ratePeer(contact, 50)">Neutral (50)</button>
+                            <button mat-menu-item (click)="ratePeer(contact, 20)">Suspicious (20)</button>
+                            <button mat-menu-item (click)="ratePeer(contact, 0)">Untrusted (0)</button>
+                        </mat-menu>
                         <button mat-icon-button class="mini-btn" (click)="checkContactStatus(contact); $event.stopPropagation()" [disabled]="p2pService.status() !== 'online'">
                             <mat-icon style="font-size: 16px; width: 16px; height: 16px;">refresh</mat-icon>
                         </button>
@@ -151,6 +169,11 @@
                       </div>
                   }
               </div>
+              
+              <div class="drop-area-container" style="padding: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                  <app-dark-drop (fileSelected)="onFileToTransfer($event)"></app-dark-drop>
+              </div>
+
               <div class="chat-input">
                   <!-- Disable if I am offline OR if the peer is offline/unknown -->
                   <input type="text" 

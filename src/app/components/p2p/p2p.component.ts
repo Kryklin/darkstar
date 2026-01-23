@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { MaterialModule } from '../../modules/material/material'; // Check path if needed
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { P2pService, Contact } from '../../services/p2p.service';
+import { ReputationService } from '../../services/reputation.service';
+import { DarkDropComponent } from './dark-drop/dark-drop.component';
 
 @Component({
   selector: 'app-p2p',
@@ -11,7 +13,8 @@ import { P2pService, Contact } from '../../services/p2p.service';
   imports: [
     CommonModule,
     FormsModule,
-    MaterialModule
+    MaterialModule,
+    DarkDropComponent
   ],
   templateUrl: './p2p.component.html',
   styleUrls: ['./p2p.component.scss']
@@ -24,6 +27,7 @@ export class P2pComponent {
   private cdr = inject(ChangeDetectorRef);
   private snackBar = inject(MatSnackBar);
   public p2pService = inject(P2pService);
+  public reputationService = inject(ReputationService);
 
   async goOnline() {
     try {
@@ -100,6 +104,11 @@ export class P2pComponent {
       }
   }
 
+  ratePeer(contact: Contact, score: number) {
+      this.reputationService.updateReputation(contact.onionAddress, score, contact.name);
+      this.snackBar.open(`Rated ${contact.name} as ${this.reputationService.formatScore(score)}`, 'Close', { duration: 2000 });
+  }
+
   async sendMessage(contact: Contact) {
       if (!this.newMessage || this.isSending) return;
       
@@ -131,5 +140,23 @@ export class P2pComponent {
       navigator.clipboard.writeText(addr);
       this.snackBar.open('Address copied', 'Close', { duration: 2000 });
     }
+  }
+
+  async onFileToTransfer(file: File) {
+      const contacts = this.p2pService.contacts();
+      if (contacts.length === 0 || contacts[0].status !== 'online') {
+          this.snackBar.open('No online peer to send to.', 'Close', { duration: 3000 });
+          return;
+      }
+      
+      this.isSending = true;
+      try {
+          await this.p2pService.sendFile(contacts[0].onionAddress, file);
+      } catch (e: unknown) {
+          console.error(e);
+          this.snackBar.open('File Transfer Failed', 'Close', { duration: 3000 });
+      } finally {
+          this.isSending = false;
+      }
   }
 }

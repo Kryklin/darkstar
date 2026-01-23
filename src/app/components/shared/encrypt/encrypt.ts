@@ -6,7 +6,7 @@ import { CryptService } from '../../../services/crypt';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SteganographyService } from '../../../services/steganography.service';
-import { StealthMode } from '../../../services/generators/types';
+import { StealthMode, StealthOptions } from '../../../services/generators/types';
 import { VirtualKeyboard } from '../../virtual-keyboard/virtual-keyboard';
 import { EntropyMeter } from '../../entropy-meter/entropy-meter';
 import { PaperWalletService } from '../../../services/paper-wallet.service';
@@ -43,10 +43,13 @@ export class SharedEncryptComponent implements OnInit {
     { value: 'log', label: 'System Log (.log)' },
     { value: 'csv', label: 'Dataset (.csv)' },
     { value: 'json', label: 'Configuration (.json)' },
+    { value: 'json', label: 'Configuration (.json)' },
     { value: 'image', label: 'Image (PNG)' },
+    { value: 'audio', label: 'Audio (WAV)' },
   ];
   stealthNoiseLevel = 0.5;
   selectedCoverImage: File | null = null;
+  selectedCoverAudio: File | null = null;
 
   // Virtual Keyboard
   virtualKeyboardEnabled = false;
@@ -110,6 +113,13 @@ export class SharedEncryptComponent implements OnInit {
     }
   }
 
+  onCoverAudioSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedCoverAudio = input.files[0];
+    }
+  }
+
   downloadFile() {
     if (this.stealthMode === 'standard') {
       this.downloadBlob(this.encryptedData, 'encrypted_data.txt', 'text/plain');
@@ -128,21 +138,55 @@ export class SharedEncryptComponent implements OnInit {
           this.snackBar.open('Failed to create stego image.', 'Close', { duration: 3000 });
         });
     } else {
-      const options = { noiseLevel: this.stealthNoiseLevel };
-      const content = this.steganographyService.transmute(this.encryptedData, this.stealthMode as StealthMode, options);
+      const options: StealthOptions = { noiseLevel: this.stealthNoiseLevel };
+      
+      const processAndDownload = (buffer?: ArrayBuffer) => {
+          if (buffer) options.coverFile = buffer;
+          
+          const content = this.steganographyService.transmute(this.encryptedData, this.stealthMode as StealthMode, options);
 
-      let filename = 'system_debug.log';
-      let mime = 'text/plain';
+          let filename = 'system_debug.log';
+          let mime = 'text/plain';
 
-      if (this.stealthMode === StealthMode.CSV) {
-        filename = 'dataset.csv';
-        mime = 'text/csv';
-      } else if (this.stealthMode === StealthMode.JSON) {
-        filename = 'config.json';
-        mime = 'application/json';
+          if (this.stealthMode === StealthMode.CSV) {
+            filename = 'dataset.csv';
+            mime = 'text/csv';
+          } else if (this.stealthMode === StealthMode.JSON) {
+            filename = 'config.json';
+            mime = 'application/json';
+          } else if (this.stealthMode === 'audio' as StealthMode) {
+              filename = 'audio_track.wav';
+              // Decode base64 content returned by generator
+              // For downloadBlob we expect string context, but for binary we might need blob logic
+              // The generator returns Base64 string for audio. 
+              // downloadBlob creates Blob from content(string).
+              // We need to decode base64 to binary for the blob.
+              
+              // Helper to convert base64 to blob
+              const byteCharacters = atob(content);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              this.downloadBlobObj(new Blob([byteArray], { type: 'audio/wav' }), filename);
+              return;
+          }
+
+          this.downloadBlob(content, filename, mime);
+      };
+
+      if (this.stealthMode === 'audio' && this.selectedCoverAudio) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+              if (e.target?.result) {
+                  processAndDownload(e.target.result as ArrayBuffer);
+              }
+          };
+          reader.readAsArrayBuffer(this.selectedCoverAudio);
+      } else {
+          processAndDownload();
       }
-
-      this.downloadBlob(content, filename, mime);
     }
   }
 

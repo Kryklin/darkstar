@@ -1,3 +1,5 @@
+import { P2PMessage } from './shared-types';
+
 export interface ElectronAPI {
   minimize: () => void;
   maximize: () => void;
@@ -22,8 +24,8 @@ export interface ElectronAPI {
   p2pCreateService: (port: number) => Promise<string>;
   p2pStopService: (onion: string) => Promise<void>;
   p2pCheckStatus: (onion: string) => Promise<boolean>;
-  p2pSendMessage: (onion: string, message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: JsonWebKey }) => Promise<void>;
-  onP2PMessage: (callback: (message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: JsonWebKey }) => void) => void;
+  p2pSendMessage: (onion: string, message: P2PMessage) => Promise<void>;
+  onP2PMessage: (callback: (message: P2PMessage) => void) => void;
   onTorProgress: (callback: (data: { progress: number; summary: string }) => void) => void;
 }
 

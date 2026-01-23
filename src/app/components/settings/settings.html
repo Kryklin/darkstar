@@ -105,5 +105,35 @@
         }
       </div>
     </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span class="title">Biometric Unlock</span>
+        <span class="description">Use Windows Hello or TouchID to unlock your vault</span>
+      </div>
+      <div class="duress-controls">
+         @if (isBiometricEnabled) {
+             <span class="status-badge success" style="color: #4caf50; border: 1px solid #4caf50; padding: 2px 8px; border-radius: 4px; margin-right: 10px;">Enabled</span>
+             <button mat-stroked-button color="warn" (click)="toggleBiometrics()">Disable</button>
+         } @else {
+             <button mat-flat-button color="primary" (click)="toggleBiometrics()">Enable Windows Hello</button>
+         }
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span class="title">Hardware Security Key</span>
+        <span class="description">Use a YubiKey or FIDO2 device to unlock your vault</span>
+      </div>
+      <div class="duress-controls">
+         @if (isHardwareKeyEnabled) {
+             <span class="status-badge success" style="color: #4caf50; border: 1px solid #4caf50; padding: 2px 8px; border-radius: 4px; margin-right: 10px;">Linked</span>
+             <button mat-stroked-button color="warn" (click)="toggleHardwareKey()">Unlink</button>
+         } @else {
+             <button mat-flat-button color="accent" (click)="toggleHardwareKey()">Register YubiKey</button>
+         }
+      </div>
+    </div>
   </section>
 </div>

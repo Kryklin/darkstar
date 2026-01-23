@@ -109,6 +109,15 @@
               <p class="hint-text">Select a PNG or JPEG image to hide your data in.</p>
             </div>
           }
+
+          @if (stealthMode === 'audio') {
+            <div class="cover-image-upload">
+              <button mat-stroked-button color="primary" (click)="coverAudioInput.click()"><mat-icon>audiotrack</mat-icon> Select Cover Audio (Optional)</button>
+              <input #coverAudioInput type="file" (change)="onCoverAudioSelected($event)" style="display: none" accept="audio/wav" />
+              <span class="file-name" style="margin-left: 10px; font-size: 0.9em">{{ selectedCoverAudio?.name || 'No file selected (White Noise will be generated)' }}</span>
+              <p class="hint-text">Select a WAV file to hide your data in.</p>
+            </div>
+          }
         </div>
 
         <button mat-flat-button color="accent" (click)="downloadFile()"><mat-icon>download</mat-icon> Download {{ stealthMode === 'standard' ? 'Text' : 'File' }}</button>

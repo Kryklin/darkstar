@@ -1,17 +1,26 @@
 import * as net from 'net';
-import { BrowserWindow } from 'electron';
+import * as fs from 'fs';
+import * as path from 'path';
+import { app, BrowserWindow } from 'electron';
 import { z } from 'zod';
+import { P2PMessage } from '../src/shared-types';
 
+// Local schema for validation only
 export const P2PMessageSchema = z.object({
   id: z.string().uuid(),
+  type: z.enum(['TEXT', 'FILE_START', 'FILE_CHUNK', 'FILE_END']).default('TEXT'),
   sender: z.string().min(1),
-  content: z.string(),
+  content: z.string().default(''), // Default to empty string to match Shared Interface
   timestamp: z.number(),
   signature: z.string().optional(),
-  publicKey: z.any().optional(), // JsonWebKey is complex, treating as any/object for Zod for now or define stricter
+  publicKey: z.unknown().optional(),
+  // File Transfer Fields
+  fileId: z.string().optional(),
+  fileName: z.string().optional(),
+  chunkIndex: z.number().optional(),
+  totalChunks: z.number().optional(),
+  chunkData: z.string().optional(), // Base64 encoded chunk
 });
-
-export type P2PMessage = z.infer<typeof P2PMessageSchema>;
 
 export class P2PBackend {
   private server: net.Server | null = null;
@@ -27,6 +36,9 @@ export class P2PBackend {
   public setMainWindow(window: BrowserWindow) {
     this.mainWindow = window;
   }
+
+  // Active file downloads: fileId -> WriteStream
+  private activeDownloads = new Map<string, { stream: fs.WriteStream, fileName: string, sender: string }>();
 
   // Start listening for incoming connections from other peers (via Tor Hidden Service)
   public startServer(port: number): void {
@@ -51,10 +63,15 @@ export class P2PBackend {
               return;
           }
 
-          const message = validation.data;
+          const message = validation.data as unknown as P2PMessage;
           
           if (this.mainWindow) {
-            this.mainWindow.webContents.send('p2p-message-received', message);
+            // Handle different message types
+            if (message.type === 'TEXT') {
+                 this.mainWindow.webContents.send('p2p-message-received', message);
+            } else {
+                 this.handleFileTransferMessage(message);
+            }
           }
         } catch (e) {
           console.error('[P2P] Failed to parse incoming message:', e);
@@ -217,5 +234,45 @@ export class P2PBackend {
       this.server.close();
       this.server = null;
     }
+  }
+
+  private handleFileTransferMessage(message: P2PMessage) {
+      const downloadsDir = path.join(app.getPath('userData'), 'downloads');
+      if (!fs.existsSync(downloadsDir)) {
+          fs.mkdirSync(downloadsDir, { recursive: true });
+      }
+
+      if (message.type === 'FILE_START') {
+          if (!message.fileId || !message.fileName) return;
+          // Security: Sanitize filename to prevent path traversal
+          const safeFileName = path.basename(message.fileName);
+          const filePath = path.join(downloadsDir, `${message.fileId}_${safeFileName}`);
+          const stream = fs.createWriteStream(filePath);
+          
+          this.activeDownloads.set(message.fileId, { stream, fileName: message.fileName, sender: message.sender });
+          this.mainWindow?.webContents.send('p2p-file-start', { fileId: message.fileId, fileName: message.fileName, sender: message.sender });
+          console.log(`[P2P] Starting download: ${message.fileName}`);
+      
+      } else if (message.type === 'FILE_CHUNK') {
+          if (!message.fileId || !message.chunkData) return;
+          const download = this.activeDownloads.get(message.fileId);
+          if (download) {
+              const buffer = Buffer.from(message.chunkData, 'base64');
+              download.stream.write(buffer);
+              // Calculate progress if needed
+          }
+      
+      } else if (message.type === 'FILE_END') {
+          if (!message.fileId) return;
+          const download = this.activeDownloads.get(message.fileId);
+          if (download) {
+              download.stream.end();
+              this.activeDownloads.delete(message.fileId);
+              
+              // Notify UI
+              this.mainWindow?.webContents.send('p2p-file-end', { fileId: message.fileId, fileName: download.fileName, sender: download.sender });
+              console.log(`[P2P] Download complete: ${download.fileName}`);
+          }
+      }
   }
 }

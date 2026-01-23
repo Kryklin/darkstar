@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import { P2PMessage } from '../src/shared-types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   minimize: () => ipcRenderer.send('minimize-window'),
@@ -24,8 +25,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   p2pCreateService: (port: number) => ipcRenderer.invoke('p2p-create-service', port),
   p2pStopService: (onion: string) => ipcRenderer.invoke('p2p-stop-service', onion),
   p2pCheckStatus: (onion: string) => ipcRenderer.invoke('p2p-check-status', onion),
-  p2pSendMessage: (onion: string, message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: JsonWebKey }) => ipcRenderer.invoke('p2p-send-message', onion, message),
-  onP2PMessage: (callback: (message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: JsonWebKey }) => void) => ipcRenderer.on('p2p-message-received', (_event, value: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: JsonWebKey }) => callback(value)),
+  p2pSendMessage: (onion: string, message: P2PMessage) => ipcRenderer.invoke('p2p-send-message', onion, message),
+  onP2PMessage: (callback: (message: P2PMessage) => void) => ipcRenderer.on('p2p-message-received', (_event, value: P2PMessage) => callback(value)),
   onTorProgress: (callback: (progress: { progress: number; summary: string }) => void) => ipcRenderer.on('tor-progress', (_event, value: { progress: number; summary: string }) => callback(value)),
 });
 

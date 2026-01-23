@@ -14,6 +14,14 @@ export interface VaultIdentity {
   privateKey: JsonWebKey;
 }
 
+export interface VaultTrustNode {
+  onionAddress: string;
+  score: number; // 0-100
+  lastInteracted: number;
+  alias?: string;
+  notes?: string;
+}
+
 export interface VaultNote {
   id: string;
   title: string;
@@ -32,10 +40,12 @@ interface VaultStorage {
 interface VaultContent {
   notes: VaultNote[];
   identity?: VaultIdentity;
+  trustGraph?: VaultTrustNode[];
 }
 
 import { VaultFileService } from './vault-file.service';
 import { DuressService } from './duress.service';
+import { BiometricService } from './biometric.service';
 
 @Injectable({
   providedIn: 'root',
@@ -44,6 +54,7 @@ export class VaultService {
   private crypt = inject(CryptService);
   private fileService = inject(VaultFileService);
   private duressService = inject(DuressService);
+  private biometricService = inject(BiometricService);
   private storageKey = 'darkstar_vault';
 
   /**
@@ -60,6 +71,9 @@ export class VaultService {
   
   /** The user's cryptographic identity keys. */
   public identity = signal<VaultIdentity | null>(null);
+
+  /** Trust Graph (Reputation System) */
+  public trustGraph = signal<VaultTrustNode[]>([]);
 
   /** Holds transient error messages related to vault operations. */
   public error = signal<string | null>(null);
@@ -98,6 +112,65 @@ export class VaultService {
       this.error.set('Failed to initialize local vault storage.');
       throw e;
     }
+  }
+
+  async unlockWithBiometrics(): Promise<boolean> {
+    if (!this.biometricService.isAvailable()) return false;
+    
+    // 1. Verify User Presence/Identity
+    const authenticated = await this.biometricService.authenticate();
+    if (!authenticated) return false;
+
+    // 2. Retrieve Master Password from Hardware-Backed Storage
+    // Use the stored credential ID as the key for the safe storage item
+    const credId = localStorage.getItem('biometric_credential_id');
+    if (!credId) return false;
+
+    // We store the encrypted password in a separate safe storage key
+    // In a real app we might use the keychain service directly.
+    // For this implementation, let's assume we stored the Master Password 
+    // encrypted securely via Electron SafeStorage when biometrics were registered.
+    // But wait, `safeStorage` usually requires a string.
+    try {
+        const encryptedPass = localStorage.getItem('biometric_enc_pass');
+        if (!encryptedPass) return false;
+
+        if (window.electronAPI) {
+            const password = await window.electronAPI.safeStorageDecrypt(encryptedPass);
+            return await this.unlock(password);
+        }
+    } catch (e) {
+        console.error('Biometric Unlock Failed:', e);
+        return false;
+    }
+    return false;
+  }
+
+  // Helper to save password for biometric use later
+  async registerBiometricsForSession(password: string): Promise<boolean> {
+      return this.registerCredential(password, 'platform');
+  }
+
+  async registerHardwareKey(password: string): Promise<boolean> {
+      return this.registerCredential(password, 'cross-platform');
+  }
+
+  private async registerCredential(password: string, type: 'platform' | 'cross-platform'): Promise<boolean> {
+      // 1. Perform WebAuthn Registration
+      const success = await this.biometricService.register(type);
+      if (!success) return false;
+
+      // 2. Encrypt Password with SafeStorage (OS Key)
+      // This binds the password to the OS User Account.
+      // Combined with WebAuthn "User Verification", this ensures
+      // 1. The OS user is present (Bio/Pin)
+      // 2. The OS user is valid (SafeStorage decrypt success)
+      if (window.electronAPI) {
+          const encPass = await window.electronAPI.safeStorageEncrypt(password);
+          localStorage.setItem('biometric_enc_pass', encPass);
+          return true;
+      }
+      return false;
   }
 
   async unlock(password: string): Promise<boolean> {
@@ -164,6 +237,7 @@ export class VaultService {
               // Modern format: VaultContent object
               notes = parsed.notes || [];
               identity = parsed.identity || null;
+              this.trustGraph.set(parsed.trustGraph || []);
           }
       } catch {
           throw new Error('Vault Data Corruption: Unable to parse decrypted content.');
@@ -217,7 +291,8 @@ export class VaultService {
 
     const content: VaultContent = {
         notes: this.notes(),
-        identity: this.identity()!
+        identity: this.identity()!,
+        trustGraph: this.trustGraph()
     };
 
     const notesData = JSON.stringify(content);

@@ -1,16 +1,6 @@
 import { Injectable, signal, inject, effect } from '@angular/core';
 import { VaultService } from './vault';
-
-export interface P2PMessage {
-  id: string;
-  sender: string;
-  content: string;
-  timestamp: number;
-  signature?: string;
-  publicKey?: JsonWebKey;
-  verified?: boolean;
-  isSelf?: boolean;
-}
+import { P2PMessage } from '../../shared-types';
 
 export interface Contact {
   onionAddress: string;
@@ -121,4 +111,75 @@ export class P2pService {
        this.addMessage(msg);
        return msg; // Return for sending
    }
+
+   async sendFile(onionAddress: string, file: File) {
+      const fileId = crypto.randomUUID();
+      const chunkSize = 16 * 1024; // 16KB chunks to be safe with Tor latency/reliability
+      const totalChunks = Math.ceil(file.size / chunkSize);
+      
+      const publicKey = await this.vaultService.getPublicKey(); // Identity for file transfer
+      
+      this.addLog(`Starting file transfer: ${file.name} (${totalChunks} chunks) to ${onionAddress}`);
+
+      // 1. Send FILE_START
+      const startMsg: P2PMessage = {
+          id: crypto.randomUUID(),
+          type: 'FILE_START',
+          sender: 'Me', // In a real app we might use a specialized alias
+          content: 'FILE_START', 
+          timestamp: Date.now(),
+          publicKey,
+          fileId,
+          fileName: file.name,
+          totalChunks
+      };
+      await window.electronAPI.p2pSendMessage(onionAddress, startMsg);
+
+      // 2. Stream Chunks
+      let offset = 0;
+      for (let i = 0; i < totalChunks; i++) {
+          const slice = file.slice(offset, offset + chunkSize);
+          const buffer = await slice.arrayBuffer();
+          const base64 = this.arrayBufferToBase64(buffer);
+          
+          const chunkMsg: P2PMessage = {
+              id: crypto.randomUUID(), // New ID for each chunk message
+              type: 'FILE_CHUNK',
+              sender: 'Me',
+              content: 'FILE_CHUNK',
+              timestamp: Date.now(),
+              fileId,
+              chunkIndex: i,
+              chunkData: base64
+          };
+          
+          await window.electronAPI.p2pSendMessage(onionAddress, chunkMsg);
+          offset += chunkSize;
+          
+          // Optional: Delay to prevent clogging IPC/Tor?
+          // await new Promise(r => setTimeout(r, 10)); 
+      }
+
+      // 3. Send FILE_END
+      const endMsg: P2PMessage = {
+          id: crypto.randomUUID(),
+          type: 'FILE_END',
+          sender: 'Me',
+          content: 'FILE_END',
+          timestamp: Date.now(),
+          fileId
+      };
+      await window.electronAPI.p2pSendMessage(onionAddress, endMsg);
+      this.addLog(`File transfer complete: ${file.name}`);
+   }
+
+   private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
 }
