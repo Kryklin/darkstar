@@ -6,6 +6,7 @@ export interface ElectronAPI {
   onInitiateUpdateCheck: (callback: () => void) => void;
   checkForUpdates: () => void;
   restartAndInstall: () => void;
+  setVersionLock: (locked: boolean) => void;
   createShortcut: (target: 'desktop' | 'start-menu') => Promise<{ success: boolean; message: string }>;
   resetApp: () => Promise<void>;
   safeStorageEncrypt: (text: string) => Promise<string>;

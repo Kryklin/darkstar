@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onInitiateUpdateCheck: (callback: () => void) => ipcRenderer.on('initiate-update-check', callback),
   checkForUpdates: () => ipcRenderer.send('check-for-updates'),
   restartAndInstall: () => ipcRenderer.send('restart-and-install'),
+  setVersionLock: (locked: boolean) => ipcRenderer.send('set-version-lock', locked),
   createShortcut: (target: 'desktop' | 'start-menu') => ipcRenderer.invoke('create-shortcut', target),
   resetApp: () => ipcRenderer.invoke('reset-app'),
   safeStorageEncrypt: (text: string) => ipcRenderer.invoke('safe-storage-encrypt', text),
@@ -23,9 +24,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   p2pCreateService: (port: number) => ipcRenderer.invoke('p2p-create-service', port),
   p2pStopService: (onion: string) => ipcRenderer.invoke('p2p-stop-service', onion),
   p2pCheckStatus: (onion: string) => ipcRenderer.invoke('p2p-check-status', onion),
-  p2pSendMessage: (onion: string, message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: any }) => ipcRenderer.invoke('p2p-send-message', onion, message),
-  onP2PMessage: (callback: (message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: any }) => void) => ipcRenderer.on('p2p-message-received', (_event, value) => callback(value)),
-  onTorProgress: (callback: (progress: { progress: number; summary: string }) => void) => ipcRenderer.on('tor-progress', (_event, value) => callback(value)),
+  p2pSendMessage: (onion: string, message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: JsonWebKey }) => ipcRenderer.invoke('p2p-send-message', onion, message),
+  onP2PMessage: (callback: (message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: JsonWebKey }) => void) => ipcRenderer.on('p2p-message-received', (_event, value: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: JsonWebKey }) => callback(value)),
+  onTorProgress: (callback: (progress: { progress: number; summary: string }) => void) => ipcRenderer.on('tor-progress', (_event, value: { progress: number; summary: string }) => callback(value)),
 });
 
 // All of the Node.js APIs are available in the preload process.

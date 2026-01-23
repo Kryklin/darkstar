@@ -10,7 +10,24 @@ if (require('electron-squirrel-startup')) {
   process.exit(0);
 }
 
-updateElectronApp();
+let updaterInitialized = false;
+let isVersionLocked = false;
+
+/**
+ * Initializes the auto-updater if the app is packaged and NOT version-locked.
+ */
+function initUpdater() {
+  if (updaterInitialized) return;
+  if (app.isPackaged && !isVersionLocked) {
+    console.log('Main: Initializing auto-updater...');
+    try {
+      updateElectronApp();
+      updaterInitialized = true;
+    } catch (err) {
+      console.error('Main: Failed to initialize auto-updater', err);
+    }
+  }
+}
 
 function createShortcut(target: 'desktop' | 'start-menu'): Promise<{ success: boolean; message: string }> {
   return new Promise((resolve) => {
@@ -194,6 +211,14 @@ ipcMain.handle('create-shortcut', async (_event, target: 'desktop' | 'start-menu
   return await createShortcut(target);
 });
 
+ipcMain.on('set-version-lock', (_event, locked: boolean) => {
+  isVersionLocked = locked;
+  console.log(`Main: Version lock state changed to: ${locked}`);
+  if (!locked) {
+    initUpdater();
+  }
+});
+
 ipcMain.handle('reset-app', async () => {
   await session.defaultSession.clearStorageData();
   app.relaunch();
@@ -291,7 +316,7 @@ ipcMain.handle('p2p-create-service', async (event, localPort: number) => {
     return onionAddress;
 });
 
-ipcMain.handle('p2p-send-message', async (_event, onion: string, message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: any }) => {
+ipcMain.handle('p2p-send-message', async (_event, onion: string, message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: JsonWebKey }) => {
     await p2pBackend.sendMessage(onion, message);
 });
 

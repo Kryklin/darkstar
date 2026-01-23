@@ -1,7 +1,12 @@
 import { Injectable, signal, inject, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { z } from 'zod';
 import pkg from '../../../package.json';
+
+const GitHubReleaseSchema = z.object({
+  tag_name: z.string(),
+});
 
 /**
  * Manages application updates by checking GitHub Releases directly.
@@ -35,6 +40,10 @@ export class UpdateService {
     const locked = stored === null ? true : stored === 'true';
     this.versionLocked.set(locked);
 
+    if (this.isElectron) {
+      window.electronAPI.setVersionLock(locked);
+    }
+
     if (locked) {
       this.snackBar.open('Updater is version locked. Disable in Settings to update.', 'Dismiss', {
         duration: 5000,
@@ -47,10 +56,28 @@ export class UpdateService {
     const newState = !this.versionLocked();
     this.versionLocked.set(newState);
     localStorage.setItem('versionLocked', String(newState));
+
+    if (this.isElectron) {
+      window.electronAPI.setVersionLock(newState);
+    }
   }
 
   private setupListeners() {
     const api = window.electronAPI;
+
+    // Listen for background auto-updater events
+    api.onUpdateStatus((status: { status: string; error?: string }) => {
+      this.ngZone.run(() => {
+        console.log('Main process update status:', status.status);
+        this.updateStatus.set(status.status);
+        if (status.status === 'downloaded' || status.status === 'available') {
+          this.router.navigate(['/update-check']);
+        }
+        if (status.error) {
+          this.updateError.set(status.error);
+        }
+      });
+    });
 
     // Listen for menu clicks/shortcuts to trigger check
     api.onInitiateUpdateCheck(() => {
@@ -91,7 +118,13 @@ export class UpdateService {
       }
 
       const data = await response.json();
-      const remoteTag = data.tag_name.replace(/^v/, ''); // Remove 'v' prefix if present
+      const validation = GitHubReleaseSchema.safeParse(data);
+      
+      if (!validation.success) {
+        throw new Error('Invalid response from GitHub API.');
+      }
+
+      const remoteTag = validation.data.tag_name.replace(/^v/, ''); // Remove 'v' prefix if present
       const localVersion = this.currentVersion;
 
       const comparison = this.compareVersions(remoteTag, localVersion);
@@ -134,8 +167,11 @@ export class UpdateService {
   }
 
   quitAndInstall() {
-    // For now, maybe just open the release page since we are doing manual check
-    window.open('https://github.com/Kryklin/darkstar/releases/latest', '_blank');
+    if (this.isElectron) {
+      window.electronAPI.restartAndInstall();
+    } else {
+      window.open('https://github.com/Kryklin/darkstar/releases/latest', '_blank');
+    }
   }
 
   resetState() {
