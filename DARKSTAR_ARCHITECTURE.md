@@ -239,3 +239,55 @@ sequenceDiagram
     S->>S: Purge Message Buffers
     T-->>N: Service Offline
 ```
+
+---
+
+## 9. Audio Steganography (WAV LSB)
+
+V1.10 introduces the ability to hide encrypted payloads within audio files using Least Significant Bit (LSB) steganography.
+
+### 9.1 The Process
+1.  **Payload Preparation**: The encrypted blob is prefixed with a 32-bit length header.
+2.  **Carrier Generation**:
+    *   **Custom Cover**: If a user uploads a `.wav` file, its PCM data is used as the carrier.
+    *   **White Noise**: If no cover is provided, the system generates random 16-bit PCM noise at -20dB.
+3.  **LSB Injection**: The system iterates through the PCM samples, replacing the least significant bit of each 16-bit sample with a bit from the payload.
+4.  **Result**: A playable `.wav` file that sounds like the original (or static noise) but contains the hidden data.
+
+---
+
+## 10. Hardware & Biometric Authentication
+
+Darkstar now supports WebAuthn for unlocking the vault, allowing for passwordless entry via:
+1.  **Platform Authenticators**: Windows Hello (Face/Fingerprint), TouchID.
+2.  **Cross-Platform Authenticators**: YubiKeys, Solokeys (FIDO2/U2F).
+
+**Security Model:**
+*   The **Master Password** is not replaced but *wrapped*.
+*   When "Registering" biometrics, the Master Password is encrypted using `Electron SafeStorage` (OS-level key).
+*   The `SafeStorage` blob is stored locally.
+*   **Authentication Flow**:
+    1.  User proves presence/identity via WebAuthn (Biometric/YubiKey).
+    2.  If successful, the app requests `SafeStorage` to decrypt the stored Master Password blob.
+    3.  The decrypted password is then used to unlock the AESVault.
+*   **Safety**: This ensures that even if the local storage is dumped, the biometrically protected password cannot be retrieved without the physical device AND the user's biometric authorization.
+
+---
+
+## 11. P2P File Transfer ("DarkDrop") & Reputation
+
+### 11.1 DarkDrop Protocol
+Files are too large to send as single JSON payloads over Tor. DarkDrop implements a chunked streaming protocol:
+1.  **FILE_START**: Metadata (Name, Size, ID) sent to Receiver. Receiver opens a write stream.
+2.  **FILE_CHUNK**: 16KB Base64-encoded chunks sent sequentially.
+3.  **FILE_END**: Signals completion. Receiver closes stream.
+
+**Security**:
+*   **Path Sanitization**: Filenames are strictly sanitized (`path.basename`) to prevent Directory Traversal attacks.
+*   **Consent**: Transfers currently auto-accept from *Trusted* peers (future improvement: manual accept).
+
+### 11.2 Decentralized Reputation (Trust Graph)
+A localized "Web of Trust" stored entirely within the encrypted vault.
+*   **Trust Score**: 0 (Untrusted) to 100 (Trusted).
+*   **Storage**: `VaultTrustNode` objects in the vault JSON.
+*   **Visual Indicators**: The UI displays trust badges (Shield icons) based on the local score, helping users distinguish verified contacts from strangers.

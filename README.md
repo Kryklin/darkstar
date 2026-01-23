@@ -38,6 +38,10 @@
 - **Structural Steganography**: "Stealth Export" allows you to disguise encrypted data as common system files (.log, .csv, .json) for plausible deniability.
 - **V2 Encryption Engine**: Powered by Web Crypto API with **600,000 PBKDF2 iterations** for maximum brute-force resistance.
 - **Anti-Forensic Memory**: Strict `Uint8Array` usage with explicit memory zeroing. The P2P service automatically performs an emergency shutdown if the vault is locked.
+- **Windows Hello & Biometrics (New)**: Unlock your vault primarily using platform biometrics (TouchID, FaceID) or **Hardware Keys (YubiKey)** via WebAuthn.
+- **Audio Steganography (New)**: Embed encrypted data into WAV audio files using LSB encoding. Supports uploading custom cover audio or generating white noise.
+- **P2P "DarkDrop" (New)**: Securely drag-and-drop files to peers over Tor. Files are chunked, encrypted, and streamed anonymously.
+- **Reputation System (New)**: A localized "Web of Trust" allowing you to rate peers and visually identify trusted contacts.
 - **Premium UI**: A high-fidelity Glassmorphism interface with custom themes and smooth animations.
 - **Offline First**: Zero telemetry. All core encryption operations occur locally on your device.
 
