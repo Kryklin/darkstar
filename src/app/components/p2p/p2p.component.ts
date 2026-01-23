@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MaterialModule } from '../../modules/material/material'; // Check path if needed
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { P2pService, P2PMessage, Contact } from '../../services/p2p.service';
+import { P2pService, Contact } from '../../services/p2p.service';
 
 @Component({
   selector: 'app-p2p',
@@ -28,8 +28,9 @@ export class P2pComponent {
   async goOnline() {
     try {
         await this.p2pService.startService(); // Throws if locked
-    } catch (e: any) {
-        this.snackBar.open(e.message, 'Close', { duration: 3000 });
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Unknown error';
+        this.snackBar.open(message, 'Close', { duration: 3000 });
         return;
     }
 
@@ -44,10 +45,11 @@ export class P2pComponent {
       this.p2pService.status.set('online');
       this.p2pService.addLog(`Service Created: ${address}`);
       this.snackBar.open('You are now online on the Tor Network.', 'Close', { duration: 3000 });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('P2P Error:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
       this.p2pService.status.set('offline');
-      this.p2pService.addLog(`Error: ${error.message}`);
+      this.p2pService.addLog(`Error: ${message}`);
       this.snackBar.open('Failed to connect to Tor.', 'Close', { duration: 3000 });
     }
   }
@@ -93,7 +95,7 @@ export class P2pComponent {
                   return c;
               });
           });
-      } catch (e) {
+      } catch (e: unknown) {
           console.error(e);
       }
   }
@@ -113,10 +115,11 @@ export class P2pComponent {
            // Send signed payload
            await window.electronAPI.p2pSendMessage(contact.onionAddress, signedMsg);
            this.p2pService.addLog(`Sent encrypted message.`);
-      } catch (e: any) {
+      } catch (e: unknown) {
           console.error(e);
-          this.p2pService.addLog(`Failed to send: ${e.message}`);
-          this.snackBar.open(`Failed: ${e.message}`, 'Close', { duration: 3000 });
+          const message = e instanceof Error ? e.message : 'Unknown error';
+          this.p2pService.addLog(`Failed to send: ${message}`);
+          this.snackBar.open(`Failed: ${message}`, 'Close', { duration: 3000 });
       } finally {
           this.isSending = false;
       }
