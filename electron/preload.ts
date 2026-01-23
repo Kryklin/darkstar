@@ -19,6 +19,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   vaultReadFile: (filename: string) => ipcRenderer.invoke('vault-read-file', filename),
   vaultDeleteFile: (filename: string) => ipcRenderer.invoke('vault-delete-file', filename),
   vaultListFiles: () => ipcRenderer.invoke('vault-list-files'),
+  // P2P
+  p2pCreateService: (port: number) => ipcRenderer.invoke('p2p-create-service', port),
+  p2pStopService: (onion: string) => ipcRenderer.invoke('p2p-stop-service', onion),
+  p2pCheckStatus: (onion: string) => ipcRenderer.invoke('p2p-check-status', onion),
+  p2pSendMessage: (onion: string, message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: any }) => ipcRenderer.invoke('p2p-send-message', onion, message),
+  onP2PMessage: (callback: (message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: any }) => void) => ipcRenderer.on('p2p-message-received', (_event, value) => callback(value)),
+  onTorProgress: (callback: (progress: { progress: number; summary: string }) => void) => ipcRenderer.on('tor-progress', (_event, value) => callback(value)),
 });
 
 // All of the Node.js APIs are available in the preload process.

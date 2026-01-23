@@ -166,6 +166,24 @@
           <mat-icon class="large-icon">verified_user</mat-icon>
           <h2>Vault Unlocked</h2>
           <p>Select a note to view or create a new one.</p>
+          
+          @if (identityFingerprint()) {
+            <div class="identity-card">
+                <div class="id-header">
+                    <mat-icon>fingerprint</mat-icon>
+                    <span>Cryptographic Identity</span>
+                </div>
+                <div class="id-value">
+                    <code>{{ identityFingerprint() }}</code>
+                    <button mat-icon-button (click)="copyIdentity()" matTooltip="Copy Public Key JSON">
+                        <mat-icon>content_copy</mat-icon>
+                    </button>
+                </div>
+                <div class="id-footer">
+                    <span class="secure-badge"><mat-icon>lock</mat-icon> SECURE ENCLAVE</span>
+                </div>
+            </div>
+          }
         </div>
       }
     </mat-sidenav-content>

@@ -58,3 +58,79 @@ h4[matListItemTitle] { font-weight: 400; margin-bottom: 4px; font-size: 0.95rem;
 .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
 
 .no-selection-state { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--glass-text-muted); .large-icon { font-size: 80px; width: 80px; height: 80px; margin-bottom: 24px; color: rgba(var(--mat-sys-primary-rgb), 0.15); filter: drop-shadow(0 0 15px rgba(var(--mat-sys-primary-rgb), 0.1)); } h2 { font-weight: 300; letter-spacing: 2px; text-transform: uppercase; font-size: 1.2rem; } }
+
+.identity-card {
+    margin-top: 40px;
+    width: 400px;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 24px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    animation: fadeIn 0.5s ease-out;
+
+    .id-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--glass-text);
+        margin-bottom: 16px;
+        mat-icon { color: var(--mat-sys-primary); }
+        span { font-weight: 500; letter-spacing: 0.5px; }
+    }
+
+    .id-value {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(0,0,0,0.3);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px dashed rgba(255,255,255,0.1);
+
+        code {
+            flex: 1;
+            font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+            color: #00ff9d;
+            font-size: 0.9rem;
+            text-shadow: 0 0 10px rgba(0, 255, 157, 0.2);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        button {
+            width: 32px;
+            height: 32px;
+            line-height: 32px;
+            color: var(--glass-text-muted);
+            mat-icon { font-size: 16px; width: 16px; height: 16px; }
+            &:hover { color: white; }
+        }
+    }
+
+    .id-footer {
+        margin-top: 16px;
+        display: flex;
+        justify-content: flex-end;
+        
+        .secure-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            color: var(--mat-sys-primary);
+            background: rgba(var(--mat-sys-primary-rgb), 0.1);
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.2);
+            mat-icon { font-size: 12px; height: 12px; width: 12px; }
+        }
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}

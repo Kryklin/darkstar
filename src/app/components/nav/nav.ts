@@ -24,18 +24,21 @@ export class Nav {
   sidenavMode: MatDrawerMode = 'over';
   hasBackdrop = true;
 
-  expandedSection: string | null = null;
+  expandedSections = new Set<string>();
 
   toggleSection(section: string) {
-    if (this.expandedSection === section) {
-      this.expandedSection = null;
+    // If it's a top-level category (e.g., 'encryption'), we might want to toggle it independently
+    // If it's a sub-item, maybe we want to keep the parent open?
+    // Simple toggle logic:
+    if (this.expandedSections.has(section)) {
+      this.expandedSections.delete(section);
     } else {
-      this.expandedSection = section;
+      this.expandedSections.add(section);
     }
   }
 
   isExpanded(section: string): boolean {
-    return this.expandedSection === section;
+    return this.expandedSections.has(section);
   }
 
   minimize() {

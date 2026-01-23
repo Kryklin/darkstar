@@ -11,7 +11,6 @@
             <span style="margin-left: 10px">Home</span>
           </div>
         </a>
-        <!-- Secure Vault -->
         <a mat-list-item routerLink="/vault" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()">
           <div class="nav-link-center">
             <mat-icon>enhanced_encryption</mat-icon>
@@ -19,126 +18,111 @@
           </div>
         </a>
 
-        <!-- Secure Notes (Transient) -->
-        <a mat-list-item (click)="toggleSection('secure-notes')" (keydown.enter)="toggleSection('secure-notes')" (keydown.space)="toggleSection('secure-notes')" tabindex="0" class="nav-group-header">
-          <div class="nav-link-center">
-            <mat-icon>notes</mat-icon>
-            <span style="margin-left: 10px; flex: 1">Secure Message</span>
-            <mat-icon class="expand-icon" [class.expanded]="isExpanded('secure-notes')">expand_more</mat-icon>
-          </div>
+        <!-- Encryption Protocols Group -->
+        <a mat-list-item (click)="toggleSection('encryption')" (keydown.enter)="toggleSection('encryption')" (keydown.space)="toggleSection('encryption')" tabindex="0" class="nav-group-header root-header">
+           <div class="nav-link-center">
+             <mat-icon>lock</mat-icon>
+             <span style="margin-left: 10px; flex: 1">Encryption</span>
+             <mat-icon class="expand-icon" [class.expanded]="isExpanded('encryption')">expand_more</mat-icon>
+           </div>
         </a>
-        @if (isExpanded('secure-notes')) {
-          <a mat-list-item routerLink="/secure-notes/encrypt" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" class="nested-item">
-            <div class="nav-link-center">
-              <mat-icon>lock</mat-icon>
-              <span style="margin-left: 10px">Encrypt</span>
-            </div>
-          </a>
-          <a mat-list-item routerLink="/secure-notes/decrypt" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" class="nested-item">
-            <div class="nav-link-center">
-              <mat-icon>lock_open</mat-icon>
-              <span style="margin-left: 10px">Decrypt</span>
-            </div>
-          </a>
-        }
-        <!-- BIP39 Group -->
-        <a mat-list-item (click)="toggleSection('bip39')" (keydown.enter)="toggleSection('bip39')" (keydown.space)="toggleSection('bip39')" tabindex="0" class="nav-group-header">
-          <div class="nav-link-center">
-            <mat-icon>security</mat-icon>
-            <span style="margin-left: 10px; flex: 1">BIP39</span>
-            <mat-icon class="expand-icon" [class.expanded]="isExpanded('bip39')">expand_more</mat-icon>
-          </div>
-        </a>
-        @if (isExpanded('bip39')) {
-          <a mat-list-item routerLink="/encrypt" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" class="nested-item">
-            <div class="nav-link-center">
-              <mat-icon>lock</mat-icon>
-              <span style="margin-left: 10px">Encrypt</span>
-            </div>
-          </a>
-          <a mat-list-item routerLink="/decrypt" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" class="nested-item">
-            <div class="nav-link-center">
-              <mat-icon>lock_open</mat-icon>
-              <span style="margin-left: 10px">Decrypt</span>
-            </div>
-          </a>
-        }
+        
+        @if (isExpanded('encryption')) {
+          <div class="nested-group-container">
+            <!-- Secure Message -->
+            <a mat-list-item (click)="toggleSection('secure-notes')" (keydown.enter)="toggleSection('secure-notes')" (keydown.space)="toggleSection('secure-notes')" tabindex="0" class="nav-group-header sub-header">
+              <div class="nav-link-center">
+                <mat-icon>notes</mat-icon>
+                <span style="margin-left: 10px; flex: 1">Generic Message</span>
+                <mat-icon class="expand-icon" [class.expanded]="isExpanded('secure-notes')">expand_more</mat-icon>
+              </div>
+            </a>
+            @if (isExpanded('secure-notes')) {
+              <a mat-list-item routerLink="/secure-notes/encrypt" routerLinkActive="active-link" class="nested-item level-2">
+                <span style="margin-left: 34px">Encrypt</span>
+              </a>
+              <a mat-list-item routerLink="/secure-notes/decrypt" routerLinkActive="active-link" class="nested-item level-2">
+                <span style="margin-left: 34px">Decrypt</span>
+              </a>
+            }
 
-        <!-- Electrum Legacy Group -->
-        <a
-          mat-list-item
-          (click)="toggleSection('electrum-legacy')"
-          (keydown.enter)="toggleSection('electrum-legacy')"
-          (keydown.space)="toggleSection('electrum-legacy')"
-          tabindex="0"
-          class="nav-group-header"
-        >
-          <div class="nav-link-center">
-            <mat-icon>history_edu</mat-icon>
-            <span style="margin-left: 10px; flex: 1">Electrum Old</span>
-            <mat-icon class="expand-icon" [class.expanded]="isExpanded('electrum-legacy')">expand_more</mat-icon>
-          </div>
-        </a>
-        @if (isExpanded('electrum-legacy')) {
-          <a mat-list-item routerLink="/electrum-legacy/encrypt" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" class="nested-item">
-            <div class="nav-link-center">
-              <mat-icon>lock</mat-icon>
-              <span style="margin-left: 10px">Encrypt</span>
-            </div>
-          </a>
-          <a mat-list-item routerLink="/electrum-legacy/decrypt" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" class="nested-item">
-            <div class="nav-link-center">
-              <mat-icon>lock_open</mat-icon>
-              <span style="margin-left: 10px">Decrypt</span>
-            </div>
-          </a>
-        }
+            <!-- BIP39 -->
+            <a mat-list-item (click)="toggleSection('bip39')" (keydown.enter)="toggleSection('bip39')" (keydown.space)="toggleSection('bip39')" tabindex="0" class="nav-group-header sub-header">
+              <div class="nav-link-center">
+                <mat-icon>security</mat-icon>
+                <span style="margin-left: 10px; flex: 1">BIP39</span>
+                <mat-icon class="expand-icon" [class.expanded]="isExpanded('bip39')">expand_more</mat-icon>
+              </div>
+            </a>
+            @if (isExpanded('bip39')) {
+              <a mat-list-item routerLink="/encrypt" routerLinkActive="active-link" class="nested-item level-2">
+                <span style="margin-left: 34px">Encrypt</span>
+              </a>
+              <a mat-list-item routerLink="/decrypt" routerLinkActive="active-link" class="nested-item level-2">
+                <span style="margin-left: 34px">Decrypt</span>
+              </a>
+            }
 
-        <!-- Electrum V2 Group -->
-        <a mat-list-item (click)="toggleSection('electrum-v2')" (keydown.enter)="toggleSection('electrum-v2')" (keydown.space)="toggleSection('electrum-v2')" tabindex="0" class="nav-group-header">
-          <div class="nav-link-center">
-            <mat-icon>bolt</mat-icon>
-            <span style="margin-left: 10px; flex: 1">Electrum V2</span>
-            <mat-icon class="expand-icon" [class.expanded]="isExpanded('electrum-v2')">expand_more</mat-icon>
-          </div>
-        </a>
-        @if (isExpanded('electrum-v2')) {
-          <a mat-list-item routerLink="/electrum-v2/encrypt" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" class="nested-item">
-            <div class="nav-link-center">
-              <mat-icon>lock</mat-icon>
-              <span style="margin-left: 10px">Encrypt</span>
-            </div>
-          </a>
-          <a mat-list-item routerLink="/electrum-v2/decrypt" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" class="nested-item">
-            <div class="nav-link-center">
-              <mat-icon>lock_open</mat-icon>
-              <span style="margin-left: 10px">Decrypt</span>
-            </div>
-          </a>
-        }
+            <!-- Electrum Legacy -->
+            <a mat-list-item (click)="toggleSection('electrum-legacy')" (keydown.enter)="toggleSection('electrum-legacy')" (keydown.space)="toggleSection('electrum-legacy')" tabindex="0" class="nav-group-header sub-header">
+              <div class="nav-link-center">
+                <mat-icon>history_edu</mat-icon>
+                <span style="margin-left: 10px; flex: 1">Electrum Old</span>
+                <mat-icon class="expand-icon" [class.expanded]="isExpanded('electrum-legacy')">expand_more</mat-icon>
+              </div>
+            </a>
+            @if (isExpanded('electrum-legacy')) {
+              <a mat-list-item routerLink="/electrum-legacy/encrypt" routerLinkActive="active-link" class="nested-item level-2">
+                 <span style="margin-left: 34px">Encrypt</span>
+              </a>
+              <a mat-list-item routerLink="/electrum-legacy/decrypt" routerLinkActive="active-link" class="nested-item level-2">
+                 <span style="margin-left: 34px">Decrypt</span>
+              </a>
+            }
 
-        <!-- SLIP39 Group -->
-        <a mat-list-item (click)="toggleSection('slip39')" (keydown.enter)="toggleSection('slip39')" (keydown.space)="toggleSection('slip39')" tabindex="0" class="nav-group-header">
+            <!-- Electrum V2 -->
+            <a mat-list-item (click)="toggleSection('electrum-v2')" (keydown.enter)="toggleSection('electrum-v2')" (keydown.space)="toggleSection('electrum-v2')" tabindex="0" class="nav-group-header sub-header">
+              <div class="nav-link-center">
+                <mat-icon>bolt</mat-icon>
+                <span style="margin-left: 10px; flex: 1">Electrum V2</span>
+                <mat-icon class="expand-icon" [class.expanded]="isExpanded('electrum-v2')">expand_more</mat-icon>
+              </div>
+            </a>
+            @if (isExpanded('electrum-v2')) {
+              <a mat-list-item routerLink="/electrum-v2/encrypt" routerLinkActive="active-link" class="nested-item level-2">
+                 <span style="margin-left: 34px">Encrypt</span>
+              </a>
+              <a mat-list-item routerLink="/electrum-v2/decrypt" routerLinkActive="active-link" class="nested-item level-2">
+                 <span style="margin-left: 34px">Decrypt</span>
+              </a>
+            }
+
+            <!-- SLIP39 -->
+            <a mat-list-item (click)="toggleSection('slip39')" (keydown.enter)="toggleSection('slip39')" (keydown.space)="toggleSection('slip39')" tabindex="0" class="nav-group-header sub-header">
+              <div class="nav-link-center">
+                <mat-icon>splitscreen</mat-icon>
+                <span style="margin-left: 10px; flex: 1">SLIP39</span>
+                <mat-icon class="expand-icon" [class.expanded]="isExpanded('slip39')">expand_more</mat-icon>
+              </div>
+            </a>
+            @if (isExpanded('slip39')) {
+              <a mat-list-item routerLink="/slip39/encrypt" routerLinkActive="active-link" class="nested-item level-2">
+                 <span style="margin-left: 34px">Encrypt</span>
+              </a>
+              <a mat-list-item routerLink="/slip39/decrypt" routerLinkActive="active-link" class="nested-item level-2">
+                 <span style="margin-left: 34px">Decrypt</span>
+              </a>
+            }
+          </div>
+        }
+        
+        <!-- P2P Messaging -->
+        <a mat-list-item routerLink="/p2p" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()">
           <div class="nav-link-center">
-            <mat-icon>splitscreen</mat-icon>
-            <span style="margin-left: 10px; flex: 1">SLIP39</span>
-            <mat-icon class="expand-icon" [class.expanded]="isExpanded('slip39')">expand_more</mat-icon>
+            <mat-icon>public</mat-icon>
+            <span style="margin-left: 10px">P2P Messaging</span>
           </div>
         </a>
-        @if (isExpanded('slip39')) {
-          <a mat-list-item routerLink="/slip39/encrypt" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" class="nested-item">
-            <div class="nav-link-center">
-              <mat-icon>lock</mat-icon>
-              <span style="margin-left: 10px">Encrypt</span>
-            </div>
-          </a>
-          <a mat-list-item routerLink="/slip39/decrypt" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" class="nested-item">
-            <div class="nav-link-center">
-              <mat-icon>lock_open</mat-icon>
-              <span style="margin-left: 10px">Decrypt</span>
-            </div>
-          </a>
-        }
 
         <a mat-list-item routerLink="/about" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()">
           <div class="nav-link-center">

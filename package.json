@@ -1,6 +1,6 @@
 {
   "name": "darkstar",
-  "version": "1.8.3",
+  "version": "1.9.0",
   "productName": "Darkstar",
   "description": "Secure Multi-Layered Encryption & Steganography Suite",
   "author": "Victor Kane",
@@ -45,6 +45,7 @@
     "marked": "^17.0.1",
     "material-icons": "^1.13.14",
     "ngx-markdown": "^21.0.1",
+    "portfinder": "^1.0.38",
     "prismjs": "^1.30.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
@@ -55,7 +56,7 @@
     "@angular/build": "^21.0.5",
     "@angular/cli": "^21.0.5",
     "@angular/compiler-cli": "^21.0.8",
-    "@electron-forge/cli": "^7.10.2",
+    "@electron-forge/cli": "^7.6.1",
     "@electron-forge/maker-deb": "^7.10.2",
     "@electron-forge/maker-rpm": "^7.10.2",
     "@electron-forge/maker-squirrel": "^7.10.2",
@@ -86,6 +87,7 @@
     "wait-on": "^9.0.1"
   },
   "overrides": {
-    "tmp": "0.2.5"
+    "tmp": "0.2.5",
+    "hono": "4.11.4"
   }
 }

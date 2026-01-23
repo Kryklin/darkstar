@@ -3,6 +3,8 @@ export enum StealthMode {
   CSV = 'csv',
   JSON = 'json',
   IMAGE = 'image',
+  AUDIO = 'audio',
+  TEXT = 'text',
 }
 
 export interface StealthOptions {

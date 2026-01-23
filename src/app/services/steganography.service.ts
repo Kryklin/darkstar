@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
 import { StealthMode, StealthOptions, StegoGenerator, LogGenerator, CsvGenerator, JsonGenerator } from './generators';
+import { AudioGenerator } from './generators/audio.generator';
+import { TextGenerator } from './generators/text.generator';
 
 @Injectable({
   providedIn: 'root',
@@ -11,6 +13,8 @@ export class SteganographyService {
     this.generators.set(StealthMode.LOG, new LogGenerator());
     this.generators.set(StealthMode.CSV, new CsvGenerator());
     this.generators.set(StealthMode.JSON, new JsonGenerator());
+    this.generators.set(StealthMode.AUDIO, new AudioGenerator());
+    this.generators.set(StealthMode.TEXT, new TextGenerator());
   }
 
   public transmute(data: string, mode: StealthMode, options: StealthOptions): string {
@@ -44,6 +48,8 @@ export class SteganographyService {
     if (filename.endsWith('.csv')) return StealthMode.CSV;
     if (filename.endsWith('.json')) return StealthMode.JSON;
     if (filename.endsWith('.png')) return StealthMode.IMAGE;
+    if (filename.endsWith('.wav')) return StealthMode.AUDIO;
+    if (filename.endsWith('.txt')) return StealthMode.TEXT;
     return null;
   }
 

@@ -17,6 +17,13 @@ export interface ElectronAPI {
   vaultReadFile: (filename: string) => Promise<Uint8Array>;
   vaultDeleteFile: (filename: string) => Promise<boolean>;
   vaultListFiles: () => Promise<string[]>;
+  // P2P
+  p2pCreateService: (port: number) => Promise<string>;
+  p2pStopService: (onion: string) => Promise<void>;
+  p2pCheckStatus: (onion: string) => Promise<boolean>;
+  p2pSendMessage: (onion: string, message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: JsonWebKey }) => Promise<void>;
+  onP2PMessage: (callback: (message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: JsonWebKey }) => void) => void;
+  onTorProgress: (callback: (data: { progress: number; summary: string }) => void) => void;
 }
 
 declare global {

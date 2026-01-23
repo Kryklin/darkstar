@@ -79,4 +79,31 @@
       <button mat-flat-button color="warn" (click)="resetApp()">Reset App</button>
     </div>
   </section>
+
+  <section class="settings-section">
+    <h2>Security</h2>
+    <mat-divider></mat-divider>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span class="title">Duress / Panic Mode</span>
+        <span class="description">
+          Set a specific password that will <strong>permanently destroy</strong> your vault if entered incorrectly. Use this if forced to unlock under threat.
+        </span>
+      </div>
+      
+      <div class="duress-controls" style="display: flex; gap: 10px; align-items: center;">
+        @if (duressService.isDuressConfigured()) {
+          <span class="status-badge warn">Active</span>
+          <button mat-stroked-button color="warn" (click)="clearDuress()">Disable</button>
+        } @else {
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>Panic Password</mat-label>
+            <input matInput type="password" [(ngModel)]="duressPassword">
+          </mat-form-field>
+          <button mat-flat-button color="warn" [disabled]="!duressPassword" (click)="setDuress()">Set</button>
+        }
+      </div>
+    </div>
+  </section>
 </div>

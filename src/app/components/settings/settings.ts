@@ -7,6 +7,8 @@ import { UpdateService } from '../../services/update';
 import { MaterialModule } from '../../modules/material/material';
 import { MatDialog } from '@angular/material/dialog';
 import { GenericDialog, DialogButton } from '../dialogs/generic-dialog/generic-dialog';
+import { DuressService } from '../../services/duress.service';
+
 
 @Component({
   selector: 'app-settings',
@@ -19,8 +21,42 @@ export class Settings {
   theme = inject(Theme);
   updateService = inject(UpdateService);
   vaultService = inject(VaultService);
+  duressService = inject(DuressService);
   dialog = inject(MatDialog);
   ngZone = inject(NgZone);
+
+  duressPassword = '';
+
+  setDuress() {
+    if (!this.duressPassword) return;
+    
+    // Warn user
+    const ref = this.dialog.open(GenericDialog, {
+      data: {
+        title: 'Configure Duress Mode',
+        message: 'WARNING: If you use this password to unlock your vault, ALL DATA WILL BE PERMANENTLY DELETED. Are you sure you want to set this panic password?',
+        buttons: [
+          { label: 'Cancel', value: false },
+          { label: 'Enable Panic Mode', value: true, color: 'warn' },
+        ],
+      },
+      width: '400px',
+    });
+
+    ref.afterClosed().subscribe((result: boolean) => {
+      if (result) {
+        this.duressService.setDuressPassword(this.duressPassword);
+        this.duressPassword = ''; // Clear input
+        this.openDialog('Success', 'Duress Password has been set.', [{ label: 'OK', value: true }]);
+      }
+    });
+  }
+
+  clearDuress() {
+    this.duressService.clearDuressPassword();
+    this.openDialog('Success', 'Duress Password has been removed.', [{ label: 'OK', value: true }]);
+  }
+
 
   compareThemes(t1: ThemeDef, t2: ThemeDef): boolean {
     return t1 && t2 ? t1.className === t2.className : t1 === t2;

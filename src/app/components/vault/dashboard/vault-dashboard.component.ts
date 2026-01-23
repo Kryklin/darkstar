@@ -48,6 +48,33 @@ export class VaultDashboardComponent {
   currentAttachments: VaultAttachment[] = [];
   showPreview = true;
 
+  identityFingerprint = signal<string>('Loading Identity...');
+
+  constructor() {
+     this.loadIdentity();
+  }
+
+  async loadIdentity() {
+      try {
+          const key = await this.vaultService.getPublicKey();
+          // Create a visual fingerprint (short hash of X coord)
+          if (key.x) {
+             this.identityFingerprint.set(key.x.substring(0, 24) + '...'); 
+          }
+      } catch {
+          this.identityFingerprint.set('Identity Hidden');
+      }
+  }
+
+  async copyIdentity() {
+      try {
+          const key = await this.vaultService.getPublicKey();
+          navigator.clipboard.writeText(JSON.stringify(key, null, 2));
+      } catch (e) {
+          console.error(e);
+      }
+  }
+
   selectNote(note: VaultNote) {
     this.selectedNote.set(note);
     this.currentTitle = note.title;

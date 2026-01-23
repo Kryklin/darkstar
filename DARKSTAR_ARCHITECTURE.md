@@ -6,11 +6,15 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.8.0-blue" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-1.9.0-blue" alt="Version"/>
   <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
+  <img src="https://img.shields.io/badge/Tor-P2P-7D4698?logo=tor-browser" alt="Tor Network"/>
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript"/>
   <img src="https://img.shields.io/badge/Go-v1.25.5-00ADD8?logo=go" alt="Go"/>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Rust-2021-000000?logo=rust" alt="Rust"/>
   <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python" alt="Python"/>
   <img src="https://img.shields.io/badge/Node.js-v19%2B-339933?logo=node.js" alt="Node.js"/>
@@ -18,16 +22,16 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License"/>
 </p>
 
-# Darkstar V2 Encryption Architecture
+# Darkstar V2 Encryption & P2P Architecture
 
-This document illustrates the internal workings of the Darkstar V2 Encryption System. It combines **Dynamic Structural Obfuscation** with standard **AES-256-CBC** and **Hardware-Bound Protection** to create a defense-grade security layer for mnemonics and secure notes.
+This document illustrates the internal workings of the Darkstar V2 Security System. It combines **Dynamic Structural Obfuscation**, **AES-256-CBC Encryption**, and a **Decentralized P2P Messaging Network** to create a comprehensive defense-grade security suite.
 
 ## 1. High-Level Workflow
 
-The system transforms sensitive data into a secure, multi-layered opaque blob.
+The system transforms sensitive data into secure, multi-layered opaque blobs and enables anonymous communication.
 
 ```mermaid
-graph LR
+graph TD
     User([User Input]) -->|Data + Password| Layers[Multi-Layer Protection]
 
     subgraph Layers [Security Gauntlet]
@@ -38,11 +42,21 @@ graph LR
     end
 
     Safe -->|Encrypted Payload| Storage[(Device Storage)]
+    
+    subgraph P2P [Anonymous Network]
+        Id[Cryptographic Identity]
+        Tor[Tor Hidden Service]
+    end
+
+    Storage -.->|Unlocks| Id
+    Id -->|Sign Messages| Tor
+    Tor -->|Receive & Verify| Id
 
     style User fill:#f9f,stroke:#333
     style Layers fill:#f8f9fa,stroke:#333
     style Safe fill:#bbf,stroke:#333
     style Obf fill:#bfb,stroke:#333
+    style P2P fill:#e1f5fe,stroke:#333
 ```
 
 ---
@@ -103,7 +117,7 @@ The reverse key is compressed using binary packing (4 bits per value), reducing 
 
 ## 3. V2 Memory Hardening (Uint8Array)
 
-New in V1.8.0, Darkstar implements a specialized memory hardening strategy to mitigate sensitive data residency in JavaScript's heap.
+Darkstar implements a specialized memory hardening strategy to mitigate sensitive data residency in JavaScript's heap.
 
 - **Strict Buffer Usage**: All encryption, decryption, and obfuscation operations now occur on `Uint8Array` rather than `string`.
 - **Explicit Zeroing**: Sensitive buffers (passwords, intermediate states) are explicitly filled with zeros (`buffer.fill(0)`) immediately after their useful lifespan.
@@ -180,4 +194,48 @@ sequenceDiagram
     end
 
     App-->>User: "cat dog fish bird"
+```
+
+---
+
+## 8. Anonymous P2P Messaging System
+
+New in V1.8.3, Darkstar introduces a decentralized communication layer built on the Tor network, tightly integrated with the Secure Vault.
+
+### 8.1 Cryptographic Identity Layer
+Each vault automatically generates a unique **ECDSA P-256** keypair upon creation or migration.
+- **Private Key**: Encrypted within the vault content; never leaves the secure enclave.
+- **Public Key**: Exported as a JWK for sharing. Used as the user's cryptographic fingerprint.
+- **Purpose**: All outgoing P2P messages are signed with the private key to ensure authenticity and non-repudiation.
+
+### 8.2 Tor Hidden Service Integration
+Darkstar bundles a managed Tor process to provide true anonymity.
+- **Persistence**: Upon going online, the application creates a Long-Lived Tor Hidden Service.
+- **Addressing**: Users are reachable via a unique `.onion` address (e.g., `v2...f4.onion`).
+- **End-to-End Encryption**: Communication is encrypted by the Tor protocol and further secured by application-level signatures.
+
+### 8.3 Security Enforcement: The "Vault Lock" Dependency
+To prevent identity exposure and ensure message security, the P2P service is reactive to the Vault's state:
+1. **Startup Requirement**: The P2P service cannot be started unless the Vault is unlocked.
+2. **Emergency Shutdown**: If the Vault is locked (timer, duress, or manual logout), an Angular `effect` triggers an immediate shutdown of the Tor process and clears all messaging buffers from memory.
+3. **Signature Verification**: Incoming messages are verified against the sender's public key in real-time using the **Web Crypto API**.
+
+```mermaid
+sequenceDiagram
+    participant V as Vault (Unlocked)
+    participant S as P2P Service
+    participant T as Tor Manager
+    participant N as Outer Network
+
+    V->>S: Provide Private/Public Keys
+    S->>T: Start Hidden Service
+    T-->>S: Assign .onion Address
+    S->>N: Broadcast Presence
+    
+    Note over S,N: Messaging Active
+    
+    V->>S: [EVENT] Vault Locked
+    S->>T: Terminate Process Immediately
+    S->>S: Purge Message Buffers
+    T-->>N: Service Offline
 ```

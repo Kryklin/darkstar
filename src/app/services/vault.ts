@@ -9,6 +9,11 @@ export interface VaultAttachment {
   ref: string; // Filename on disk
 }
 
+export interface VaultIdentity {
+  publicKey: JsonWebKey;
+  privateKey: JsonWebKey;
+}
+
 export interface VaultNote {
   id: string;
   title: string;
@@ -24,11 +29,13 @@ interface VaultStorage {
   s?: boolean; // isSafeStorageUsed
 }
 
-/**
- * Service responsible for managing the Secure Vault.
- * Implements a session-based Zero-Knowledge architecture with optional hardware-bound OS-level encryption.
- */
+interface VaultContent {
+  notes: VaultNote[];
+  identity?: VaultIdentity;
+}
+
 import { VaultFileService } from './vault-file.service';
+import { DuressService } from './duress.service';
 
 @Injectable({
   providedIn: 'root',
@@ -36,6 +43,7 @@ import { VaultFileService } from './vault-file.service';
 export class VaultService {
   private crypt = inject(CryptService);
   private fileService = inject(VaultFileService);
+  private duressService = inject(DuressService);
   private storageKey = 'darkstar_vault';
 
   /**
@@ -49,6 +57,9 @@ export class VaultService {
 
   /** Reactive list of notes currently in the vault. */
   public notes = signal<VaultNote[]>([]);
+  
+  /** The user's cryptographic identity keys. */
+  public identity = signal<VaultIdentity | null>(null);
 
   /** Holds transient error messages related to vault operations. */
   public error = signal<string | null>(null);
@@ -61,6 +72,8 @@ export class VaultService {
     window.addEventListener('beforeunload', () => this.lock());
   }
 
+  // ... hasVault, createVault ...
+
   /**
    * Verifies if an encrypted vault envelope exists in local storage.
    * @returns {boolean} True if the vault is initialized.
@@ -69,15 +82,15 @@ export class VaultService {
     return !!localStorage.getItem(this.storageKey);
   }
 
-  /**
-   * Initializes a new vault with a master password.
-   * @param {string} password The user-defined password for the primary encryption layer.
-   * @throws Will throw if initial storage persistent fails.
-   */
   async createVault(password: string): Promise<void> {
     try {
       this.masterKey.set(password);
       this.notes.set([]); // Start empty
+      
+      // Generate initial identity
+      const newIdentity = await this.generateIdentity();
+      this.identity.set(newIdentity);
+
       await this.save();
       this.error.set(null);
     } catch (e) {
@@ -87,25 +100,31 @@ export class VaultService {
     }
   }
 
-  /**
-   * Attempts to decrypt and unlock the vault using the multi-layered security model.
-   * 1. OS-Level Decryption (if SafeStorage was used).
-   * 2. AES-256 Decryption using the master password.
-   * @param {string} password The master password to attempt unlock.
-   * @returns {Promise<boolean>} Resolves to true if unlock was successful.
-   */
   async unlock(password: string): Promise<boolean> {
+    // SECURITY: Check for Duress Password
+    if (this.duressService.checkDuress(password)) {
+      this.duressService.triggerDuress();
+      return false; 
+    }
+
     try {
       const raw = localStorage.getItem(this.storageKey);
       if (!raw) throw new Error('No vault storage container detected.');
 
-      const envelope: VaultStorage = JSON.parse(raw);
+      let envelope: VaultStorage;
+      let isLegacy = false;
+
+      try {
+        envelope = JSON.parse(raw);
+        if (!envelope.v) isLegacy = true; 
+      } catch {
+        isLegacy = true;
+        envelope = { v: 1, data: raw }; 
+      }
+      
       let encryptedData = envelope.data;
 
-      /**
-       * Primary Layer: Hardware-Bound Protection
-       * If 's' flag is true, data was encrypted using the host machine's native security entropy.
-       */
+      // ... Hardware Decryption ...
       if (envelope.s && window.electronAPI) {
         try {
           encryptedData = await window.electronAPI.safeStorageDecrypt(encryptedData);
@@ -116,29 +135,67 @@ export class VaultService {
         }
       }
 
-      /**
-       * Secondary Layer: Standard AES-256
-       * Decrypt the data using the master password and 600,000 PBKDF2 iterations.
-       */
+      // ... AES Decryption ...
       let jsonStr = '';
       if (envelope.v === 2) {
         jsonStr = await this.crypt.decryptAES256Async(encryptedData, password, this.crypt.ITERATIONS_V2);
       } else {
-        throw new Error('Unsupported vault format version.');
+        console.warn('Detected Legacy V1 Vault. Attempting migration...');
+        jsonStr = await this.crypt.decryptAES256Async(encryptedData, password, 1000);
+        if (!jsonStr) {
+           jsonStr = this.crypt.decryptAES256(encryptedData, password, 1000);
+        }
+        isLegacy = true;
       }
 
       if (!jsonStr) throw new Error('Password mismatch or corrupted data.');
 
-      const parsedNotes: VaultNote[] = JSON.parse(jsonStr);
-      // Migration: Ensure V2 fields exist for legacy notes
-      const migratedNotes = parsedNotes.map(n => ({
+      // Parsing content (Handles migration from Array used in V1/V2-Beta to Object in V3)
+      let notes: VaultNote[] = [];
+      let identity: VaultIdentity | null = null;
+      
+      try {
+          const parsed = JSON.parse(jsonStr);
+          if (Array.isArray(parsed)) {
+              // Legacy format: Just an array of notes
+              notes = parsed;
+              isLegacy = true; // Mark for re-save to generate identity
+          } else {
+              // Modern format: VaultContent object
+              notes = parsed.notes || [];
+              identity = parsed.identity || null;
+          }
+      } catch {
+          throw new Error('Vault Data Corruption: Unable to parse decrypted content.');
+      }
+
+      // Migration: Ensure fields exist
+      const migratedNotes = notes.map(n => ({
         ...n,
         tags: n.tags || [],
-        attachments: n.attachments || []
+        attachments: n.attachments || [],
+        updatedAt: n.updatedAt || Date.now()
       }));
+      
       this.notes.set(migratedNotes);
+      
+      // Ensure identity exists
+      if (!identity) {
+          console.info('Generating new Cryptographic Identity for existing vault...');
+          identity = await this.generateIdentity();
+          isLegacy = true; // Force save
+      }
+      this.identity.set(identity);
+
       this.masterKey.set(password);
       this.error.set(null);
+
+      // Auto-Migration/Save
+      if (isLegacy) {
+        console.info('Migrating Vault to V3 Storage (Identity Layer)...');
+        await this.save(); 
+      }
+
       return true;
     } catch (e) {
       console.error('Vault Access Error:', e);
@@ -148,29 +205,25 @@ export class VaultService {
     }
   }
 
-  /**
-   * Immediately clears the master key and decrypted notes from memory.
-   */
   lock() {
     this.masterKey.set(null);
     this.notes.set([]);
+    this.identity.set(null);
   }
 
-  /**
-   * Encrypts and persists the current vault state to local storage.
-   * Automatically applies available hardware-bound protection layers.
-   */
   async save(): Promise<void> {
     const key = this.masterKey();
     if (!key) throw new Error('Access Denied: Vault must be unlocked to persist changes.');
 
-    const notesData = JSON.stringify(this.notes());
+    const content: VaultContent = {
+        notes: this.notes(),
+        identity: this.identity()!
+    };
+
+    const notesData = JSON.stringify(content);
     let encrypted = await this.crypt.encryptAES256Async(notesData, key, this.crypt.ITERATIONS_V2);
 
-    /**
-     * Optional Layer: OS-Specific SafeStorage
-     * Enhances security by binding the blob to the specific machine/user.
-     */
+    // ... SafeStorage ...
     let isSafeStorageUsed = false;
     if (window.electronAPI?.safeStorageAvailable) {
       try {
@@ -180,7 +233,7 @@ export class VaultService {
           isSafeStorageUsed = true;
         }
       } catch (e) {
-        console.warn('System-level storage protection unavailable, defaulting to standard encryption.', e);
+        console.warn('System-level storage protection unavailable.', e);
       }
     }
 
@@ -193,11 +246,94 @@ export class VaultService {
     localStorage.setItem(this.storageKey, JSON.stringify(envelope));
   }
 
-  /**
-   * Adds a new note to the vault and triggers an asynchronous save.
-   * @param {string} title The display title for the note.
-   * @param {string} content The secure content of the note.
-   */
+  // --- Identity Management ---
+
+  private async generateIdentity(): Promise<VaultIdentity> {
+      const keyPair = await window.crypto.subtle.generateKey(
+        {
+          name: "ECDSA",
+          namedCurve: "P-256"
+        },
+        true,
+        ["sign", "verify"]
+      );
+
+      const publicKey = await window.crypto.subtle.exportKey("jwk", keyPair.publicKey);
+      const privateKey = await window.crypto.subtle.exportKey("jwk", keyPair.privateKey);
+
+      return { publicKey, privateKey };
+  }
+
+  public async getPublicKey(): Promise<JsonWebKey> {
+      const id = this.identity();
+      if (!id) throw new Error('Vault locked');
+      return id.publicKey;
+  }
+
+  public async signMessage(message: string): Promise<string> {
+      const id = this.identity();
+      if (!id) throw new Error('Vault locked');
+      
+      const privateKey = await window.crypto.subtle.importKey(
+          "jwk",
+          id.privateKey,
+          { name: "ECDSA", namedCurve: "P-256" },
+          false,
+          ["sign"]
+      );
+
+      const enc = new TextEncoder();
+      const signature = await window.crypto.subtle.sign(
+          {
+              name: "ECDSA",
+              hash: { name: "SHA-256" },
+          },
+          privateKey,
+          enc.encode(message)
+      );
+
+      return this.buf2hex(signature);
+  }
+
+  public async verifyResult(message: string, signatureHex: string, publicKey: JsonWebKey): Promise<boolean> {
+      try {
+        const key = await window.crypto.subtle.importKey(
+            "jwk",
+            publicKey,
+            { name: "ECDSA", namedCurve: "P-256" },
+            false,
+            ["verify"]
+        );
+
+        const enc = new TextEncoder();
+        const signature = this.hex2buf(signatureHex);
+
+        return await window.crypto.subtle.verify(
+            {
+                name: "ECDSA",
+                hash: { name: "SHA-256" },
+            },
+            key,
+            signature,
+            enc.encode(message)
+        );
+      } catch (e) {
+          console.error('Signature Verification Failed:', e);
+          return false;
+      }
+  }
+
+  private buf2hex(buffer: ArrayBuffer): string {
+    return Array.from(new Uint8Array(buffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+   private hex2buf(hex: string): ArrayBuffer {
+    return new Uint8Array(hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))).buffer;
+  }
+
+  // ... addNote, updateNote, etc ...
   addNote(title: string, content: string) {
     const newNote: VaultNote = {
       id: crypto.randomUUID(),
@@ -211,13 +347,6 @@ export class VaultService {
     this.save();
   }
 
-  /**
-   * Updates an existing note.
-   * @param {string} id The UUID of the note to update.
-   * @param {string} title New title.
-   * @param {string} content New content.
-   * @param {string[]} tags Tags.
-   */
   updateNote(id: string, title: string, content: string, tags: string[]) {
     this.notes.update((n) => n.map((note) => (note.id === id ? { ...note, title, content, tags, updatedAt: Date.now() } : note)));
     this.save();
@@ -239,10 +368,6 @@ export class VaultService {
     this.save();
   }
 
-  /**
-   * Removes a note from the vault.
-   * @param {string} id The UUID of the note to delete.
-   */
   async deleteNote(id: string) {
     const note = this.notes().find((n) => n.id === id);
     if (note && note.attachments) {
@@ -258,10 +383,6 @@ export class VaultService {
     this.save();
   }
 
-  /**
-   * Completely destroys the local vault storage.
-   * WARN: This action is irreversible.
-   */
   deleteVault() {
     localStorage.removeItem(this.storageKey);
     this.lock();

@@ -22,65 +22,82 @@ export class PaperWalletService {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+    let y = 0;
 
-    // --- Header ---
-    doc.setFillColor(33, 33, 33); // Dark background
-    doc.rect(0, 0, pageWidth, 40, 'F');
+    const addHeader = () => {
+      doc.setFillColor(33, 33, 33); // Dark background
+      doc.rect(0, 0, pageWidth, 40, 'F');
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.text('Darkstar Paper Wallet', margin, 20);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(22);
+      doc.text('Darkstar Paper Wallet', margin, 20);
 
-    doc.setFontSize(12);
-    doc.setTextColor(200, 200, 200);
-    doc.text(`Protocol: ${metadata.protocolTitle}`, margin, 32);
+      doc.setFontSize(12);
+      doc.setTextColor(200, 200, 200);
+      doc.text(`Protocol: ${metadata.protocolTitle}`, margin, 32);
 
-    doc.setFontSize(10);
-    doc.text(new Date().toLocaleString(), pageWidth - margin, 20, { align: 'right' });
+      doc.setFontSize(10);
+      doc.text(new Date().toLocaleString(), pageWidth - margin, 20, { align: 'right' });
+      
+      // Reset for content
+      doc.setTextColor(0, 0, 0);
+      y = 60;
+    };
 
-    // --- Content Setup ---
-    let y = 60;
-    doc.setTextColor(0, 0, 0); // Reset text color to black
+    addHeader();
 
-    // --- Encrypted Data Section ---
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('1. Encrypted Data', margin, y);
-    y += 10;
+    const writeSection = (title: string, content: string, font: 'courier' | 'helvetica' = 'courier') => {
+      // Section Header
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      
+      // Check if title fits, else new page
+      if (y + 10 > pageHeight - margin) {
+        doc.addPage();
+        addHeader();
+      }
+      doc.text(title, margin, y);
+      y += 10;
 
-    doc.setFontSize(10);
-    doc.setFont('courier', 'normal');
-    const splitData = doc.splitTextToSize(encryptedData, pageWidth - margin * 2);
-    doc.text(splitData, margin, y);
+      // Section Content
+      doc.setFontSize(10);
+      doc.setFont(font, 'normal');
+      
+      const splitText = doc.splitTextToSize(content, contentWidth);
+      const lineHeight = 5;
 
-    // Calculate new Y based on text lines
-    y += splitData.length * 5 + 10;
+      for (const line of splitText) {
+        if (y + lineHeight > pageHeight - margin) {
+          doc.addPage();
+          addHeader();
+          // Re-print section title context if split? Maybe overkill, just continue.
+        }
+        doc.text(line, margin, y);
+        y += lineHeight;
+      }
+      
+      y += 10; // Spacing after section
+    };
 
-    // --- Divider ---
+    // 1. Encrypted Data
+    writeSection('1. Encrypted Data', encryptedData);
+
+    // Divider
     doc.setDrawColor(200, 200, 200);
     doc.line(margin, y, pageWidth - margin, y);
-    y += 20;
-
-    // --- Reverse Key Section ---
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('2. Reverse Key', margin, y);
     y += 10;
 
-    doc.setFontSize(10);
-    doc.setFont('courier', 'normal');
-    const splitKey = doc.splitTextToSize(reverseKey, pageWidth - margin * 2);
-    doc.text(splitKey, margin, y);
-
-    y += splitKey.length * 5 + 20;
+    // 2. Reverse Key
+    writeSection('2. Reverse Key', reverseKey);
 
     // --- Footer / Instructions ---
-    // If getting close to bottom, add a new page? logic for simple text:
-    if (y > pageHeight - 50) {
+    if (y + 40 > pageHeight - margin) {
       doc.addPage();
-      y = 40;
+      addHeader();
     }
-
+    
+    y += 10;
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
@@ -94,7 +111,14 @@ export class PaperWalletService {
       '5. Do not share this document.',
     ];
 
-    doc.text(instructions, margin, y);
+    for (const line of instructions) {
+       if (y + 5 > pageHeight - margin) {
+          doc.addPage();
+          addHeader();
+       }
+       doc.text(line, margin, y);
+       y += 5;
+    }
 
     // Save
     doc.save(`darkstar-paper-wallet-${Date.now()}.pdf`);
