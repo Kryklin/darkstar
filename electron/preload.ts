@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   p2pSendMessage: (onion: string, message: P2PMessage) => ipcRenderer.invoke('p2p-send-message', onion, message),
   onP2PMessage: (callback: (message: P2PMessage) => void) => ipcRenderer.on('p2p-message-received', (_event, value: P2PMessage) => callback(value)),
   onTorProgress: (callback: (progress: { progress: number; summary: string }) => void) => ipcRenderer.on('tor-progress', (_event, value: { progress: number; summary: string }) => callback(value)),
+  torGetConfig: () => ipcRenderer.invoke('tor-get-config'),
+  torSaveConfig: (config: { useBridges: boolean; bridgeLines: string }) => ipcRenderer.invoke('tor-save-config', config),
 });
 
 // All of the Node.js APIs are available in the preload process.

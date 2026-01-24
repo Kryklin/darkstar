@@ -1,34 +1,47 @@
 <div class="update-container">
-  <div class="content">
-    @if (updateService.updateStatus() === 'checking') {
-      <mat-spinner diameter="50"></mat-spinner>
-      <h2>Checking for updates...</h2>
-    } @else if (updateService.updateStatus() === 'available') {
-      <mat-spinner diameter="50"></mat-spinner>
-      <h2>Update available...</h2>
-      <p>Downloading update...</p>
-    } @else if (updateService.updateStatus() === 'downloaded') {
-      <mat-icon class="success-icon">check_circle</mat-icon>
-      <h2>Update Downloaded</h2>
-      <p>Restart the application to apply the latest changes.</p>
-      <button mat-raised-button color="primary" (click)="restart()">Restart & Install</button>
-    } @else if (updateService.updateStatus() === 'not-available') {
-      <mat-icon class="info-icon">info</mat-icon>
-      <h2>You are up to date!</h2>
-      <p>Returning to home...</p>
-    } @else if (updateService.updateStatus() === 'error') {
-      <mat-icon class="error-icon">error</mat-icon>
-      <h2>Update Error</h2>
-      <p>{{ updateService.updateError() }}</p>
-      <button mat-button (click)="goHome()">Back to Home</button>
-    } @else if (updateService.updateStatus() === 'alpha') {
-      <div class="alpha-badge pulse">
-        <mat-icon class="alpha-icon">science</mat-icon>
+  <div class="glass-card" @fadeInOut>
+    
+    <!-- Checking / Downloading State -->
+    @if (showProgressBar()) {
+      <mat-icon class="spin">sync</mat-icon>
+      <h2>{{ getStatusMessage() }}</h2>
+      <div class="progress-wrapper">
+          <mat-progress-bar mode="indeterminate" color="primary"></mat-progress-bar>
       </div>
-      <h2 class="alpha-title">DEVELOPER BUILD (ALPHA)</h2>
-      <p>You are running a version ahead of the public release.</p>
-      <button mat-button (click)="goHome()">Back to Home</button>
+    } 
+    
+    <!-- Success State -->
+    @else if (updateService.updateStatus() === 'downloaded') {
+      <mat-icon class="success-icon">check_circle_outline</mat-icon>
+      <h2>Update Ready</h2>
+      <p>A new version has been downloaded and is ready to install.</p>
+      <button mat-flat-button color="primary" (click)="restart()">Restart & Install</button>
+    } 
+    
+    <!-- Up to Date -->
+    @else if (updateService.updateStatus() === 'not-available') {
+      <mat-icon class="info-icon">verified_user</mat-icon>
+      <h2>Up to Date</h2>
+      <p>You are running the latest version.</p>
+    } 
+    
+    <!-- Error State -->
+    @else if (updateService.updateStatus() === 'error') {
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <h2>Update Failed</h2>
+      <p>{{ updateService.updateError() }}</p>
+      <button mat-stroked-button (click)="goHome()">Return Home</button>
+    } 
+    
+    <!-- Alpha State -->
+    @else if (updateService.updateStatus() === 'alpha') {
+      <div class="alpha-badge">
+        <mat-icon>science</mat-icon>
+      </div>
+      <h2>Developer Build</h2>
+      <p>You are on the bleeding edge.</p>
+      <button mat-stroked-button (click)="goHome()">Return Home</button>
     }
-    <p style="opacity: 0.5; margin-top: 2rem">Debug Status: {{ updateService.updateStatus() }}</p>
+
   </div>
 </div>

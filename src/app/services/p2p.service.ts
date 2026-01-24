@@ -32,19 +32,20 @@ export class P2pService {
     });
 
     if (window.electronAPI) {
-        window.electronAPI.onP2PMessage(async (message: P2PMessage) => {
+        window.electronAPI.onP2PMessage(async (message: unknown) => {
+            const p2pMsg = message as P2PMessage;
             // VERIFY SIGNATURE
-            if (message.signature && message.publicKey) {
+            if (p2pMsg.signature && p2pMsg.publicKey) {
                const isValid = await this.vaultService.verifyResult(
-                   message.content, 
-                   message.signature, 
-                   message.publicKey
+                   p2pMsg.content, 
+                   p2pMsg.signature, 
+                   p2pMsg.publicKey
                );
-               message.verified = isValid;
+               p2pMsg.verified = isValid;
             } else {
-               message.verified = false;
+               p2pMsg.verified = false;
             }
-            this.addMessage(message);
+            this.addMessage(p2pMsg);
         });
         
         window.electronAPI.onTorProgress((data) => {

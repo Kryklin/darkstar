@@ -7,5 +7,5 @@
     "strict": true,
     "esModuleInterop": true
   },
-  "include": ["electron/**/*"]
+  "include": ["electron/**/*", "src/types/**/*"]
 }

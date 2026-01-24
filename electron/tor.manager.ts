@@ -2,8 +2,8 @@ import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const portfinder = require('portfinder');
+import * as portfinder from 'portfinder';
+import { ConfigManager } from './config';
 
 export class TorManager {
   private static instance: TorManager;
@@ -56,9 +56,35 @@ export class TorManager {
       '--SocksPort', String(this.socksPort),
       '--ControlPort', String(this.controlPort),
       '--DataDirectory', dataDir,
-      // 'GeoIPFile', path.join(path.dirname(torPath), 'geoip'),
-      // 'GeoIPv6File', path.join(path.dirname(torPath), 'geoip6'),
+      '--DataDirectory', dataDir,
     ];
+
+    // --- Inject Bridge Configuration ---
+    const config = ConfigManager.getInstance().getTorConfig();
+    const obfs4Path = this.getObfs4ProxyPath();
+
+    if (config.useBridges) {
+        console.log('TorManager: Bridges enabled.');
+
+        // 1. Add ClientTransportPlugin
+        if (obfs4Path && fs.existsSync(obfs4Path)) {
+            console.log(`TorManager: Using obfs4proxy at ${obfs4Path}`);
+            args.push('--ClientTransportPlugin', `obfs4 exec ${obfs4Path}`);
+        } else {
+            console.warn('TorManager: obfs4proxy binary NOT found. Bridges may fail if they rely on obfs4.');
+            // We might want to notify frontend here, but for now we warn
+        }
+
+        // 2. Enable UseBridges
+        args.push('--UseBridges', '1');
+
+        // 3. Add Bridge lines
+        const lines = config.bridgeLines.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        for (const line of lines) {
+            args.push('--Bridge', line);
+        }
+    }
+    // -----------------------------------
 
     try {
         // In dev, we might not have the binary, so we wrap in try-catch or check existence
@@ -103,8 +129,8 @@ export class TorManager {
             console.log(`TorManager: Tor exited with code ${code} signal ${signal}`);
             this.torProcess = null;
             if (!this.isShuttingDown) {
-                // TODO: Restart logic?
-                console.warn('TorManager: Tor exited unexpectedly.');
+                console.warn('TorManager: Tor exited unexpectedly. Restarting in 5 seconds...');
+                setTimeout(() => this.start(), 5000);
             }
         });
 
@@ -132,5 +158,13 @@ export class TorManager {
     
     // In dev, look in a local 'bin' folder or similar
     return path.join(app.getAppPath(), 'resources', 'extra', 'tor', process.platform === 'win32' ? 'tor.exe' : 'tor');
+  }
+
+  private getObfs4ProxyPath(): string {
+       const binName = process.platform === 'win32' ? 'lyrebird.exe' : 'lyrebird';
+       if (app.isPackaged) {
+           return path.join(process.resourcesPath, 'extra', 'tor', 'pluggable_transports', binName);
+       }
+       return path.join(app.getAppPath(), 'resources', 'extra', 'tor', 'pluggable_transports', binName);
   }
 }

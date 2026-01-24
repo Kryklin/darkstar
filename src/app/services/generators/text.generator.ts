@@ -25,8 +25,7 @@ export class TextGenerator implements StegoGenerator {
     'server', 'cloud', 'data', 'base', 'node', 'link', 'down', 'up'
   ];
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  generate(payload: string, _options: StealthOptions): string {
+  generate(payload: string, _options?: StealthOptions): string {
     // payload is Base64 (usually)
     // Convert to Binary String
     const binary = this.stringToBinary(payload);

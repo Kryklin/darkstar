@@ -4,8 +4,8 @@ import * as fs from 'fs/promises';
 import { updateElectronApp } from 'update-electron-app';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
-// eslint-disable-next-line
-if (require('electron-squirrel-startup')) {
+import squirrelStartup from 'electron-squirrel-startup';
+if (squirrelStartup) {
   app.quit();
   process.exit(0);
 }
@@ -21,7 +21,7 @@ function initUpdater() {
   if (app.isPackaged && !isVersionLocked) {
     console.log('Main: Initializing auto-updater...');
     try {
-      updateElectronApp();
+      updateElectronApp({ notifyUser: false });
       updaterInitialized = true;
     } catch (err) {
       console.error('Main: Failed to initialize auto-updater', err);
@@ -362,8 +362,28 @@ autoUpdater.on('error', (err) => {
   if (win) win.webContents.send('update-status', { status: 'error', error: err.message });
 });
 
-autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName, releaseDate, updateURL) => {
+autoUpdater.on('update-downloaded', (_event, releaseNotes, releaseName, releaseDate, updateURL) => {
   console.log('AutoUpdater: update-downloaded', { releaseName, releaseDate, updateURL });
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'downloaded' });
+});
+
+import { ConfigManager } from './config';
+
+ipcMain.handle('tor-get-config', () => {
+    return ConfigManager.getInstance().getTorConfig();
+});
+
+ipcMain.handle('tor-save-config', async (_event, config: { useBridges: boolean; bridgeLines: string }) => {
+    ConfigManager.getInstance().saveTorConfig(config);
+    
+    // Restart logic: Stop Tor, wait, Start Tor
+    const tm = TorManager.getInstance();
+    tm.stop();
+    // Give it a moment to die cleanly
+    setTimeout(async () => {
+         await tm.start();
+    }, 2000);
+    
+    return true;
 });
