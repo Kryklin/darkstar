@@ -54,7 +54,23 @@
                 <input class="title-input" [(ngModel)]="currentTitle" (ngModelChange)="onContentChange()" placeholder="Note Title" />
                 
                 <div class="header-actions">
-                    <button mat-icon-button class="action-btn" (click)="togglePreview()" [matTooltip]="showPreview ? 'Edit' : 'Save'">
+                    <!-- Time-Lock menu or button -->
+                    @if (selectedNote()?.timeLock) {
+                       @if (selectedNote()?.timeLock?.isLocked) {
+                          <mat-chip class="time-lock-chip" color="warn" highlighted><mat-icon>lock_clock</mat-icon> Locked</mat-chip>
+                       } @else {
+                          <button mat-icon-button (click)="removeTimeLock()" matTooltip="Remove Time-Lock"><mat-icon>timer_off</mat-icon></button>
+                       }
+                    } @else {
+                       <button mat-icon-button [matMenuTriggerFor]="timeLockMenu" matTooltip="Time-Lock Note"><mat-icon>timer</mat-icon></button>
+                       <mat-menu #timeLockMenu="matMenu">
+                          <button mat-menu-item (click)="applyTimeLock(60)"><mat-icon>hourglass_empty</mat-icon> 1 Minute Lock</button>
+                          <button mat-menu-item (click)="applyTimeLock(300)"><mat-icon>hourglass_bottom</mat-icon> 5 Minute Lock</button>
+                          <button mat-menu-item (click)="applyTimeLock(3600)"><mat-icon>hourglass_full</mat-icon> 1 Hour Lock</button>
+                       </mat-menu>
+                    }
+                    
+                    <button mat-icon-button class="action-btn" (click)="togglePreview()" [disabled]="selectedNote()?.timeLock?.isLocked" [matTooltip]="showPreview ? 'Edit' : 'Save'">
                         <mat-icon>{{ showPreview ? 'edit' : 'save' }}</mat-icon>
                     </button>
                     <button mat-icon-button class="delete-btn" (click)="deleteCurrentNote()" matTooltip="Delete Note">
@@ -116,7 +132,23 @@
           }
 
           <div class="editor-body">
-            @if (showPreview) {
+            @if (isLocking()) {
+               <div class="locking-overlay">
+                  <mat-progress-spinner mode="determinate" [value]="lockProgress()"></mat-progress-spinner>
+                  <h3>Computing Cryptographic Delay...</h3>
+                  <p>{{ lockProgress() }}% Complete</p>
+                  <span class="lock-warn">Please do not close this window.</span>
+               </div>
+            } @else if (selectedNote()?.timeLock?.isLocked) {
+               <div class="locked-state">
+                  <mat-icon class="huge-icon">lock_clock</mat-icon>
+                  <h2>Note Time-Locked</h2>
+                  <p>This note is secured by a Verifiable Delay Function. It will take computational time to unlock.</p>
+                  <button mat-raised-button color="primary" (click)="unlockCurrentNote()">
+                    <mat-icon>vpn_key</mat-icon> Compute Unlock Key
+                  </button>
+               </div>
+            } @else if (showPreview) {
               <article class="markdown-preview custom-scroll">
                  <markdown [data]="currentContent"></markdown>
                  

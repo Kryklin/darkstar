@@ -32,6 +32,11 @@ const pkg = require('../package.json');
     { name: chalk.blue('  🔍  Lint Code'), value: 'lint' },
     { name: chalk.magenta('  🧪  Run Tests (Headless & Interop)'), value: 'test' },
 
+    new inquirer.Separator(chalk.dim('--- Mobile (Capacitor) ---')),
+    { name: chalk.cyan('  📱  Sync Mobile Assets'), value: 'cap:sync' },
+    { name: chalk.green('  🤖  Open Android Studio'), value: 'cap:open:android' },
+    { name: chalk.blue('  🍏  Open Xcode'), value: 'cap:open:ios' },
+
     new inquirer.Separator(chalk.dim('--- Release ---')),
     { name: chalk.yellow('  🏗️   Build Production'), value: 'build' },
     { name: chalk.hex('#FFA500')('  📦  Package Application'), value: 'package' },
@@ -113,14 +118,18 @@ const pkg = require('../package.json');
       LINT: 'ng lint',
       // Test: Runs headless Chrome tests and executes the Python interop verification script
       TEST: 'ng test --watch=false --browsers=ChromeHeadless && python "darkstar-encry/scripts/verify_interop.py"',
-      // Build: Compiles Angular (Production) and Electron (TypeScript)
-      BUILD: 'ng build --configuration production --base-href ./ && tsc --p tsconfig.electron.json',
+      // Build: Compiles Angular (Production) and Electron (TypeScript), then generates integrity
+      BUILD: 'ng build --configuration production --base-href ./ && tsc --p tsconfig.electron.json && node scripts/build-integrity.js',
       // Dev: Runs Angular Serve and Electron Watch (via Wrapper) concurrently
       DEV: 'concurrently -k --success first "ng serve" "wait-on http://localhost:4200 && node scripts/dev-wrapper.js"',
       // Package: Packages the Electron app using Forge
       PACKAGE: 'electron-forge package',
       // Publish: Publishes the Electron app using Forge
       PUBLISH: 'electron-forge publish',
+      // Mobile: Capacitor Commands
+      CAP_SYNC: 'npx cap sync',
+      CAP_OPEN_ANDROID: 'npx cap open android',
+      CAP_OPEN_IOS: 'npx cap open ios',
     };
 
     // Execute selected action
@@ -166,6 +175,17 @@ const pkg = require('../package.json');
           break;
         case 'test':
           await runShell('Testing', CMD.TEST);
+          break;
+        case 'cap:sync':
+          console.log(chalk.yellow('ℹ Building core application before sync...'));
+          await runShell('Building', CMD.BUILD);
+          await runShell('Syncing Native Platforms', CMD.CAP_SYNC, { clear: false });
+          break;
+        case 'cap:open:android':
+          await runShell('Opening Android Studio', CMD.CAP_OPEN_ANDROID);
+          break;
+        case 'cap:open:ios':
+          await runShell('Opening Xcode', CMD.CAP_OPEN_IOS);
           break;
         case 'build':
           await runShell('Building', CMD.BUILD);

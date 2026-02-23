@@ -1,4 +1,4 @@
-import { Component, inject, NgZone, OnInit } from '@angular/core';
+import { Component, inject, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { VaultService } from '../../services/vault';
@@ -8,7 +8,6 @@ import { MaterialModule } from '../../modules/material/material';
 import { MatDialog } from '@angular/material/dialog';
 import { GenericDialog, DialogButton } from '../dialogs/generic-dialog/generic-dialog';
 import { DuressService } from '../../services/duress.service';
-import { TorConfigService } from '../../services/tor-config.service';
 
 
 @Component({
@@ -18,34 +17,16 @@ import { TorConfigService } from '../../services/tor-config.service';
   templateUrl: './settings.html',
   styleUrls: ['./settings.scss'],
 })
-export class Settings implements OnInit {
+export class Settings {
   theme = inject(Theme);
   updateService = inject(UpdateService);
   vaultService = inject(VaultService);
   duressService = inject(DuressService);
-  torConfigService = inject(TorConfigService);
+
   dialog = inject(MatDialog);
   ngZone = inject(NgZone);
 
   duressPassword = '';
-  
-  // Tor Config
-  useBridges = false;
-  bridgeLines = '';
-  
-  async ngOnInit() {
-      const config = await this.torConfigService.getTorConfig();
-      this.useBridges = config.useBridges;
-      this.bridgeLines = config.bridgeLines;
-  }
-
-  async saveTorConfig() {
-      await this.torConfigService.saveTorConfig({
-          useBridges: this.useBridges,
-          bridgeLines: this.bridgeLines
-      });
-      this.openDialog('Success', 'Network settings saved. Tor is restarting...', [{ label: 'OK', value: true }]);
-  }
   
   // Computed or simple getter for biometric state
   get isBiometricEnabled(): boolean {

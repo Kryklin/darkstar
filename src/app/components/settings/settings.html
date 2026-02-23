@@ -40,36 +40,6 @@
     </div>
   </section>
 
-  <section class="settings-section">
-    <h2>Network (Tor)</h2>
-    <mat-divider></mat-divider>
-
-    <div class="setting-row">
-      <div class="setting-label">
-        <span class="title">Use Bridges</span>
-        <span class="description">Bypass censorship using Pluggable Transports (lyrebird/obfs4)</span>
-      </div>
-      <mat-slide-toggle [(ngModel)]="useBridges" color="accent"> </mat-slide-toggle>
-    </div>
-
-    @if (useBridges) {
-        <div class="setting-column" style="margin-top: 15px;">
-            <div class="setting-label">
-                <span class="title">Bridge Lines</span>
-                <span class="description">Paste your bridge lines from bridges.torproject.org</span>
-            </div>
-            <mat-form-field appearance="outline" style="width: 100%; margin-top: 10px;">
-                <mat-label>obfs4/lyrebird ...</mat-label>
-                <textarea matInput [(ngModel)]="bridgeLines" rows="5" placeholder="obfs4 1.2.3.4:443 ..."></textarea>
-            </mat-form-field>
-        </div>
-    }
-    
-    <div class="setting-row" style="justify-content: flex-end; margin-top: 15px;">
-        <button mat-flat-button color="primary" (click)="saveTorConfig()">Save & Restart Tor</button>
-    </div>
-
-  </section>
 
   <section class="settings-section">
     <h2>System</h2>

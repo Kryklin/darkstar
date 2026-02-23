@@ -10,11 +10,12 @@ import { StealthMode, StealthOptions } from '../../../services/generators/types'
 import { VirtualKeyboard } from '../../virtual-keyboard/virtual-keyboard';
 import { EntropyMeter } from '../../entropy-meter/entropy-meter';
 import { PaperWalletService } from '../../../services/paper-wallet.service';
+import { QrSender } from '../qr-sender/qr-sender';
 
 @Component({
   selector: 'app-shared-encrypt',
   standalone: true,
-  imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule, VirtualKeyboard, EntropyMeter],
+  imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule, VirtualKeyboard, EntropyMeter, QrSender],
   templateUrl: './encrypt.html',
   styleUrl: './encrypt.scss',
 })
@@ -53,6 +54,9 @@ export class SharedEncryptComponent implements OnInit {
 
   // Virtual Keyboard
   virtualKeyboardEnabled = false;
+  
+  // QR Air-Gap Transfer
+  showQrSender = false;
 
   private _formBuilder = inject(FormBuilder);
   private cryptService = inject(CryptService);
@@ -229,6 +233,7 @@ export class SharedEncryptComponent implements OnInit {
     this.stealthMode = 'standard';
     this.stealthNoiseLevel = 0.5;
     this.virtualKeyboardEnabled = false;
+    this.showQrSender = false;
   }
 
   onVirtualKeyPress(key: string) {

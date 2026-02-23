@@ -22,12 +22,15 @@ export interface VaultTrustNode {
   notes?: string;
 }
 
+import { TimeLockMetadata } from './timelock.service';
+
 export interface VaultNote {
   id: string;
   title: string;
   content: string;
   tags: string[];
   attachments: VaultAttachment[];
+  timeLock?: TimeLockMetadata;
   updatedAt: number;
 }
 
@@ -409,21 +412,22 @@ export class VaultService {
   }
 
   // ... addNote, updateNote, etc ...
-  addNote(title: string, content: string) {
+  addNote(title: string, content: string, timeLock?: TimeLockMetadata) {
     const newNote: VaultNote = {
       id: crypto.randomUUID(),
       title,
       content,
       tags: [],
       attachments: [],
+      timeLock,
       updatedAt: Date.now(),
     };
     this.notes.update((n) => [newNote, ...n]);
     this.save();
   }
 
-  updateNote(id: string, title: string, content: string, tags: string[]) {
-    this.notes.update((n) => n.map((note) => (note.id === id ? { ...note, title, content, tags, updatedAt: Date.now() } : note)));
+  updateNote(id: string, title: string, content: string, tags: string[], timeLock?: TimeLockMetadata) {
+    this.notes.update((n) => n.map((note) => (note.id === id ? { ...note, title, content, tags, timeLock, updatedAt: Date.now() } : note)));
     this.save();
   }
 

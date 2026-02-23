@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { VaultService, VaultNote, VaultAttachment } from '../../../services/vault';
 import { VaultFileService } from '../../../services/vault-file.service';
+import { TimeLockService } from '../../../services/timelock.service';
 import { MaterialModule } from '../../../modules/material/material';
 import { MarkdownModule } from 'ngx-markdown';
 import { MatDialog } from '@angular/material/dialog';
@@ -20,6 +21,7 @@ import { COMMA, ENTER } from '@angular/cdk/keycodes';
 export class VaultDashboardComponent {
   vaultService = inject(VaultService);
   fileService = inject(VaultFileService);
+  timeLockService = inject(TimeLockService);
   dialog = inject(MatDialog);
   notes = this.vaultService.notes;
   selectedNote = signal<VaultNote | null>(null);
@@ -47,6 +49,9 @@ export class VaultDashboardComponent {
   currentTags: string[] = [];
   currentAttachments: VaultAttachment[] = [];
   showPreview = true;
+
+  isLocking = signal(false);
+  lockProgress = signal(0);
 
   identityFingerprint = signal<string>('Loading Identity...');
 
@@ -96,6 +101,61 @@ export class VaultDashboardComponent {
   onContentChange() {
     const note = this.selectedNote();
     if (note) {
+      if (note.timeLock?.isLocked) return;
+      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, note.timeLock);
+    }
+  }
+
+  async applyTimeLock(seconds: number) {
+    const note = this.selectedNote();
+    if (!note) return;
+    
+    this.isLocking.set(true);
+    try {
+      const result = await this.timeLockService.lockNoteContent(
+        this.currentContent,
+        seconds,
+        (p) => this.lockProgress.set(p)
+      );
+      this.currentContent = result.encryptedData;
+      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, result.metadata);
+      this.showPreview = true;
+      this.selectNote(this.vaultService.notes().find(n => n.id === note.id)!);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      this.isLocking.set(false);
+      this.lockProgress.set(0);
+    }
+  }
+
+  async unlockCurrentNote() {
+    const note = this.selectedNote();
+    if (!note || !note.timeLock) return;
+    
+    this.isLocking.set(true);
+    try {
+      const decrypted = await this.timeLockService.unlockNoteContent(
+        this.currentContent,
+        note.timeLock,
+        (p) => this.lockProgress.set(p)
+      );
+      this.currentContent = decrypted;
+      note.timeLock.isLocked = false;
+      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, note.timeLock);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to unlock. Ensure computation completes.');
+    } finally {
+      this.isLocking.set(false);
+      this.lockProgress.set(0);
+    }
+  }
+
+  removeTimeLock() {
+    const note = this.selectedNote();
+    if (note) {
+      delete note.timeLock;
       this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags);
     }
   }

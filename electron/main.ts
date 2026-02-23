@@ -119,43 +119,14 @@ function createTray() {
   });
 }
 
-import { TorManager } from './tor.manager';
-import { TorControl } from './tor.control';
-
 // ... (imports)
 
+import { verifyIntegrity } from './integrity';
+
 app.whenReady().then(async () => {
+  await verifyIntegrity();
   createWindow();
   createTray();
-  
-  const win = BrowserWindow.getAllWindows()[0];
-  if (win) {
-      TorManager.getInstance().setMainWindow(win);
-  }
-
-
-  // Start Tor
-  const torManager = TorManager.getInstance();
-  await torManager.start();
-
-  // Update modules with dynamic ports
-  // p2pBackend is global, just update its port
-  p2pBackend.setSocksPort(torManager.socksPort);
-  
-  const torControl = TorControl.getInstance();
-  torControl.setControlPort(torManager.controlPort);
-  
-  // Try connecting after a short delay (give Tor time to boot)
-  setTimeout(async () => {
-      if (await torControl.connect()) {
-          try {
-              await torControl.authenticate();
-              console.log('TorControl: Authenticated successfully.');
-          } catch (e) {
-              console.error('TorControl: Auth failed', e);
-          }
-      }
-  }, 2000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -165,7 +136,6 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  TorManager.getInstance().stop();
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -244,6 +214,11 @@ ipcMain.handle('safe-storage-available', () => {
   return safeStorage.isEncryptionAvailable();
 });
 
+ipcMain.handle('check-integrity', () => {
+  // If the app is fully running, verifyIntegrity() has already passed at startup.
+  return true;
+});
+
 // --- Vault V2 IPC Handlers ---
 
 const getVaultPath = () => path.join(app.getPath('userData'), 'vault_storage');
@@ -287,48 +262,16 @@ ipcMain.handle('vault-delete-file', async (_event, filename: string) => {
 });
 
 ipcMain.handle('vault-list-files', async () => {
-   try {
-     return await fs.readdir(getVaultPath());
-   } catch {
-     return [];
-   }
+  try {
+    return await fs.readdir(getVaultPath());
+  } catch {
+    return [];
+  }
 });
 
 ipcMain.on('restart-and-install', () => {
   console.log('IPC: restart-and-install received');
   autoUpdater.quitAndInstall();
-});
-
-import { P2PBackend } from './p2p.backend';
-
-const p2pBackend = new P2PBackend();
-
-ipcMain.handle('p2p-create-service', async (event, localPort: number) => {
-    // Start listening on the local port that Tor will forward to
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) {
-      p2pBackend.setMainWindow(win);
-    }
-    p2pBackend.startServer(localPort);
-    
-    // Tell Tor to create the hidden service mapping
-    const onionAddress = await TorControl.getInstance().createHiddenService(localPort);
-    return onionAddress;
-});
-
-ipcMain.handle('p2p-send-message', async (_event, onion: string, message: { id: string; sender: string; content: string; timestamp: number; signature?: string; publicKey?: JsonWebKey }) => {
-    await p2pBackend.sendMessage(onion, message);
-});
-
-ipcMain.handle('p2p-stop-service', async (_event, onionAddress: string) => {
-    // 1. Tell Tor to delete the hidden service
-    await TorControl.getInstance().destroyHiddenService(onionAddress);
-    // 2. Stop the local P2P backend server
-    p2pBackend.stop();
-});
-
-ipcMain.handle('p2p-check-status', async (_event, onionAddress: string) => {
-    return await p2pBackend.checkServiceStatus(onionAddress);
 });
 
 /**
@@ -366,24 +309,4 @@ autoUpdater.on('update-downloaded', (_event, releaseNotes, releaseName, releaseD
   console.log('AutoUpdater: update-downloaded', { releaseName, releaseDate, updateURL });
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'downloaded' });
-});
-
-import { ConfigManager } from './config';
-
-ipcMain.handle('tor-get-config', () => {
-    return ConfigManager.getInstance().getTorConfig();
-});
-
-ipcMain.handle('tor-save-config', async (_event, config: { useBridges: boolean; bridgeLines: string }) => {
-    ConfigManager.getInstance().saveTorConfig(config);
-    
-    // Restart logic: Stop Tor, wait, Start Tor
-    const tm = TorManager.getInstance();
-    tm.stop();
-    // Give it a moment to die cleanly
-    setTimeout(async () => {
-         await tm.start();
-    }, 2000);
-    
-    return true;
 });

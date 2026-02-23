@@ -9,7 +9,6 @@
   <img src="https://img.shields.io/badge/version-1.9.0-blue" alt="Version"/>
   <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
-  <img src="https://img.shields.io/badge/Tor-P2P-7D4698?logo=tor-browser" alt="Tor Network"/>
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript"/>
   <img src="https://img.shields.io/badge/Go-v1.25.5-00ADD8?logo=go" alt="Go"/>
 </p>
@@ -24,7 +23,7 @@
 
 # Darkstar V2 Encryption & P2P Architecture
 
-This document illustrates the internal workings of the Darkstar V2 Security System. It combines **Dynamic Structural Obfuscation**, **AES-256-CBC Encryption**, and a **Decentralized P2P Messaging Network** to create a comprehensive defense-grade security suite.
+This document illustrates the internal workings of the Darkstar V2 Security System. It combines **Dynamic Structural Obfuscation**, **AES-256-CBC Encryption**, and **Application Anti-Tampering** to create a comprehensive defense-grade security suite.
 
 ## 1. High-Level Workflow
 
@@ -42,21 +41,12 @@ graph TD
     end
 
     Safe -->|Encrypted Payload| Storage[(Device Storage)]
-    
-    subgraph P2P [Anonymous Network]
-        Id[Cryptographic Identity]
-        Tor[Tor Hidden Service]
-    end
-
-    Storage -.->|Unlocks| Id
-    Id -->|Sign Messages| Tor
-    Tor -->|Receive & Verify| Id
+    Safe -->|Encrypted Payload| Storage[(Device Storage)]
 
     style User fill:#f9f,stroke:#333
     style Layers fill:#f8f9fa,stroke:#333
     style Safe fill:#bbf,stroke:#333
     style Obf fill:#bfb,stroke:#333
-    style P2P fill:#e1f5fe,stroke:#333
 ```
 
 ---
@@ -198,47 +188,17 @@ sequenceDiagram
 
 ---
 
-## 8. Anonymous P2P Messaging System
+## 8. Anti-Tamper Integrity Checks
 
-New in V1.8.3, Darkstar introduces a decentralized communication layer built on the Tor network, tightly integrated with the Secure Vault.
+Darkstar implements a strict application payload integrity verification check to prevent local malware or supply chain injection from silently compromising the encryption frontend.
 
-### 8.1 Cryptographic Identity Layer
-Each vault automatically generates a unique **ECDSA P-256** keypair upon creation or migration.
-- **Private Key**: Encrypted within the vault content; never leaves the secure enclave.
-- **Public Key**: Exported as a JWK for sharing. Used as the user's cryptographic fingerprint.
-- **Purpose**: All outgoing P2P messages are signed with the private key to ensure authenticity and non-repudiation.
+### 8.1 Hash Generation at Build
+During the compilation/packaging step, an `integrity.json` mapping is created containing the SHA-256 signatures of the Electron bundle components (e.g., `main.js`, `preload.js`).
 
-### 8.2 Tor Hidden Service Integration
-Darkstar bundles a managed Tor process to provide true anonymity.
-- **Persistence**: Upon going online, the application creates a Long-Lived Tor Hidden Service.
-- **Addressing**: Users are reachable via a unique `.onion` address (e.g., `v2...f4.onion`).
-- **End-to-End Encryption**: Communication is encrypted by the Tor protocol and further secured by application-level signatures.
-
-### 8.3 Security Enforcement: The "Vault Lock" Dependency
-To prevent identity exposure and ensure message security, the P2P service is reactive to the Vault's state:
-1. **Startup Requirement**: The P2P service cannot be started unless the Vault is unlocked.
-2. **Emergency Shutdown**: If the Vault is locked (timer, duress, or manual logout), an Angular `effect` triggers an immediate shutdown of the Tor process and clears all messaging buffers from memory.
-3. **Signature Verification**: Incoming messages are verified against the sender's public key in real-time using the **Web Crypto API**.
-
-```mermaid
-sequenceDiagram
-    participant V as Vault (Unlocked)
-    participant S as P2P Service
-    participant T as Tor Manager
-    participant N as Outer Network
-
-    V->>S: Provide Private/Public Keys
-    S->>T: Start Hidden Service
-    T-->>S: Assign .onion Address
-    S->>N: Broadcast Presence
-    
-    Note over S,N: Messaging Active
-    
-    V->>S: [EVENT] Vault Locked
-    S->>T: Terminate Process Immediately
-    S->>S: Purge Message Buffers
-    T-->>N: Service Offline
-```
+### 8.2 Startup Verification
+When Darkstar launches, before it instantiates any UI windows, the core process calculates the SHA-256 signature of its own local bundle files and compares them against the signed `integrity.json`.
+- **Match:** The app continues normal execution.
+- **Fail:** The app triggers an uncatchable exception, surfaces an Error Dialog to the user, and forcibly terminates its own execution, protecting the user's Secret Vault from a potentially hijacked GUI.
 
 ---
 
@@ -274,20 +234,15 @@ Darkstar now supports WebAuthn for unlocking the vault, allowing for passwordles
 
 ---
 
-## 11. P2P File Transfer ("DarkDrop") & Reputation
+## 11. Time-Lock Encryption (Verifiable Delay Functions)
 
-### 11.1 DarkDrop Protocol
-Files are too large to send as single JSON payloads over Tor. DarkDrop implements a chunked streaming protocol:
-1.  **FILE_START**: Metadata (Name, Size, ID) sent to Receiver. Receiver opens a write stream.
-2.  **FILE_CHUNK**: 16KB Base64-encoded chunks sent sequentially.
-3.  **FILE_END**: Signals completion. Receiver closes stream.
+Darkstar allows highly sensitive notes to be cryptographically bound by "Time". This ensures that even if an attacker successfully gains access to physical hardware and extracts a user's master password (e.g., via coercion), they still mathematically cannot decrypt specific Time-Locked notes until a specific physical duration of high constraint computation has elapsed.
 
-**Security**:
-*   **Path Sanitization**: Filenames are strictly sanitized (`path.basename`) to prevent Directory Traversal attacks.
-*   **Consent**: Transfers currently auto-accept from *Trusted* peers (future improvement: manual accept).
+### 11.1 Key Generation via Delay
+Instead of deriving the note's symmetric key directly using standard entropy, the `TimeLockService` utilizes a simple continuous constraint loop:
+*   A 256-bit random high-entropy `seed` is generated.
+*   The `seed` is iteratively hashed in a single-threaded tight loop utilizing `CryptoJS.SHA256(previousHash)`.
+*   Depending on the locked time interval (e.g. 5 minutes, 1 hour), the loop will run Millions to Billions of times (`iterations = seconds * HashFactor`).
 
-### 11.2 Decentralized Reputation (Trust Graph)
-A localized "Web of Trust" stored entirely within the encrypted vault.
-*   **Trust Score**: 0 (Untrusted) to 100 (Trusted).
-*   **Storage**: `VaultTrustNode` objects in the vault JSON.
-*   **Visual Indicators**: The UI displays trust badges (Shield icons) based on the local score, helping users distinguish verified contacts from strangers.
+### 11.2 Storage Constraints
+The note JSON only stores the `seed` and `iterations`, not the final `key`. Upon access request, the UI must display a specialized locked state. The user must instruct the platform to begin resolving the computational hash chain in chunks back up to the exact `iteration` before the encryption key is revealed and the AES-CBC mechanism can unlock the specific payload.

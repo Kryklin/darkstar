@@ -62,9 +62,6 @@ export const routes: Routes = [
     path: 'vault',
     loadComponent: () => import('./components/vault/vault.component').then((m) => m.VaultComponent),
   },
-  {
-    path: 'p2p',
-    loadComponent: () => import('./components/p2p/p2p.component').then((m) => m.P2pComponent),
-  },
+
   { path: '', redirectTo: 'home', pathMatch: 'full' },
 ];

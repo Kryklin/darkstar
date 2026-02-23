@@ -9,11 +9,12 @@ import { MaterialModule } from '../../../modules/material/material';
 import { CryptService } from '../../../services/crypt';
 import { SteganographyService } from '../../../services/steganography.service';
 import { VirtualKeyboard } from '../../virtual-keyboard/virtual-keyboard';
+import { QrReceiver } from '../qr-receiver/qr-receiver';
 
 @Component({
   selector: 'app-shared-decrypt',
   standalone: true,
-  imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule, VirtualKeyboard],
+  imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule, VirtualKeyboard, QrReceiver],
   templateUrl: './decrypt.html',
   styleUrl: './decrypt.scss',
 })
@@ -32,6 +33,8 @@ export class SharedDecryptComponent {
   inputType: 'text' | 'file' = 'text';
   fileName = '';
   isFileProcessing = false;
+  
+  showQrReceiver = false;
 
   virtualKeyboardEnabled = false;
 
@@ -113,6 +116,14 @@ export class SharedDecryptComponent {
       reader.readAsText(file);
     }
   }
+  
+  onQrScanned(payload: string) {
+      if (payload) {
+          this.firstFormGroup.controls['encryptedData'].setValue(payload);
+          this.showQrReceiver = false;
+          this.snackBar.open('Optical payload successfully received!', 'Close', { duration: 3000 });
+      }
+  }
 
   async copyFromClipboard(field: string) {
     const text = await navigator.clipboard.readText();
@@ -168,6 +179,7 @@ export class SharedDecryptComponent {
     this.virtualKeyboardEnabled = false;
     this.inputType = 'text';
     this.fileName = '';
+    this.showQrReceiver = false;
   }
 
   onVirtualKeyPress(key: string) {

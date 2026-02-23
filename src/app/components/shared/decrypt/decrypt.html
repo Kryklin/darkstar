@@ -47,6 +47,29 @@
                   <mat-error>Encrypted data is required.</mat-error>
                 }
               </mat-form-field>
+              
+              @if (inputType === 'text') {
+                  <div class="qr-receive-section" style="margin: 16px 0; padding: 16px; background: rgba(0, 145, 234, 0.05); border-radius: 8px; border: 1px solid rgba(0, 145, 234, 0.2);">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h3 style="margin: 0; display: flex; align-items: center; color: var(--mat-sys-primary);">
+                                <mat-icon style="margin-right: 8px;">qr_code_scanner</mat-icon> Air-Gapped Optical Transfer
+                            </h3>
+                            <p class="hint-text" style="margin: 4px 0 0 0;">Scan an animated payload from another device's screen.</p>
+                        </div>
+                        <button mat-stroked-button color="primary" (click)="showQrReceiver = !showQrReceiver; $event.preventDefault()">
+                            <mat-icon>{{ showQrReceiver ? 'close' : 'qr_code' }}</mat-icon>
+                            {{ showQrReceiver ? 'Close Scanner' : 'Open Camera' }}
+                        </button>
+                    </div>
+                    
+                    @if (showQrReceiver) {
+                        <div style="margin-top: 16px;">
+                            <app-qr-receiver (payloadReceived)="onQrScanned($event)"></app-qr-receiver>
+                        </div>
+                    }
+                  </div>
+              }
 
               <div class="stepper-buttons">
                 <button mat-button matStepperNext>Next</button>
