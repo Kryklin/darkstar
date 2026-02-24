@@ -1,4 +1,4 @@
-import { Component, inject, ElementRef, ViewChild, HostListener, OnDestroy, AfterViewInit, OnInit } from '@angular/core';
+import { Component, inject, ElementRef, ViewChild, HostListener, OnDestroy, AfterViewInit, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,6 +6,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Theme } from '../../services/theme';
 import packageJson from '../../../../package.json';
 import { UpdateService } from '../../services/update';
+import { TerminalComponent } from './terminal/terminal';
 
 interface Enemy {
   x: number;
@@ -43,7 +44,7 @@ interface Particle {
 
 @Component({
   selector: 'app-home',
-  imports: [CommonModule, MatCardModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [CommonModule, MatCardModule, MatIconModule, MatProgressSpinnerModule, TerminalComponent],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })
@@ -54,6 +55,14 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
 
   @ViewChild('matrixCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
   private canvasContext!: CanvasRenderingContext2D;
+
+  isElectron = !!window.electronAPI;
+  integrityPassed = signal(false);
+
+  // --- Easter Eggs ---
+  showTerminal = false;
+  private sudoSequence = ['s', 'u', 'd', 'o'];
+  private sudoIndex = 0;
 
   // --- Easter Egg Game State ---
   mode: 'NONE' | 'GAME' | 'MATRIX' = 'NONE';
@@ -97,6 +106,11 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnInit() {
     this.updateService.checkForUpdates();
+    if (this.isElectron) {
+      window.electronAPI.checkIntegrity().then((result) => {
+        this.integrityPassed.set(result);
+      });
+    }
   }
 
   ngAfterViewInit() {
@@ -137,7 +151,21 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
       event.preventDefault();
     }
 
+    // Ignore sequence trackers if terminal is already open
+    if (this.showTerminal) return;
+
     this.keys.add(event.key);
+
+    // Terminal Sudo Tracker
+    if (event.key.toLowerCase() === this.sudoSequence[this.sudoIndex]) {
+      this.sudoIndex++;
+      if (this.sudoIndex === this.sudoSequence.length) {
+        this.openTerminal();
+        this.sudoIndex = 0;
+      }
+    } else {
+      this.sudoIndex = 0;
+    }
 
     // Konami Code Tracker
     if (event.key === this.konamiCode[this.konamiIndex]) {
@@ -181,6 +209,14 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
       this.mode = 'GAME';
       setTimeout(() => this.startGame(), 100);
     }
+  }
+  
+  openTerminal() {
+    this.showTerminal = true;
+  }
+  
+  closeTerminal() {
+    this.showTerminal = false;
   }
 
   toggleMatrix() {

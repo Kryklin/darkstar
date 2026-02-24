@@ -151,14 +151,6 @@
           </div>
         </a>
       </mat-nav-list>
-
-      <div class="sidebar-footer verify-shield" [class.verified]="integrityPassed()">
-        <mat-icon class="shield-icon">{{ integrityPassed() ? 'verified_user' : 'security' }}</mat-icon>
-        <div class="shield-text">
-          <span class="shield-title">App Integrity</span>
-          <span class="shield-status">{{ integrityPassed() ? 'Verified & Secure' : 'Authenticating...' }}</span>
-        </div>
-      </div>
     </div>
   </mat-sidenav>
   <mat-sidenav-content>

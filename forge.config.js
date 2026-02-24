@@ -6,9 +6,7 @@ module.exports = {
   packagerConfig: {
     asar: true,
     icon: path.resolve(__dirname, 'public/favicon'),
-    extraResource: [
-      path.resolve(__dirname, 'resources/extra/tor'),
-    ],
+    extraResource: [],
   },
   rebuildConfig: {},
   makers: [

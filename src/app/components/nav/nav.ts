@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatDrawerMode } from '@angular/material/sidenav';
@@ -17,7 +17,7 @@ import { MaterialModule } from '../../modules/material/material';
     MaterialModule,
   ],
 })
-export class Nav implements OnInit {
+export class Nav {
   theme = inject(Theme);
   updateService = inject(UpdateService);
   isElectron = !!window.electronAPI;
@@ -25,13 +25,6 @@ export class Nav implements OnInit {
   hasBackdrop = true;
 
   expandedSections = new Set<string>();
-  integrityPassed = signal(false);
-
-  async ngOnInit() {
-    if (this.isElectron) {
-      this.integrityPassed.set(await window.electronAPI.checkIntegrity());
-    }
-  }
 
   toggleSection(section: string) {
     // If it's a top-level category (e.g., 'encryption'), we might want to toggle it independently

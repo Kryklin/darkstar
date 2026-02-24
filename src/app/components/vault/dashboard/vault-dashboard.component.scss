@@ -134,3 +134,48 @@ h4[matListItemTitle] { font-weight: 400; margin-bottom: 4px; font-size: 0.95rem;
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+.locking-overlay, .locked-state {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    height: 100%;
+    padding: 40px;
+    animation: fadeIn 0.4s ease-out;
+
+    mat-progress-spinner {
+        margin-bottom: 30px;
+    }
+
+    h3, h2 {
+        margin-bottom: 12px;
+        font-weight: 300;
+        letter-spacing: 1px;
+        color: var(--glass-text);
+    }
+
+    p {
+        color: var(--glass-text-muted);
+        max-width: 500px;
+        margin-bottom: 24px;
+        line-height: 1.6;
+    }
+
+    .lock-warn {
+        font-size: 11px;
+        color: var(--mat-sys-error);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        opacity: 0.8;
+    }
+
+    .huge-icon {
+        font-size: 80px;
+        width: 80px;
+        height: 80px;
+        margin-bottom: 24px;
+        color: rgba(var(--mat-sys-primary-rgb), 0.2);
+    }
+}

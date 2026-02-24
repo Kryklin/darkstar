@@ -6,8 +6,7 @@
     <mat-card-content>
       <h3>Description</h3>
       <p>
-        Darkstar is a next-generation decentralized communication and secure storage suite. It combines military-grade encryption for your personal data with an anonymous, peer-to-peer messaging
-        network powered by Tor.
+        Darkstar is a next-generation decentralized communication and secure storage suite. It combines military-grade encryption for your personal data with advanced obfuscation, anti-tamper security, and Air-Gapped transfer protocols.
       </p>
 
       <h3>Key Features</h3>
@@ -18,29 +17,39 @@
           <p>Your identity is a unique ECDSA keypair generated securely within your vault. No central servers, no emails, just pure mathematics.</p>
         </div>
         <div class="feature-item">
-          <span class="material-icons feature-icon">hub</span>
-          <h4>Tor P2P Messaging</h4>
-          <p>Communicate anonymously across the Tor network. Messages are end-to-end signed and verified using your cryptographic identity.</p>
-        </div>
-        <div class="feature-item">
           <span class="material-icons feature-icon">lock_person</span>
           <h4>Secure Vault</h4>
           <p>Store notes, files, and secrets with multi-layered encryption. Your data is only accessible when you unlock your secure vault.</p>
         </div>
         <div class="feature-item">
+          <span class="material-icons feature-icon">verified</span>
+          <h4>App Integrity Checks</h4>
+          <p>Cryptographic verification of the application payload on startup prevents malicious modifications or supply-chain injection.</p>
+        </div>
+        <div class="feature-item">
+          <span class="material-icons feature-icon">qr_code_scanner</span>
+          <h4>Air-Gapped QR Protocol</h4>
+          <p>Optically transmit and receive AES-encrypted payloads directly over webcam between isolated laptops and mobile devices.</p>
+        </div>
+        <div class="feature-item">
+          <span class="material-icons feature-icon">hourglass_empty</span>
+          <h4>Time-Lock Encryption</h4>
+          <p>Secure notes can be mathematically locked using a Verifiable Delay Function (VDF), guaranteeing they remain encrypted for a set time.</p>
+        </div>
+        <div class="feature-item">
+          <span class="material-icons feature-icon">phone_iphone</span>
+          <h4>Capacitor Mobile Native</h4>
+          <p>Full cross-platform support. Darkstar compiles into native Android (APK) and iOS (IPA) apps while sharing 100% of the logic.</p>
+        </div>
+        <div class="feature-item">
           <span class="material-icons feature-icon">security</span>
           <h4>Anti-Forensic Protection</h4>
-          <p>Sensitive data is cleared from memory after use, and P2P services automatically shut down when the vault is locked.</p>
+          <p>Sensitive data is explicitly wiped from system memory after use using strict Uint8Array buffers.</p>
         </div>
         <div class="feature-item">
           <span class="material-icons feature-icon">wifi_off</span>
           <h4>Offline-First Design</h4>
-          <p>Core encryption features work entirely offline. You choose when to connect to the P2P network.</p>
-        </div>
-        <div class="feature-item">
-          <span class="material-icons feature-icon">verified_user</span>
-          <h4>Open Source & Auditable</h4>
-          <p>Fully open-source codebase. Review the code yourself or have it audited by security professionals.</p>
+          <p>Core cryptographic features and stealth exports work entirely offline, eliminating network attack vectors.</p>
         </div>
       </div>
 
@@ -49,7 +58,7 @@
         <div class="tech-chips">
           <span class="chip">Electron</span>
           <span class="chip">Angular 21</span>
-          <span class="chip">Tor</span>
+          <span class="chip">Capacitor</span>
           <span class="chip">Web Crypto API</span>
           <span class="chip">TypeScript</span>
           <span class="chip">SCSS</span>

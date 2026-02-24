@@ -9,6 +9,18 @@
         <mat-card-title class="app-title glitch-on-hover" data-text="DARKSTAR">DARKSTAR</mat-card-title>
         <mat-card-subtitle>Created by Victor Kane</mat-card-subtitle>
       </mat-card-header>
+
+      <div class="verify-shield" [class.verified]="integrityPassed()">
+        <div class="shield-icon-wrapper">
+          <mat-icon class="shield-icon">{{ integrityPassed() ? 'verified_user' : 'security' }}</mat-icon>
+          <div class="pulse-ring"></div>
+        </div>
+        <div class="shield-text">
+          <span class="shield-title">Application Integrity</span>
+          <span class="shield-status">{{ integrityPassed() ? 'Verified & Secure' : 'Authenticating...' }}</span>
+        </div>
+        <div class="shine"></div>
+      </div>
     </mat-card>
 
     <footer class="footer">
@@ -60,4 +72,8 @@
       </div>
     </footer>
   </div>
+  
+  @if (showTerminal) {
+    <app-terminal (terminalClosed)="closeTerminal()"></app-terminal>
+  }
 </div>
