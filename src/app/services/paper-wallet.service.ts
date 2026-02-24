@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import jsPDF from 'jspdf';
+import * as QRCode from 'qrcode';
 
 export interface PaperWalletMetadata {
   protocolTitle: string;
@@ -12,12 +13,18 @@ export interface PaperWalletMetadata {
 })
 export class PaperWalletService {
   /**
-   * Generates and downloads a PDF paper wallet.
+   * Generates and downloads two separate PDF paper wallet documents.
    * @param encryptedData The main encrypted payload.
    * @param reverseKey The reverse compression key.
    * @param metadata Protocol metadata for the header.
    */
   async generate(encryptedData: string, reverseKey: string, metadata: PaperWalletMetadata): Promise<void> {
+    const timestamp = Date.now();
+    await this.generateDocument('Part 1: Encrypted Payload', encryptedData, metadata, `darkstar-passport-payload-${timestamp}.pdf`);
+    await this.generateDocument('Part 2: Reverse Key', reverseKey, metadata, `darkstar-passport-key-${timestamp}.pdf`);
+  }
+
+  private async generateDocument(title: string, content: string, metadata: PaperWalletMetadata, filename: string): Promise<void> {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -47,52 +54,90 @@ export class PaperWalletService {
 
     addHeader();
 
-    const writeSection = (title: string, content: string, font: 'courier' | 'helvetica' = 'courier') => {
-      // Section Header
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      
-      // Check if title fits, else new page
-      if (y + 10 > pageHeight - margin) {
+    // Section Header
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, margin, y);
+    y += 10;
+
+    // --- Generate and Document QR Codes ---
+    // If the content is too large for a single QR code, we split it into multiple QR codes.
+    // A standard QR code can safely hold dense data, but for better scannability via webcam,
+    // we'll use a chunk size of 500 characters.
+    const CHUNK_SIZE = 500;
+    const numChunks = Math.ceil(content.length / CHUNK_SIZE);
+
+    for (let i = 0; i < numChunks; i++) {
+        const chunk = content.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        try {
+            // Format for compatibility with the QrReceiver scanner component
+            const qrContent = `DS_QR|${i}|${numChunks}|${chunk}`;
+
+            const qrDataUrl = await QRCode.toDataURL(qrContent, {
+                errorCorrectionLevel: 'M',
+                margin: 2,
+                width: 200
+            });
+            
+            const qrWidth = 40; // Rendered width on PDF in mm
+            
+            // Layout QR codes gracefully (maybe next to each other or wrapping)
+            // For simplicity, we'll draw them sequentially downwards, or in a grid
+            // Let's draw up to 3 side-by-side if there are multiple.
+            const codesPerRow = 4;
+            const xPos = margin + ((i % codesPerRow) * (qrWidth + 5));
+            
+            // Check if we need to move to a new line of QR codes
+            if (i > 0 && i % codesPerRow === 0) {
+                y += qrWidth + 5;
+            }
+
+            // Check if we need a new page for QR codes
+            if (y + qrWidth > pageHeight - margin) {
+                doc.addPage();
+                addHeader();
+            }
+
+            doc.addImage(qrDataUrl, 'PNG', xPos, y, qrWidth, qrWidth);
+            
+            // If it's the last QR code in the loop, advance Y coordinate past the row
+            if (i === numChunks - 1) {
+                y += qrWidth + 10;
+            }
+        } catch (e) {
+            console.error('QR Gen Failed', e);
+            if (i === numChunks - 1) {
+              y += 10;
+            }
+        }
+    }
+
+    // --- Write Raw Text Content ---
+    doc.setFontSize(10);
+    doc.setFont('courier', 'normal');
+    
+    // Add secondary "Raw Text" header
+    doc.setFont('helvetica', 'bold');
+    doc.text('Raw Text Backup:', margin, y);
+    y += 7;
+    doc.setFont('courier', 'normal');
+
+    const splitText = doc.splitTextToSize(content, contentWidth);
+    const lineHeight = 5;
+
+    for (const line of splitText) {
+      if (y + lineHeight > pageHeight - margin - 50) { // Keep space for footer
         doc.addPage();
         addHeader();
       }
-      doc.text(title, margin, y);
-      y += 10;
-
-      // Section Content
-      doc.setFontSize(10);
-      doc.setFont(font, 'normal');
-      
-      const splitText = doc.splitTextToSize(content, contentWidth);
-      const lineHeight = 5;
-
-      for (const line of splitText) {
-        if (y + lineHeight > pageHeight - margin) {
-          doc.addPage();
-          addHeader();
-          // Re-print section title context if split? Maybe overkill, just continue.
-        }
-        doc.text(line, margin, y);
-        y += lineHeight;
-      }
-      
-      y += 10; // Spacing after section
-    };
-
-    // 1. Encrypted Data
-    writeSection('1. Encrypted Data', encryptedData);
-
-    // Divider
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 10;
-
-    // 2. Reverse Key
-    writeSection('2. Reverse Key', reverseKey);
+      doc.text(line, margin, y);
+      y += lineHeight;
+    }
+    
+    y += 10; // Spacing after section
 
     // --- Footer / Instructions ---
-    if (y + 40 > pageHeight - margin) {
+    if (y + 50 > pageHeight - margin) {
       doc.addPage();
       addHeader();
     }
@@ -104,8 +149,8 @@ export class PaperWalletService {
 
     const instructions = [
       'IMPORTANT RECOVERY INSTRUCTIONS:',
-      '1. This document contains your encrypted backup.',
-      "2. To recover, you will need BOTH the 'Encrypted Data' and the 'Reverse Key'.",
+      `1. This document contains ${title}.`,
+      "2. To recover, you will need BOTH the 'Encrypted Payload' and the 'Reverse Key' documents.",
       '3. You must also remember your Encryption Password. It is NOT printed here.',
       '4. Keep this document in a physically secure location (e.g., fireproof safe).',
       '5. Do not share this document.',
@@ -121,6 +166,7 @@ export class PaperWalletService {
     }
 
     // Save
-    doc.save(`darkstar-paper-wallet-${Date.now()}.pdf`);
+    doc.save(filename);
   }
 }
+

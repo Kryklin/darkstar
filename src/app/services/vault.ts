@@ -14,14 +14,6 @@ export interface VaultIdentity {
   privateKey: JsonWebKey;
 }
 
-export interface VaultTrustNode {
-  onionAddress: string;
-  score: number; // 0-100
-  lastInteracted: number;
-  alias?: string;
-  notes?: string;
-}
-
 import { TimeLockMetadata } from './timelock.service';
 
 export interface VaultNote {
@@ -43,7 +35,6 @@ interface VaultStorage {
 interface VaultContent {
   notes: VaultNote[];
   identity?: VaultIdentity;
-  trustGraph?: VaultTrustNode[];
 }
 
 import { VaultFileService } from './vault-file.service';
@@ -74,9 +65,6 @@ export class VaultService {
   
   /** The user's cryptographic identity keys. */
   public identity = signal<VaultIdentity | null>(null);
-
-  /** Trust Graph (Reputation System) */
-  public trustGraph = signal<VaultTrustNode[]>([]);
 
   /** Holds transient error messages related to vault operations. */
   public error = signal<string | null>(null);
@@ -240,7 +228,6 @@ export class VaultService {
               // Modern format: VaultContent object
               notes = parsed.notes || [];
               identity = parsed.identity || null;
-              this.trustGraph.set(parsed.trustGraph || []);
           }
       } catch {
           throw new Error('Vault Data Corruption: Unable to parse decrypted content.');
@@ -294,8 +281,7 @@ export class VaultService {
 
     const content: VaultContent = {
         notes: this.notes(),
-        identity: this.identity()!,
-        trustGraph: this.trustGraph()
+        identity: this.identity()!
     };
 
     const notesData = JSON.stringify(content);

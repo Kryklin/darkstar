@@ -4,7 +4,8 @@ import sys
 import os
 
 # Configuration
-PROJECT_ROOT = r"c:\darkstar\darkstar-encry"
+# Dynamic path resolution to handle different drives/environments
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANGS = ["go", "rust", "python", "node"]
 
 CLI_COMMANDS = {
