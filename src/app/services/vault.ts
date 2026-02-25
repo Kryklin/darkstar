@@ -334,6 +334,26 @@ export class VaultService {
       return id.publicKey;
   }
 
+  public exportIdentity(): string {
+      const id = this.identity();
+      if (!id) throw new Error('Vault locked');
+      return JSON.stringify(id);
+  }
+
+  public async importIdentity(identityJson: string): Promise<boolean> {
+      try {
+          const parsed: VaultIdentity = JSON.parse(identityJson);
+          if (parsed && parsed.publicKey && parsed.privateKey) {
+              this.identity.set(parsed);
+              await this.save();
+              return true;
+          }
+      } catch (e) {
+          console.error("Failed to parse identity JSON", e);
+      }
+      return false;
+  }
+
   public async signMessage(message: string): Promise<string> {
       const id = this.identity();
       if (!id) throw new Error('Vault locked');

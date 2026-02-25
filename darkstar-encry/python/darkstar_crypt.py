@@ -30,40 +30,70 @@ class DarkstarCrypt:
             h = 0
             for char in seed_str:
                 code = ord(char)
-                # Math.imul(h ^ code, 3432918353)
                 h = (h ^ code) & 0xFFFFFFFF
                 h = (h * 3432918353) & 0xFFFFFFFF
-                
-                # h = (h << 13) | (h >>> 19)
                 h = ((h << 13) & 0xFFFFFFFF) | (h >> 19)
             
-            # Initial mixing
-            # Math.imul(h ^ (h >>> 16), 2246822507)
             h = (h ^ (h >> 16)) & 0xFFFFFFFF
             h = (h * 2246822507) & 0xFFFFFFFF
-            
-            # Math.imul(h ^ (h >>> 13), 3266489909)
             h = (h ^ (h >> 13)) & 0xFFFFFFFF
             h = (h * 3266489909) & 0xFFFFFFFF
-            
-            # h ^= h >>> 16
             h = (h ^ (h >> 16)) & 0xFFFFFFFF
             return h
 
         def next(self):
-            # state = (state + 0x6d2b79f5) | 0
             self.state = (self.state + 0x6d2b79f5) & 0xFFFFFFFF
             
-            # t = Math.imul(state ^ (state >>> 15), 1 | state)
             t = (self.state ^ (self.state >> 15)) & 0xFFFFFFFF
             t = (t * (1 | self.state)) & 0xFFFFFFFF
             
-            # t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
             term2 = (t ^ (t >> 7)) & 0xFFFFFFFF
             term2 = (term2 * (61 | t)) & 0xFFFFFFFF
             t = ((t + term2) & 0xFFFFFFFF) ^ t
             
-            # ((t ^ (t >>> 14)) >>> 0) / 4294967296
+            res = (t ^ (t >> 14)) & 0xFFFFFFFF
+            return res / 4294967296.0
+
+    class ChaCha20PRNG:
+        def __init__(self, seed_str):
+            import hashlib
+            hash_hex = hashlib.sha256(seed_str.encode('utf-8')).hexdigest()
+            self.state = [0]*8
+            for i in range(8):
+                self.state[i] = int(hash_hex[i * 8 : (i + 1) * 8], 16)
+            self.counter = 0
+
+        def next(self):
+            self.counter += 1
+            x = self.state[(self.counter + 0) % 8]
+            y = self.state[(self.counter + 3) % 8]
+            z = self.state[(self.counter + 5) % 8]
+
+            x = (x + y + self.counter) & 0xFFFFFFFF
+            z = (z ^ x) & 0xFFFFFFFF
+            z = ((z << 16) & 0xFFFFFFFF) | (z >> 16)
+
+            y = (y + z + (self.counter * 3)) & 0xFFFFFFFF
+            x = (x ^ y) & 0xFFFFFFFF
+            x = ((x << 12) & 0xFFFFFFFF) | (x >> 20)
+
+            self.state[(self.counter + 0) % 8] = x
+            self.state[(self.counter + 3) % 8] = y
+            self.state[(self.counter + 5) % 8] = z
+
+            def to_signed(val):
+                val &= 0xFFFFFFFF
+                return val - 0x100000000 if val >= 0x80000000 else val
+
+            def js_imul(a, b):
+                return (to_signed(a) * to_signed(b)) & 0xFFFFFFFF
+                
+            t = (x + y + z) & 0xFFFFFFFF
+            t = js_imul(t ^ (t >> 15), 1 | t)
+            
+            term2 = js_imul(t ^ (t >> 7), 61 | t)
+            t = ((t + term2) & 0xFFFFFFFF) ^ t
+
             res = (t ^ (t >> 14)) & 0xFFFFFFFF
             return res / 4294967296.0
 
@@ -392,28 +422,88 @@ class DarkstarCrypt:
             print(f"Decryption failed: {e}")
             return None
 
+    def _encrypt_aes256_gcm(self, data_bytes, password, iterations):
+        backend = default_backend()
+        salt = os.urandom(self.SALT_SIZE_BYTES)
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=self.KEY_SIZE,
+            salt=salt,
+            iterations=iterations,
+            backend=backend
+        )
+        key = kdf.derive(self._to_bytes(password))
+        iv = os.urandom(12) 
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=backend)
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(data_bytes) + encryptor.finalize()
+        tag = encryptor.tag
+        
+        salt_hex = salt.hex()
+        iv_hex = iv.hex()
+        cipher_b64 = base64.b64encode(ciphertext + tag).decode('ascii')
+        
+        if isinstance(key, bytearray):
+            for i in range(len(key)): key[i] = 0
+            
+        return salt_hex + iv_hex + cipher_b64
+
+    def _decrypt_aes256_gcm(self, transit_message, password, iterations):
+        try:
+            salt_hex = transit_message[:32]
+            iv_hex = transit_message[32:56] 
+            encrypted_base64 = transit_message[56:]
+            
+            salt = bytes.fromhex(salt_hex)
+            iv = bytes.fromhex(iv_hex)
+            payload = base64.b64decode(encrypted_base64)
+            ciphertext = payload[:-16]
+            tag = payload[-16:]
+            
+            backend = default_backend()
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=self.KEY_SIZE,
+                salt=salt,
+                iterations=iterations,
+                backend=backend
+            )
+            key = kdf.derive(self._to_bytes(password))
+            
+            cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag), backend=backend)
+            decryptor = cipher.decryptor()
+            data = decryptor.update(ciphertext) + decryptor.finalize()
+            
+            if isinstance(key, bytearray):
+                for i in range(len(key)): key[i] = 0
+                
+            return data
+        except Exception as e:
+            print(f"GCM Decryption failed: {e}")
+            return None
+
     # --- Public API ---
-    def encrypt(self, mnemonic, password):
+    def encrypt(self, mnemonic, password, force_v2=False, force_v1=False):
         words = mnemonic.split(' ')
         obfuscated_words = []
         reverse_key = []
         
         password_bytes = self._to_bytes(password)
         
+        is_v3 = not force_v2 and not force_v1 
+        
         def prng_factory(s_str):
-            mul = self.Mulberry32(s_str)
-            return mul # has .next()
+            if is_v3:
+                return self.ChaCha20PRNG(s_str)
+            return self.Mulberry32(s_str)
         
         for word in words:
             current_word_bytes = self._to_bytes(word)
             
-            # Select functions
-            # Dynamic function shuffle based on seed
             selected_functions = list(range(len(self.obfuscation_functions_v2)))
             
-            # Use Mulberry32 for shuffling selection
             seed_for_selection = password + word
-            rng_sel = self.Mulberry32(seed_for_selection)
+            rng_sel = prng_factory(seed_for_selection)
             
             for i in range(len(selected_functions) - 1, 0, -1):
                 rand = rng_sel.next()
@@ -422,18 +512,28 @@ class DarkstarCrypt:
 
             word_reverse_key = []
             
-            # Checksum
+            cycle_depth = len(selected_functions)
+            if is_v3:
+                import hashlib
+                depth_hash = hashlib.sha256(seed_for_selection.encode('utf-8')).hexdigest()
+                depth_val = int(depth_hash[:4], 16)
+                cycle_depth = 12 + (depth_val % 53)
+            
             checksum = self._generate_checksum(selected_functions)
             checksum_str = str(checksum)
             checksum_bytes = self._to_bytes(checksum_str)
             combined_seed = password_bytes + checksum_bytes
             
-            for func_index in selected_functions:
+            for i in range(cycle_depth):
+                func_index = selected_functions[i % len(selected_functions)]
+                
+                if i >= 12 and func_index in [2, 3, 8, 9]:
+                    func_index = (func_index + 2) % 12
+                    
                 func = self.obfuscation_functions_v2[func_index]
                 is_seeded = func_index >= 6
                 seed = combined_seed if is_seeded else None
                 
-                # Execute
                 if is_seeded:
                     current_word_bytes = func(current_word_bytes, seed=seed, prng_factory=prng_factory)
                 else:
@@ -457,16 +557,24 @@ class DarkstarCrypt:
         # Python:
         base64_content = base64.b64encode(final_blob).decode('ascii')
         
-        # AES Encrypt
-        encrypted_content = self._encrypt_aes256(self._to_bytes(base64_content), password, self.ITERATIONS_V2)
+        if is_v3:
+            encrypted_content = self._encrypt_aes256_gcm(self._to_bytes(base64_content), password, self.ITERATIONS_V2)
+        else:
+            encrypted_content = self._encrypt_aes256(self._to_bytes(base64_content), password, self.ITERATIONS_V2)
         
+        if force_v1:
+            return {
+                "encryptedData": encrypted_content,
+                "reverseKey": base64.b64encode(json.dumps(reverse_key).encode('utf-8')).decode('ascii')
+            }
+            
         result_obj = {
-            "v": 2,
+            "v": 3 if is_v3 else 2,
             "data": encrypted_content
         }
         
         # Compress Reverse Key
-        encoded_reverse_key = self._pack_reverse_key(reverse_key)
+        encoded_reverse_key = self._pack_reverse_key(reverse_key, is_v3=is_v3)
         
         return {
             "encryptedData": json.dumps(result_obj, separators=(',', ':')),
@@ -478,28 +586,45 @@ class DarkstarCrypt:
         try:
             # Try to decode as packed binary first (or auto-detect)
             decoded_b64 = base64.b64decode(reverse_key_b64)
+            # Detect protocol version from the data header first if possible, or pass hint
+            is_header_v3 = False
+            if encrypted_data_raw.strip().startswith('{'):
+                try:
+                    parsed = json.loads(encrypted_data_raw)
+                    if parsed.get('v') == 3:
+                        is_header_v3 = True
+                except:
+                    pass
+
             if decoded_b64.strip().startswith(b'['):
                 reverse_key = json.loads(decoded_b64)
             else:
-                reverse_key = self._unpack_reverse_key(reverse_key_b64)
+                reverse_key = self._unpack_reverse_key(reverse_key_b64, is_v3=is_header_v3)
         except Exception:
              # Fallback
-             reverse_key = self._unpack_reverse_key(reverse_key_b64)
+             reverse_key = self._unpack_reverse_key(reverse_key_b64, is_v3=False)
 
         # 2. Check header
-        iterations = self.ITERATIONS_V2 # Default V2
+        iterations = self.ITERATIONS_V2 
         encrypted_content = encrypted_data_raw
+        is_v3 = False
         
         try:
             if encrypted_data_raw.strip().startswith('{'):
                 parsed = json.loads(encrypted_data_raw)
                 if parsed.get('v') == 2 and parsed.get('data'):
                     encrypted_content = parsed['data']
+                elif parsed.get('v') == 3 and parsed.get('data'):
+                    encrypted_content = parsed['data']
+                    is_v3 = True
         except:
             pass 
 
         # 3. Decrypt AES
-        decrypted_base64_bytes = self._decrypt_aes256(encrypted_content, password, iterations)
+        if is_v3:
+            decrypted_base64_bytes = self._decrypt_aes256_gcm(encrypted_content, password, iterations)
+        else:
+            decrypted_base64_bytes = self._decrypt_aes256(encrypted_content, password, iterations)
         
         if not decrypted_base64_bytes:
             raise ValueError("AES decryption failed Check password")
@@ -516,6 +641,8 @@ class DarkstarCrypt:
         password_bytes = self._to_bytes(password)
         
         def prng_factory(s_str):
+            if is_v3:
+                return self.ChaCha20PRNG(s_str)
             return self.Mulberry32(s_str)
         
         offset = 0
@@ -524,7 +651,6 @@ class DarkstarCrypt:
         while offset < len(full_blob):
             if word_index >= len(reverse_key): break
             
-            # Read Length
             length = (full_blob[offset] << 8) | full_blob[offset + 1]
             offset += 2
             
@@ -533,8 +659,10 @@ class DarkstarCrypt:
             
             word_reverse_list = reverse_key[word_index]
             
-            # Setup Seed
-            checksum = self._generate_checksum(word_reverse_list)
+            # Setup Seed (only core first 12 cycles determine checksum)
+            unique_set = list(dict.fromkeys(word_reverse_list[:12]))
+            checksum = self._generate_checksum(unique_set)
+            
             checksum_str = str(checksum)
             checksum_bytes = self._to_bytes(checksum_str)
             combined_seed = password_bytes + checksum_bytes
@@ -558,39 +686,42 @@ class DarkstarCrypt:
         return " ".join(deobfuscated_words)
 
     # --- Compression Helpers ---
-    def _pack_reverse_key(self, reverse_key):
+    def _pack_reverse_key(self, reverse_key, is_v3=True):
         buffer = bytearray()
         for word_key in reverse_key:
-            if len(word_key) != 12:
-                raise ValueError("Cannot pack reverse key: invalid word length")
-            
-            for i in range(0, 12, 2):
+            if is_v3:
+                buffer.append(len(word_key))
+            for i in range(0, len(word_key), 2):
                 high = word_key[i] & 0x0F
-                low = word_key[i+1] & 0x0F
+                low = word_key[i+1] & 0x0F if i+1 < len(word_key) else 0x00
                 buffer.append((high << 4) | low)
         
         return base64.b64encode(buffer).decode('ascii')
 
-    def _unpack_reverse_key(self, b64):
+    def _unpack_reverse_key(self, b64, is_v3=True):
         buffer = base64.b64decode(b64)
         reverse_key = []
         
-        # 6 bytes per word
-        if len(buffer) % 6 != 0:
-             raise ValueError("Invalid packed key length")
-             
-        word_count = len(buffer) // 6
         offset = 0
-        
-        for w in range(word_count):
+        while offset < len(buffer):
+            word_len = 12 # Legacy V2
+            if is_v3:
+                word_len = buffer[offset]
+                offset += 1
+            
+            num_bytes_to_read = (word_len + 1) // 2
+            
             word_key = []
-            for i in range(6):
+            for i in range(num_bytes_to_read):
+                if offset >= len(buffer): break
                 byte = buffer[offset]
                 offset += 1
                 high = (byte >> 4) & 0x0F
                 low = byte & 0x0F
                 word_key.append(high)
-                word_key.append(low)
+                if len(word_key) < word_len:
+                    word_key.append(low)
+                    
             reverse_key.append(word_key)
             
         return reverse_key
@@ -599,7 +730,22 @@ if __name__ == "__main__":
     import sys
     args = sys.argv[1:]
     if not args:
-        print("Usage: python darkstar_crypt.py <encrypt|decrypt|test> ...")
+        print("Usage: python darkstar_crypt.py [--v3|--v2|--v1] <encrypt|decrypt|test> ...")
+        sys.exit(0)
+
+    force_v2 = False
+    force_v1 = False
+    if args[0] == '--v2':
+        force_v2 = True
+        args = args[1:]
+    elif args[0] == '--v1':
+        force_v1 = True
+        args = args[1:]
+    elif args[0] == '--v3':
+        args = args[1:]
+        
+    if not args:
+        print("Usage: python darkstar_crypt.py [--v3|--v2|--v1] <encrypt|decrypt|test> ...")
         sys.exit(0)
 
     command = args[0]
@@ -607,13 +753,13 @@ if __name__ == "__main__":
 
     if command == 'encrypt':
         if len(args) < 3:
-            print("Usage: encrypt <mnemonic> <password>")
+            print("Usage: [flags] encrypt <mnemonic> <password>")
             sys.exit(1)
-        res = crypt.encrypt(args[1], args[2])
+        res = crypt.encrypt(args[1], args[2], force_v2=force_v2, force_v1=force_v1)
         print(json.dumps(res))
     elif command == 'decrypt':
         if len(args) < 4:
-            print("Usage: decrypt <data> <rk> <password>")
+            print("Usage: [flags] decrypt <data> <rk> <password>")
             sys.exit(1)
         res = crypt.decrypt(args[1], args[2], args[3])
         print(res)

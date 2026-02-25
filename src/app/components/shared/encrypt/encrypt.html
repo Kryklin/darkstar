@@ -28,6 +28,9 @@
 
             <div class="security-controls" style="margin-bottom: 16px">
               <mat-slide-toggle [(ngModel)]="virtualKeyboardEnabled" [ngModelOptions]="{ standalone: true }" color="primary"> Enable Anti-Keylogger Mode </mat-slide-toggle>
+              @if (vaultService.isUnlocked()) {
+                  <mat-slide-toggle [(ngModel)]="useVaultSignature" [ngModelOptions]="{ standalone: true }" color="accent" style="margin-left: 16px;"> Bind to Vault Signature </mat-slide-toggle>
+              }
             </div>
 
             <mat-form-field class="full-width">

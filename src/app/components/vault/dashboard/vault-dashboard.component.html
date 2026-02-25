@@ -211,6 +211,14 @@
                         <mat-icon>content_copy</mat-icon>
                     </button>
                 </div>
+                <div class="id-actions" style="margin-top: 16px; display: flex; gap: 8px; justify-content: center;">
+                    <button mat-stroked-button color="accent" (click)="backupIdentity()">
+                        <mat-icon>save_alt</mat-icon> Backup Full Identity
+                    </button>
+                    <button mat-stroked-button color="primary" (click)="recoverIdentity()">
+                        <mat-icon>settings_backup_restore</mat-icon> Recover from Clipboard
+                    </button>
+                </div>
                 <div class="id-footer">
                     <span class="secure-badge"><mat-icon>lock</mat-icon> SECURE ENCLAVE</span>
                 </div>

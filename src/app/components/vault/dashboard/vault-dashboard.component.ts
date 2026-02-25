@@ -10,6 +10,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { GenericDialog } from '../../dialogs/generic-dialog/generic-dialog';
 import { MatChipInputEvent } from '@angular/material/chips';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
+import { Clipboard } from '@angular/cdk/clipboard';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-vault-dashboard',
@@ -23,6 +25,8 @@ export class VaultDashboardComponent {
   fileService = inject(VaultFileService);
   timeLockService = inject(TimeLockService);
   dialog = inject(MatDialog);
+  clipboard = inject(Clipboard);
+  snackBar = inject(MatSnackBar);
   notes = this.vaultService.notes;
   selectedNote = signal<VaultNote | null>(null);
 
@@ -77,6 +81,45 @@ export class VaultDashboardComponent {
           navigator.clipboard.writeText(JSON.stringify(key, null, 2));
       } catch (e) {
           console.error(e);
+      }
+  }
+
+  backupIdentity() {
+      try {
+          const identityJson = this.vaultService.exportIdentity();
+          const copySuccess = this.clipboard.copy(identityJson);
+          if (copySuccess) {
+              this.snackBar.open('Identity Backed Up to Clipboard! KEEP THIS SECURE. DO NOT SHARE.', 'OK', {
+                  duration: 8000,
+                  panelClass: ['legacy-warning-snackbar']
+              });
+          } else {
+              this.snackBar.open('Failed to copy to clipboard.', 'Close', { duration: 3000 });
+          }
+      } catch (e) {
+          console.error(e);
+          this.snackBar.open('Error backing up identity.', 'Close', { duration: 3000 });
+      }
+  }
+
+  async recoverIdentity() {
+      try {
+          const clipboardText = await navigator.clipboard.readText();
+          if (!clipboardText) {
+              this.snackBar.open('Clipboard is empty.', 'Close', { duration: 3000 });
+              return;
+          }
+
+          const success = await this.vaultService.importIdentity(clipboardText);
+          if (success) {
+              this.loadIdentity();
+              this.snackBar.open('Identity recovered successfully!', 'OK', { duration: 3000 });
+          } else {
+              this.snackBar.open('Invalid identity format in clipboard.', 'Close', { duration: 3000 });
+          }
+      } catch (e) {
+          console.error(e);
+          this.snackBar.open('Failed to attach clipboard content.', 'Close', { duration: 3000 });
       }
   }
 

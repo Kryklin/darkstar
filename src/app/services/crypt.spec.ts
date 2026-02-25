@@ -32,13 +32,13 @@ describe('CryptService', () => {
   });
 
   describe('Main Encryption/Decryption Logic', () => {
-    it('should encrypt and then decrypt a mnemonic phrase successfully (V2 format)', async () => {
+    it('should encrypt and then decrypt a mnemonic phrase successfully (V3 format)', async () => {
       // Encrypt the mnemonic
       const { encryptedData, reverseKey } = await service.encrypt(testMnemonic, testPassword);
 
-      // Verify V2 format (JSON envelope)
+      // Verify V3 format (JSON envelope)
       const parsedData = JSON.parse(encryptedData);
-      expect(parsedData.v).toBe(2);
+      expect(parsedData.v).toBe(3);
       expect(parsedData.data).toBeDefined();
 
       // Ensure the output looks encrypted and valid
@@ -64,8 +64,8 @@ describe('CryptService', () => {
     });
 
     it('should use "§" as a delimiter in the intermediate obfuscated string', async () => {
-      // Spy on the internal AES256 encryption method
-      const spy = spyOn(service, 'encryptAES256Async').and.callThrough();
+      // Spy on the internal AES-GCM encryption method
+      const spy = spyOn(service, 'encryptAES256GCMAsync').and.callThrough();
 
       await service.encrypt(testMnemonic, testPassword);
 

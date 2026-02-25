@@ -6,6 +6,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Theme } from '../../services/theme';
 import packageJson from '../../../../package.json';
 import { UpdateService } from '../../services/update';
+import { LayoutService } from '../../services/layout.service';
 import { TerminalComponent } from './terminal/terminal';
 
 interface Enemy {
@@ -51,6 +52,7 @@ interface Particle {
 export class Home implements OnInit, OnDestroy, AfterViewInit {
   theme = inject(Theme);
   updateService = inject(UpdateService);
+  layoutService = inject(LayoutService);
   version = packageJson.version;
 
   @ViewChild('matrixCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
@@ -213,6 +215,7 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
   
   openTerminal() {
     this.showTerminal = true;
+    this.layoutService.sidenavOpen.set(false);
   }
   
   closeTerminal() {

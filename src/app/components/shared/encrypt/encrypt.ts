@@ -11,6 +11,7 @@ import { VirtualKeyboard } from '../../virtual-keyboard/virtual-keyboard';
 import { EntropyMeter } from '../../entropy-meter/entropy-meter';
 import { PaperWalletService } from '../../../services/paper-wallet.service';
 import { QrSender } from '../qr-sender/qr-sender';
+import { VaultService } from '../../../services/vault';
 
 @Component({
   selector: 'app-shared-encrypt',
@@ -58,6 +59,10 @@ export class SharedEncryptComponent implements OnInit {
   // QR Air-Gap Transfer
   showQrSender = false;
 
+  // Vault Binding
+  useVaultSignature = false;
+  vaultService = inject(VaultService);
+
   private _formBuilder = inject(FormBuilder);
   private cryptService = inject(CryptService);
   private steganographyService = inject(SteganographyService);
@@ -89,7 +94,18 @@ export class SharedEncryptComponent implements OnInit {
   async onSubmit() {
     if (this.firstFormGroup.valid && this.secondFormGroup.valid) {
       const mnemonic = this.firstFormGroup.controls['firstCtrl'].value;
-      const password = this.secondFormGroup.controls['secondCtrl'].value;
+      let password = this.secondFormGroup.controls['secondCtrl'].value;
+
+      if (this.useVaultSignature && this.vaultService.isUnlocked()) {
+          const id = this.vaultService.identity();
+          if (id && id.privateKey && id.privateKey.d) {
+              password = password + id.privateKey.d;
+          } else {
+              console.error("Failed to retrieve vault identity private key");
+              this.snackBar.open('Failed to bind encryption to Vault. Identity missing.', 'Close', { duration: 3000 });
+              return;
+          }
+      }
 
       const { encryptedData, reverseKey } = await this.cryptService.encrypt(mnemonic, password);
 
@@ -234,6 +250,7 @@ export class SharedEncryptComponent implements OnInit {
     this.stealthNoiseLevel = 0.5;
     this.virtualKeyboardEnabled = false;
     this.showQrSender = false;
+    this.useVaultSignature = false;
   }
 
   onVirtualKeyPress(key: string) {

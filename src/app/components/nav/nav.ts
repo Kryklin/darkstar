@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { MatDrawerMode } from '@angular/material/sidenav';
 import { Theme } from '../../services/theme';
 import { UpdateService } from '../../services/update';
+import { LayoutService } from '../../services/layout.service';
 import { MaterialModule } from '../../modules/material/material';
 
 @Component({
@@ -20,6 +21,7 @@ import { MaterialModule } from '../../modules/material/material';
 export class Nav {
   theme = inject(Theme);
   updateService = inject(UpdateService);
+  layoutService = inject(LayoutService);
   isElectron = !!window.electronAPI;
   sidenavMode: MatDrawerMode = 'over';
   hasBackdrop = true;

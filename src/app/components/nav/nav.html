@@ -1,5 +1,7 @@
 <mat-sidenav-container class="sidenav-container" [hasBackdrop]="false">
-  <mat-sidenav #drawer class="sidenav" fixedInViewport [mode]="'side'">
+  <mat-sidenav #drawer class="sidenav" fixedInViewport [mode]="'side'" 
+               [opened]="layoutService.sidenavOpen()" 
+               (openedChange)="layoutService.sidenavOpen.set($event)">
     <div class="sidebar-content">
       <div class="sidebar-header-box">
         <img [src]="theme.logoSrc()" alt="DARKSTAR" class="sidebar-logo" />

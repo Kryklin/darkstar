@@ -10,6 +10,7 @@ import { CryptService } from '../../../services/crypt';
 import { SteganographyService } from '../../../services/steganography.service';
 import { VirtualKeyboard } from '../../virtual-keyboard/virtual-keyboard';
 import { QrReceiver } from '../qr-receiver/qr-receiver';
+import { VaultService } from '../../../services/vault';
 
 @Component({
   selector: 'app-shared-decrypt',
@@ -37,6 +38,10 @@ export class SharedDecryptComponent {
   showQrReceiver = false;
 
   virtualKeyboardEnabled = false;
+  
+  // Vault Binding
+  useVaultSignature = false;
+  vaultService = inject(VaultService);
 
   private fb = inject(FormBuilder);
   private cryptService = inject(CryptService);
@@ -141,7 +146,20 @@ export class SharedDecryptComponent {
     if (this.firstFormGroup.valid && this.secondFormGroup.valid && this.thirdFormGroup.valid) {
       const { encryptedData } = this.firstFormGroup.value;
       const { reverseKey } = this.secondFormGroup.value;
-      const { password } = this.thirdFormGroup.value;
+      let password = this.thirdFormGroup.controls['password'].value;
+
+      if (this.useVaultSignature && this.vaultService.isUnlocked()) {
+          const id = this.vaultService.identity();
+          if (id && id.privateKey && id.privateKey.d) {
+              password = password + id.privateKey.d;
+          } else {
+              console.error("Failed to retrieve vault identity private key");
+              this.error = "Decryption failed: Unable to compute vault signature (Identity missing).";
+              this.showResult = true;
+              return;
+          }
+      }
+
       try {
         const result = await this.cryptService.decrypt(encryptedData, reverseKey, password);
         this.decryptedMnemonic = result.decrypted;
@@ -180,6 +198,7 @@ export class SharedDecryptComponent {
     this.inputType = 'text';
     this.fileName = '';
     this.showQrReceiver = false;
+    this.useVaultSignature = false;
   }
 
   onVirtualKeyPress(key: string) {

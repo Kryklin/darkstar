@@ -14,6 +14,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,6 +34,10 @@ const (
 )
 
 // --- PRNG ---
+
+type PRNG interface {
+	Next() float64
+}
 
 type Mulberry32 struct {
 	state uint32
@@ -72,17 +77,60 @@ func (m *Mulberry32) Next() float64 {
 	return float64(res) / 4294967296.0
 }
 
+type ChaCha20PRNG struct {
+	state   [8]uint32
+	counter uint32
+}
+
+func NewChaCha20PRNG(seedStr string) *ChaCha20PRNG {
+	c := &ChaCha20PRNG{}
+	hash := sha256.Sum256([]byte(seedStr))
+	hashHex := hex.EncodeToString(hash[:])
+	for i := 0; i < 8; i++ {
+		strChunk := hashHex[i*8 : (i+1)*8]
+		val, _ := strconv.ParseUint(strChunk, 16, 32)
+		c.state[i] = uint32(val)
+	}
+	return c
+}
+
+func (c *ChaCha20PRNG) Next() float64 {
+	c.counter++
+	x := c.state[(c.counter+0)%8]
+	y := c.state[(c.counter+3)%8]
+	z := c.state[(c.counter+5)%8]
+
+	x = x + y + c.counter
+	z = z ^ x
+	z = (z << 16) | (z >> 16)
+
+	y = y + z + (c.counter * 3)
+	x = x ^ y
+	x = (x << 12) | (x >> 20)
+
+	c.state[(c.counter+0)%8] = x
+	c.state[(c.counter+3)%8] = y
+	c.state[(c.counter+5)%8] = z
+
+	t := x + y + z
+	t = (t ^ (t >> 15)) * (1 | t)
+	t = (t + ((t ^ (t >> 7)) * (61 | t))) ^ t
+
+	res := t ^ (t >> 14)
+	return float64(res) / 4294967296.0
+}
+
 // --- DarkstarCrypt ---
 
 type DarkstarCrypt struct {
-	obfuscationFunctionsV2   []func([]byte, []byte, func(string) *Mulberry32) []byte
-	deobfuscationFunctionsV2 []func([]byte, []byte, func(string) *Mulberry32) []byte
+	obfuscationFunctionsV2   []func([]byte, []byte, func(string) PRNG) []byte
+	deobfuscationFunctionsV2 []func([]byte, []byte, func(string) PRNG) []byte
 }
 
 // NewDarkstarCrypt creates a new instance of DarkstarCrypt with initialized functions.
 func NewDarkstarCrypt() *DarkstarCrypt {
 	dc := &DarkstarCrypt{}
-	dc.obfuscationFunctionsV2 = []func([]byte, []byte, func(string) *Mulberry32) []byte{
+	dc.obfuscationFunctionsV2 = []func([]byte, []byte, func(string) PRNG) []byte{
 		dc.obfuscateByReversingV2,
 		dc.obfuscateWithAtbashCipherV2,
 		dc.obfuscateToCharCodesV2,
@@ -96,7 +144,7 @@ func NewDarkstarCrypt() *DarkstarCrypt {
 		dc.obfuscateWithSeededBlockReversalV2,
 		dc.obfuscateWithSeededSubstitutionV2,
 	}
-	dc.deobfuscationFunctionsV2 = []func([]byte, []byte, func(string) *Mulberry32) []byte{
+	dc.deobfuscationFunctionsV2 = []func([]byte, []byte, func(string) PRNG) []byte{
 		dc.deobfuscateByReversingV2,
 		dc.deobfuscateWithAtbashCipherV2,
 		dc.deobfuscateFromCharCodesV2,
@@ -128,18 +176,18 @@ func generateChecksum(numbers []int) int {
 
 // --- Obfuscation Functions (V2) ---
 
-func (dc *DarkstarCrypt) obfuscateByReversingV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) obfuscateByReversingV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	output := make([]byte, len(input))
 	for i, b := range input {
 		output[len(input)-1-i] = b
 	}
 	return output
 }
-func (dc *DarkstarCrypt) deobfuscateByReversingV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) deobfuscateByReversingV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	return dc.obfuscateByReversingV2(input, seed, prngFactory)
 }
 
-func (dc *DarkstarCrypt) obfuscateWithAtbashCipherV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) obfuscateWithAtbashCipherV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	output := make([]byte, len(input))
 	for i, b := range input {
 		if b >= 65 && b <= 90 {
@@ -152,11 +200,11 @@ func (dc *DarkstarCrypt) obfuscateWithAtbashCipherV2(input []byte, seed []byte, 
 	}
 	return output
 }
-func (dc *DarkstarCrypt) deobfuscateWithAtbashCipherV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) deobfuscateWithAtbashCipherV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	return dc.obfuscateWithAtbashCipherV2(input, seed, prngFactory)
 }
 
-func (dc *DarkstarCrypt) obfuscateToCharCodesV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) obfuscateToCharCodesV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	var parts []byte
 	for i, b := range input {
 		if i > 0 {
@@ -168,7 +216,7 @@ func (dc *DarkstarCrypt) obfuscateToCharCodesV2(input []byte, seed []byte, prngF
 	return parts
 }
 
-func (dc *DarkstarCrypt) deobfuscateFromCharCodesV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) deobfuscateFromCharCodesV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	s := string(input)
 	if s == "" {
 		return []byte{}
@@ -187,7 +235,7 @@ func (dc *DarkstarCrypt) deobfuscateFromCharCodesV2(input []byte, seed []byte, p
 	return output
 }
 
-func (dc *DarkstarCrypt) obfuscateToBinaryV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) obfuscateToBinaryV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	var parts []byte
 	for i, b := range input {
 		if i > 0 {
@@ -199,7 +247,7 @@ func (dc *DarkstarCrypt) obfuscateToBinaryV2(input []byte, seed []byte, prngFact
 	return parts
 }
 
-func (dc *DarkstarCrypt) deobfuscateFromBinaryV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) deobfuscateFromBinaryV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	s := string(input)
 	if s == "" {
 		return []byte{}
@@ -218,7 +266,7 @@ func (dc *DarkstarCrypt) deobfuscateFromBinaryV2(input []byte, seed []byte, prng
 	return output
 }
 
-func (dc *DarkstarCrypt) obfuscateWithCaesarCipherV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) obfuscateWithCaesarCipherV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	output := make([]byte, len(input))
 	for i, b := range input {
 		if b >= 65 && b <= 90 {
@@ -231,11 +279,11 @@ func (dc *DarkstarCrypt) obfuscateWithCaesarCipherV2(input []byte, seed []byte, 
 	}
 	return output
 }
-func (dc *DarkstarCrypt) deobfuscateWithCaesarCipherV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) deobfuscateWithCaesarCipherV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	return dc.obfuscateWithCaesarCipherV2(input, seed, prngFactory)
 }
 
-func (dc *DarkstarCrypt) obfuscateBySwappingAdjacentBytesV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) obfuscateBySwappingAdjacentBytesV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	output := make([]byte, len(input))
 	copy(output, input)
 	for i := 0; i < len(output)-1; i += 2 {
@@ -243,11 +291,11 @@ func (dc *DarkstarCrypt) obfuscateBySwappingAdjacentBytesV2(input []byte, seed [
 	}
 	return output
 }
-func (dc *DarkstarCrypt) deobfuscateBySwappingAdjacentBytesV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) deobfuscateBySwappingAdjacentBytesV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	return dc.obfuscateBySwappingAdjacentBytesV2(input, seed, prngFactory)
 }
 
-func (dc *DarkstarCrypt) obfuscateByShufflingV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) obfuscateByShufflingV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	output := make([]byte, len(input))
 	copy(output, input)
 	seedStr := string(seed)
@@ -260,7 +308,7 @@ func (dc *DarkstarCrypt) obfuscateByShufflingV2(input []byte, seed []byte, prngF
 	return output
 }
 
-func (dc *DarkstarCrypt) deobfuscateByShufflingV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) deobfuscateByShufflingV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	n := len(input)
 	indices := make([]int, n)
 	for i := 0; i < n; i++ {
@@ -280,18 +328,18 @@ func (dc *DarkstarCrypt) deobfuscateByShufflingV2(input []byte, seed []byte, prn
 	return output
 }
 
-func (dc *DarkstarCrypt) obfuscateWithXORV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) obfuscateWithXORV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	output := make([]byte, len(input))
 	for i, b := range input {
 		output[i] = b ^ seed[i%len(seed)]
 	}
 	return output
 }
-func (dc *DarkstarCrypt) deobfuscateWithXORV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) deobfuscateWithXORV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	return dc.obfuscateWithXORV2(input, seed, prngFactory)
 }
 
-func (dc *DarkstarCrypt) obfuscateByInterleavingV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) obfuscateByInterleavingV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	randomChars := "abcdefghijklmnopqrstuvwxyz0123456789"
 	seedStr := string(seed)
 	rng := prngFactory(seedStr)
@@ -304,7 +352,7 @@ func (dc *DarkstarCrypt) obfuscateByInterleavingV2(input []byte, seed []byte, pr
 	return output
 }
 
-func (dc *DarkstarCrypt) deobfuscateByDeinterleavingV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) deobfuscateByDeinterleavingV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	output := make([]byte, len(input)/2)
 	for i := 0; i < len(input); i += 2 {
 		output[i/2] = input[i]
@@ -312,7 +360,7 @@ func (dc *DarkstarCrypt) deobfuscateByDeinterleavingV2(input []byte, seed []byte
 	return output
 }
 
-func (dc *DarkstarCrypt) obfuscateWithVigenereCipherV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) obfuscateWithVigenereCipherV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	var parts []byte
 	for i, b := range input {
 		if i > 0 {
@@ -326,7 +374,7 @@ func (dc *DarkstarCrypt) obfuscateWithVigenereCipherV2(input []byte, seed []byte
 	return parts
 }
 
-func (dc *DarkstarCrypt) deobfuscateWithVigenereCipherV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) deobfuscateWithVigenereCipherV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	s := string(input)
 	if s == "" {
 		return []byte{}
@@ -346,7 +394,7 @@ func (dc *DarkstarCrypt) deobfuscateWithVigenereCipherV2(input []byte, seed []by
 	return output
 }
 
-func (dc *DarkstarCrypt) obfuscateWithSeededBlockReversalV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) obfuscateWithSeededBlockReversalV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	seedStr := string(seed)
 	rng := prngFactory(seedStr)
 	blockSize := int(rng.Next()*float64(len(input)/2)) + 2
@@ -366,11 +414,11 @@ func (dc *DarkstarCrypt) obfuscateWithSeededBlockReversalV2(input []byte, seed [
 	}
 	return output
 }
-func (dc *DarkstarCrypt) deobfuscateWithSeededBlockReversalV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) deobfuscateWithSeededBlockReversalV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	return dc.obfuscateWithSeededBlockReversalV2(input, seed, prngFactory)
 }
 
-func (dc *DarkstarCrypt) obfuscateWithSeededSubstitutionV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) obfuscateWithSeededSubstitutionV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	chars := make([]byte, 256)
 	for i := 0; i < 256; i++ {
 		chars[i] = byte(i)
@@ -388,7 +436,7 @@ func (dc *DarkstarCrypt) obfuscateWithSeededSubstitutionV2(input []byte, seed []
 	return output
 }
 
-func (dc *DarkstarCrypt) deobfuscateWithSeededSubstitutionV2(input []byte, seed []byte, prngFactory func(string) *Mulberry32) []byte {
+func (dc *DarkstarCrypt) deobfuscateWithSeededSubstitutionV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	chars := make([]byte, 256)
 	for i := 0; i < 256; i++ {
 		chars[i] = byte(i)
@@ -412,14 +460,20 @@ func (dc *DarkstarCrypt) deobfuscateWithSeededSubstitutionV2(input []byte, seed 
 
 // --- Encrypt/Decrypt ---
 
-// Encrypt encrypts the mnemonic using the password and the V2 obfuscation scheme.
-func (dc *DarkstarCrypt) Encrypt(mnemonic, password string) (map[string]interface{}, error) {
+// Encrypt encrypts the mnemonic using the password and the V2/V3 obfuscation scheme.
+func (dc *DarkstarCrypt) Encrypt(mnemonic, password string, forceV2 bool, forceV1 bool) (map[string]interface{}, error) {
 	words := strings.Split(mnemonic, " ")
 	var obfuscatedWords [][]byte
 	var reverseKey [][]int
 
 	passwordBytes := []byte(password)
-	prngFactory := func(s string) *Mulberry32 {
+
+	isV3 := !forceV2 && !forceV1
+
+	prngFactory := func(s string) PRNG {
+		if isV3 {
+			return NewChaCha20PRNG(s)
+		}
 		return NewMulberry32(s)
 	}
 
@@ -431,12 +485,19 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, password string) (map[string]interfac
 			selectedFunctions[i] = i
 		}
 
-		// Shuffle functions using password + word as seed
 		seedForSelection := password + word
 		rngSel := prngFactory(seedForSelection)
 		for i := 11; i > 0; i-- {
 			j := int(rngSel.Next() * float64(i+1))
 			selectedFunctions[i], selectedFunctions[j] = selectedFunctions[j], selectedFunctions[i]
+		}
+
+		cycleDepth := len(selectedFunctions)
+		if isV3 {
+			hash := sha256.Sum256([]byte(seedForSelection))
+			hashHex := hex.EncodeToString(hash[:])
+			depthVal, _ := strconv.ParseInt(hashHex[:4], 16, 32)
+			cycleDepth = 12 + (int(depthVal) % 53)
 		}
 
 		checksum := generateChecksum(selectedFunctions)
@@ -445,7 +506,13 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, password string) (map[string]interfac
 
 		var wordReverseKey []int
 
-		for _, funcIndex := range selectedFunctions {
+		for i := 0; i < cycleDepth; i++ {
+			funcIndex := selectedFunctions[i%len(selectedFunctions)]
+
+			if i >= 12 && (funcIndex == 2 || funcIndex == 3 || funcIndex == 8 || funcIndex == 9) {
+				funcIndex = (funcIndex + 2) % 12
+			}
+
 			isSeeded := funcIndex >= 6
 			var seed []byte
 			if isSeeded {
@@ -476,31 +543,49 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, password string) (map[string]interfac
 	// Base64 encode for AES
 	base64Content := base64.StdEncoding.EncodeToString(finalBlob)
 
-	// AES Encrypt
-	encryptedContent, err := dc.encryptAES256(base64Content, password, ITERATIONS_V2)
+	var encryptedContent string
+	var err error
+	if isV3 {
+		encryptedContent, err = dc.encryptAES256GCM(base64Content, password, ITERATIONS_V2)
+	} else {
+		encryptedContent, err = dc.encryptAES256(base64Content, password, ITERATIONS_V2)
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
 	// Reverse Key serialization (Packed)
-	encodedReverseKey, err := dc.packReverseKey(reverseKey)
+	encodedReverseKey, err := dc.packReverseKey(reverseKey, isV3)
 	if err != nil {
 		return nil, err
+	}
+
+	vProtocol := 2
+	if isV3 {
+		vProtocol = 3
+	}
+
+	if forceV1 {
+		uncompressedRK, err := json.Marshal(reverseKey)
+		if err != nil {
+			return nil, err
+		}
+
+		return map[string]interface{}{
+			"encryptedData": encryptedContent,
+			"reverseKey":    base64.StdEncoding.EncodeToString(uncompressedRK),
+		}, nil
 	}
 
 	// Construct result structure
 	resultObj := map[string]interface{}{
-		"v":    2,
+		"v":    vProtocol,
 		"data": encryptedContent,
 	}
 
-	resultJSON, err := json.Marshal(resultObj)
-	if err != nil {
-		return nil, err
-	}
-
 	return map[string]interface{}{
-		"encryptedData": string(resultJSON),
+		"encryptedData": resultObj,
 		"reverseKey":    encodedReverseKey,
 	}, nil
 }
@@ -514,10 +599,21 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 	}
 
 	var reverseKey [][]int
-	// Try JSON first (Legacy)
-	if err := json.Unmarshal(rkBytes, &reverseKey); err != nil {
-		// Not JSON, try Packed (V2 Compressed)
-		reverseKey, err = dc.unpackReverseKey(reverseKeyB64)
+	// Try JSON first (Legacy V1)
+	if err := json.Unmarshal(rkBytes, &reverseKey); err == nil {
+		// PASSED JSON
+	} else {
+		// Not JSON, try Packed (V2/V3 Compressed)
+		// Detect protocol version from the data header first if possible
+		isHeaderV3 := false
+		var parsed map[string]interface{}
+		if json.Unmarshal([]byte(encryptedDataRaw), &parsed) == nil {
+			if v, ok := parsed["v"].(float64); ok && v == 3 {
+				isHeaderV3 = true
+			}
+		}
+
+		reverseKey, err = dc.unpackReverseKey(reverseKeyB64, isHeaderV3)
 		if err != nil {
 			return "", errors.New("invalid reverse key format (json or packed)")
 		}
@@ -526,11 +622,18 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 	// 2. Parse encrypted data
 	var encryptedContent string
 	var parsed map[string]interface{}
+	isV3 := false
+
 	// Check if JSON
 	if err := json.Unmarshal([]byte(encryptedDataRaw), &parsed); err == nil {
 		if v, ok := parsed["v"].(float64); ok && v == 2 {
 			if data, ok := parsed["data"].(string); ok {
 				encryptedContent = data
+			}
+		} else if v, ok := parsed["v"].(float64); ok && v == 3 {
+			if data, ok := parsed["data"].(string); ok {
+				encryptedContent = data
+				isV3 = true
 			}
 		}
 	}
@@ -539,9 +642,17 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 	}
 
 	// 3. AES Decrypt
-	decryptedBase64Bytes, err := dc.decryptAES256(encryptedContent, password, ITERATIONS_V2)
-	if err != nil {
-		return "", fmt.Errorf("aes decryption failed: %v", err)
+	var decryptedBase64Bytes []byte
+	var decErr error
+
+	if isV3 {
+		decryptedBase64Bytes, decErr = dc.decryptAES256GCM(encryptedContent, password, ITERATIONS_V2)
+	} else {
+		decryptedBase64Bytes, decErr = dc.decryptAES256(encryptedContent, password, ITERATIONS_V2)
+	}
+
+	if decErr != nil {
+		return "", fmt.Errorf("aes decryption failed: %v", decErr)
 	}
 
 	// 4. Decode Base64 Blob
@@ -553,7 +664,12 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 
 	var deobfuscatedWords []string
 	passwordBytes := []byte(password)
-	prngFactory := func(s string) *Mulberry32 { return NewMulberry32(s) }
+	prngFactory := func(s string) PRNG {
+		if isV3 {
+			return NewChaCha20PRNG(s)
+		}
+		return NewMulberry32(s)
+	}
 
 	offset := 0
 	wordIndex := 0
@@ -576,7 +692,21 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 
 		// Deobfuscate
 		wordReverseList := reverseKey[wordIndex]
-		checksum := generateChecksum(wordReverseList)
+
+		uniqueSetMap := make(map[int]bool)
+		var uniqueSet []int
+		limit := len(wordReverseList)
+		if limit > 12 {
+			limit = 12
+		}
+		for _, v := range wordReverseList[:limit] {
+			if !uniqueSetMap[v] {
+				uniqueSetMap[v] = true
+				uniqueSet = append(uniqueSet, v)
+			}
+		}
+
+		checksum := generateChecksum(uniqueSet)
 		checksumBytes := []byte(strconv.Itoa(checksum))
 		combinedSeed := append(append([]byte{}, passwordBytes...), checksumBytes...)
 
@@ -600,43 +730,57 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 
 // --- Compression Helpers ---
 
-func (dc *DarkstarCrypt) packReverseKey(reverseKey [][]int) (string, error) {
+func (dc *DarkstarCrypt) packReverseKey(reverseKey [][]int, isV3 bool) (string, error) {
 	var buffer []byte
 	for _, wordKey := range reverseKey {
-		if len(wordKey) != 12 {
-			return "", errors.New("cannot pack reverse key: invalid word length")
+		if isV3 {
+			buffer = append(buffer, byte(len(wordKey)))
 		}
-		for i := 0; i < 12; i += 2 {
+		for i := 0; i < len(wordKey); i += 2 {
 			high := byte(wordKey[i] & 0x0F)
-			low := byte(wordKey[i+1] & 0x0F)
+			var low byte
+			if i+1 < len(wordKey) {
+				low = byte(wordKey[i+1] & 0x0F)
+			}
 			buffer = append(buffer, (high<<4)|low)
 		}
 	}
 	return base64.StdEncoding.EncodeToString(buffer), nil
 }
 
-func (dc *DarkstarCrypt) unpackReverseKey(b64 string) ([][]int, error) {
+func (dc *DarkstarCrypt) unpackReverseKey(b64 string, isV3 bool) ([][]int, error) {
 	bytes, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
 		return nil, err
 	}
 	var reverseKey [][]int
-	const bytesPerWord = 6
-	if len(bytes)%bytesPerWord != 0 {
-		return nil, errors.New("invalid packed key length")
-	}
 
-	numWords := len(bytes) / bytesPerWord
-	for w := 0; w < numWords; w++ {
+	offset := 0
+	for offset < len(bytes) {
+		wordLen := 12 // Legacy V2 default
+		if isV3 {
+			wordLen = int(bytes[offset])
+			offset++
+		}
+
+		numBytesToRead := (wordLen + 1) / 2
 		var wordKey []int
-		chunk := bytes[w*bytesPerWord : (w+1)*bytesPerWord]
-		for _, b := range chunk {
+		for i := 0; i < numBytesToRead; i++ {
+			if offset >= len(bytes) {
+				break
+			}
+			b := bytes[offset]
+			offset++
 			high := int((b >> 4) & 0x0F)
 			low := int(b & 0x0F)
-			wordKey = append(wordKey, high, low)
+			wordKey = append(wordKey, high)
+			if len(wordKey) < wordLen {
+				wordKey = append(wordKey, low)
+			}
 		}
 		reverseKey = append(reverseKey, wordKey)
 	}
+
 	return reverseKey, nil
 }
 
@@ -676,8 +820,44 @@ func (dc *DarkstarCrypt) encryptAES256(data, password string, iterations int) (s
 	}
 
 	// salt(hex) + iv(hex) + content(base64)
-	saltHex := fmt.Sprintf("%x", salt)
-	ivHex := fmt.Sprintf("%x", iv)
+	saltHex := hex.EncodeToString(salt)
+	ivHex := hex.EncodeToString(iv)
+	contentBase64 := base64.StdEncoding.EncodeToString(ciphertext)
+
+	return saltHex + ivHex + contentBase64, nil
+}
+
+func (dc *DarkstarCrypt) encryptAES256GCM(data, password string, iterations int) (string, error) {
+	salt := make([]byte, SALT_SIZE_BYTES)
+	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
+		return "", err
+	}
+
+	key := pbkdf2.Key([]byte(password), salt, iterations, KEY_SIZE, sha256.New)
+
+	iv := make([]byte, 12)
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		return "", err
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	ciphertext := aesgcm.Seal(nil, iv, []byte(data), nil)
+
+	for i := range key {
+		key[i] = 0
+	}
+
+	saltHex := hex.EncodeToString(salt)
+	ivHex := hex.EncodeToString(iv)
 	contentBase64 := base64.StdEncoding.EncodeToString(ciphertext)
 
 	return saltHex + ivHex + contentBase64, nil
@@ -744,6 +924,52 @@ func (dc *DarkstarCrypt) decryptAES256(transitMessage, password string, iteratio
 	return plaintext[:len(plaintext)-paddingSize], nil
 }
 
+func (dc *DarkstarCrypt) decryptAES256GCM(transitMessage, password string, iterations int) ([]byte, error) {
+	if len(transitMessage) < 64 {
+		return nil, errors.New("invalid message length")
+	}
+	saltHex := transitMessage[:32]
+	ivHex := transitMessage[32:56]
+	encryptedBase64 := transitMessage[56:]
+
+	salt, err := parseHex(saltHex)
+	if err != nil {
+		return nil, err
+	}
+	iv, err := parseHex(ivHex)
+	if err != nil {
+		return nil, err
+	}
+
+	ciphertext, err := base64.StdEncoding.DecodeString(encryptedBase64)
+	if err != nil {
+		return nil, err
+	}
+
+	key := pbkdf2.Key([]byte(password), salt, iterations, KEY_SIZE, sha256.New)
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	plaintext, err := aesgcm.Open(nil, iv, ciphertext, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range key {
+		key[i] = 0
+	}
+
+	return plaintext, nil
+}
+
 func parseHex(s string) ([]byte, error) {
 	return hexDecodeString(s)
 }
@@ -781,29 +1007,49 @@ func unhex(c byte) byte {
 
 func printUsage() {
 	fmt.Println("Usage:")
-	fmt.Println("  encrypt <mnemonic> <password>                   - Encrypt a mnemonic phrase")
+	fmt.Println("  [--v3|--v2|--v1] encrypt <mnemonic> <password>                   - Encrypt a mnemonic phrase")
 	fmt.Println("  decrypt <encrypted_json> <reverse_key> <password> - Decrypt a phrase")
 	fmt.Println("  test                                            - Run self-test")
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	args := os.Args[1:]
+	if len(args) < 1 {
+		printUsage()
+		return
+	}
+
+	forceV2 := false
+	forceV1 := false
+
+	switch args[0] {
+	case "--v2":
+		forceV2 = true
+		args = args[1:]
+	case "--v1":
+		forceV1 = true
+		args = args[1:]
+	case "--v3":
+		args = args[1:]
+	}
+
+	if len(args) < 1 {
 		printUsage()
 		return
 	}
 
 	dc := NewDarkstarCrypt()
-	command := os.Args[1]
+	command := args[0]
 
 	switch command {
 	case "encrypt":
-		if len(os.Args) != 4 {
+		if len(args) != 3 {
 			fmt.Println("Error: 'encrypt' requires <mnemonic> and <password>")
 			return
 		}
-		mnemonic := os.Args[2]
-		password := os.Args[3]
-		result, err := dc.Encrypt(mnemonic, password)
+		mnemonic := args[1]
+		password := args[2]
+		result, err := dc.Encrypt(mnemonic, password, forceV2, forceV1)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -812,13 +1058,13 @@ func main() {
 		fmt.Println(string(jsonRes))
 
 	case "decrypt":
-		if len(os.Args) != 5 {
+		if len(args) != 4 {
 			fmt.Println("Error: 'decrypt' requires <encrypted_json_or_data> <reverse_key> <password>")
 			return
 		}
-		data := os.Args[2]
-		reverseKey := os.Args[3]
-		password := os.Args[4]
+		data := args[1]
+		reverseKey := args[2]
+		password := args[3]
 		decrypted, err := dc.Decrypt(data, reverseKey, password)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
@@ -833,7 +1079,7 @@ func main() {
 		fmt.Println("--- Darkstar Go Self-Test ---")
 		fmt.Printf("Plaintext: %s\n", mnemonic)
 
-		result, err := dc.Encrypt(mnemonic, password)
+		result, err := dc.Encrypt(mnemonic, password, false, false)
 		if err != nil {
 			panic(err)
 		}

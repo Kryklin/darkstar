@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { CryptService } from '../../../services/crypt';
 import { VaultService } from '../../../services/vault';
 import { MatIconModule } from '@angular/material/icon';
+import { DragDropModule } from '@angular/cdk/drag-drop';
+import { ZorkEngine } from './zork-engine';
 import packageJson from '../../../../../package.json';
 
 interface TerminalLine {
@@ -16,7 +18,7 @@ interface TerminalLine {
 @Component({
   selector: 'app-terminal',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, DragDropModule],
   templateUrl: './terminal.html',
   styleUrls: ['./terminal.scss']
 })
@@ -35,6 +37,10 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
   history: TerminalLine[] = [];
   commandHistory: string[] = [];
   historyIndex = -1;
+
+  // Game Engine State
+  isGameActive = false;
+  zorkEngine: ZorkEngine | null = null;
 
   ngOnInit() {
     this.isVisible = true;
@@ -86,17 +92,24 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
       
       if (command) {
         this.history.push({ text: command, isCommand: true });
-        this.commandHistory.push(command);
-        this.historyIndex = this.commandHistory.length;
-        await this.processCommand(command);
+        
+        if (this.isGameActive) {
+            await this.handleGameCommand(command);
+        } else {
+            this.commandHistory.push(command);
+            this.historyIndex = this.commandHistory.length;
+            await this.processCommand(command);
+        }
       }
     } else if (event.key === 'ArrowUp') {
+      if (this.isGameActive) return;
       event.preventDefault();
       if (this.historyIndex > 0) {
         this.historyIndex--;
         this.currentInput = this.commandHistory[this.historyIndex];
       }
     } else if (event.key === 'ArrowDown') {
+      if (this.isGameActive) return;
       event.preventDefault();
       if (this.historyIndex < this.commandHistory.length - 1) {
         this.historyIndex++;
@@ -109,7 +122,24 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
       // Ctrl+C cancellation
       this.history.push({ text: this.currentInput + '^C', isCommand: true });
       this.currentInput = '';
+      if (this.isGameActive) {
+          this.isGameActive = false;
+          this.history.push({ text: 'Exiting ZORK session...', isCommand: false });
+      }
     }
+  }
+
+  private async handleGameCommand(input: string) {
+      if (input.toLowerCase() === 'quit' || input.toLowerCase() === 'exit') {
+          this.isGameActive = false;
+          this.history.push({ text: 'You step out of the shadows. Exiting ZORK...', isCommand: false });
+          return;
+      }
+
+      const results = this.zorkEngine!.processInput(input);
+      results.forEach(line => {
+          this.history.push({ text: line, isCommand: false });
+      });
   }
 
   private async processCommand(commandLine: string) {
@@ -125,11 +155,19 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
         this.history.push({ text: '  identity  - Display loaded cryptographic identity', isCommand: false });
         this.history.push({ text: '  encrypt   - Obfuscate text (encrypt <message>)', isCommand: false });
         this.history.push({ text: '  decrypt   - De-obfuscate text (decrypt <payload> <reverseKey>)', isCommand: false });
+        this.history.push({ text: '  zork      - Enter the Darkstar Text Adventure', isCommand: false });
         this.history.push({ text: '  exit/quit - Close terminal', isCommand: false });
         break;
 
       case 'clear':
         this.history = [];
+        break;
+
+      case 'zork':
+        this.isGameActive = true;
+        this.zorkEngine = new ZorkEngine();
+        this.history.push({ text: 'Initializing ZORK Engine [Darkstar Variant]...', isCommand: false });
+        this.handleGameCommand('look');
         break;
 
       case 'whoami':
@@ -142,10 +180,13 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
           this.history.push({ text: 'Please unlock the Secure Vault to load identity.', isCommand: false });
         } else {
           try {
-            // Stub fingerprint for terminal display
-            const pubKey = this.vaultService.getMasterKey() || 'anon-64x9';
+            const vaultId = this.vaultService.identity();
+            let fingerprint = 'unknown';
+            if (vaultId && vaultId.publicKey && vaultId.publicKey.x) {
+                fingerprint = vaultId.publicKey.x.substring(0, 32);
+            }
             this.history.push({ text: 'Status: IDENTITY_LOADED', isCommand: false, isSuccess: true });
-            this.history.push({ text: `Vault Fingerprint: ${pubKey.substring(0, 64)}...`, isCommand: false });
+            this.history.push({ text: `Vault Fingerprint: ${fingerprint}...`, isCommand: false });
           } catch (e) {
             const err = e as Error;
             this.history.push({ text: 'Error retrieving public fingerprint: ' + err.message, isCommand: false, isError: true });
@@ -186,7 +227,15 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
     try {
       this.history.push({ text: 'Encrypting payload with Master Identity Obfuscation Engine...', isCommand: false });
       
-      const { encryptedData, reverseKey } = await this.cryptService.encrypt(message, this.vaultService.getMasterKey()!);
+      let password = this.vaultService.getMasterKey()!;
+      const id = this.vaultService.identity();
+      if (id && id.privateKey && id.privateKey.d) {
+          password += id.privateKey.d;
+      } else {
+          throw new Error('Vault identity missing. Cannot generate bound signature.');
+      }
+      
+      const { encryptedData, reverseKey } = await this.cryptService.encrypt(message, password);
       
       this.history.push({ text: '--- OBFUSCATED PAYLOAD ---', isCommand: false, isSuccess: true });
       this.history.push({ text: encryptedData, isCommand: false });
@@ -215,7 +264,16 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
 
     try {
       this.history.push({ text: 'Attempting de-obfuscation with loaded identities...', isCommand: false });
-      const decryptedResult = await this.cryptService.decrypt(payload, reverseKey, this.vaultService.getMasterKey()!);
+      
+      let password = this.vaultService.getMasterKey()!;
+      const id = this.vaultService.identity();
+      if (id && id.privateKey && id.privateKey.d) {
+          password += id.privateKey.d;
+      } else {
+          throw new Error('Vault identity missing. Cannot generate bound signature.');
+      }
+      
+      const decryptedResult = await this.cryptService.decrypt(payload, reverseKey, password);
       
       this.history.push({ text: '--- DECRYPTED MESSAGE ---', isCommand: false, isSuccess: true });
       this.history.push({ text: decryptedResult.decrypted, isCommand: false });

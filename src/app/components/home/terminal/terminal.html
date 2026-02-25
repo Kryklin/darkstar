@@ -1,6 +1,6 @@
 <div class="terminal-overlay" [class.active]="isVisible" (click)="minimizeTerminal()" (keydown.escape)="minimizeTerminal()" tabindex="-1">
-  <div class="terminal-container" [class.maximized]="isMaximized" (click)="focusInput($event)" (keydown.enter)="focusInput($event)" tabindex="0">
-    <div class="terminal-header" (click)="focusInput($event)" (keydown.enter)="focusInput($event)" tabindex="0">
+  <div class="terminal-container" cdkDrag [cdkDragDisabled]="isMaximized" [class.maximized]="isMaximized" (click)="focusInput($event)" (keydown.enter)="focusInput($event)" tabindex="0">
+    <div class="terminal-header" cdkDragHandle (click)="focusInput($event)" (keydown.enter)="focusInput($event)" tabindex="0">
       <div class="terminal-title">
         <mat-icon inline="true" style="font-size: 14px; margin-right: 5px; vertical-align: text-bottom;">code</mat-icon>
         Windows PowerShell
@@ -14,6 +14,9 @@
     
     <div class="terminal-body" #terminalBody (click)="focusInput($event)" (keydown.enter)="focusInput($event)" tabindex="0">
       <div class="terminal-intro">
+<pre class="ascii-art">
+   DARKSTAR OS
+</pre>
         Windows PowerShell<br/>
         Copyright (C) Microsoft Corporation. All rights reserved.<br/><br/>
         Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows<br/><br/>

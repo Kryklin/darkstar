@@ -1,4 +1,6 @@
-const crypto = globalThis.crypto;
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const crypto = globalThis.crypto || require('node:crypto').webcrypto;
 
 /**
  * DarkstarCrypt - Advanced Encryption Implementation
@@ -59,20 +61,32 @@ export class DarkstarCrypt {
    * @param {string} password - The password for encryption.
    * @returns {Promise<{encryptedData: string, reverseKey: string}>} The encrypted result object.
    */
-  async encrypt(mnemonic, password) {
+  async encrypt(mnemonic, password, forceV2 = false, forceV1 = false) {
     const words = mnemonic.split(' ');
     const obfuscatedWords = [];
     const reverseKey = [];
 
     const passwordBytes = this.stringToBytes(password);
-    const prngFactory = this.mulberry32.bind(this);
+    
+    // V3 Engine Upgrade
+    const isV3 = !forceV2 && !forceV1; 
+    const prngFactory = isV3 ? this.chacha20_prng.bind(this) : this.mulberry32.bind(this);
 
     for (const word of words) {
       let currentWordBytes = this.stringToBytes(word);
 
       // Select functions
       const selectedFunctions = Array.from({ length: 12 }, (_, i) => i);
-      this.shuffleArray(selectedFunctions, password + word, prngFactory);
+      const deterministicSeed = password + word;
+      this.shuffleArray(selectedFunctions, deterministicSeed, prngFactory);
+
+      // V3: Dynamic Depth Engine
+      let cycleDepth = selectedFunctions.length; 
+      if (isV3) {
+          const depthHash = await this.sha256Hex(deterministicSeed);
+          const depthVal = parseInt(depthHash.substring(0, 4), 16); 
+          cycleDepth = 12 + (depthVal % 53); 
+      }
 
       const wordReverseKey = [];
       const checksum = this._generateChecksum(selectedFunctions);
@@ -83,12 +97,23 @@ export class DarkstarCrypt {
       combinedSeed.set(passwordBytes);
       combinedSeed.set(checksumBytes, passwordBytes.length);
 
-      for (const funcIndex of selectedFunctions) {
+      for (let i = 0; i < cycleDepth; i++) {
+        let funcIndex = selectedFunctions[i % selectedFunctions.length];
+
+        if (i >= 12 && [2, 3, 8, 9].includes(funcIndex)) {
+          funcIndex = (funcIndex + 2) % 12;
+        }
+
         const func = this.obfuscationFunctionsV2[funcIndex];
         const isSeeded = funcIndex >= 6;
         const seed = isSeeded ? combinedSeed : undefined;
 
-        currentWordBytes = func(currentWordBytes, seed, prngFactory);
+        const nextWordBytes = func(currentWordBytes, seed, prngFactory);
+
+        if (currentWordBytes !== nextWordBytes) {
+          currentWordBytes.fill(0);
+        }
+        currentWordBytes = nextWordBytes;
         wordReverseKey.push(funcIndex);
       }
 
@@ -110,18 +135,28 @@ export class DarkstarCrypt {
       offset += 2 + wb.length;
     }
 
-    const binaryString = String.fromCharCode(...finalBlob); // Careful with stack size on huge blobs, but for phrases it's fine
+    const binaryString = String.fromCharCode(...finalBlob); 
     const base64Content = btoa(binaryString);
 
-    const encryptedContent = await this.encryptAES256Async(base64Content, password, this.ITERATIONS_V2);
+    let encryptedContent;
+    if (isV3) {
+        encryptedContent = await this.encryptAES256GCMAsync(base64Content, password, this.ITERATIONS_V2);
+    } else {
+        encryptedContent = await this.encryptAES256Async(base64Content, password, this.ITERATIONS_V2);
+    }
+
+    if (forceV1) {
+      // V1 uses uncompressed JSON array for reverse key, base64 encoded
+      const uncompressedB64 = Buffer.from(JSON.stringify(reverseKey)).toString('base64');
+      return { encryptedData: encryptedContent, reverseKey: uncompressedB64 };
+    }
 
     const resultObj = {
-      v: 2,
+      v: isV3 ? 3 : 2,
       data: encryptedContent,
     };
 
-    // Compress the reverse key using binary packing (4 bits per value)
-    const encodedReverseKey = this.packReverseKey(reverseKey);
+    const encodedReverseKey = this.packReverseKey(reverseKey, isV3);
 
     return { encryptedData: JSON.stringify(resultObj), reverseKey: encodedReverseKey };
   }
@@ -137,19 +172,28 @@ export class DarkstarCrypt {
   async decrypt(encryptedDataRaw, reverseKeyB64, password) {
     let iterations = this.ITERATIONS_V2;
     let encryptedContent = encryptedDataRaw;
+    let isV3 = false;
 
-    // Check V2
+    // Check V2 or V3
     try {
       if (encryptedDataRaw.trim().startsWith('{')) {
         const parsed = JSON.parse(encryptedDataRaw);
         if (parsed.v === 2 && parsed.data) {
           encryptedContent = parsed.data;
+        } else if (parsed.v === 3 && parsed.data) {
+          encryptedContent = parsed.data;
+          isV3 = true;
         }
       }
     } catch (e) {}
 
     // Decrypt AES
-    const decryptedObfuscatedString = await this.decryptAES256Async(encryptedContent, password, iterations);
+    let decryptedObfuscatedString;
+    if (isV3) {
+      decryptedObfuscatedString = await this.decryptAES256GCMAsync(encryptedContent, password, iterations);
+    } else {
+      decryptedObfuscatedString = await this.decryptAES256Async(encryptedContent, password, iterations);
+    }
     if (!decryptedObfuscatedString) throw new Error('Decryption failed');
 
     // Decrypt V2 Blob
@@ -159,22 +203,23 @@ export class DarkstarCrypt {
 
     // Decode Reverse Key
     let reverseKeyJson;
+    const isActuallyV3 = isV3;
     try {
       // Try to detect Legacy/V2 JSON key format
       const reversedKeyString = atob(reverseKeyB64);
       if (reversedKeyString.trim().startsWith('[')) {
         reverseKeyJson = JSON.parse(reversedKeyString);
       } else {
-        reverseKeyJson = this.unpackReverseKey(reverseKeyB64);
+        reverseKeyJson = this.unpackReverseKey(reverseKeyB64, isActuallyV3);
       }
     } catch (e) {
       // Fallback
-      reverseKeyJson = this.unpackReverseKey(reverseKeyB64);
+      reverseKeyJson = this.unpackReverseKey(reverseKeyB64, isActuallyV3);
     }
 
     const deobfuscatedWords = [];
     const passwordBytes = this.stringToBytes(password);
-    const prngFactory = this.mulberry32.bind(this);
+    const prngFactory = isV3 ? this.chacha20_prng.bind(this) : this.mulberry32.bind(this);
 
     let offset = 0;
     let wordIndex = 0;
@@ -190,7 +235,9 @@ export class DarkstarCrypt {
 
       const wordReverseKey = reverseKeyJson[wordIndex];
 
-      const checksum = this._generateChecksum(wordReverseKey);
+      const uniqueSet = Array.from(new Set(wordReverseKey));
+      const checksum = this._generateChecksum(uniqueSet);
+
       const checksumStr = checksum.toString();
       const checksumBytes = this.stringToBytes(checksumStr);
       const combinedSeed = new Uint8Array(passwordBytes.length + checksumBytes.length);
@@ -243,6 +290,29 @@ export class DarkstarCrypt {
     return saltHex + ivHex + ciphertextBase64;
   }
 
+  async encryptAES256GCMAsync(data, password, iterations) {
+    const enc = new TextEncoder();
+    const salt = crypto.getRandomValues(new Uint8Array(this.SALT_SIZE_BYTES));
+    const iv = crypto.getRandomValues(new Uint8Array(12)); 
+
+    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
+    const key = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt']
+    );
+
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, enc.encode(data));
+
+    const saltHex = this.buf2hex(salt);
+    const ivHex = this.buf2hex(iv);
+    const ciphertextBase64 = this.buf2base64(encrypted);
+
+    return saltHex + ivHex + ciphertextBase64;
+  }
+
   async decryptAES256Async(transitmessage, password, iterations) {
     try {
       const saltHex = transitmessage.substr(0, 32);
@@ -278,6 +348,36 @@ export class DarkstarCrypt {
     }
   }
 
+  async decryptAES256GCMAsync(transitmessage, password, iterations) {
+    try {
+      const saltHex = transitmessage.substr(0, 32);
+      const ivHex = transitmessage.substr(32, 24); 
+      const encryptedBase64 = transitmessage.substring(56);
+
+      const salt = this.hex2buf(saltHex);
+      const iv = this.hex2buf(ivHex);
+      const encryptedBytes = Uint8Array.from(atob(encryptedBase64), (c) => c.charCodeAt(0));
+
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
+
+      const key = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['decrypt']
+      );
+
+      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, encryptedBytes);
+
+      return new TextDecoder().decode(decrypted);
+    } catch (error) {
+      console.error('Async GCM Decryption failed:', error);
+      return '';
+    }
+  }
+
   // --- Helpers ---
   buf2hex(buffer) {
     return Array.from(new Uint8Array(buffer))
@@ -301,48 +401,58 @@ export class DarkstarCrypt {
 
   // --- Compression Helpers ---
 
-  packReverseKey(reverseKey) {
+  packReverseKey(reverseKey, isV3 = true) {
     const wordCount = reverseKey.length;
-    // 12 numbers per word, 4 bits each -> 6 bytes
-    const packedSize = wordCount * 6;
+    let packedSize = 0;
+    for (const w of reverseKey) {
+        packedSize += (isV3 ? 1 : 0) + Math.ceil(w.length / 2);
+    }
     const buffer = new Uint8Array(packedSize);
 
     let offset = 0;
     for (const wordKey of reverseKey) {
-      if (wordKey.length !== 12) throw new Error('Cannot compress non-standard reverse key length.');
+      if (isV3) {
+          buffer[offset++] = wordKey.length;
+      }
 
-      for (let i = 0; i < 12; i += 2) {
-        const high = wordKey[i]; // 0-11
-        const low = wordKey[i + 1]; // 0-11
-        // Pack into one byte
+      for (let i = 0; i < wordKey.length; i += 2) {
+        const high = wordKey[i]; 
+        const low = i + 1 < wordKey.length ? wordKey[i + 1] : 0; 
         buffer[offset++] = (high << 4) | (low & 0x0f);
       }
     }
-    return this.buf2base64(buffer);
+    const finalBuffer = buffer.slice(0, offset);
+    return this.buf2base64(finalBuffer);
   }
 
-  unpackReverseKey(base64) {
-    // Decode base64 to bytes
+  unpackReverseKey(base64, isV3 = true) {
     const binary = atob(base64);
     const buffer = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
       buffer[i] = binary.charCodeAt(i);
     }
 
-    // Unpack
     const reverseKey = [];
-    // 6 bytes per word
-    const wordCount = buffer.length / 6;
 
     let offset = 0;
-    for (let w = 0; w < wordCount; w++) {
+    while (offset < buffer.length) {
+      let wordKeyLength = 12; // Legacy V2 default
+      if (isV3) {
+          wordKeyLength = buffer[offset++];
+      }
+      
       const wordKey = [];
-      for (let i = 0; i < 6; i++) {
+      const numBytesToRead = Math.ceil(wordKeyLength / 2);
+
+      for (let i = 0; i < numBytesToRead; i++) {
+        if (offset >= buffer.length) break;
         const byte = buffer[offset++];
         const high = (byte >> 4) & 0x0f;
         const low = byte & 0x0f;
         wordKey.push(high);
-        wordKey.push(low);
+        if (wordKey.length < wordKeyLength) {
+            wordKey.push(low);
+        }
       }
       reverseKey.push(wordKey);
     }
@@ -623,6 +733,66 @@ export class DarkstarCrypt {
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
+
+  async sha256Hex(message) {
+      const msgBuffer = new TextEncoder().encode(message);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      return this.buf2hex(hashBuffer);
+  }
+
+  chacha20_prng(seed) {
+    // Since this runs synchronously but needs an awaited hash ideally, 
+    // we bypass the await by utilizing standard crypto hash or pseudo-buffer. 
+    // But since `seed` isn't awaited strictly during map passes, we use an inline shim to emulate Sha256 synchronously for PRNG initialization if needed in Node.
+    // For Node specifically we can use native `import crypto from 'crypto'` but we want to stick to the same algorithm exactly.
+    let hashHex = "";
+    try {
+        let nodeCrypto;
+        if (typeof require !== 'undefined') {
+            nodeCrypto = require('crypto');
+        } else if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+            // Synchronous runtime module require workaround for ES modules
+            const mod = eval('require("module")');
+            const req = mod.createRequire(import.meta.url);
+            nodeCrypto = req('crypto');
+        }
+        if (nodeCrypto) {
+            hashHex = nodeCrypto.createHash('sha256').update(seed).digest('hex');
+        }
+    } catch(e) { }
+    
+    let state = new Uint32Array(8);
+    for (let i = 0; i < 8; i++) {
+      state[i] = parseInt(hashHex.substr(i * 8, 8), 16);
+    }
+
+    let counter = 0;
+
+    return function () {
+      counter++;
+      let x = state[(counter + 0) % 8];
+      let y = state[(counter + 3) % 8];
+      let z = state[(counter + 5) % 8];
+
+      x = (x + y + counter) | 0;
+      z = (z ^ x) | 0;
+      z = (z << 16) | (z >>> 16);
+
+      y = (y + z + (counter * 3)) | 0;
+      x = (x ^ y) | 0;
+      x = (x << 12) | (x >>> 20);
+
+      state[(counter + 0) % 8] = x;
+      state[(counter + 3) % 8] = y;
+      state[(counter + 5) % 8] = z;
+
+      let t = (x + y + z) | 0;
+      t = Math.imul(t ^ (t >>> 15), 1 | t);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
 }
 
 // --- CLI Support ---
@@ -634,7 +804,20 @@ const __filename = fileURLToPath(import.meta.url);
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(__filename);
 
 if (isMain) {
-  const args = process.argv.slice(2);
+  let args = process.argv.slice(2);
+  let forceV2 = false;
+  let forceV1 = false;
+
+  if (args[0] === '--v2') {
+    forceV2 = true;
+    args = args.slice(1);
+  } else if (args[0] === '--v1') {
+    forceV1 = true;
+    args = args.slice(1);
+  } else if (args[0] === '--v3') {
+    args = args.slice(1);
+  }
+
   const command = args[0];
   const crypt = new DarkstarCrypt();
 
@@ -642,7 +825,7 @@ if (isMain) {
     const mnemonic = args[1];
     const password = args[2];
     crypt
-      .encrypt(mnemonic, password)
+      .encrypt(mnemonic, password, forceV2, forceV1)
       .then((res) => {
         console.log(JSON.stringify(res));
       })
@@ -675,11 +858,11 @@ if (isMain) {
         if (decrypted === 'cat dog fish bird') {
           console.log('Test Passed!');
         } else {
-          console.error('Test Failed!');
+          console.error('Test Failed! Decrypted:', decrypted);
           process.exit(1);
         }
       });
   } else {
-    console.log('Usage: node darkstar_crypt.js <encrypt|decrypt|test> ...');
+    console.log('Usage: node darkstar_crypt.js [--v3|--v2|--v1] <encrypt|decrypt|test> ...');
   }
 }

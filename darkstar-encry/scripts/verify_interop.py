@@ -34,44 +34,56 @@ def main():
 
     total_tests = 0
     passed_tests = 0
+    versions = ["--v3", "--v2", "--v1"]
 
-    for src_lang in LANGS:
-        print(f"\n[Source: {src_lang.upper()}]")
-        
-        # 1. Encrypt with source
-        print(f"  Encrypting with {src_lang}...")
-        encrypt_output = run_cli(src_lang, ["encrypt", TEST_MNEMONIC, TEST_PASSWORD])
-        if not encrypt_output:
-            print(f"  FAILED: Could not encrypt with {src_lang}")
-            continue
+    for version in versions:
+        print(f"\n{'='*20} Testing {version.upper()} {'='*20}")
+        for src_lang in LANGS:
+            print(f"\n[Source: {src_lang.upper()} {version.upper()}]")
+            
+            # 1. Encrypt with source
+            print(f"  Encrypting with {src_lang}...")
+            encrypt_output = run_cli(src_lang, [version, "encrypt", TEST_MNEMONIC, TEST_PASSWORD])
+            if not encrypt_output:
+                print(f"  FAILED: Could not encrypt with {src_lang}")
+                continue
 
-        try:
-            # Handle potential extra text before JSON in some implementations (though we tried to avoid it)
-            # Find the first { and last }
-            start = encrypt_output.find('{')
-            end = encrypt_output.rfind('}') + 1
-            res_json = json.loads(encrypt_output[start:end])
-            
-            encrypted_data = res_json["encryptedData"]
-            reverse_key = res_json["reverseKey"]
-        except Exception as e:
-            print(f"  FAILED: Could not parse JSON from {src_lang}. Output: {encrypt_output}")
-            continue
+            try:
+                # Handle potential extra text before JSON in some implementations (though we tried to avoid it)
+                # Find the first { and last }
+                start = encrypt_output.find('{')
+                end = encrypt_output.rfind('}') + 1
+                res_json = json.loads(encrypt_output[start:end])
+                
+                encrypted_data = res_json["encryptedData"]
+                if isinstance(encrypted_data, dict):
+                    encrypted_data = json.dumps(encrypted_data, separators=(',', ':'))
+                elif not isinstance(encrypted_data, str):
+                    encrypted_data = str(encrypted_data)
+                    
+                reverse_key = res_json["reverseKey"]
+                if isinstance(reverse_key, list):
+                    reverse_key = json.dumps(reverse_key, separators=(',', ':'))
+                elif not isinstance(reverse_key, str):
+                    reverse_key = str(reverse_key)
+            except Exception as e:
+                print(f"  FAILED: Could not parse JSON from {src_lang}. Output: {encrypt_output}")
+                continue
 
-        # 2. Decrypt with all
-        for dest_lang in LANGS:
-            total_tests += 1
-            print(f"  Decrypting with {dest_lang}...", end=" ")
-            
-            decrypt_output = run_cli(dest_lang, ["decrypt", encrypted_data, reverse_key, TEST_PASSWORD])
-            
-            if decrypt_output == TEST_MNEMONIC:
-                print("PASSED")
-                passed_tests += 1
-            else:
-                print(f"FAILED")
-                print(f"    Expected: {TEST_MNEMONIC}")
-                print(f"    Got:      {decrypt_output}")
+            # 2. Decrypt with all
+            for dest_lang in LANGS:
+                total_tests += 1
+                print(f"  Decrypting with {dest_lang}...", end=" ")
+                
+                decrypt_output = run_cli(dest_lang, ["decrypt", encrypted_data, reverse_key, TEST_PASSWORD])
+                
+                if decrypt_output == TEST_MNEMONIC:
+                    print("PASSED")
+                    passed_tests += 1
+                else:
+                    print(f"FAILED")
+                    print(f"    Expected: {TEST_MNEMONIC}")
+                    print(f"    Got:      {decrypt_output}")
 
     print("\n" + "=" * 50)
     print(f"Tests Run:    {total_tests}")

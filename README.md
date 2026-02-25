@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.9.4-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.0.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular&logoColor=white" alt="Angular">
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron&logoColor=white" alt="Electron">
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
@@ -25,7 +25,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
-`darkstar` is a defense-grade client-side security tool designed to safeguard sensitive recovery phrases, data, and notes. It combines a dynamic, 12-stage obfuscation pipeline with military-grade AES-256 encryption.
+`darkstar` is a defense-grade client-side security tool designed to safeguard sensitive recovery phrases, data, and notes. It combines a dynamic, **V3 Obfuscation Engine** with military-grade **AES-256-GCM** authenticated encryption.
 
 > [!NOTE]
 > **Architecture Overview**: Curious how it works? View the [Visual Architecture Guide](DARKSTAR_ARCHITECTURE.md).
@@ -40,12 +40,12 @@
 - **Capacitor Mobile Native**: Full cross-platform support. Darkstar compiles into native Android (APK) and iOS (IPA) apps while sharing 100% of the cryptographic logic.
 - **Time-Lock Encryption**: Secure notes can be mathematically locked using a Verifiable Delay Function (VDF), guaranteeing they remain encrypted for a predefined temporal computation period.
 - **Secure Vault**: A session-based, zero-knowledge vault for managing secure notes and sensitive metadata with multi-layered encryption.
-- **Hardware-Bound Protection**: Utilizes **Electron SafeStorage** (TPM/DPAPI) to cryptographically lock your vault to your specific device, preventing data theft from other machines.
-- **Mnemonic Obfuscation Engine**: Multi-protocol support (BIP39, Electrum, SLIP39) with a unique, randomized 12-stage transformation chain for every word.
-- **Structural Steganography**: "Stealth Export" allows you to disguise encrypted data as common system files (.log, .csv, .json) for plausible deniability.
-- **V2 Encryption Engine**: Powered by Web Crypto API with **600,000 PBKDF2 iterations** for maximum brute-force resistance.
+- **Vault Signature Binding (New)**: Cryptographically bind your data to your specific Vault Identity. Decryption is only possible when authenticated with the same cryptographic signature.
+- **Identity Backup & Recovery (New)**: Securely export and import your full Vault Identity (JSON) to ensure access to bound data across devices or after a vault reset.
+- **V3 Encryption Engine (Advanced)**: Powered by Web Crypto API with **AES-256-GCM** and **ChaCha20-based PRNG**. Verified cross-language interoperability (Go, Rust, Python, Node).
+- **Dynamic Deterministic Cycles**: Obfuscation depth scales intelligently (12-64 layers) based on data entropy, replacing the legacy fixed-depth model.
 - **Anti-Forensic Memory**: Strict `Uint8Array` usage with explicit memory zeroing. The P2P service automatically performs an emergency shutdown if the vault is locked.
-- **Windows Hello & Biometrics (New)**: Unlock your vault primarily using platform biometrics (TouchID, FaceID) or **Hardware Keys (YubiKey)** via WebAuthn.
+- **Windows Hello & Biometrics**: Unlock your vault primarily using platform biometrics (TouchID, FaceID) or **Hardware Keys (YubiKey)** via WebAuthn.
 - **Audio Steganography (New)**: Embed encrypted data into WAV audio files using LSB encoding. Supports uploading custom cover audio or generating white noise.
 
 - **Premium UI**: A high-fidelity Glassmorphism interface with custom themes and smooth animations.
@@ -74,10 +74,10 @@ npm install
 
 `darkstar` employs a "Defense in Depth" strategy:
 
-1.  **Identity Generation**: Upon vault creation, a unique Master Key is generated.
-2.  **Obfuscation Pipeline**: A pool of 12 obfuscation functions is **shuffled deterministically** based on your password to transform sensitive data.
-3.  **Layered Encryption**: The data is encapsulated and encrypted using **AES-256-CBC** + **HMAC-SHA256**.
-4.  **Hardware Binding**: The encrypted blob is further protected by **Electron SafeStorage**, binding the data to the physical device's security hardware.
+1.  **Identity Generation**: Upon vault creation, a unique Master Key and Cryptographic Identity are generated.
+2.  **Obfuscation Pipeline**: A gauntlet of obfuscation functions is **shuffled deterministically** based on your password, applying 12-64 layers of transformation.
+3.  **Layered Encryption**: The data is encapsulated and encrypted using **AES-256-GCM** (V3) for verified authenticity and confidentiality.
+4.  **Hardware & Identity Binding**: Payloads can be further protected by **Electron SafeStorage** and bound to the vault's unique **Signature Key**.
 5.  **Verified Integrity**: The Electron application hashes its own JavaScript code upon initialization to detect any local malware tampering.
 
 This ensures that your data is secure at rest, in transit, and in use.
