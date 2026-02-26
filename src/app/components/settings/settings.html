@@ -7,14 +7,6 @@
 
     <div class="setting-row">
       <div class="setting-label">
-        <span class="title">Dark Mode</span>
-        <span class="description">Toggle between light and dark themes</span>
-      </div>
-      <mat-slide-toggle [checked]="theme.isDarkTheme()" (change)="theme.setDarkTheme($event.checked)" color="primary"> </mat-slide-toggle>
-    </div>
-
-    <div class="setting-row">
-      <div class="setting-label">
         <span class="title">Color Theme</span>
         <span class="description">Select the accent color for the application</span>
       </div>
@@ -145,7 +137,14 @@
              <span class="status-badge success" style="color: #4caf50; border: 1px solid #4caf50; padding: 2px 8px; border-radius: 4px; margin-right: 10px;">Enabled</span>
              <button mat-stroked-button color="warn" (click)="toggleBiometrics()">Disable</button>
          } @else {
-             <button mat-flat-button color="primary" (click)="toggleBiometrics()">Enable Windows Hello</button>
+             <button mat-flat-button color="primary" [disabled]="isRegisteringBiometrics" (click)="toggleBiometrics()">
+                @if (!isRegisteringBiometrics) {
+                    <span>Enable Windows Hello</span>
+                }
+                @if (isRegisteringBiometrics) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                }
+             </button>
          }
       </div>
     </div>
@@ -160,7 +159,14 @@
              <span class="status-badge success" style="color: #4caf50; border: 1px solid #4caf50; padding: 2px 8px; border-radius: 4px; margin-right: 10px;">Linked</span>
              <button mat-stroked-button color="warn" (click)="toggleHardwareKey()">Unlink</button>
          } @else {
-             <button mat-flat-button color="accent" (click)="toggleHardwareKey()">Register YubiKey</button>
+             <button mat-flat-button color="primary" [disabled]="isRegisteringHardwareKey" (click)="toggleHardwareKey()">
+                @if (!isRegisteringHardwareKey) {
+                    <span>Register YubiKey</span>
+                }
+                @if (isRegisteringHardwareKey) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                }
+             </button>
          }
       </div>
     </div>

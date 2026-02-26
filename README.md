@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.0.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.1.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular&logoColor=white" alt="Angular">
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron&logoColor=white" alt="Electron">
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
@@ -47,6 +47,8 @@
 - **Anti-Forensic Memory**: Strict `Uint8Array` usage with explicit memory zeroing. The P2P service automatically performs an emergency shutdown if the vault is locked.
 - **Windows Hello & Biometrics**: Unlock your vault primarily using platform biometrics (TouchID, FaceID) or **Hardware Keys (YubiKey)** via WebAuthn.
 - **Audio Steganography (New)**: Embed encrypted data into WAV audio files using LSB encoding. Supports uploading custom cover audio or generating white noise.
+- **Time-Based One-Time Passwords (TOTP)**: Enforce a second layer of security inside the vault via a standards-compliant authenticator app.
+- **Automated Scheduled Backups**: Seamless background exports of the encrypted user vault based on customizable intervals.
 
 - **Premium UI**: A high-fidelity Glassmorphism interface with custom themes and smooth animations.
 - **Offline First**: Zero telemetry. All core encryption operations occur locally on your device.

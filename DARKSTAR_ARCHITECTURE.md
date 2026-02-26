@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.9.0-blue" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-2.1.0-blue" alt="Version"/>
   <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript"/>
@@ -226,6 +226,7 @@ Darkstar now supports WebAuthn for unlocking the vault, allowing for passwordles
 
 1.  **Platform Authenticators**: Windows Hello (Face/Fingerprint), TouchID.
 2.  **Cross-Platform Authenticators**: YubiKeys, Solokeys (FIDO2/U2F).
+3.  **Time-Based One-Time Password (TOTP)**: Standard 6-digit Authenticator apps.
 
 **Security Model:**
 

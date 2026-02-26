@@ -18,6 +18,12 @@ export class VaultAuthComponent {
   password = '';
   hidePassword = true;
   loading = false;
+  passwordLoading = false;
+  hardwareLoading = false;
+  biometricsLoading = false;
+
+  isElectron = !!window.electronAPI;
+  isWindows = this.isElectron && window.electronAPI.getPlatform() === 'win32';
   
   // TOTP State
   requiresTotp = false;
@@ -37,6 +43,7 @@ export class VaultAuthComponent {
 
   async submitHardwareKey() {
     this.loading = true;
+    this.hardwareLoading = true;
     try {
         const result = await this.vaultService.unlockWithHardwareKey();
         if (result && result.requiresTotp) {
@@ -44,11 +51,13 @@ export class VaultAuthComponent {
         }
     } finally {
         this.loading = false;
+        this.hardwareLoading = false;
     }
   }
 
   async submitBiometrics() {
     this.loading = true;
+    this.biometricsLoading = true;
     try {
         const result = await this.vaultService.unlockWithBiometrics();
         if (result && result.requiresTotp) {
@@ -56,6 +65,7 @@ export class VaultAuthComponent {
         }
     } finally {
         this.loading = false;
+        this.biometricsLoading = false;
     }
   }
 
@@ -63,6 +73,7 @@ export class VaultAuthComponent {
     if (!this.password) return;
 
     this.loading = true;
+    this.passwordLoading = true;
 
     setTimeout(async () => {
       try {
@@ -76,6 +87,7 @@ export class VaultAuthComponent {
         }
       } finally {
         this.loading = false;
+        this.passwordLoading = false;
       }
     }, 50);
   }

@@ -44,10 +44,11 @@ import { BackupService } from '../../../services/backup';
                 <span>Last Backup: {{ lastBackupDate ? (lastBackupDate | date:'medium') : 'Never' }}</span>
             </div>
             <button mat-stroked-button color="primary" [disabled]="!isEnabled || isRunning" (click)="runNow()">
+                @if(!isRunning) {
+                   <span>Run Now</span>
+                }
                 @if(isRunning) {
-                   <mat-spinner diameter="16"></mat-spinner>
-                } @else {
-                   Run Now
+                   <mat-spinner diameter="20"></mat-spinner>
                 }
             </button>
         </div>

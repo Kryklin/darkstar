@@ -43,7 +43,7 @@ const pkg = require('../package.json');
     { name: chalk.green('  🚀  Publish Release'), value: 'publish' },
 
     new inquirer.Separator(chalk.dim('--- Pipelines ---')),
-    { name: chalk.bold.white('  ⚡  Run All (Lint -> Test -> Build -> Package -> Publish)'), value: 'all' },
+    { name: chalk.bold.white('  ⚡  Run All (Lint -> Test -> Build -> Publish)'), value: 'all' },
 
     new inquirer.Separator(chalk.dim('--- System ---')),
     { name: chalk.red.bold('  ❌  Exit'), value: 'exit' },
@@ -139,30 +139,11 @@ const pkg = require('../package.json');
       await new Promise((r) => setTimeout(r, 2000));
       await runShell('Testing', CMD.TEST);
       await new Promise((r) => setTimeout(r, 2000));
+      await new Promise((r) => setTimeout(r, 2000));
       await runShell('Building', CMD.BUILD);
       await new Promise((r) => setTimeout(r, 2000));
 
-      // Use { clear: false } to preserve build output context
-      console.log(chalk.yellow('ℹ Packaging Application...'));
-      await runShell('Packaging', CMD.PACKAGE, { clear: false });
-
-      // Ask for publish confirmation even in "run all" to avoid accidental releases
-      console.log(chalk.yellow('\nPipeline requires confirmation to Publish:'));
-      const { confirm } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'confirm',
-          message: chalk.red('⚠️  Do you want to PUBLISH this release now?'),
-          default: false,
-          prefix: '',
-        },
-      ]);
-
-      if (confirm) {
-        await runShell('Publishing', CMD.PUBLISH, { clear: false });
-      } else {
-        console.log(chalk.yellow('Publishing skipped.'));
-      }
+      await runShell('Publishing', CMD.PUBLISH, { clear: false });
 
       console.log(chalk.bold.green('\n✨ Full Release Pipeline Completed! ✨\n'));
     } else {
@@ -197,22 +178,10 @@ const pkg = require('../package.json');
           await runShell('Packaging', CMD.PACKAGE, { clear: true }); // User requested clear back
           break;
         case 'publish':
-          const { confirm } = await inquirer.prompt([
-            {
-              type: 'confirm',
-              name: 'confirm',
-              message: chalk.red('⚠️  Are you sure you want to PUBLISH this release?'),
-              default: false,
-            },
-          ]);
-          if (confirm) {
-            console.log(chalk.yellow('ℹ Building before publishing...'));
-            await runShell('Building', CMD.BUILD);
-            // Preserve build log
-            await runShell('Publishing', CMD.PUBLISH, { clear: false });
-          } else {
-            console.log(chalk.yellow('Publishing cancelled.'));
-          }
+          console.log(chalk.yellow('ℹ Building before publishing...'));
+          await runShell('Building', CMD.BUILD);
+          // Preserve build log
+          await runShell('Publishing', CMD.PUBLISH, { clear: false });
           break;
       }
     }

@@ -32,6 +32,9 @@ export class Settings {
   isWindows = this.isElectron && window.electronAPI.getPlatform() === 'win32';
   duressPassword = '';
   
+  isRegisteringBiometrics = false;
+  isRegisteringHardwareKey = false;
+  
   // Computed or simple getter for biometric state
   get isBiometricEnabled(): boolean {
       return !!localStorage.getItem('biometric_credential_id');
@@ -49,6 +52,7 @@ export class Settings {
           this.openDialog('Success', 'Biometric unlock has been disabled.', [{ label: 'OK', value: true }]);
       } else {
           // Enable
+          this.isRegisteringBiometrics = true;
           try {
               const key = this.vaultService.getMasterKey();
               const result = await this.vaultService.registerBiometricsForSession(key);
@@ -59,6 +63,8 @@ export class Settings {
               }
           } catch {
               this.openDialog('Error', 'Vault is locked or internal error.', [{ label: 'OK', value: true }]);
+          } finally {
+              this.isRegisteringBiometrics = false;
           }
       }
   }
@@ -68,26 +74,9 @@ export class Settings {
           localStorage.removeItem('hardware_key_credential_id');
           this.openDialog('Success', 'Hardware Key (YubiKey) has been unlinked.', [{ label: 'OK', value: true }]);
       } else {
+          this.isRegisteringHardwareKey = true;
           try {
               const key = this.vaultService.getMasterKey();
-              // Register with 'cross-platform' attachment
-              // Note: We need a method in VaultService to handle the specific storage key for hardware keys?
-              // Currently registerBiometricsForSession just calls biometricService.register() which defaults to platform.
-              // We should update VaultService or call biometricService directly?
-              // Ideally VaultService handles the encryption wrapping.
-              // Let's add registerHardwareKey to VaultService or modify registerBiometricsForSession to accept type.
-              
-              // Direct fix: Update VaultService first? 
-              // Or just call simple wrapper here if VaultService logic is generic.
-              // Actually VaultService stores 'biometric_enc_pass'. We might want a separate 'hardware_enc_pass'?
-              // Or share the same encrypted password blob?
-              // SafeStorage encrypts the password. We can reuse the same blob if both keys unlock the same OS keychain entry?
-              // No, credential ID is different.
-              
-              // Let's assume for V1 we just use the same register flow but tell BiometricService to use cross-platform.
-              // But VaultService encapsulation...
-              // I should update VaultService to accept attachment type.
-              
               const success = await this.vaultService.registerHardwareKey(key);
                if (success) {
                   this.openDialog('Success', 'Hardware Key (YubiKey) registered successfully.', [{ label: 'OK', value: true }]);
@@ -96,6 +85,8 @@ export class Settings {
               }
           } catch {
                this.openDialog('Error', 'Vault is locked or internal error.', [{ label: 'OK', value: true }]);
+          } finally {
+               this.isRegisteringHardwareKey = false;
           }
       }
   }

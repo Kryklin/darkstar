@@ -14,8 +14,8 @@ export interface ThemeDef {
  * Persists user preference to local storage.
  */
 export class Theme {
-  isDarkTheme = signal<boolean>(false);
-  logoSrc = signal<string>('assets/img/logo-black.png');
+  isDarkTheme = signal<boolean>(true);
+  logoSrc = signal<string>('assets/img/logo-white.png');
   selectedTheme = signal<ThemeDef>({ name: 'Crimson Void', primary: '#D50000', className: 'theme-crimson-void' });
 
   availableThemes: ThemeDef[] = [
@@ -42,13 +42,7 @@ export class Theme {
     { name: 'Obsidian Shard', primary: '#000000', className: 'theme-obsidian-shard' },
   ];
 
-  constructor() {
-    const storedDark = localStorage.getItem('isDarkTheme');
-    if (storedDark) {
-      this.isDarkTheme.set(JSON.parse(storedDark));
-    }
-
-    const storedThemeName = localStorage.getItem('selectedTheme');
+  constructor() {    const storedThemeName = localStorage.getItem('selectedTheme');
     if (storedThemeName) {
       const theme = this.availableThemes.find((t) => t.className === storedThemeName);
       if (theme) {
@@ -61,9 +55,10 @@ export class Theme {
     this.updateFavicon();
   }
 
-  setDarkTheme(isDark: boolean) {
-    this.isDarkTheme.set(isDark);
-    localStorage.setItem('isDarkTheme', JSON.stringify(isDark));
+  setDarkTheme(_isDark: boolean) {
+    // Disabled logic: Enforce dark theme
+    this.isDarkTheme.set(true);
+    localStorage.setItem('isDarkTheme', JSON.stringify(true));
     this.updateBodyClass();
     this.updateLogo();
     this.updateFavicon();
@@ -83,23 +78,18 @@ export class Theme {
     document.body.classList.add(this.selectedTheme().className);
 
     // Add light/dark class
-    if (this.isDarkTheme()) {
-      document.body.classList.add('dark-theme');
-      document.body.classList.remove('light-theme');
-    } else {
-      document.body.classList.add('light-theme');
-      document.body.classList.remove('dark-theme');
-    }
+    document.body.classList.add('dark-theme');
+    document.body.classList.remove('light-theme');
   }
 
   private updateLogo() {
-    this.logoSrc.set(this.isDarkTheme() ? 'assets/img/logo-white.png' : 'assets/img/logo-black.png');
+    this.logoSrc.set('assets/img/logo-white.png');
   }
 
   private updateFavicon() {
     const favicon = document.getElementById('favicon') as HTMLLinkElement;
     if (favicon) {
-      favicon.href = this.isDarkTheme() ? 'assets/img/logo-white.png' : 'assets/img/logo-black.png';
+      favicon.href = 'assets/img/logo-white.png';
     }
   }
 }

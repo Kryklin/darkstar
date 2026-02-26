@@ -22,27 +22,45 @@
         <app-entropy-meter [value]="password"></app-entropy-meter>
       }
 
-      <div class="actions">
-        <button mat-flat-button color="primary" [disabled]="loading || !password" (click)="submit()">
-          @if (!loading) {
-            <span>{{ hasVault() ? 'Unlock' : 'Create Vault' }}</span>
-          }
-          @if (loading) {
-            <mat-spinner diameter="20"></mat-spinner>
-          }
-        </button>
-      </div>
+      @if (!hardwareLoading && !biometricsLoading) {
+          <div class="actions">
+            <button mat-flat-button color="primary" [disabled]="loading || !password" (click)="submit()">
+              @if (!passwordLoading) {
+                <span>{{ hasVault() ? 'Unlock' : 'Create Vault' }}</span>
+              }
+              @if (passwordLoading) {
+                <mat-spinner diameter="20"></mat-spinner>
+              }
+            </button>
+          </div>
+      }
 
       @if (hasVault() && (isHardwareKeyEnabled || isBiometricEnabled)) {
           <div class="actions alt-auth-actions" style="margin-top: 10px; justify-content: center; gap: 10px;">
              @if (isHardwareKeyEnabled) {
                  <button mat-stroked-button (click)="submitHardwareKey()" [disabled]="loading">
-                     <mat-icon>usb</mat-icon> Use Hardware Key
+                     @if (!hardwareLoading) {
+                         <mat-icon>usb</mat-icon>
+                     }
+                     @if (!hardwareLoading) {
+                         <span>Use Hardware Key</span>
+                     }
+                     @if (hardwareLoading) {
+                         <mat-spinner diameter="20"></mat-spinner>
+                     }
                  </button>
              }
              @if (isBiometricEnabled) {
                  <button mat-stroked-button (click)="submitBiometrics()" [disabled]="loading">
-                     <mat-icon>fingerprint</mat-icon> Use Biometrics
+                     @if (!biometricsLoading) {
+                         <mat-icon>fingerprint</mat-icon>
+                     }
+                     @if (!biometricsLoading) {
+                         <span>{{ isWindows ? 'Windows Hello' : 'Touch ID' }}</span>
+                     }
+                     @if (biometricsLoading) {
+                         <mat-spinner diameter="20"></mat-spinner>
+                     }
                  </button>
              }
           </div>
