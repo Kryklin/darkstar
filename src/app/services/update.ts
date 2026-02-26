@@ -133,7 +133,10 @@ export class UpdateService {
 
       if (comparison > 0) {
         this.updateStatus.set('available');
-        // Optionally notify main process to open browser or download
+        // On mobile/web, we don't have auto-download events, so we notify clearly.
+        if (!this.isElectron) {
+          console.log('Update available for non-Electron platform.');
+        }
       } else if (comparison < 0) {
         this.updateStatus.set('alpha');
       } else {

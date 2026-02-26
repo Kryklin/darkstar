@@ -87,6 +87,11 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: shine 5s linear infinite;
+
+  @media (max-width: 768px) {
+    font-size: 1.5rem !important;
+    letter-spacing: 2px !important;
+  }
 }
 
 body.light-theme .app-title {

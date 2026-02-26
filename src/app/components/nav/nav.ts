@@ -2,6 +2,9 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatDrawerMode } from '@angular/material/sidenav';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { map } from 'rxjs/operators';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Theme } from '../../services/theme';
 import { UpdateService } from '../../services/update';
 import { LayoutService } from '../../services/layout.service';
@@ -22,6 +25,14 @@ export class Nav {
   theme = inject(Theme);
   updateService = inject(UpdateService);
   layoutService = inject(LayoutService);
+  private breakpointObserver = inject(BreakpointObserver);
+
+  isMobile = toSignal(
+    this.breakpointObserver.observe([Breakpoints.Handset, Breakpoints.TabletPortrait, '(max-width: 768px)'])
+      .pipe(map(result => result.matches)),
+    { initialValue: false }
+  );
+
   isElectron = !!window.electronAPI;
   sidenavMode: MatDrawerMode = 'over';
   hasBackdrop = true;
@@ -53,5 +64,11 @@ export class Nav {
 
   close() {
     window.electronAPI?.close();
+  }
+
+  closeOnMobile() {
+    if (this.isMobile()) {
+      this.layoutService.sidenavOpen.set(false);
+    }
   }
 }

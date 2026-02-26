@@ -23,6 +23,11 @@
   width: 80%;
   max-width: 1000px;
   height: 60vh;
+
+  @media (max-width: 768px) {
+    width: 95%;
+    height: 80vh;
+  }
   background: #012456; // PowerShell Blue
   color: #eeeeee;
   display: flex;

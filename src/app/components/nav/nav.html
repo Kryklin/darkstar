@@ -1,5 +1,6 @@
-<mat-sidenav-container class="sidenav-container" [hasBackdrop]="false">
-  <mat-sidenav #drawer class="sidenav" fixedInViewport [mode]="'side'" 
+<mat-sidenav-container class="sidenav-container" [hasBackdrop]="isMobile()">
+  <mat-sidenav #drawer class="sidenav" fixedInViewport 
+               [mode]="isMobile() ? 'over' : 'side'" 
                [opened]="layoutService.sidenavOpen()" 
                (openedChange)="layoutService.sidenavOpen.set($event)">
     <div class="sidebar-content">
@@ -7,13 +8,13 @@
         <img [src]="theme.logoSrc()" alt="DARKSTAR" class="sidebar-logo" />
       </div>
       <mat-nav-list>
-        <a mat-list-item routerLink="/home" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()">
+        <a mat-list-item routerLink="/home" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
           <div class="nav-link-center">
             <mat-icon>dashboard</mat-icon>
             <span style="margin-left: 10px">Home</span>
           </div>
         </a>
-        <a mat-list-item routerLink="/vault" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()">
+        <a mat-list-item routerLink="/vault" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
           <div class="nav-link-center">
             <mat-icon>enhanced_encryption</mat-icon>
             <span style="margin-left: 10px">Vault</span>
@@ -54,10 +55,10 @@
               </div>
             </a>
             @if (isExpanded('secure-notes')) {
-              <a mat-list-item routerLink="/secure-notes/encrypt" routerLinkActive="active-link" class="nested-item level-2">
+              <a mat-list-item routerLink="/secure-notes/encrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
                 <span style="margin-left: 34px">Encrypt</span>
               </a>
-              <a mat-list-item routerLink="/secure-notes/decrypt" routerLinkActive="active-link" class="nested-item level-2">
+              <a mat-list-item routerLink="/secure-notes/decrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
                 <span style="margin-left: 34px">Decrypt</span>
               </a>
             }
@@ -71,10 +72,10 @@
               </div>
             </a>
             @if (isExpanded('bip39')) {
-              <a mat-list-item routerLink="/encrypt" routerLinkActive="active-link" class="nested-item level-2">
+              <a mat-list-item routerLink="/encrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
                 <span style="margin-left: 34px">Encrypt</span>
               </a>
-              <a mat-list-item routerLink="/decrypt" routerLinkActive="active-link" class="nested-item level-2">
+              <a mat-list-item routerLink="/decrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
                 <span style="margin-left: 34px">Decrypt</span>
               </a>
             }
@@ -95,10 +96,10 @@
               </div>
             </a>
             @if (isExpanded('electrum-legacy')) {
-              <a mat-list-item routerLink="/electrum-legacy/encrypt" routerLinkActive="active-link" class="nested-item level-2">
+              <a mat-list-item routerLink="/electrum-legacy/encrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
                 <span style="margin-left: 34px">Encrypt</span>
               </a>
-              <a mat-list-item routerLink="/electrum-legacy/decrypt" routerLinkActive="active-link" class="nested-item level-2">
+              <a mat-list-item routerLink="/electrum-legacy/decrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
                 <span style="margin-left: 34px">Decrypt</span>
               </a>
             }
@@ -119,10 +120,10 @@
               </div>
             </a>
             @if (isExpanded('electrum-v2')) {
-              <a mat-list-item routerLink="/electrum-v2/encrypt" routerLinkActive="active-link" class="nested-item level-2">
+              <a mat-list-item routerLink="/electrum-v2/encrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
                 <span style="margin-left: 34px">Encrypt</span>
               </a>
-              <a mat-list-item routerLink="/electrum-v2/decrypt" routerLinkActive="active-link" class="nested-item level-2">
+              <a mat-list-item routerLink="/electrum-v2/decrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
                 <span style="margin-left: 34px">Decrypt</span>
               </a>
             }
@@ -136,17 +137,17 @@
               </div>
             </a>
             @if (isExpanded('slip39')) {
-              <a mat-list-item routerLink="/slip39/encrypt" routerLinkActive="active-link" class="nested-item level-2">
+              <a mat-list-item routerLink="/slip39/encrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
                 <span style="margin-left: 34px">Encrypt</span>
               </a>
-              <a mat-list-item routerLink="/slip39/decrypt" routerLinkActive="active-link" class="nested-item level-2">
+              <a mat-list-item routerLink="/slip39/decrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
                 <span style="margin-left: 34px">Decrypt</span>
               </a>
             }
           </div>
         }
 
-        <a mat-list-item routerLink="/about" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()">
+        <a mat-list-item routerLink="/about" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
           <div class="nav-link-center">
             <mat-icon>info</mat-icon>
             <span style="margin-left: 10px">About</span>
@@ -162,7 +163,7 @@
       </button>
       <span class="spacer"></span>
       <span class="spacer"></span>
-      <button mat-icon-button routerLink="/settings" aria-label="Open settings">
+      <button mat-icon-button routerLink="/settings" aria-label="Open settings" (click)="closeOnMobile()">
         <mat-icon>settings</mat-icon>
       </button>
       @if (isElectron) {

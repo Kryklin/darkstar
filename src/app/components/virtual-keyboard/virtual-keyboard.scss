@@ -38,6 +38,7 @@
 
     @media (max-width: 600px) {
       grid-template-columns: repeat(8, 1fr);
+      gap: 4px;
     }
 
     button.key-btn {
@@ -45,6 +46,12 @@
       padding: 0;
       height: 42px;
       font-size: 1.1rem;
+
+      @media (max-width: 400px) {
+        height: 36px;
+        font-size: 0.9rem;
+      }
+
       font-weight: 500;
       line-height: 42px;
 

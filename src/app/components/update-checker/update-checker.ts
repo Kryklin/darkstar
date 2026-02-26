@@ -26,6 +26,7 @@ import { trigger, transition, style, animate } from '@angular/animations';
 export class UpdateChecker implements OnInit {
   updateService = inject(UpdateService);
   router = inject(Router);
+  isElectron = !!window.electronAPI;
 
   constructor() {
     effect(() => {
@@ -62,7 +63,7 @@ export class UpdateChecker implements OnInit {
       const status = this.updateService.updateStatus();
       switch (status) {
           case 'checking': return 'Checking for updates...';
-          case 'available': return 'Update found. Downloading...';
+          case 'available': return this.isElectron ? 'Update found. Downloading...' : 'New Version Found';
           case 'downloaded': return 'Update ready to install';
           case 'not-available': return 'You are up to date';
           case 'error': return 'Update failed';

@@ -59,3 +59,13 @@ plans/
 
 # Local Environment Secrets
 .env
+
+# Mobile Build Data (Capacitor)
+/ios/App/build/
+/ios/App/Pods/
+/ios/App/DerivedData/
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/app/.cxx/
+/android/captures/

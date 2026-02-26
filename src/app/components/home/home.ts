@@ -112,6 +112,9 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
       window.electronAPI.checkIntegrity().then((result) => {
         this.integrityPassed.set(result);
       });
+    } else {
+      // On mobile/browser, we assume integrity is handled by the platform/store
+      this.integrityPassed.set(true);
     }
   }
 

@@ -10,6 +10,17 @@
       </div>
     } 
     
+    <!-- Available State (Mobile/Web) -->
+    @else if (updateService.updateStatus() === 'available' && !isElectron) {
+      <mat-icon class="info-icon">cloud_download</mat-icon>
+      <h2>{{ getStatusMessage() }}</h2>
+      <p>A new version of Darkstar is available on GitHub.</p>
+      <div class="actions">
+        <button mat-flat-button color="primary" (click)="restart()">Download APK / IPA</button>
+        <button mat-button (click)="goHome()">Remind Me Later</button>
+      </div>
+    }
+
     <!-- Success State -->
     @else if (updateService.updateStatus() === 'downloaded') {
       <mat-icon class="success-icon">check_circle_outline</mat-icon>

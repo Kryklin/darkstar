@@ -1,7 +1,18 @@
 /* ... Existing layout styles ... */
 .vault-container { height: 100%; display: flex; flex-direction: column; background: radial-gradient(circle at center, var(--glass-bg-accent) 0%, transparent 80%); }
 .sidenav-container { flex: 1; background: transparent; }
-.notes-sidebar { width: 320px; background: var(--glass-bg); backdrop-filter: blur(15px) saturate(160%); border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; box-shadow: var(--glass-shadow); }
+.notes-sidebar {
+  width: 320px;
+  @media (max-width: 768px) {
+    width: 85vw;
+  }
+  background: var(--glass-bg);
+  backdrop-filter: blur(15px) saturate(160%);
+  border-right: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--glass-shadow);
+}
 .sidebar-header { padding: 24px 20px 10px; display: flex; justify-content: space-between; align-items: center; h3 { margin: 0; font-weight: 300; color: var(--glass-text); letter-spacing: 1px; text-transform: uppercase; font-size: 1rem; } button { color: var(--glass-text); } }
 .search-box { padding: 0 15px; margin-bottom: 10px; }
 .dense-form-field { width: 100%; font-size: 13px; ::ng-deep .mat-mdc-form-field-subscript-wrapper { display: none; } }
@@ -16,11 +27,43 @@ h4[matListItemTitle] { font-weight: 400; margin-bottom: 4px; font-size: 0.95rem;
 
 /* Editor */
 .editor-content { background: transparent; }
-.editor-wrapper { display: flex; flex-direction: column; height: 100%; padding: 30px 50px; box-sizing: border-box; max-width: 1200px; margin: 0 auto; }
+.editor-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 30px 50px;
+
+  @media (max-width: 768px) {
+    padding: 20px 15px;
+  }
+
+  box-sizing: border-box;
+  max-width: 1200px;
+  margin: 0 auto;
+}
 .editor-header-group { border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; margin-bottom: 15px; }
 .editor-header { display: flex; align-items: center; gap: 20px; }
 
-.title-input { flex: 1; background: transparent; border: none; color: var(--glass-text); font-size: 28px; font-family: 'Outfit', 'Roboto', sans-serif; font-weight: 400; outline: none; letter-spacing: -0.5px; &::placeholder { color: var(--glass-text-muted); opacity: 0.3; } }
+.title-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--glass-text);
+  font-size: 28px;
+
+  @media (max-width: 768px) {
+    font-size: 20px;
+  }
+
+  font-family: 'Outfit', 'Roboto', sans-serif;
+  font-weight: 400;
+  outline: none;
+  letter-spacing: -0.5px;
+  &::placeholder {
+    color: var(--glass-text-muted);
+    opacity: 0.3;
+  }
+}
 .header-actions { display: flex; gap: 8px; .action-btn { color: var(--mat-sys-primary); } .delete-btn { color: var(--mat-sys-error); opacity: 0.7; &:hover { opacity: 1; } } }
 
 .tags-input-row { margin-top: 10px; }
@@ -62,6 +105,13 @@ h4[matListItemTitle] { font-weight: 400; margin-bottom: 4px; font-size: 0.95rem;
 .identity-card {
     margin-top: 40px;
     width: 400px;
+
+    @media (max-width: 480px) {
+        width: calc(100vw - 40px);
+        margin-top: 20px;
+        padding: 16px;
+    }
+
     background: rgba(0,0,0,0.2);
     border: 1px solid var(--glass-border);
     border-radius: 16px;
