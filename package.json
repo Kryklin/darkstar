@@ -49,7 +49,7 @@
     "crypto-js": "^4.2.0",
     "electron-squirrel-startup": "^1.0.1",
     "html5-qrcode": "^2.3.8",
-    "jspdf": "^4.0.0",
+    "jspdf": "^4.2.0",
     "marked": "^17.0.1",
     "material-icons": "^1.13.14",
     "ngx-markdown": "^21.0.1",
