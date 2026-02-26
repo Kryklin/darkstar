@@ -1,8 +1,13 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, session, shell, safeStorage, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, session, shell, safeStorage, dialog, protocol } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { updateElectronApp } from 'update-electron-app';
 import { machineIdSync } from 'node-machine-id';
+
+// Register custom protocol as secure/standard
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } }
+]);
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 import squirrelStartup from 'electron-squirrel-startup';
@@ -88,7 +93,8 @@ function createWindow() {
     win.loadURL('http://localhost:4200');
     win.webContents.openDevTools();
   } else {
-    win.loadFile(path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser', 'index.html'));
+    // In production, we use our custom secure protocol
+    win.loadURL('app://index.html');
   }
 }
 
@@ -122,6 +128,54 @@ function createTray() {
 import { verifyIntegrity } from './integrity';
 
 app.whenReady().then(async () => {
+  // Set up the custom protocol handler to serve files from the dist directory
+  protocol.handle('app', async (request) => {
+    const url = new URL(request.url);
+    let pathname = url.pathname;
+    
+    // Normalize path to prevent directory traversal
+    if (pathname === '/' || pathname === '') {
+        pathname = '/index.html';
+    }
+
+    const distPath = path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser');
+    const fullPath = path.join(distPath, pathname);
+
+    try {
+        // Basic check to ensure we are within dist
+        if (!fullPath.startsWith(distPath)) {
+            return new Response('Forbidden', { status: 403 });
+        }
+        
+        const fileContent = await fs.readFile(fullPath);
+        const extension = path.extname(fullPath).toLowerCase();
+        
+        const mimeTypes: Record<string, string> = {
+            '.html': 'text/html',
+            '.js': 'text/javascript',
+            '.css': 'text/css',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.ico': 'image/x-icon',
+            '.json': 'application/json',
+            '.svg': 'image/svg+xml'
+        };
+
+        return new Response(new Uint8Array(fileContent), {
+            headers: { 'content-type': mimeTypes[extension] || 'application/octet-stream' }
+        });
+    } catch (e) {
+        console.error('Protocol Error:', e);
+        // Fallback for SPA routing: serve index.html for unknown routes
+        try {
+            const indexContent = await fs.readFile(path.join(distPath, 'index.html'));
+            return new Response(new Uint8Array(indexContent), { headers: { 'content-type': 'text/html' } });
+        } catch (_indexError) {
+            return new Response('Not Found', { status: 404 });
+        }
+    }
+  });
+
   await verifyIntegrity();
   createWindow();
   createTray();

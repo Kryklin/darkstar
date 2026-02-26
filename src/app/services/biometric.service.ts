@@ -40,6 +40,7 @@ export class BiometricService {
       const publicKey: PublicKeyCredentialRequestOptions = {
         challenge,
         timeout: 60000,
+        rpId: 'darkstar', // Explicit RP ID for custom protocol support
         userVerification: 'required', // This forces Windows Hello / TouchID
         // We allow any credential since we are just checking for presence/verification 
         // proof of the current platform user, not necessarily a specific registered key 
@@ -108,6 +109,7 @@ export class BiometricService {
               challenge,
               rp: {
                   name: 'Darkstar Secure App',
+                  id: 'darkstar' // Explicit RP ID
               },
               user: {
                   id: userId,
