@@ -41,17 +41,7 @@ body {
 
 // Global Glass Variables
 :root {
-  --glass-bg: rgba(255, 255, 255, 0.45);
-  --glass-bg-accent: rgba(0, 145, 234, 0.05);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
-  --glass-text: rgba(0, 0, 0, 0.85);
-  --glass-text-muted: rgba(0, 0, 0, 0.5);
-  --glass-glow: rgba(0, 145, 234, 0.3);
-  --glass-input-bg: rgba(0, 0, 0, 0.03);
-}
-
-body.dark-theme {
+  color-scheme: dark; // Enforces dark mode on native browser elements (like standard scrollbars)
   --glass-bg: rgba(20, 20, 20, 0.4);
   --glass-bg-accent: rgba(64, 196, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.1);
@@ -62,24 +52,27 @@ body.dark-theme {
   --glass-input-bg: rgba(255, 255, 255, 0.03);
 }
 
+
 // Global Scrollbar Polish
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.2); // Darker track
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--glass-border);
-  border-radius: 4px;
-  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.2); // Semi-transparent white
+  border-radius: 5px;
+  border: 2px solid rgba(0, 0, 0, 0.2); // Creates padding effect between thumb and track
+  background-clip: padding-box;
+  transition: background 0.3s ease;
 
   &:hover {
-    background: var(--mat-sys-primary); // Pop with theme color on hover
-    box-shadow: 0 0 10px var(--glass-glow);
+    background: rgba(255, 255, 255, 0.4); // Brighter on hover
+    background-clip: padding-box;
   }
 }
 
