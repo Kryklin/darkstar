@@ -27,6 +27,7 @@ export class Settings {
   ngZone = inject(NgZone);
 
   isElectron = !!window.electronAPI;
+  isWindows = this.isElectron && window.electronAPI.getPlatform() === 'win32';
   duressPassword = '';
   
   // Computed or simple getter for biometric state

@@ -45,7 +45,7 @@
     <h2>System</h2>
     <mat-divider></mat-divider>
 
-    @if (isElectron) {
+    @if (isWindows) {
       <div class="setting-row">
         <div class="setting-label">
           <span class="title">Shortcuts</span>
@@ -56,6 +56,9 @@
           <button mat-stroked-button (click)="createShortcut('start-menu')">Start Menu Shortcut</button>
         </div>
       </div>
+    }
+
+    @if (isElectron) {
 
       <div class="setting-row">
         <div class="setting-label">

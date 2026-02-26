@@ -174,6 +174,9 @@ ipcMain.on('check-for-updates', () => {
 });
 
 ipcMain.handle('create-shortcut', async (_event, target: 'desktop' | 'start-menu') => {
+  if (process.platform !== 'win32') {
+    return { success: false, message: 'Shortcuts are only supported on Windows.' };
+  }
   return await createShortcut(target);
 });
 

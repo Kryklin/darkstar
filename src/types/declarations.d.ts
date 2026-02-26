@@ -21,6 +21,7 @@ interface ElectronAPI {
     vaultListFiles(): Promise<string[]>;
     checkIntegrity(): Promise<boolean>;
     getMachineId(): Promise<string | null>;
+    getPlatform(): NodeJS.Platform;
 }
 
 interface Window {

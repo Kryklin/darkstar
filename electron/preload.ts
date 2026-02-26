@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   vaultListFiles: () => ipcRenderer.invoke('vault-list-files'),
   checkIntegrity: () => ipcRenderer.invoke('check-integrity'),
   getMachineId: (): Promise<string | null> => ipcRenderer.invoke('get-machine-id'),
+  getPlatform: () => process.platform,
 });
 
 // All of the Node.js APIs are available in the preload process.
