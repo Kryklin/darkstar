@@ -8,6 +8,8 @@ import { MaterialModule } from '../../modules/material/material';
 import { MatDialog } from '@angular/material/dialog';
 import { GenericDialog, DialogButton } from '../dialogs/generic-dialog/generic-dialog';
 import { DuressService } from '../../services/duress.service';
+import { TotpSetup } from './totp-setup/totp-setup';
+import { BackupConfig } from './backup-config/backup-config';
 
 
 @Component({
@@ -35,6 +37,10 @@ export class Settings {
       return !!localStorage.getItem('biometric_credential_id');
   }
 
+  get isHardwareKeyEnabled(): boolean {
+      return !!localStorage.getItem('hardware_key_credential_id');
+  }
+
   async toggleBiometrics() {
       if (this.isBiometricEnabled) {
           // Disable
@@ -55,10 +61,6 @@ export class Settings {
               this.openDialog('Error', 'Vault is locked or internal error.', [{ label: 'OK', value: true }]);
           }
       }
-  }
-
-  get isHardwareKeyEnabled(): boolean {
-      return !!localStorage.getItem('hardware_key_credential_id');
   }
 
   async toggleHardwareKey() {
@@ -128,6 +130,36 @@ export class Settings {
     this.openDialog('Success', 'Duress Password has been removed.', [{ label: 'OK', value: true }]);
   }
 
+  get isTotpEnabled(): boolean {
+      return !!this.vaultService.totpSecret();
+  }
+
+  openBackupConfig() {
+      this.dialog.open(BackupConfig, {
+          width: '500px'
+      });
+  }
+
+  toggleTotp() {
+      if (this.isTotpEnabled) {
+          // Disable
+          this.vaultService.disableTotp();
+          this.openDialog('Success', 'Two-Factor Authentication (TOTP) has been disabled.', [{ label: 'OK', value: true }]);
+      } else {
+          // Enable Dialog
+          const ref = this.dialog.open(TotpSetup, {
+              width: '400px',
+              disableClose: true
+          });
+
+          ref.afterClosed().subscribe((secret: string | null) => {
+              if (secret) {
+                  this.vaultService.enableTotp(secret);
+                  this.openDialog('Success', 'Two-Factor Authentication enabled.', [{ label: 'OK', value: true }]);
+              }
+          });
+      }
+  }
 
   compareThemes(t1: ThemeDef, t2: ThemeDef): boolean {
     return t1 && t2 ? t1.className === t2.className : t1 === t2;

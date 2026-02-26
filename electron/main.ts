@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, session, shell, safeStorage } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, session, shell, safeStorage, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { updateElectronApp } from 'update-electron-app';
@@ -226,6 +226,28 @@ ipcMain.handle('check-integrity', () => {
   return true;
 });
 
+import { generateSecret, generateURI, verifySync } from 'otplib';
+
+ipcMain.handle('vault-generate-totp', () => {
+  const secret = generateSecret();
+  // We use a generic name for now
+  const uri = generateURI({
+      issuer: 'Darkstar',
+      label: 'user',
+      secret
+  });
+  return { secret, uri };
+});
+
+ipcMain.handle('vault-verify-totp', (_event, token: string, secret: string) => {
+  try {
+    const result = verifySync({ token, secret });
+    return result.valid;
+  } catch (_e) {
+    return false;
+  }
+});
+
 // --- Vault V2 IPC Handlers ---
 
 const getVaultPath = () => path.join(app.getPath('userData'), 'vault_storage');
@@ -311,4 +333,31 @@ autoUpdater.on('error', (err) => {
 autoUpdater.on('update-downloaded', () => {
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'downloaded' });
+});
+
+ipcMain.handle('get-default-backup-path', () => {
+  return path.join(app.getPath('documents'), 'DarkstarBackups');
+});
+
+ipcMain.handle('save-backup', async (_event, dir: string, filename: string, data: string) => {
+  try {
+    await fs.mkdir(dir, { recursive: true });
+    const fullPath = path.join(dir, filename);
+    await fs.writeFile(fullPath, data, 'utf-8');
+    return true;
+  } catch (err) {
+    console.error('Save Backup failed:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('show-directory-picker', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openDirectory'],
+    title: 'Select Backup Folder',
+  });
+  if (canceled || filePaths.length === 0) {
+    return null;
+  }
+  return filePaths[0];
 });

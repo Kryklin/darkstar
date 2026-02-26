@@ -114,6 +114,29 @@
 
     <div class="setting-row">
       <div class="setting-label">
+        <span class="title">Automated Backups</span>
+        <span class="description">Configure scheduled exports of your vault data</span>
+      </div>
+      <button mat-flat-button color="primary" (click)="openBackupConfig()">Configure</button>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span class="title">Two-Factor Authentication (TOTP)</span>
+        <span class="description">Require an authenticator app code to unlock your vault</span>
+      </div>
+      <div class="duress-controls">
+         @if (isTotpEnabled) {
+             <span class="status-badge success" style="color: #4caf50; border: 1px solid #4caf50; padding: 2px 8px; border-radius: 4px; margin-right: 10px;">Enabled</span>
+             <button mat-stroked-button color="warn" (click)="toggleTotp()">Disable</button>
+         } @else {
+             <button mat-flat-button color="primary" (click)="toggleTotp()">Set Up 2FA</button>
+         }
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
         <span class="title">Biometric Unlock</span>
         <span class="description">Use Windows Hello or TouchID to unlock your vault</span>
       </div>

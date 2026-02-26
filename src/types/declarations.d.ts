@@ -19,6 +19,11 @@ interface ElectronAPI {
     vaultReadFile(filename: string): Promise<Uint8Array>;
     vaultDeleteFile(filename: string): Promise<boolean>;
     vaultListFiles(): Promise<string[]>;
+    vaultVerifyTotp(token: string, secret: string): Promise<boolean>;
+    vaultGenerateTotp(): Promise<{ secret: string; uri: string }>;
+    getDefaultBackupPath(): Promise<string>;
+    saveBackup(dir: string, filename: string, data: string): Promise<boolean>;
+    showDirectoryPicker(): Promise<string | null>;
     checkIntegrity(): Promise<boolean>;
     getMachineId(): Promise<string | null>;
     getPlatform(): NodeJS.Platform;

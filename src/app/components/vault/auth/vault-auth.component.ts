@@ -18,9 +18,45 @@ export class VaultAuthComponent {
   password = '';
   hidePassword = true;
   loading = false;
+  
+  // TOTP State
+  requiresTotp = false;
+  totpCode = '';
+
+  get isHardwareKeyEnabled() {
+    return !!localStorage.getItem('hardware_key_credential_id');
+  }
+
+  get isBiometricEnabled() {
+    return !!localStorage.getItem('biometric_credential_id');
+  }
 
   hasVault() {
     return this.vaultService.hasVault();
+  }
+
+  async submitHardwareKey() {
+    this.loading = true;
+    try {
+        const result = await this.vaultService.unlockWithHardwareKey();
+        if (result && result.requiresTotp) {
+            this.requiresTotp = true;
+        }
+    } finally {
+        this.loading = false;
+    }
+  }
+
+  async submitBiometrics() {
+    this.loading = true;
+    try {
+        const result = await this.vaultService.unlockWithBiometrics();
+        if (result && result.requiresTotp) {
+            this.requiresTotp = true;
+        }
+    } finally {
+        this.loading = false;
+    }
   }
 
   async submit() {
@@ -31,7 +67,10 @@ export class VaultAuthComponent {
     setTimeout(async () => {
       try {
         if (this.hasVault()) {
-          await this.vaultService.unlock(this.password);
+          const result = await this.vaultService.unlock(this.password);
+          if (result && result.requiresTotp) {
+              this.requiresTotp = true;
+          }
         } else {
           await this.vaultService.createVault(this.password);
         }
@@ -39,5 +78,20 @@ export class VaultAuthComponent {
         this.loading = false;
       }
     }, 50);
+  }
+
+  async submitTotp() {
+      if (!this.totpCode || this.totpCode.length < 6) return;
+      
+      this.loading = true;
+      try {
+          const success = await this.vaultService.verifyTotp(this.totpCode);
+          if (!success) {
+              // Error is set in VaultService
+              this.totpCode = '';
+          }
+      } finally {
+          this.loading = false;
+      }
   }
 }

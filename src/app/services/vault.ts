@@ -9,6 +9,7 @@ export interface VaultAttachment {
   ref: string; // Filename on disk
 }
 
+// We will use native crypto or electron API for TOTP to avoid browser bundle issues.
 export interface VaultIdentity {
   publicKey: JsonWebKey;
   privateKey: JsonWebKey;
@@ -35,6 +36,7 @@ interface VaultStorage {
 interface VaultContent {
   notes: VaultNote[];
   identity?: VaultIdentity;
+  totpSecret?: string;
 }
 
 import { VaultFileService } from './vault-file.service';
@@ -67,6 +69,9 @@ export class VaultService {
   
   /** The user's cryptographic identity keys. */
   public identity = signal<VaultIdentity | null>(null);
+
+  /** TOTP Secret Key for 2FA, if enabled */
+  public totpSecret = signal<string | null>(null);
 
   /** Cached deterministic Machine ID */
   public hardwareId = signal<string | null>(null);
@@ -110,17 +115,17 @@ export class VaultService {
     }
   }
 
-  async unlockWithBiometrics(): Promise<boolean> {
-    if (!this.biometricService.isAvailable()) return false;
+  async unlockWithBiometrics(): Promise<{ success: boolean; requiresTotp: boolean }> {
+    if (!this.biometricService.isAvailable()) return { success: false, requiresTotp: false };
     
     // 1. Verify User Presence/Identity
     const authenticated = await this.biometricService.authenticate();
-    if (!authenticated) return false;
+    if (!authenticated) return { success: false, requiresTotp: false };
 
     // 2. Retrieve Master Password from Hardware-Backed Storage
     // Use the stored credential ID as the key for the safe storage item
     const credId = localStorage.getItem('biometric_credential_id');
-    if (!credId) return false;
+    if (!credId) return { success: false, requiresTotp: false };
 
     // We store the encrypted password in a separate safe storage key
     // In a real app we might use the keychain service directly.
@@ -129,7 +134,7 @@ export class VaultService {
     // But wait, `safeStorage` usually requires a string.
     try {
         const encryptedPass = localStorage.getItem('biometric_enc_pass');
-        if (!encryptedPass) return false;
+        if (!encryptedPass) return { success: false, requiresTotp: false };
 
         if (window.electronAPI) {
             const password = await window.electronAPI.safeStorageDecrypt(encryptedPass);
@@ -137,9 +142,37 @@ export class VaultService {
         }
     } catch (e) {
         console.error('Biometric Unlock Failed:', e);
-        return false;
+        return { success: false, requiresTotp: false };
     }
-    return false;
+    return { success: false, requiresTotp: false };
+  }
+
+  async unlockWithHardwareKey(): Promise<{ success: boolean; requiresTotp: boolean }> {
+    if (!this.biometricService.isAvailable()) return { success: false, requiresTotp: false };
+    
+    // 1. Verify User Presence/Identity with Hardware Key
+    const authenticated = await this.biometricService.authenticate();
+    if (!authenticated) return { success: false, requiresTotp: false };
+
+    // 2. Retrieve Master Password from Hardware-Backed Storage
+    const credId = localStorage.getItem('hardware_key_credential_id');
+    if (!credId) return { success: false, requiresTotp: false };
+
+    // Share the same encrypted password blob for simplicity in this implementation, 
+    // or we could use 'hardware_enc_pass'. Register uses 'biometric_enc_pass' blindly currently, let's stick to reading it
+    try {
+        const encryptedPass = localStorage.getItem('biometric_enc_pass');
+        if (!encryptedPass) return { success: false, requiresTotp: false };
+
+        if (window.electronAPI) {
+            const password = await window.electronAPI.safeStorageDecrypt(encryptedPass);
+            return this.unlock(password);
+        }
+    } catch (e) {
+        console.error('Hardware Key Unlock Failed:', e);
+        return { success: false, requiresTotp: false };
+    }
+    return { success: false, requiresTotp: false };
   }
 
   // Helper to save password for biometric use later
@@ -169,11 +202,11 @@ export class VaultService {
       return false;
   }
 
-  async unlock(password: string): Promise<boolean> {
+  async unlock(password: string): Promise<{ success: boolean; requiresTotp: boolean }> {
     // SECURITY: Check for Duress Password
     if (this.duressService.checkDuress(password)) {
       this.duressService.triggerDuress();
-      return false; 
+      return { success: false, requiresTotp: false }; 
     }
 
     try {
@@ -198,7 +231,7 @@ export class VaultService {
         } catch (e) {
           console.error('Hardware Decryption Failure:', e);
           this.error.set('Security Mismatch: This vault is locked to another device or OS user account.');
-          return false;
+          return { success: false, requiresTotp: false };
         }
       }
 
@@ -219,6 +252,7 @@ export class VaultService {
       // Parsing content (Handles migration from Array used in V1/V2-Beta to Object in V3)
       let notes: VaultNote[] = [];
       let identity: VaultIdentity | null = null;
+      let totpSecret: string | null = null;
       
       try {
           const parsed = JSON.parse(jsonStr);
@@ -230,6 +264,7 @@ export class VaultService {
               // Modern format: VaultContent object
               notes = parsed.notes || [];
               identity = parsed.identity || null;
+              totpSecret = parsed.totpSecret || null;
           }
       } catch {
           throw new Error('Vault Data Corruption: Unable to parse decrypted content.');
@@ -250,8 +285,24 @@ export class VaultService {
           identity = await this.generateIdentity();
           isLegacy = true; // Force save
       }
-      this.identity.set(identity);
+      // If TOTP is configured, we pause the unlock sequence.
+      if (totpSecret) {
+          // We do NOT set the master key or actual data signals yet.
+          // We return a special state indicating TOTP is needed, and we hold the 
+          // decrypted states temporarily so verifyTotp can complete the process.
+          this.totpPendingState = {
+              notes: migratedNotes,
+              identity: identity,
+              totpSecret: totpSecret,
+              password: password,
+              isLegacy: isLegacy
+          };
+          return { success: true, requiresTotp: true };
+      }
 
+      this.notes.set(migratedNotes);
+      this.identity.set(identity);
+      this.totpSecret.set(totpSecret);
       this.masterKey.set(password);
       this.error.set(null);
 
@@ -260,19 +311,70 @@ export class VaultService {
         await this.save(); 
       }
 
-      return true;
+      return { success: true, requiresTotp: false };
     } catch (e) {
       console.error('Vault Access Error:', e);
       this.lock();
       this.error.set('Authentication failed or vault state is invalid.');
-      return false;
+      return { success: false, requiresTotp: false };
     }
+  }
+
+  // Temporary holding area during 2FA unlock
+  private totpPendingState: {
+      notes: VaultNote[];
+      identity: VaultIdentity | null;
+      totpSecret: string;
+      password: string;
+      isLegacy: boolean;
+  } | null = null;
+
+  async verifyTotp(token: string): Promise<boolean> {
+      if (!this.totpPendingState || !this.totpPendingState.totpSecret) {
+          this.error.set('No pending 2FA login.');
+          return false;
+      }
+      
+      const isValid = window.electronAPI ? await window.electronAPI.vaultVerifyTotp(token, this.totpPendingState.totpSecret) : false;
+      
+      if (!isValid) {
+          this.error.set('Invalid 2FA token.');
+          return false;
+      }
+      
+      // Token is valid, proceed with setting signals
+      this.notes.set(this.totpPendingState.notes);
+      this.identity.set(this.totpPendingState.identity);
+      this.totpSecret.set(this.totpPendingState.totpSecret);
+      this.masterKey.set(this.totpPendingState.password);
+      
+      if (this.totpPendingState.isLegacy) {
+          await this.save();
+      }
+
+      this.totpPendingState = null;
+      this.error.set(null);
+      return true;
+  }
+
+  enableTotp(secret: string) {
+      if (!this.masterKey()) throw new Error('Vault must be unlocked to modify 2FA settings.');
+      this.totpSecret.set(secret);
+      this.save();
+  }
+
+  disableTotp() {
+      if (!this.masterKey()) throw new Error('Vault must be unlocked to modify 2FA settings.');
+      this.totpSecret.set(null);
+      this.save();
   }
 
   lock() {
     this.masterKey.set(null);
     this.notes.set([]);
     this.identity.set(null);
+    this.totpSecret.set(null);
+    this.totpPendingState = null;
   }
 
   async save(): Promise<void> {
@@ -283,6 +385,11 @@ export class VaultService {
         notes: this.notes(),
         identity: this.identity()!
     };
+
+    const currentTotp = this.totpSecret();
+    if (currentTotp) {
+        content.totpSecret = currentTotp;
+    }
 
     const notesData = JSON.stringify(content);
     let encrypted = await this.crypt.encryptAES256Async(notesData, key, this.crypt.ITERATIONS_V2);

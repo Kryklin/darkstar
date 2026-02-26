@@ -1,36 +1,71 @@
 <div class="vault-auth-container">
   <div class="auth-card">
     <div class="lock-icon">
-      <mat-icon>lock</mat-icon>
+      <mat-icon>{{ requiresTotp ? 'dialpad' : 'lock' }}</mat-icon>
     </div>
 
-    <h2>{{ hasVault() ? 'Unlock Vault' : 'Create Vault' }}</h2>
+    <h2>{{ requiresTotp ? 'Two-Factor Authentication' : (hasVault() ? 'Unlock Vault' : 'Create Vault') }}</h2>
     <p class="subtitle">
-      {{ hasVault() ? 'Enter your master password to decrypt your notes.' : 'Set a strong master password. This cannot be recovered if lost.' }}
+      {{ requiresTotp ? 'Enter the code from your Authenticator app.' : (hasVault() ? 'Enter your master password to decrypt your notes.' : 'Set a strong master password. This cannot be recovered if lost.') }}
     </p>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Master Password</mat-label>
-      <input matInput [type]="hidePassword ? 'password' : 'text'" [(ngModel)]="password" (keyup.enter)="submit()" />
-      <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword">
-        <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
-      </button>
-    </mat-form-field>
+    @if (!requiresTotp) {
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Master Password</mat-label>
+        <input matInput [type]="hidePassword ? 'password' : 'text'" [(ngModel)]="password" (keyup.enter)="submit()" />
+        <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword">
+          <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+      </mat-form-field>
 
-    @if (!hasVault()) {
-      <app-entropy-meter [value]="password"></app-entropy-meter>
+      @if (!hasVault()) {
+        <app-entropy-meter [value]="password"></app-entropy-meter>
+      }
+
+      <div class="actions">
+        <button mat-flat-button color="primary" [disabled]="loading || !password" (click)="submit()">
+          @if (!loading) {
+            <span>{{ hasVault() ? 'Unlock' : 'Create Vault' }}</span>
+          }
+          @if (loading) {
+            <mat-spinner diameter="20"></mat-spinner>
+          }
+        </button>
+      </div>
+
+      @if (hasVault() && (isHardwareKeyEnabled || isBiometricEnabled)) {
+          <div class="actions alt-auth-actions" style="margin-top: 10px; justify-content: center; gap: 10px;">
+             @if (isHardwareKeyEnabled) {
+                 <button mat-stroked-button (click)="submitHardwareKey()" [disabled]="loading">
+                     <mat-icon>usb</mat-icon> Use Hardware Key
+                 </button>
+             }
+             @if (isBiometricEnabled) {
+                 <button mat-stroked-button (click)="submitBiometrics()" [disabled]="loading">
+                     <mat-icon>fingerprint</mat-icon> Use Biometrics
+                 </button>
+             }
+          </div>
+      }
+    } @else {
+      <!-- TOTP Entry -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Authenticator Code</mat-label>
+        <input matInput type="text" [(ngModel)]="totpCode" placeholder="123456" maxlength="6" (keyup.enter)="submitTotp()" />
+      </mat-form-field>
+      
+      <div class="actions">
+          <button mat-button (click)="requiresTotp = false; vaultService.lock();">Cancel</button>
+          <button mat-flat-button color="primary" [disabled]="loading || totpCode.length < 6" (click)="submitTotp()">
+            @if (!loading) {
+              <span>Verify</span>
+            }
+            @if (loading) {
+              <mat-spinner diameter="20"></mat-spinner>
+            }
+          </button>
+      </div>
     }
-
-    <div class="actions">
-      <button mat-flat-button color="primary" [disabled]="loading || !password" (click)="submit()">
-        @if (!loading) {
-          <span>{{ hasVault() ? 'Unlock' : 'Create Vault' }}</span>
-        }
-        @if (loading) {
-          <mat-spinner diameter="20"></mat-spinner>
-        }
-      </button>
-    </div>
 
     @if (vaultService.error()) {
       <p class="error-msg">
