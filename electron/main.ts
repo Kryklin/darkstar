@@ -93,8 +93,43 @@ function createWindow() {
     win.loadURL('http://localhost:4200');
     win.webContents.openDevTools();
   } else {
-    // In production, we use our custom secure protocol
-    win.loadURL('app://index.html');
+    // In production, we run a background sequential migration to recover stranded localStorage
+    // from previous path/app updates, before showing the window on the final origin.
+    (async () => {
+      try {
+        const distPath = path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser');
+        
+        // 1. Read from legacy V1-V2.1.0 file:// origin
+        await win.loadFile(path.join(distPath, 'index.html'));
+        const fileData = await win.webContents.executeJavaScript('Object.assign({}, window.localStorage)');
+
+        // 2. Read from legacy V2.1.1 app:// origin (which had matching domain issues)
+        await win.loadURL('app://index.html');
+        const appData = await win.webContents.executeJavaScript('Object.assign({}, window.localStorage)');
+
+        // 3. Final Origin: Explicit domain for WebAuthn RP ID match (app://darkstar)
+        await win.loadURL('app://darkstar/index.html');
+        const currentData = await win.webContents.executeJavaScript('Object.assign({}, window.localStorage)');
+        
+        // If current origin has NO vault data, we inject priority data
+        if (!currentData['darkstar_vault']) {
+            // Priority: Older file:// origin (usually larger/older data), else intermediate app:// origin
+            const bestData = fileData['darkstar_vault'] ? fileData : (appData['darkstar_vault'] ? appData : null);
+            if (bestData) {
+                // Safely insert key-values
+                for (const key of Object.keys(bestData)) {
+                    await win.webContents.executeJavaScript(`window.localStorage.setItem(${JSON.stringify(key)}, ${JSON.stringify(bestData[key])});`);
+                }
+            }
+        }
+      } catch (e) {
+          console.error("Migration/Startup Sequence Failed:", e);
+          // Fallback to ensuring we load
+          await win.loadURL('app://darkstar/index.html');
+      } finally {
+        win.show();
+      }
+    })();
   }
 }
 
