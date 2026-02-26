@@ -8,11 +8,18 @@ import os
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANGS = ["go", "rust", "python", "node"]
 
+import shutil
+
+GO_BIN = shutil.which("go") or r"C:\Program Files\Go\bin\go.exe"
+CARGO_BIN = shutil.which("cargo") or "cargo"
+PYTHON_BIN = shutil.which("python") or "python"
+NODE_BIN = shutil.which("node") or "node"
+
 CLI_COMMANDS = {
-    "go": ["go", "run", "-C", os.path.join(PROJECT_ROOT, "go"), "."],
-    "rust": ["cargo", "run", "--manifest-path", os.path.join(PROJECT_ROOT, "rust", "Cargo.toml"), "--quiet", "--release", "--"],
-    "python": ["python", "-u", os.path.join(PROJECT_ROOT, "python", "darkstar_crypt.py")],
-    "node": ["node", os.path.join(PROJECT_ROOT, "node", "darkstar_crypt.js")]
+    "go": [GO_BIN, "run", "-C", os.path.join(PROJECT_ROOT, "go"), "."],
+    "rust": [CARGO_BIN, "run", "--manifest-path", os.path.join(PROJECT_ROOT, "rust", "Cargo.toml"), "--quiet", "--release", "--"],
+    "python": [PYTHON_BIN, "-u", os.path.join(PROJECT_ROOT, "python", "darkstar_crypt.py")],
+    "node": [NODE_BIN, os.path.join(PROJECT_ROOT, "node", "darkstar_crypt.js")]
 }
 
 TEST_MNEMONIC = "apple banana cherry date elderberry fig grape honeydew"
