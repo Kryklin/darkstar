@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { ZorkEngine } from './zork-engine';
 import packageJson from '../../../../../package.json';
+import { Capacitor } from '@capacitor/core';
 
 interface TerminalLine {
   text: string;
@@ -41,9 +42,13 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
 
   isGameActive = false;
   zorkEngine: ZorkEngine | null = null;
+  readonly isNative = Capacitor.isNativePlatform();
 
   ngOnInit() {
     this.isVisible = true;
+    if (this.isNative) {
+      this.isMaximized = true;
+    }
     setTimeout(() => this.focusInput(), 100);
   }
 

@@ -1,14 +1,24 @@
 <div class="terminal-overlay" [class.active]="isVisible" (click)="minimizeTerminal()" (keydown.escape)="minimizeTerminal()" tabindex="-1">
-  <div class="terminal-container" cdkDrag [cdkDragDisabled]="isMaximized" [class.maximized]="isMaximized" (click)="focusInput($event)" (keydown.enter)="focusInput($event)" tabindex="0">
+  <div class="terminal-container"
+     [class.terminal-visible]="isVisible"
+     [class.terminal-maximized]="isMaximized"
+     cdkDrag
+     [cdkDragDisabled]="isMaximized || isNative"
+     (cdkDragStarted)="focusInput()"
+     (click)="focusInput($event)"
+     (keydown.enter)="focusInput($event)"
+     tabindex="0">
     <div class="terminal-header" cdkDragHandle (click)="focusInput($event)" (keydown.enter)="focusInput($event)" tabindex="0">
       <div class="terminal-title">
         <mat-icon inline="true" style="font-size: 14px; margin-right: 5px; vertical-align: text-bottom;">code</mat-icon>
         Windows PowerShell
       </div>
-      <div class="terminal-buttons">
-        <button class="win-btn minimize" (click)="$event.stopPropagation(); minimizeTerminal()" aria-label="Minimize">&minus;</button>
-        <button class="win-btn maximize" (click)="$event.stopPropagation(); toggleMaximize()" aria-label="Maximize">&#10064;</button>
-        <button class="win-btn close" (click)="$event.stopPropagation(); closeTerminal()" aria-label="Close">&#10005;</button>
+      <div class="terminal-controls">
+         @if (!isNative) {
+           <button class="control-btn minimize" (click)="$event.stopPropagation(); minimizeTerminal()" aria-label="Minimize">&minus;</button>
+           <button class="control-btn maximize" (click)="$event.stopPropagation(); toggleMaximize()" aria-label="Maximize">&#10064;</button>
+         }
+         <button class="control-btn close" (click)="$event.stopPropagation(); closeTerminal()" aria-label="Close">&#10005;</button>
       </div>
     </div>
     

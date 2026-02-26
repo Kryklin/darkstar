@@ -1,6 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { CryptService } from './crypt';
 import { VaultAttachment } from './vault';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 @Injectable({
   providedIn: 'root',
@@ -23,8 +25,22 @@ export class VaultFileService {
     const ref = `${crypto.randomUUID()}.enc`;
     
     // Save to disk
-    await window.electronAPI.vaultEnsureDir();
-    await window.electronAPI.vaultSaveFile(ref, encryptedData);
+    if (Capacitor.isNativePlatform()) {
+      // Capacitor Mobile: Write as base64 to app data directory
+      const base64Data = this.uint8ArrayToBase64(encryptedData);
+      await Filesystem.writeFile({
+        path: `vault_storage/${ref}`,
+        data: base64Data,
+        directory: Directory.Data,
+        recursive: true
+      });
+    } else if (window.electronAPI) {
+      // Electron Desktop: Send raw buffer via IPC
+      await window.electronAPI.vaultEnsureDir();
+      await window.electronAPI.vaultSaveFile(ref, encryptedData);
+    } else {
+      throw new Error('No compatible storage layer available.');
+    }
     
     return {
       id: crypto.randomUUID(),
@@ -39,8 +55,22 @@ export class VaultFileService {
    * Reads an encrypted file from disk, decrypts it, and triggers a browser download.
    */
   async downloadFile(attachment: VaultAttachment, password: string): Promise<void> {
-    // Read from disk
-    const encryptedData = await window.electronAPI.vaultReadFile(attachment.ref);
+    let encryptedData: Uint8Array;
+
+    if (Capacitor.isNativePlatform()) {
+      // Read base64 from Capacitor
+      const result = await Filesystem.readFile({
+        path: `vault_storage/${attachment.ref}`,
+        directory: Directory.Data
+      });
+      // Handle Capacitor's string or Blob return type based on version
+      const dataStr = typeof result.data === 'string' ? result.data : await (result.data as Blob).text();
+      encryptedData = this.base64ToUint8Array(dataStr);
+    } else if (window.electronAPI) {
+      encryptedData = await window.electronAPI.vaultReadFile(attachment.ref);
+    } else {
+      throw new Error('No compatible storage layer available.');
+    }
     
     // Decrypt
     const decryptedData = await this.crypt.decryptBinary(encryptedData, password);
@@ -62,6 +92,33 @@ export class VaultFileService {
    * Deletes the physical file from the vault storage.
    */
   async deleteFile(attachment: VaultAttachment): Promise<void> {
-    await window.electronAPI.vaultDeleteFile(attachment.ref);
+    if (Capacitor.isNativePlatform()) {
+      await Filesystem.deleteFile({
+        path: `vault_storage/${attachment.ref}`,
+        directory: Directory.Data
+      });
+    } else if (window.electronAPI) {
+      await window.electronAPI.vaultDeleteFile(attachment.ref);
+    }
+  }
+
+  // Helper Utilities for Base64 <-> Uint8Array conversion (since Capacitor expects base64 strings for raw files)
+  private uint8ArrayToBase64(bytes: Uint8Array): string {
+    let binary = '';
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  }
+
+  private base64ToUint8Array(base64: string): Uint8Array {
+    const binaryString = window.atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
   }
 }

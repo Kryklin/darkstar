@@ -1,7 +1,7 @@
 <div class="vault-container">
   <mat-sidenav-container class="sidenav-container">
     <!-- SIDEBAR: Note List -->
-    <mat-sidenav mode="side" opened class="notes-sidebar">
+    <mat-sidenav [mode]="isHandset() ? 'over' : 'side'" [opened]="sidenavOpened()" (openedChange)="sidenavOpened.set($event)" class="notes-sidebar">
       <div class="sidebar-header">
         <h3>Notes</h3>
         <button mat-icon-button (click)="createNote()" matTooltip="New Note">
@@ -51,6 +51,11 @@
         <div class="editor-wrapper">
           <div class="editor-header-group">
               <div class="editor-header">
+                @if (isHandset()) {
+                  <button mat-icon-button (click)="showNoteList()" matTooltip="Back to Notes" class="back-btn">
+                     <mat-icon>arrow_back</mat-icon>
+                  </button>
+                }
                 <input class="title-input" [(ngModel)]="currentTitle" (ngModelChange)="onContentChange()" placeholder="Note Title" />
                 
                 <div class="header-actions">

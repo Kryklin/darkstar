@@ -26,6 +26,7 @@ export class Settings {
   dialog = inject(MatDialog);
   ngZone = inject(NgZone);
 
+  isElectron = !!window.electronAPI;
   duressPassword = '';
   
   // Computed or simple getter for biometric state
@@ -132,6 +133,7 @@ export class Settings {
   }
 
   async createShortcut(target: 'desktop' | 'start-menu') {
+    if (!this.isElectron) return;
     const result = await window.electronAPI.createShortcut(target);
     this.openDialog(result.success ? 'Success' : 'Error', result.message, [{ label: 'OK', value: true }]);
   }
@@ -171,7 +173,7 @@ export class Settings {
     });
 
     ref.afterClosed().subscribe(async (result: boolean | undefined) => {
-      if (result) {
+      if (result && this.isElectron) {
         await window.electronAPI.resetApp();
       }
     });

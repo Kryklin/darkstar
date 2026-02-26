@@ -12,6 +12,7 @@ import { MatChipInputEvent } from '@angular/material/chips';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 
 @Component({
   selector: 'app-vault-dashboard',
@@ -24,11 +25,14 @@ export class VaultDashboardComponent {
   vaultService = inject(VaultService);
   fileService = inject(VaultFileService);
   timeLockService = inject(TimeLockService);
+  breakpointObserver = inject(BreakpointObserver);
   dialog = inject(MatDialog);
   clipboard = inject(Clipboard);
   snackBar = inject(MatSnackBar);
   notes = this.vaultService.notes;
   selectedNote = signal<VaultNote | null>(null);
+  isHandset = signal(false);
+  sidenavOpened = signal(true);
 
   readonly separatorKeysCodes = [ENTER, COMMA] as const;
   searchTerm = signal('');
@@ -63,6 +67,17 @@ export class VaultDashboardComponent {
   constructor() {
      this.loadIdentity();
      this.loadHardwareId();
+     
+     this.breakpointObserver.observe([Breakpoints.Handset])
+       .subscribe(result => {
+           this.isHandset.set(result.matches);
+           // Auto-hide list on mobile if a note is selected, show if nothing is selected
+           if (result.matches) {
+               this.sidenavOpened.set(!this.selectedNote());
+           } else {
+               this.sidenavOpened.set(true); // Always open list on desktop
+           }
+       });
   }
 
   async loadHardwareId() {
@@ -143,6 +158,15 @@ export class VaultDashboardComponent {
     this.currentTags = [...(note.tags || [])];
     this.currentAttachments = [...(note.attachments || [])];
     this.showPreview = true;
+    
+    if (this.isHandset()) {
+        this.sidenavOpened.set(false);
+    }
+  }
+
+  showNoteList() {
+      this.selectedNote.set(null);
+      this.sidenavOpened.set(true);
   }
 
   createNote() {

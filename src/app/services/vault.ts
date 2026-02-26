@@ -40,6 +40,8 @@ interface VaultContent {
 import { VaultFileService } from './vault-file.service';
 import { DuressService } from './duress.service';
 import { BiometricService } from './biometric.service';
+import { Capacitor } from '@capacitor/core';
+import { Device } from '@capacitor/device';
 
 @Injectable({
   providedIn: 'root',
@@ -481,7 +483,17 @@ export class VaultService {
     const cached = this.hardwareId();
     if (cached) return cached;
 
-    if (window.electronAPI && window.electronAPI.getMachineId) {
+    if (Capacitor.isNativePlatform()) {
+       try {
+           const info = await Device.getId();
+           if (info && info.identifier) {
+               this.hardwareId.set(info.identifier);
+               return info.identifier;
+           }
+       } catch (e) {
+           console.error('Failed to retrieve native hardware ID:', e);
+       }
+    } else if (window.electronAPI && window.electronAPI.getMachineId) {
       try {
         const id = await window.electronAPI.getMachineId();
         if (id) {
@@ -489,7 +501,7 @@ export class VaultService {
           return id;
         }
       } catch (e) {
-        console.error('Failed to retrieve hardware ID:', e);
+        console.error('Failed to retrieve electron hardware ID:', e);
       }
     }
     return null;
