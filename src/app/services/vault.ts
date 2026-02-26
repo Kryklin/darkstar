@@ -236,8 +236,13 @@ export class VaultService {
       }
 
       let jsonStr = '';
-      if (envelope.v === 2) {
+      if (envelope.v === 3) {
+        // Modern AES-GCM Authenticated Decryption
+        jsonStr = await this.crypt.decryptAES256GCMAsync(encryptedData, password, this.crypt.ITERATIONS_V2);
+      } else if (envelope.v === 2) {
+        // V2 AES-CBC Decryption
         jsonStr = await this.crypt.decryptAES256Async(encryptedData, password, this.crypt.ITERATIONS_V2);
+        isLegacy = true; // Flag for upgrade to V3
       } else {
         console.warn('Detected Legacy V1 Vault. Attempting migration...');
         jsonStr = await this.crypt.decryptAES256Async(encryptedData, password, 1000);
