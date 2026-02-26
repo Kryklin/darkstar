@@ -38,16 +38,16 @@ describe('Theme', () => {
     expect(service).toBeTruthy();
   });
 
-  it('should initialize with light theme by default', () => {
-    expect(service.isDarkTheme()).toBeFalse();
-    expect(service.logoSrc()).toBe('assets/img/logo-black.png');
-    expect(document.body.classList.contains('light-theme')).toBeTrue();
-    expect(document.body.classList.contains('dark-theme')).toBeFalse();
-    expect(favicon.href).toContain('assets/img/logo-black.png');
+  it('should initialize with dark theme by default', () => {
+    expect(service.isDarkTheme()).toBeTrue();
+    expect(service.logoSrc()).toBe('assets/img/logo-white.png');
+    expect(document.body.classList.contains('dark-theme')).toBeTrue();
+    expect(document.body.classList.contains('light-theme')).toBeFalse();
+    expect(favicon.href).toContain('assets/img/logo-white.png');
   });
 
-  it('should initialize with dark theme if localStorage is set to true', () => {
-    store['isDarkTheme'] = 'true';
+  it('should enforce dark theme even if localStorage specifies otherwise', () => {
+    store['isDarkTheme'] = 'false';
     // Re-create service to test constructor logic
     const newService = new Theme();
     expect(newService.isDarkTheme()).toBeTrue();
@@ -57,26 +57,13 @@ describe('Theme', () => {
     expect(favicon.href).toContain('assets/img/logo-white.png');
   });
 
-  it('should set dark theme', () => {
-    service.setDarkTheme(true);
+  it('should always enforce dark theme when setDarkTheme is called with false', () => {
+    service.setDarkTheme(false);
     expect(service.isDarkTheme()).toBeTrue();
     expect(service.logoSrc()).toBe('assets/img/logo-white.png');
     expect(localStorage.setItem).toHaveBeenCalledWith('isDarkTheme', 'true');
     expect(document.body.classList.contains('dark-theme')).toBeTrue();
     expect(document.body.classList.contains('light-theme')).toBeFalse();
     expect(favicon.href).toContain('assets/img/logo-white.png');
-  });
-
-  it('should set light theme', () => {
-    // Start with dark theme
-    service.setDarkTheme(true);
-    // Switch to light theme
-    service.setDarkTheme(false);
-    expect(service.isDarkTheme()).toBeFalse();
-    expect(service.logoSrc()).toBe('assets/img/logo-black.png');
-    expect(localStorage.setItem).toHaveBeenCalledWith('isDarkTheme', 'false');
-    expect(document.body.classList.contains('light-theme')).toBeTrue();
-    expect(document.body.classList.contains('dark-theme')).toBeFalse();
-    expect(favicon.href).toContain('assets/img/logo-black.png');
   });
 });
