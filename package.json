@@ -12,6 +12,7 @@
   },
   "scripts": {
     "start": "node scripts/package.js",
+    "build": "ng build --configuration production --base-href ./ && tsc --p tsconfig.electron.json && node scripts/build-integrity.js",
     "cap:sync": "npx cap sync",
     "cap:open:android": "npx cap open android",
     "cap:open:ios": "npx cap open ios"
