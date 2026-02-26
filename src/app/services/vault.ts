@@ -66,6 +66,9 @@ export class VaultService {
   /** The user's cryptographic identity keys. */
   public identity = signal<VaultIdentity | null>(null);
 
+  /** Cached deterministic Machine ID */
+  public hardwareId = signal<string | null>(null);
+
   /** Holds transient error messages related to vault operations. */
   public error = signal<string | null>(null);
 
@@ -77,7 +80,7 @@ export class VaultService {
     window.addEventListener('beforeunload', () => this.lock());
   }
 
-  // ... hasVault, createVault ...
+
 
   /**
    * Verifies if an encrypted vault envelope exists in local storage.
@@ -187,8 +190,6 @@ export class VaultService {
       }
       
       let encryptedData = envelope.data;
-
-      // ... Hardware Decryption ...
       if (envelope.s && window.electronAPI) {
         try {
           encryptedData = await window.electronAPI.safeStorageDecrypt(encryptedData);
@@ -199,7 +200,6 @@ export class VaultService {
         }
       }
 
-      // ... AES Decryption ...
       let jsonStr = '';
       if (envelope.v === 2) {
         jsonStr = await this.crypt.decryptAES256Async(encryptedData, password, this.crypt.ITERATIONS_V2);
@@ -245,7 +245,6 @@ export class VaultService {
       
       // Ensure identity exists
       if (!identity) {
-          console.info('Generating new Cryptographic Identity for existing vault...');
           identity = await this.generateIdentity();
           isLegacy = true; // Force save
       }
@@ -256,7 +255,6 @@ export class VaultService {
 
       // Auto-Migration/Save
       if (isLegacy) {
-        console.info('Migrating Vault to V3 Storage (Identity Layer)...');
         await this.save(); 
       }
 
@@ -286,8 +284,6 @@ export class VaultService {
 
     const notesData = JSON.stringify(content);
     let encrypted = await this.crypt.encryptAES256Async(notesData, key, this.crypt.ITERATIONS_V2);
-
-    // ... SafeStorage ...
     let isSafeStorageUsed = false;
     if (window.electronAPI?.safeStorageAvailable) {
       try {
@@ -417,7 +413,7 @@ export class VaultService {
     return new Uint8Array(hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))).buffer;
   }
 
-  // ... addNote, updateNote, etc ...
+
   addNote(title: string, content: string, timeLock?: TimeLockMetadata) {
     const newNote: VaultNote = {
       id: crypto.randomUUID(),
@@ -479,5 +475,23 @@ export class VaultService {
       throw new Error('Vault is locked');
     }
     return key;
+  }
+
+  async getHardwareId(): Promise<string | null> {
+    const cached = this.hardwareId();
+    if (cached) return cached;
+
+    if (window.electronAPI && window.electronAPI.getMachineId) {
+      try {
+        const id = await window.electronAPI.getMachineId();
+        if (id) {
+          this.hardwareId.set(id);
+          return id;
+        }
+      } catch (e) {
+        console.error('Failed to retrieve hardware ID:', e);
+      }
+    }
+    return null;
   }
 }

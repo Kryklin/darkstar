@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   vaultDeleteFile: (filename: string) => ipcRenderer.invoke('vault-delete-file', filename),
   vaultListFiles: () => ipcRenderer.invoke('vault-list-files'),
   checkIntegrity: () => ipcRenderer.invoke('check-integrity'),
+  getMachineId: (): Promise<string | null> => ipcRenderer.invoke('get-machine-id'),
 });
 
 // All of the Node.js APIs are available in the preload process.

@@ -26,11 +26,12 @@
           <form [formGroup]="secondFormGroup">
             <ng-template matStepLabel>Set Password</ng-template>
 
-            <div class="security-controls" style="margin-bottom: 16px">
+            <div class="security-controls" style="margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px">
               <mat-slide-toggle [(ngModel)]="virtualKeyboardEnabled" [ngModelOptions]="{ standalone: true }" color="primary"> Enable Anti-Keylogger Mode </mat-slide-toggle>
               @if (vaultService.isUnlocked()) {
-                  <mat-slide-toggle [(ngModel)]="useVaultSignature" [ngModelOptions]="{ standalone: true }" color="accent" style="margin-left: 16px;"> Bind to Vault Signature </mat-slide-toggle>
+                <mat-slide-toggle [(ngModel)]="useVaultSignature" [ngModelOptions]="{ standalone: true }" color="accent"> Bind to Vault Signature </mat-slide-toggle>
               }
+              <mat-slide-toggle [(ngModel)]="useHardwareId" [ngModelOptions]="{ standalone: true }" color="warn"> Bind to Machine Hardware ID </mat-slide-toggle>
             </div>
 
             <mat-form-field class="full-width">
@@ -78,23 +79,21 @@
           <mat-icon>content_copy</mat-icon>
         </button>
       </mat-form-field>
-      
-      <div class="qr-transfer-section" style="margin: 16px 0; padding: 16px; background: rgba(0, 145, 234, 0.05); border-radius: 8px; border: 1px solid rgba(0, 145, 234, 0.2);">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div>
-                <h3 style="margin: 0; display: flex; align-items: center; color: var(--mat-sys-primary);">
-                    <mat-icon style="margin-right: 8px;">qr_code_scanner</mat-icon> Air-Gapped Optical Transfer
-                </h3>
-                <p class="hint-text" style="margin: 4px 0 0 0;">Securely transmit this encrypted payload to another device via webcam without networks.</p>
-            </div>
-            <button mat-stroked-button color="primary" (click)="showQrSender = !showQrSender">
-                <mat-icon>{{ showQrSender ? 'close' : 'qr_code' }}</mat-icon>
-                {{ showQrSender ? 'Hide Scanner' : 'Show Animated QR' }}
-            </button>
+
+      <div class="qr-transfer-section" style="margin: 16px 0; padding: 16px; background: rgba(0, 145, 234, 0.05); border-radius: 8px; border: 1px solid rgba(0, 145, 234, 0.2)">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <div>
+            <h3 style="margin: 0; display: flex; align-items: center; color: var(--mat-sys-primary)"><mat-icon style="margin-right: 8px">qr_code_scanner</mat-icon> Air-Gapped Optical Transfer</h3>
+            <p class="hint-text" style="margin: 4px 0 0 0">Securely transmit this encrypted payload to another device via webcam without networks.</p>
+          </div>
+          <button mat-stroked-button color="primary" (click)="showQrSender = !showQrSender">
+            <mat-icon>{{ showQrSender ? 'close' : 'qr_code' }}</mat-icon>
+            {{ showQrSender ? 'Hide Scanner' : 'Show Animated QR' }}
+          </button>
         </div>
-        
+
         @if (showQrSender) {
-            <app-qr-sender [payload]="encryptedData"></app-qr-sender>
+          <app-qr-sender [payload]="encryptedData"></app-qr-sender>
         }
       </div>
 

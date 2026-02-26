@@ -34,13 +34,11 @@ export class SharedDecryptComponent {
   inputType: 'text' | 'file' = 'text';
   fileName = '';
   isFileProcessing = false;
-  
   showQrReceiver = false;
 
   virtualKeyboardEnabled = false;
-  
-  // Vault Binding
   useVaultSignature = false;
+  useHardwareId = false;
   vaultService = inject(VaultService);
 
   private fb = inject(FormBuilder);
@@ -61,7 +59,6 @@ export class SharedDecryptComponent {
     });
   }
 
-  // File Upload Handler
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) {
@@ -160,6 +157,18 @@ export class SharedDecryptComponent {
           }
       }
 
+      if (this.useHardwareId) {
+          const hwId = await this.vaultService.getHardwareId();
+          if (hwId) {
+              password = password + hwId;
+          } else {
+              console.error("Failed to retrieve Machine Hardware ID");
+              this.error = "Decryption failed: Unable to retrieve Machine Hardware ID from system.";
+              this.showResult = true;
+              return;
+          }
+      }
+
       try {
         const result = await this.cryptService.decrypt(encryptedData, reverseKey, password);
         this.decryptedMnemonic = result.decrypted;
@@ -199,6 +208,7 @@ export class SharedDecryptComponent {
     this.fileName = '';
     this.showQrReceiver = false;
     this.useVaultSignature = false;
+    this.useHardwareId = false;
   }
 
   onVirtualKeyPress(key: string) {

@@ -29,7 +29,7 @@ export class SharedEncryptComponent implements OnInit {
   @Input() mnemonicValidator: ValidatorFn | null = null;
   @Input() randomWordsGenerator: (() => string) | null = null;
 
-  // Events
+
   @Output() generateRandom = new EventEmitter<void>();
 
   firstFormGroup: FormGroup;
@@ -38,7 +38,7 @@ export class SharedEncryptComponent implements OnInit {
   encryptedData = '';
   reverseKey = '';
 
-  // Steganography Options
+
   stealthMode: StealthMode | 'standard' = 'standard';
   stealthModes = [
     { value: 'standard', label: 'Standard (Text)' },
@@ -53,14 +53,15 @@ export class SharedEncryptComponent implements OnInit {
   selectedCoverImage: File | null = null;
   selectedCoverAudio: File | null = null;
 
-  // Virtual Keyboard
+
   virtualKeyboardEnabled = false;
   
-  // QR Air-Gap Transfer
+
   showQrSender = false;
 
-  // Vault Binding
+
   useVaultSignature = false;
+  useHardwareId = false;
   vaultService = inject(VaultService);
 
   private _formBuilder = inject(FormBuilder);
@@ -103,6 +104,17 @@ export class SharedEncryptComponent implements OnInit {
           } else {
               console.error("Failed to retrieve vault identity private key");
               this.snackBar.open('Failed to bind encryption to Vault. Identity missing.', 'Close', { duration: 3000 });
+              return;
+          }
+      }
+
+      if (this.useHardwareId) {
+          const hwId = await this.vaultService.getHardwareId();
+          if (hwId) {
+              password = password + hwId;
+          } else {
+              console.error("Failed to retrieve Machine Hardware ID");
+              this.snackBar.open('Failed to bind encryption to Machine ID. Hardware identification unavailable.', 'Close', { duration: 3000 });
               return;
           }
       }
@@ -251,6 +263,7 @@ export class SharedEncryptComponent implements OnInit {
     this.virtualKeyboardEnabled = false;
     this.showQrSender = false;
     this.useVaultSignature = false;
+    this.useHardwareId = false;
   }
 
   onVirtualKeyPress(key: string) {

@@ -58,9 +58,22 @@ export class VaultDashboardComponent {
   lockProgress = signal(0);
 
   identityFingerprint = signal<string>('Loading Identity...');
+  hardwareId = signal<string | null>(null);
 
   constructor() {
      this.loadIdentity();
+     this.loadHardwareId();
+  }
+
+  async loadHardwareId() {
+      try {
+          const hwId = await this.vaultService.getHardwareId();
+          if (hwId) {
+              this.hardwareId.set(hwId);
+          }
+      } catch (e) {
+          console.error("Failed to load hardware ID", e);
+      }
   }
 
   async loadIdentity() {

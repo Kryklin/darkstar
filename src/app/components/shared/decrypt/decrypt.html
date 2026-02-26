@@ -99,11 +99,12 @@
             <form [formGroup]="thirdFormGroup">
               <ng-template matStepLabel>Enter Password</ng-template>
 
-              <div class="security-controls" style="margin-bottom: 16px">
+              <div class="security-controls" style="margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
                 <mat-slide-toggle [(ngModel)]="virtualKeyboardEnabled" [ngModelOptions]="{ standalone: true }" color="primary"> Enable Anti-Keylogger Mode </mat-slide-toggle>
                 @if (vaultService.isUnlocked()) {
-                    <mat-slide-toggle [(ngModel)]="useVaultSignature" [ngModelOptions]="{ standalone: true }" color="accent" style="margin-left: 16px;"> Require Vault Signature </mat-slide-toggle>
+                    <mat-slide-toggle [(ngModel)]="useVaultSignature" [ngModelOptions]="{ standalone: true }" color="accent"> Require Vault Signature </mat-slide-toggle>
                 }
+                <mat-slide-toggle [(ngModel)]="useHardwareId" [ngModelOptions]="{ standalone: true }" color="warn"> Require Machine Hardware ID </mat-slide-toggle>
               </div>
 
               <mat-form-field appearance="fill" class="full-width">

@@ -224,6 +224,21 @@
                 </div>
             </div>
           }
+
+          @if (hardwareId()) {
+            <div class="identity-card" style="margin-top: 16px;">
+                <div class="id-header">
+                    <mat-icon>memory</mat-icon>
+                    <span>Machine Hardware ID</span>
+                </div>
+                <div class="id-value">
+                    <code>{{ hardwareId() }}</code>
+                </div>
+                <div class="id-footer">
+                    <span class="secure-badge"><mat-icon>laptop_mac</mat-icon> DEVICE BOUND</span>
+                </div>
+            </div>
+          }
         </div>
       }
     </mat-sidenav-content>

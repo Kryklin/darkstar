@@ -20,6 +20,7 @@ interface ElectronAPI {
     vaultDeleteFile(filename: string): Promise<boolean>;
     vaultListFiles(): Promise<string[]>;
     checkIntegrity(): Promise<boolean>;
+    getMachineId(): Promise<string | null>;
 }
 
 interface Window {

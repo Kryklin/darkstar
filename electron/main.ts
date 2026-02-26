@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, sess
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { updateElectronApp } from 'update-electron-app';
+import { machineIdSync } from 'node-machine-id';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 import squirrelStartup from 'electron-squirrel-startup';
@@ -19,7 +20,6 @@ let isVersionLocked = false;
 function initUpdater() {
   if (updaterInitialized) return;
   if (app.isPackaged && !isVersionLocked) {
-    console.log('Main: Initializing auto-updater...');
     try {
       updateElectronApp({ notifyUser: false });
       updaterInitialized = true;
@@ -119,8 +119,6 @@ function createTray() {
   });
 }
 
-// ... (imports)
-
 import { verifyIntegrity } from './integrity';
 
 app.whenReady().then(async () => {
@@ -167,10 +165,8 @@ ipcMain.on('close-window', () => {
 });
 
 ipcMain.on('check-for-updates', () => {
-  console.log('IPC: check-for-updates received');
   try {
-    const feedUrl = autoUpdater.getFeedURL();
-    console.log('Current Feed URL:', feedUrl);
+    autoUpdater.getFeedURL();
   } catch (e) {
     console.log('Error getting feed URL:', e);
   }
@@ -183,7 +179,6 @@ ipcMain.handle('create-shortcut', async (_event, target: 'desktop' | 'start-menu
 
 ipcMain.on('set-version-lock', (_event, locked: boolean) => {
   isVersionLocked = locked;
-  console.log(`Main: Version lock state changed to: ${locked}`);
   if (!locked) {
     initUpdater();
   }
@@ -212,6 +207,15 @@ ipcMain.handle('safe-storage-decrypt', async (_event, encryptedBase64: string) =
 
 ipcMain.handle('safe-storage-available', () => {
   return safeStorage.isEncryptionAvailable();
+});
+
+ipcMain.handle('get-machine-id', () => {
+  try {
+    return machineIdSync();
+  } catch (error) {
+    console.error('Failed to get machine ID:', error);
+    return null;
+  }
 });
 
 ipcMain.handle('check-integrity', () => {
@@ -270,7 +274,6 @@ ipcMain.handle('vault-list-files', async () => {
 });
 
 ipcMain.on('restart-and-install', () => {
-  console.log('IPC: restart-and-install received');
   autoUpdater.quitAndInstall();
 });
 
@@ -278,19 +281,16 @@ ipcMain.on('restart-and-install', () => {
  * Listen on `autoUpdater` events and relay status to the renderer process via IPC.
  */
 autoUpdater.on('checking-for-update', () => {
-  console.log('AutoUpdater: checking-for-update');
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'checking' });
 });
 
 autoUpdater.on('update-available', () => {
-  console.log('AutoUpdater: update-available');
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'available' });
 });
 
 autoUpdater.on('update-not-available', () => {
-  console.log('AutoUpdater: update-not-available');
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'not-available' });
 });
@@ -305,8 +305,7 @@ autoUpdater.on('error', (err) => {
   if (win) win.webContents.send('update-status', { status: 'error', error: err.message });
 });
 
-autoUpdater.on('update-downloaded', (_event, releaseNotes, releaseName, releaseDate, updateURL) => {
-  console.log('AutoUpdater: update-downloaded', { releaseName, releaseDate, updateURL });
+autoUpdater.on('update-downloaded', () => {
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'downloaded' });
 });
