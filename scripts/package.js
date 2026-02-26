@@ -8,6 +8,19 @@ const pkg = require('../package.json');
   const { default: chalk } = await import('chalk');
   const { default: inquirer } = await import('inquirer');
   const { execa } = await import('execa');
+  
+  // Basic .env loader to support GitHub tokens without terminal restarts
+  const envPath = path.join(__dirname, '../.env');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    envContent.split('\n').forEach(line => {
+      const [key, ...valueParts] = line.split('=');
+      if (key && valueParts.length > 0) {
+        const value = valueParts.join('=').trim().replace(/^["']|["']$/g, '');
+        process.env[key.trim()] = value;
+      }
+    });
+  }
 
   /**
    * Clears the terminal and displays the project header.
@@ -143,6 +156,14 @@ const pkg = require('../package.json');
       await runShell('Building', CMD.BUILD);
       await new Promise((r) => setTimeout(r, 2000));
 
+      if (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN) {
+        console.log(chalk.red.bold('\n⚠️  Error: GITHUB_TOKEN not found in environment.'));
+        console.log(chalk.yellow('Publishing requires a GitHub Personal Access Token.'));
+        console.log(chalk.yellow('Please create a .env file in the root directory with:'));
+        console.log(chalk.cyan('GITHUB_TOKEN=your_token_here\n'));
+        return;
+      }
+
       await runShell('Publishing', CMD.PUBLISH, { clear: false });
 
       console.log(chalk.bold.green('\n✨ Full Release Pipeline Completed! ✨\n'));
@@ -178,6 +199,12 @@ const pkg = require('../package.json');
           await runShell('Packaging', CMD.PACKAGE, { clear: true }); // User requested clear back
           break;
         case 'publish':
+          if (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN) {
+            console.log(chalk.red.bold('\n⚠️  Error: GITHUB_TOKEN not found in environment.'));
+            console.log(chalk.yellow('Please create a .env file in the root directory with:'));
+            console.log(chalk.cyan('GITHUB_TOKEN=your_token_here\n'));
+            break;
+          }
           console.log(chalk.yellow('ℹ Building before publishing...'));
           await runShell('Building', CMD.BUILD);
           // Preserve build log
