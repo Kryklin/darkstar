@@ -133,6 +133,7 @@ export class UpdateService {
 
       if (comparison > 0) {
         this.updateStatus.set('available');
+        this.router.navigate(['/update-check']);
         // On mobile/web, we don't have auto-download events, so we notify clearly.
         if (!this.isElectron) {
           console.log('Update available for non-Electron platform.');

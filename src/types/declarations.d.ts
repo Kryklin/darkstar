@@ -1,5 +1,14 @@
 
 
+interface BiometricResponse {
+    success: boolean;
+    data?: {
+        rawId: number[];
+        [key: string]: unknown;
+    };
+    error?: string;
+}
+
 interface ElectronAPI {
     minimize(): void;
     maximize(): void;
@@ -28,7 +37,7 @@ interface ElectronAPI {
     openBackup(filePath: string): Promise<string | null>;
     checkIntegrity(): Promise<boolean>;
     getMachineId(): Promise<string | null>;
-    biometricHandshake(options: { action: 'create' | 'get', publicKey: unknown }): Promise<{ success: boolean; data?: unknown; error?: string }>;
+    biometricHandshake(options: { action: 'create' | 'get', publicKey: unknown }): Promise<BiometricResponse>;
     getPlatform(): NodeJS.Platform;
 }
 

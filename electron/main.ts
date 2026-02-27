@@ -20,11 +20,24 @@ protocol.registerSchemesAsPrivileged([
 let updaterInitialized = false;
 let isVersionLocked = false;
 
+function sendStatusToWindow(status: string, error?: string) {
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win) {
+    win.webContents.send('update-status', { status, error });
+  }
+}
+
 
 function initUpdater() {
   if (updaterInitialized) return;
   if (app.isPackaged && !isVersionLocked) {
     try {
+      autoUpdater.on('checking-for-update', () => sendStatusToWindow('checking'));
+      autoUpdater.on('update-available', () => sendStatusToWindow('available'));
+      autoUpdater.on('update-not-available', () => sendStatusToWindow('not-available'));
+      autoUpdater.on('error', (err) => sendStatusToWindow('error', err.message));
+      autoUpdater.on('update-downloaded', () => sendStatusToWindow('downloaded'));
+
       updateElectronApp({ notifyUser: false });
       updaterInitialized = true;
     } catch (err) {
@@ -407,6 +420,7 @@ ipcMain.handle('biometric-handshake', async (_event: unknown, options: { action:
         <html>
         <body>
           <script>
+            async function run() {
               try {
                 const options = ${JSON.stringify(safePublicKey)};
                 
@@ -425,6 +439,10 @@ ipcMain.handle('biometric-handshake', async (_event: unknown, options: { action:
                 }
 
                 const result = await navigator.credentials['${action}']({ publicKey: options });
+
+                if (!result) {
+                    throw new Error('No credential returned');
+                }
 
                 const serialized = {
                     id: result.id,
