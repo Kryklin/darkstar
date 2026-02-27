@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.1.2-blue" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-2.1.6-blue" alt="Version"/>
   <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript"/>
@@ -117,7 +117,7 @@ Darkstar V3 is architected to remain secure in the Post-Quantum era.
 
 - **AES-256 (Symmetric Resilience)**: While quantum computers can break asymmetric ciphers (RSA/ECC) using Shor's Algorithm, symmetric ciphers like AES-256 are only susceptible to **Grover's Algorithm**, which provides a quadratic speedup. This effectively reduces AES-256 to a still-unbreakable 128-bit security level against quantum attackers.
 - **Quantum-Safe Defaults**: By utilizing 256-bit keys and authenticated GCM mode, the core "Data at Rest" is considered quantum-safe today.
-- **Future-Proofing**: The architecture is designed for a hybrid upgrade path to **ML-KEM-1024** (Kyber) for asymmetric identity binding.
+- **Hybrid Quantum Resistance**: The architecture now utilizes a hybrid upgrade path with **ML-KEM-1024** (Kyber) for asymmetric identity binding, alongside AES-256-GCM for data encryption.
 
 ---
 

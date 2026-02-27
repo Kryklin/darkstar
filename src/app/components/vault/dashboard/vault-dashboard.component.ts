@@ -36,6 +36,7 @@ export class VaultDashboardComponent {
 
   readonly separatorKeysCodes = [ENTER, COMMA] as const;
   searchTerm = signal('');
+  isQuantumSafe = computed(() => !!this.vaultService.identity()?.pqcPublicKey);
 
   // Computed signal for search filter
   filteredNotes = computed(() => {
@@ -98,9 +99,16 @@ export class VaultDashboardComponent {
   async loadIdentity() {
       try {
           const key = await this.vaultService.getPublicKey();
+          const identity = this.vaultService.identity();
+          
           // Create a visual fingerprint (short hash of X coord)
           if (key.x) {
-             this.identityFingerprint.set(key.x.substring(0, 24) + '...'); 
+             const prefix = 'h'; // 'h' for Hybrid/PQC if present
+             if (identity?.pqcPublicKey) {
+                 this.identityFingerprint.set(`${prefix}7d5r${key.x.substring(0, 16)}...`);
+             } else {
+                 this.identityFingerprint.set(`e9k2${key.x.substring(0, 16)}...`);
+             }
           }
       } catch {
           this.identityFingerprint.set('Identity Hidden');

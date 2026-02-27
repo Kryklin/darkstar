@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.1.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.1.6-blue" alt="Version">
   <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular&logoColor=white" alt="Angular">
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron&logoColor=white" alt="Electron">
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
@@ -42,7 +42,7 @@
 - **Secure Vault**: A session-based, zero-knowledge vault for managing secure notes and sensitive metadata with multi-layered encryption.
 - **Vault Signature Binding (New)**: Cryptographically bind your data to your specific Vault Identity. Decryption is only possible when authenticated with the same cryptographic signature.
 - **Identity Backup & Recovery (New)**: Securely export and import your full Vault Identity (JSON) to ensure access to bound data across devices or after a vault reset.
-- **V3 Encryption Engine (Post-Quantum Ready)**: Powered by Web Crypto API with **AES-256-GCM** and **ChaCha20-based PRNG**. Inherent resistance to Grover's algorithm ensures long-term data survival in the quantum era.
+- **V3 Encryption Engine (Quantum-Resistant)**: Powered by Web Crypto API with **AES-256-GCM** and hybrid **ML-KEM-1024** identity encapsulation. Inherent resistance to Grover's algorithm ensures long-term data survival in the quantum era.
 - **Dynamic Deterministic Cycles**: Obfuscation depth scales intelligently (12-64 layers) based on data entropy, replacing the legacy fixed-depth model.
 - **Anti-Forensic Memory**: Strict `Uint8Array` usage with explicit memory zeroing. The P2P service automatically performs an emergency shutdown if the vault is locked.
 - **Windows Hello & Biometrics**: Unlock your vault primarily using platform biometrics (TouchID, FaceID) or **Hardware Keys (YubiKey)** via WebAuthn.

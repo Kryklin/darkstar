@@ -13,6 +13,7 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 2.1.x   | :white_check_mark: |
 | 1.7.x   | :white_check_mark: |
 | < 1.7   | :x:                |
 

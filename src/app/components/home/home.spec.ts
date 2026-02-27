@@ -49,7 +49,7 @@ describe('Home', () => {
     fixture.detectChanges();
     const footer = compiled.querySelector('.footer');
     expect(footer).toBeTruthy();
-    expect(footer?.textContent).toContain('© 2025 Victor Kane. All Rights Reserved.');
+    expect(footer?.textContent).toContain('© 2026 Victor Kane. All Rights Reserved.');
     expect(footer?.textContent).toContain(`Version ${packageJson.version}`);
   }));
 });

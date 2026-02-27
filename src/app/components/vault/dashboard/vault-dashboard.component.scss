@@ -186,8 +186,10 @@ h4[matListItemTitle] { font-weight: 400; margin-bottom: 4px; font-size: 0.95rem;
     .id-footer {
         margin-top: 16px;
         display: flex;
-        justify-content: flex-end;
-        
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+
         .secure-badge {
             display: flex;
             align-items: center;
@@ -199,6 +201,13 @@ h4[matListItemTitle] { font-weight: 400; margin-bottom: 4px; font-size: 0.95rem;
             border-radius: 20px;
             border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.2);
             mat-icon { font-size: 12px; height: 12px; width: 12px; }
+
+            &.quantum {
+                color: #00ff9d;
+                background: rgba(0, 255, 157, 0.1);
+                border: 1px solid rgba(0, 255, 157, 0.2);
+                animation: pulse-glow-green 2s infinite;
+            }
         }
     }
 }
@@ -251,4 +260,9 @@ h4[matListItemTitle] { font-weight: 400; margin-bottom: 4px; font-size: 0.95rem;
         margin-bottom: 24px;
         color: rgba(var(--mat-sys-primary-rgb), 0.2);
     }
+}
+@keyframes pulse-glow-green {
+    0% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(0, 255, 157, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); }
 }

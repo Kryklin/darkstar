@@ -23,15 +23,15 @@
       (function() {
         try {
           // 1. Enforce dark-first
-          document.body.classList.add('dark-theme');
+          document.documentElement.classList.add('dark-theme');
           
           // 2. Load saved theme
           const savedTheme = localStorage.getItem('selectedTheme');
           if (savedTheme) {
-            document.body.classList.add(savedTheme);
+            document.documentElement.classList.add(savedTheme);
           } else {
             // Default theme if none saved
-            document.body.classList.add('theme-crimson-void');
+            document.documentElement.classList.add('theme-crimson-void');
           }
           
           // 3. Early favicon swap

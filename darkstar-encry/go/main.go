@@ -1065,12 +1065,12 @@ func main() {
 		data := args[1]
 		reverseKey := args[2]
 		password := args[3]
-		decrypted, err := dc.Decrypt(data, reverseKey, password)
+		result, err := dc.Decrypt(data, reverseKey, password)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println(decrypted)
+		fmt.Println(result) // Use result instead of missing decrypted
 
 	case "test":
 		mnemonic := "cat dog fish bird"

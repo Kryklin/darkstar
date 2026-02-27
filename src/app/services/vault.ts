@@ -1,5 +1,7 @@
 import { Injectable, signal, inject, computed } from '@angular/core';
 import { CryptService } from './crypt';
+import { ml_kem1024 } from '@noble/post-quantum/ml-kem.js';
+import { base64 } from '@scure/base';
 
 export interface VaultAttachment {
   id: string;
@@ -13,6 +15,8 @@ export interface VaultAttachment {
 export interface VaultIdentity {
   publicKey: JsonWebKey;
   privateKey: JsonWebKey;
+  pqcPublicKey?: string; // Base64 encoded ML-KEM-1024 public key
+  pqcPrivateKey?: string; // Base64 encoded ML-KEM-1024 private key
 }
 
 import { TimeLockMetadata } from './timelock.service';
@@ -285,10 +289,17 @@ export class VaultService {
       
       this.notes.set(migratedNotes);
       
-      // Ensure identity exists
+      // Ensure identities exist and are upgraded to PQC
       if (!identity) {
           identity = await this.generateIdentity();
           isLegacy = true; // Force save
+      } else if (!identity.pqcPublicKey) {
+          // Upgrade existing identity with Quantum protection
+          console.log('Upgrading identity with ML-KEM-1024 protection...');
+          const pqc = ml_kem1024.keygen();
+          identity.pqcPublicKey = base64.encode(pqc.publicKey);
+          identity.pqcPrivateKey = base64.encode(pqc.secretKey);
+          isLegacy = true;
       }
       // If TOTP is configured, we pause the unlock sequence.
       if (totpSecret) {
@@ -435,7 +446,17 @@ export class VaultService {
       const publicKey = await window.crypto.subtle.exportKey("jwk", keyPair.publicKey);
       const privateKey = await window.crypto.subtle.exportKey("jwk", keyPair.privateKey);
 
-      return { publicKey, privateKey };
+      // ML-KEM-1024 (Kyber) Generation
+      const pqc = ml_kem1024.keygen();
+      const pqcPublicKey = base64.encode(pqc.publicKey);
+      const pqcPrivateKey = base64.encode(pqc.secretKey);
+
+      return { 
+          publicKey, 
+          privateKey,
+          pqcPublicKey,
+          pqcPrivateKey
+      };
   }
 
   public async getPublicKey(): Promise<JsonWebKey> {
