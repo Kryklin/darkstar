@@ -24,8 +24,11 @@ interface ElectronAPI {
     getDefaultBackupPath(): Promise<string>;
     saveBackup(dir: string, filename: string, data: string): Promise<boolean>;
     showDirectoryPicker(): Promise<string | null>;
+    showFilePicker(): Promise<string | null>;
+    openBackup(filePath: string): Promise<string | null>;
     checkIntegrity(): Promise<boolean>;
     getMachineId(): Promise<string | null>;
+    biometricHandshake(options: { action: 'create' | 'get', publicKey: any }): Promise<{ success: boolean; data?: any; error?: string }>;
     getPlatform(): NodeJS.Platform;
 }
 

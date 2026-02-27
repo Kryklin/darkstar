@@ -56,7 +56,7 @@
                          <mat-icon>fingerprint</mat-icon>
                      }
                      @if (!biometricsLoading) {
-                         <span>{{ isWindows ? 'Windows Hello' : 'Touch ID' }}</span>
+                         <span>{{ authName }}</span>
                      }
                      @if (biometricsLoading) {
                          <mat-spinner diameter="20"></mat-spinner>

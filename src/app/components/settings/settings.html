@@ -108,9 +108,24 @@
       <div class="setting-label">
         <span class="title">Automated Backups</span>
         <span class="description">Configure scheduled exports of your vault data</span>
+        @if (isElectron && resolvedBackupPath) {
+          <span class="path-info" style="font-size: 0.8em; opacity: 0.7; font-family: monospace; display: block; margin-top: 4px;">
+            Target: {{ resolvedBackupPath }}
+          </span>
+        }
       </div>
       <button mat-flat-button color="primary" (click)="openBackupConfig()">Configure</button>
     </div>
+
+    @if (isElectron) {
+      <div class="setting-row">
+        <div class="setting-label">
+          <span class="title">Restore from Backup</span>
+          <span class="description">Select a previous backup file to restore your vault</span>
+        </div>
+        <button mat-flat-button color="warn" (click)="restoreBackup()">Restore</button>
+      </div>
+    }
 
     <div class="setting-row">
       <div class="setting-label">
@@ -129,8 +144,8 @@
 
     <div class="setting-row">
       <div class="setting-label">
-        <span class="title">Biometric Unlock</span>
-        <span class="description">Use Windows Hello or TouchID to unlock your vault</span>
+        <span class="title">{{ authName }}</span>
+        <span class="description">Use {{ authName }} to unlock your vault</span>
       </div>
       <div class="duress-controls">
          @if (isBiometricEnabled) {
@@ -139,7 +154,7 @@
          } @else {
              <button mat-flat-button color="primary" [disabled]="isRegisteringBiometrics" (click)="toggleBiometrics()">
                 @if (!isRegisteringBiometrics) {
-                    <span>Enable Windows Hello</span>
+                    <span>Enable {{ authName }}</span>
                 }
                 @if (isRegisteringBiometrics) {
                     <mat-spinner diameter="20"></mat-spinner>

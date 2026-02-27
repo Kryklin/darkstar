@@ -1,13 +1,9 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, autoUpdater, session, shell, safeStorage, dialog, protocol } from 'electron';
+import * as http from 'http';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { updateElectronApp } from 'update-electron-app';
 import { machineIdSync } from 'node-machine-id';
-
-// Register custom protocol as secure/standard
-protocol.registerSchemesAsPrivileged([
-  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } }
-]);
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 import squirrelStartup from 'electron-squirrel-startup';
@@ -16,12 +12,15 @@ if (squirrelStartup) {
   process.exit(0);
 }
 
+// Register custom protocol as secure/standard
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } }
+]);
+
 let updaterInitialized = false;
 let isVersionLocked = false;
 
-/**
- * Initializes the auto-updater if the app is packaged and NOT version-locked.
- */
+
 function initUpdater() {
   if (updaterInitialized) return;
   if (app.isPackaged && !isVersionLocked) {
@@ -93,39 +92,52 @@ function createWindow() {
     win.loadURL('http://localhost:4200');
     win.webContents.openDevTools();
   } else {
-    // In production, we run a background sequential migration to recover stranded localStorage
-    // from previous path/app updates, before showing the window on the final origin.
     (async () => {
       try {
         const distPath = path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser');
         
-        // 1. Read from legacy V1-V2.1.0 file:// origin
+        // 1. Read legacy origins
         await win.loadFile(path.join(distPath, 'index.html'));
         const fileData = await win.webContents.executeJavaScript('Object.assign({}, window.localStorage)');
 
-        // 2. Read from legacy V2.1.1 app:// origin (which had matching domain issues)
         await win.loadURL('app://index.html');
         const appData = await win.webContents.executeJavaScript('Object.assign({}, window.localStorage)');
 
-        // 3. Final Origin: Explicit domain for WebAuthn RP ID match (app://darkstar)
         await win.loadURL('app://darkstar/index.html');
+        const darkstarData = await win.webContents.executeJavaScript('Object.assign({}, window.localStorage)');
+
+        await win.loadURL('app://local/index.html');
+        const appLocalData = await win.webContents.executeJavaScript('Object.assign({}, window.localStorage)');
+
+        // 2. Final Origin: app://localhost
+        await win.loadURL('app://localhost/index.html');
         const currentData = await win.webContents.executeJavaScript('Object.assign({}, window.localStorage)');
         
-        // If current origin has NO vault data, we inject priority data
-        if (!currentData['darkstar_vault']) {
-            // Priority: Older file:// origin (usually larger/older data), else intermediate app:// origin
-            const bestData = fileData['darkstar_vault'] ? fileData : (appData['darkstar_vault'] ? appData : null);
+        if (!currentData['darkstar_vault'] && !currentData['migration_complete']) {
+            const origins = [fileData, appData, darkstarData, appLocalData];
+            let bestData = null;
+            let maxVaultSize = 0;
+            for (const data of origins) {
+                if (data && data['darkstar_vault']) {
+                    const size = data['darkstar_vault'].length;
+                    if (size > maxVaultSize) {
+                        maxVaultSize = size;
+                        bestData = data;
+                    }
+                }
+            }
             if (bestData) {
-                // Safely insert key-values
                 for (const key of Object.keys(bestData)) {
                     await win.webContents.executeJavaScript(`window.localStorage.setItem(${JSON.stringify(key)}, ${JSON.stringify(bestData[key])});`);
                 }
+                await win.webContents.executeJavaScript(`window.localStorage.setItem('vault_recovered_notice', 'true');`);
             }
+            // Mark migration as attempted/complete to avoid scanning origins on every boot
+            await win.webContents.executeJavaScript(`window.localStorage.setItem('migration_complete', 'true');`);
         }
-      } catch (e) {
-          console.error("Migration/Startup Sequence Failed:", e);
-          // Fallback to ensuring we load
-          await win.loadURL('app://darkstar/index.html');
+      } catch (_e) {
+          console.error("Migration Sequence Failed:", _e);
+          await win.loadURL('app://localhost/index.html');
       } finally {
         win.show();
       }
@@ -137,21 +149,19 @@ function createTray() {
   const iconPath = path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser', 'favicon.ico');
   const icon = nativeImage.createFromPath(iconPath);
   tray = new Tray(icon);
-
-  const contextMenu = Menu.buildFromTemplate([{ label: `Version: ${app.getVersion()}`, enabled: false }, { type: 'separator' }, { label: 'Exit', click: () => app.quit() }]);
-
+  const contextMenu = Menu.buildFromTemplate([
+    { label: `Version: ${app.getVersion()}`, enabled: false },
+    { type: 'separator' },
+    { label: 'Exit', click: () => app.quit() }
+  ]);
   tray.setToolTip('Darkstar');
   tray.setContextMenu(contextMenu);
-
   tray.on('click', () => {
     const win = BrowserWindow.getAllWindows()[0];
     if (win) {
       if (win.isVisible()) {
-        if (win.isMinimized()) {
-          win.restore();
-        } else {
-          win.show();
-        }
+        if (win.isMinimized()) win.restore();
+        else win.show();
       } else {
         win.show();
       }
@@ -163,117 +173,80 @@ function createTray() {
 import { verifyIntegrity } from './integrity';
 
 app.whenReady().then(async () => {
-  // Set up the custom protocol handler to serve files from the dist directory
   protocol.handle('app', async (request) => {
     const url = new URL(request.url);
     let pathname = url.pathname;
-    
-    // Normalize path to prevent directory traversal
-    if (pathname === '/' || pathname === '') {
-        pathname = '/index.html';
-    }
-
+    if (pathname === '/' || pathname === '') pathname = '/index.html';
     const distPath = path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser');
     const fullPath = path.join(distPath, pathname);
-
     try {
-        // Basic check to ensure we are within dist
-        if (!fullPath.startsWith(distPath)) {
-            return new Response('Forbidden', { status: 403 });
-        }
-        
+        if (!fullPath.startsWith(distPath)) return new Response('Forbidden', { status: 403 });
         const fileContent = await fs.readFile(fullPath);
         const extension = path.extname(fullPath).toLowerCase();
-        
         const mimeTypes: Record<string, string> = {
-            '.html': 'text/html',
-            '.js': 'text/javascript',
-            '.css': 'text/css',
-            '.png': 'image/png',
-            '.jpg': 'image/jpeg',
-            '.ico': 'image/x-icon',
-            '.json': 'application/json',
-            '.svg': 'image/svg+xml'
+            '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
+            '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon',
+            '.json': 'application/json', '.svg': 'image/svg+xml'
         };
-
         return new Response(new Uint8Array(fileContent), {
             headers: { 'content-type': mimeTypes[extension] || 'application/octet-stream' }
         });
-    } catch (e) {
-        console.error('Protocol Error:', e);
-        // Fallback for SPA routing: serve index.html for unknown routes
+    } catch (_e) {
         try {
             const indexContent = await fs.readFile(path.join(distPath, 'index.html'));
             return new Response(new Uint8Array(indexContent), { headers: { 'content-type': 'text/html' } });
-        } catch (_indexError) {
-            return new Response('Not Found', { status: 404 });
-        }
+        } catch { return new Response('Not Found', { status: 404 }); }
     }
   });
 
   await verifyIntegrity();
   createWindow();
   createTray();
+  initUpdater();
+
+  // One-time cleanup of diagnostic logs
+  const logPath = path.join(app.getPath('userData'), 'debug.log');
+  fs.unlink(logPath).catch(() => { /* ignore */ });
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  if (process.platform !== 'darwin') app.quit();
 });
 
 ipcMain.on('minimize-window', () => {
   const win = BrowserWindow.getFocusedWindow();
-  if (win) {
-    win.minimize();
-  }
+  if (win) win.minimize();
 });
 
 ipcMain.on('maximize-window', () => {
   const win = BrowserWindow.getFocusedWindow();
   if (win) {
-    if (win.isMaximized()) {
-      win.unmaximize();
-    } else {
-      win.maximize();
-    }
+    if (win.isMaximized()) win.unmaximize();
+    else win.maximize();
   }
 });
 
 ipcMain.on('close-window', () => {
   const win = BrowserWindow.getFocusedWindow();
-  if (win) {
-    win.close();
-  }
+  if (win) win.close();
 });
 
 ipcMain.on('check-for-updates', () => {
-  try {
-    autoUpdater.getFeedURL();
-  } catch (e) {
-    console.log('Error getting feed URL:', e);
-  }
   autoUpdater.checkForUpdates();
 });
 
 ipcMain.handle('create-shortcut', async (_event, target: 'desktop' | 'start-menu') => {
-  if (process.platform !== 'win32') {
-    return { success: false, message: 'Shortcuts are only supported on Windows.' };
-  }
+  if (process.platform !== 'win32') return { success: false, message: 'Windows only.' };
   return await createShortcut(target);
 });
 
 ipcMain.on('set-version-lock', (_event, locked: boolean) => {
   isVersionLocked = locked;
-  if (!locked) {
-    initUpdater();
-  }
+  if (!locked) initUpdater();
 });
 
 ipcMain.handle('reset-app', async () => {
@@ -283,121 +256,67 @@ ipcMain.handle('reset-app', async () => {
 });
 
 ipcMain.handle('safe-storage-encrypt', async (_event, plainText: string) => {
-  if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error('Encryption is not available on this system.');
-  }
+  if (!safeStorage.isEncryptionAvailable()) throw new Error('Encryption not available.');
   return safeStorage.encryptString(plainText).toString('base64');
 });
 
 ipcMain.handle('safe-storage-decrypt', async (_event, encryptedBase64: string) => {
-  if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error('Encryption is not available on this system.');
-  }
+  if (!safeStorage.isEncryptionAvailable()) throw new Error('Encryption not available.');
   const buffer = Buffer.from(encryptedBase64, 'base64');
   return safeStorage.decryptString(buffer);
 });
 
-ipcMain.handle('safe-storage-available', () => {
-  return safeStorage.isEncryptionAvailable();
-});
+ipcMain.handle('safe-storage-available', () => safeStorage.isEncryptionAvailable());
 
 ipcMain.handle('get-machine-id', () => {
-  try {
-    return machineIdSync();
-  } catch (error) {
-    console.error('Failed to get machine ID:', error);
-    return null;
-  }
+  try { return machineIdSync(); } catch { return null; }
 });
 
-ipcMain.handle('check-integrity', () => {
-  // If the app is fully running, verifyIntegrity() has already passed at startup.
-  return true;
-});
+ipcMain.handle('check-integrity', () => true);
 
 import { generateSecret, generateURI, verifySync } from 'otplib';
 
 ipcMain.handle('vault-generate-totp', () => {
   const secret = generateSecret();
-  // We use a generic name for now
-  const uri = generateURI({
-      issuer: 'Darkstar',
-      label: 'user',
-      secret
-  });
+  const uri = generateURI({ issuer: 'Darkstar', label: 'user', secret });
   return { secret, uri };
 });
 
 ipcMain.handle('vault-verify-totp', (_event, token: string, secret: string) => {
-  try {
-    const result = verifySync({ token, secret });
-    return result.valid;
-  } catch (_e) {
-    return false;
-  }
+  try { return verifySync({ token, secret }); } catch { return false; }
 });
-
-// --- Vault V2 IPC Handlers ---
 
 const getVaultPath = () => path.join(app.getPath('userData'), 'vault_storage');
 
 ipcMain.handle('vault-ensure-dir', async () => {
-  const vaultPath = getVaultPath();
-  try {
-    await fs.mkdir(vaultPath, { recursive: true });
-    return true;
-  } catch (err) {
-    console.error('Failed to create vault directory:', err);
-    throw err;
-  }
+  try { await fs.mkdir(getVaultPath(), { recursive: true }); return true; } catch { return false; }
 });
 
 ipcMain.handle('vault-save-file', async (_event, filename: string, buffer: Buffer) => {
   const filePath = path.join(getVaultPath(), filename);
-  // Basic path traversal prevention
-  if (path.basename(filePath) !== filename) {
-    throw new Error('Invalid filename');
-  }
+  if (path.basename(filePath) !== filename) throw new Error('Invalid filename');
   await fs.writeFile(filePath, buffer);
   return true;
 });
 
 ipcMain.handle('vault-read-file', async (_event, filename: string) => {
   const filePath = path.join(getVaultPath(), filename);
-  if (path.basename(filePath) !== filename) {
-    throw new Error('Invalid filename');
-  }
+  if (path.basename(filePath) !== filename) throw new Error('Invalid filename');
   return await fs.readFile(filePath);
 });
 
 ipcMain.handle('vault-delete-file', async (_event, filename: string) => {
   const filePath = path.join(getVaultPath(), filename);
-  if (path.basename(filePath) !== filename) {
-    throw new Error('Invalid filename');
-  }
+  if (path.basename(filePath) !== filename) throw new Error('Invalid filename');
   await fs.unlink(filePath);
   return true;
 });
 
 ipcMain.handle('vault-list-files', async () => {
-  try {
-    return await fs.readdir(getVaultPath());
-  } catch {
-    return [];
-  }
+  try { return await fs.readdir(getVaultPath()); } catch { return []; }
 });
 
-ipcMain.on('restart-and-install', () => {
-  autoUpdater.quitAndInstall();
-});
-
-/**
- * Listen on `autoUpdater` events and relay status to the renderer process via IPC.
- */
-autoUpdater.on('checking-for-update', () => {
-  const win = BrowserWindow.getAllWindows()[0];
-  if (win) win.webContents.send('update-status', { status: 'checking' });
-});
+ipcMain.on('restart-and-install', () => autoUpdater.quitAndInstall());
 
 autoUpdater.on('update-available', () => {
   const win = BrowserWindow.getAllWindows()[0];
@@ -410,11 +329,6 @@ autoUpdater.on('update-not-available', () => {
 });
 
 autoUpdater.on('error', (err) => {
-  console.error('AutoUpdater: error', err);
-  // Ignore "update check already running" errors
-  if (err.message && (err.message.includes('Update check already running') || err.message.includes('already running'))) {
-    return;
-  }
   const win = BrowserWindow.getAllWindows()[0];
   if (win) win.webContents.send('update-status', { status: 'error', error: err.message });
 });
@@ -424,29 +338,151 @@ autoUpdater.on('update-downloaded', () => {
   if (win) win.webContents.send('update-status', { status: 'downloaded' });
 });
 
-ipcMain.handle('get-default-backup-path', () => {
-  return path.join(app.getPath('documents'), 'DarkstarBackups');
-});
+ipcMain.handle('get-default-backup-path', () => path.join(app.getPath('documents'), 'DarkstarBackups'));
 
 ipcMain.handle('save-backup', async (_event, dir: string, filename: string, data: string) => {
   try {
     await fs.mkdir(dir, { recursive: true });
-    const fullPath = path.join(dir, filename);
-    await fs.writeFile(fullPath, data, 'utf-8');
+    await fs.writeFile(path.join(dir, filename), data, 'utf-8');
     return true;
-  } catch (err) {
-    console.error('Save Backup failed:', err);
-    return false;
-  }
+  } catch { return false; }
 });
 
 ipcMain.handle('show-directory-picker', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({ properties: ['openDirectory'] });
+  return canceled ? null : filePaths[0];
+});
+
+ipcMain.handle('show-file-picker', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
-    properties: ['openDirectory'],
-    title: 'Select Backup Folder',
+    properties: ['openFile'],
+    filters: [{ name: 'Darkstar Backup', extensions: ['backup'] }]
   });
-  if (canceled || filePaths.length === 0) {
-    return null;
-  }
-  return filePaths[0];
+  return canceled ? null : filePaths[0];
+});
+
+ipcMain.handle('open-backup', async (_event, filePath: string) => {
+  try { return await fs.readFile(filePath, 'utf-8'); } catch { return null; }
+});
+
+// --- WebAuthn Native Proxy (Windows Hello Fix) ---
+
+ipcMain.handle('biometric-handshake', async (_event: unknown, options: { action: 'create' | 'get', publicKey: unknown }) => {
+  return new Promise((resolve) => {
+    let server: http.Server | null = null;
+    let handshakeWin: BrowserWindow | null = null;
+
+    const cleanup = async () => {
+      if (handshakeWin) {
+        handshakeWin.close();
+        handshakeWin = null;
+      }
+      if (server) {
+        server.close();
+        server = null;
+      }
+    };
+
+    server = http.createServer(async (_req, res) => {
+      
+      // Helper to ensure all binary data is safely serialized to arrays
+      const serializeBuffers = (obj: unknown): unknown => {
+        if (Buffer.isBuffer(obj) || obj instanceof Uint8Array) return Array.from(obj);
+        if (Array.isArray(obj)) return obj.map(serializeBuffers);
+        if (obj && typeof obj === 'object') {
+          const result: Record<string, unknown> = {};
+          for (const key in obj) {
+              result[key] = serializeBuffers((obj as Record<string, unknown>)[key]);
+          }
+          return result;
+        }
+        return obj;
+      };
+
+      const safePublicKey = serializeBuffers((options as Record<string, unknown>).publicKey);
+      const action = (options as Record<string, unknown>).action;
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <body>
+          <script>
+              try {
+                const options = ${JSON.stringify(safePublicKey)};
+                
+                // Restore ArrayBuffers for WebAuthn
+                if (options.challenge) options.challenge = Uint8Array.from(options.challenge).buffer;
+                if (options.user && options.user.id) options.user.id = Uint8Array.from(options.user.id).buffer;
+                if (options.allowCredentials) {
+                    options.allowCredentials.forEach(c => {
+                        if (c.id) c.id = Uint8Array.from(c.id).buffer;
+                    });
+                }
+                if (options.excludeCredentials) {
+                    options.excludeCredentials.forEach(c => {
+                        if (c.id) c.id = Uint8Array.from(c.id).buffer;
+                    });
+                }
+
+                const result = await navigator.credentials['${action}']({ publicKey: options });
+
+                const serialized = {
+                    id: result.id,
+                    rawId: Array.from(new Uint8Array(result.rawId)),
+                    type: result.type,
+                    response: {
+                        clientDataJSON: Array.from(new Uint8Array(result.response.clientDataJSON)),
+                        attestationObject: result.response.attestationObject ? Array.from(new Uint8Array(result.response.attestationObject)) : undefined,
+                        authenticatorData: result.response.authenticatorData ? Array.from(new Uint8Array(result.response.authenticatorData)) : undefined,
+                        signature: result.response.signature ? Array.from(new Uint8Array(result.response.signature)) : undefined,
+                        userHandle: result.response.userHandle ? Array.from(new Uint8Array(result.response.userHandle)) : undefined
+                    }
+                };
+                window.ipc.send('handshake-result', { success: true, data: serialized });
+              } catch (e) {
+                window.ipc.send('handshake-result', { success: false, error: e.message });
+              }
+            }
+            run();
+          </script>
+        </body>
+        </html>
+      `;
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(html);
+    });
+
+    server.listen(0, '127.0.0.1', async () => {
+      const addr = server!.address();
+      const port = (addr && typeof addr === 'object') ? addr.port : 0;
+
+      handshakeWin = new BrowserWindow({
+        width: 1,
+        height: 1,
+        show: false,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          preload: path.join(__dirname, 'preload_handshake.js')
+        }
+      });
+
+      const resultHandler = async (_: unknown, response: { success: boolean, data?: unknown, error?: string }) => {
+        ipcMain.removeListener('handshake-result', resultHandler);
+        cleanup();
+        resolve(response);
+      };
+      ipcMain.on('handshake-result', resultHandler);
+
+      handshakeWin.loadURL(`http://localhost:${port}`);
+
+      setTimeout(async () => {
+        if (server) {
+           ipcMain.removeListener('handshake-result', resultHandler);
+           cleanup();
+           resolve({ success: false, error: 'Handshake timeout' });
+        }
+      }, 60000);
+    });
+  });
 });

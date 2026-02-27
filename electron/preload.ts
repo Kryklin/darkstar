@@ -1,6 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-
 contextBridge.exposeInMainWorld('electronAPI', {
   minimize: () => ipcRenderer.send('minimize-window'),
   maximize: () => ipcRenderer.send('maximize-window'),
@@ -28,6 +27,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showDirectoryPicker: () => ipcRenderer.invoke('show-directory-picker'),
   checkIntegrity: () => ipcRenderer.invoke('check-integrity'),
   getMachineId: (): Promise<string | null> => ipcRenderer.invoke('get-machine-id'),
+  biometricHandshake: (options: { action: 'create' | 'get', publicKey: any }): Promise<{ success: boolean, data?: any, error?: string }> => ipcRenderer.invoke('biometric-handshake', options),
   getPlatform: () => process.platform,
 });
 

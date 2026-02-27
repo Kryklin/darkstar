@@ -93,4 +93,42 @@ export class BackupService {
       }
       return path;
   }
+
+  async validateAndRestoreBackup(): Promise<{ success: boolean; message: string }> {
+      if (!window.electronAPI) return { success: false, message: 'Electron API unavailable.' };
+
+      try {
+          // 1. Pick file
+          const filePath = await window.electronAPI.showFilePicker();
+          if (!filePath) return { success: false, message: 'No file selected.' };
+
+          // 2. Read file blob
+          const backupData = await window.electronAPI.openBackup(filePath);
+          if (!backupData) return { success: false, message: 'Failed to read backup file.' };
+
+          // 3. Very basic structural validation
+          // We expect a base64 encoded JSON string representing the Vault envelope
+          try {
+             const decodedStr = atob(backupData);
+             const parsed = JSON.parse(decodedStr);
+             if (!parsed || parsed.v === undefined || !parsed.ct) {
+                 return { success: false, message: 'Invalid backup file format or corrupted payload.' };
+             }
+          } catch(_e) {
+              return { success: false, message: 'Invalid backup file format. Expected base64 JSON envelope.' };
+          }
+
+          // 4. Inject
+          localStorage.setItem('secure_vault_v2', backupData);
+
+          // 5. Force reload
+          window.location.reload();
+
+          // Technically won't reach here if reload succeeds instantly
+          return { success: true, message: 'Restoration successful. Reloading...' };
+      } catch (err) {
+          console.error('Backup Restoration Error:', err);
+          return { success: false, message: err instanceof Error ? err.message : 'An unknown error occurred during restoration.' };
+      }
+  }
 }

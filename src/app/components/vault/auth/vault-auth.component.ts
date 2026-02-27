@@ -1,9 +1,12 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { VaultService } from '../../../services/vault';
+import { BiometricService } from '../../../services/biometric.service';
 import { EntropyMeter } from '../../entropy-meter/entropy-meter';
 import { MaterialModule } from '../../../modules/material/material';
+import { MatDialog } from '@angular/material/dialog';
+import { GenericDialog } from '../../dialogs/generic-dialog/generic-dialog';
 
 @Component({
   selector: 'app-vault-auth',
@@ -12,8 +15,10 @@ import { MaterialModule } from '../../../modules/material/material';
   templateUrl: './vault-auth.component.html',
   styleUrls: ['./vault-auth.component.scss'],
 })
-export class VaultAuthComponent {
+export class VaultAuthComponent implements OnInit {
   vaultService = inject(VaultService);
+  biometricService = inject(BiometricService);
+  dialog = inject(MatDialog);
 
   password = '';
   hidePassword = true;
@@ -37,8 +42,26 @@ export class VaultAuthComponent {
     return !!localStorage.getItem('biometric_credential_id');
   }
 
+  get authName() {
+    return this.biometricService.getDeviceAuthName();
+  }
+
   hasVault() {
     return this.vaultService.hasVault();
+  }
+
+  ngOnInit() {
+    if (localStorage.getItem('vault_recovered_notice') === 'true') {
+        localStorage.removeItem('vault_recovered_notice');
+        this.dialog.open(GenericDialog, {
+            data: {
+                title: 'Vault Data Recovered',
+                message: 'We apologize for the inconvenience—due to a secure origin update, your vault data may have appeared missing. We have successfully located and recovered your data. \n\nIf you still find data is missing, please use the "Restore from Backup" utility found in Settings.',
+                buttons: [{ label: 'I Understand', value: true }]
+            },
+            width: '450px'
+        });
+    }
   }
 
   async submitHardwareKey() {

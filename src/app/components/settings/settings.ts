@@ -1,7 +1,8 @@
-import { Component, inject, NgZone } from '@angular/core';
+import { Component, inject, NgZone, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { VaultService } from '../../services/vault';
+import { BackupService } from '../../services/backup';
 import { Theme, ThemeDef } from '../../services/theme';
 import { UpdateService } from '../../services/update';
 import { MaterialModule } from '../../modules/material/material';
@@ -10,6 +11,7 @@ import { GenericDialog, DialogButton } from '../dialogs/generic-dialog/generic-d
 import { DuressService } from '../../services/duress.service';
 import { TotpSetup } from './totp-setup/totp-setup';
 import { BackupConfig } from './backup-config/backup-config';
+import { BiometricService } from '../../services/biometric.service';
 
 
 @Component({
@@ -19,14 +21,16 @@ import { BackupConfig } from './backup-config/backup-config';
   templateUrl: './settings.html',
   styleUrls: ['./settings.scss'],
 })
-export class Settings {
+export class Settings implements OnInit {
   theme = inject(Theme);
   updateService = inject(UpdateService);
   vaultService = inject(VaultService);
   duressService = inject(DuressService);
+  backupService = inject(BackupService);
 
   dialog = inject(MatDialog);
   ngZone = inject(NgZone);
+  biometricService = inject(BiometricService);
 
   isElectron = !!window.electronAPI;
   isWindows = this.isElectron && window.electronAPI.getPlatform() === 'win32';
@@ -44,12 +48,32 @@ export class Settings {
       return !!localStorage.getItem('hardware_key_credential_id');
   }
 
+  get authName(): string {
+      return this.biometricService.getDeviceAuthName();
+  }
+
+  resolvedBackupPath = '';
+
+  ngOnInit() {
+      if (this.isElectron) {
+          this.updateResolvedBackupPath();
+      }
+  }
+
+  async updateResolvedBackupPath() {
+      if (this.backupService.backupPath()) {
+          this.resolvedBackupPath = this.backupService.backupPath();
+      } else {
+          this.resolvedBackupPath = await window.electronAPI.getDefaultBackupPath();
+      }
+  }
+
   async toggleBiometrics() {
       if (this.isBiometricEnabled) {
           // Disable
           localStorage.removeItem('biometric_credential_id');
           localStorage.removeItem('biometric_enc_pass');
-          this.openDialog('Success', 'Biometric unlock has been disabled.', [{ label: 'OK', value: true }]);
+          this.openDialog('Success', `${this.authName} unlock has been disabled.`, [{ label: 'OK', value: true }]);
       } else {
           // Enable
           this.isRegisteringBiometrics = true;
@@ -57,9 +81,9 @@ export class Settings {
               const key = this.vaultService.getMasterKey();
               const result = await this.vaultService.registerBiometricsForSession(key);
               if (result) {
-                  this.openDialog('Success', 'Windows Hello / Biometrics enabled for this device.', [{ label: 'OK', value: true }]);
+                  this.openDialog('Success', `${this.authName} enabled for this device.`, [{ label: 'OK', value: true }]);
               } else {
-                 this.openDialog('Error', 'Failed to register biometrics. Please ensure your device supports Windows Hello or TouchID and it is set up.', [{ label: 'OK', value: true }]); 
+                 this.openDialog('Error', `Failed to register ${this.authName}. Please ensure it is set up on your device.`, [{ label: 'OK', value: true }]); 
               }
           } catch {
               this.openDialog('Error', 'Vault is locked or internal error.', [{ label: 'OK', value: true }]);
@@ -126,8 +150,34 @@ export class Settings {
   }
 
   openBackupConfig() {
-      this.dialog.open(BackupConfig, {
+      const ref = this.dialog.open(BackupConfig, {
           width: '500px'
+      });
+      ref.afterClosed().subscribe(() => {
+          this.updateResolvedBackupPath();
+      });
+  }
+
+  restoreBackup() {
+      const ref = this.dialog.open(GenericDialog, {
+          data: {
+              title: 'Restore Secure Vault',
+              message: 'WARNING: Importing a backup will permanently overwrite your current live vault data. Any changes made since that backup will be lost. Are you sure you wish to proceed?',
+              buttons: [
+                  { label: 'Cancel', value: false },
+                  { label: 'Proceed & Restore', value: true, color: 'warn' },
+              ],
+          },
+          width: '450px',
+      });
+
+      ref.afterClosed().subscribe(async (result: boolean | undefined) => {
+          if (result) {
+              const res = await this.backupService.validateAndRestoreBackup();
+              if (!res.success) {
+                  this.openDialog('Restoration Failed', res.message, [{ label: 'OK', value: true }]);
+              }
+          }
       });
   }
 

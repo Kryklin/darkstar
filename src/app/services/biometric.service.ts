@@ -25,6 +25,14 @@ export class BiometricService {
     }
   }
 
+  getDeviceAuthName(): string {
+    if (!window.electronAPI) return 'Biometric Unlock';
+    const platform = window.electronAPI.getPlatform();
+    if (platform === 'win32') return 'Windows Hello';
+    if (platform === 'darwin') return 'Touch ID / Face ID';
+    return 'Biometric Unlock';
+  }
+
   /**
    * Prompts the user for biometric authentication (Windows Hello / TouchID).
    * Uses WebAuthn "Conditional UI" or standard assertion if possible.
@@ -40,7 +48,7 @@ export class BiometricService {
       const publicKey: PublicKeyCredentialRequestOptions = {
         challenge,
         timeout: 60000,
-        rpId: 'darkstar', // Explicit RP ID for custom protocol support
+        rpId: 'localhost', // Explicit RP ID for custom protocol support
         userVerification: 'required', // This forces Windows Hello / TouchID
         // We allow any credential since we are just checking for presence/verification 
         // proof of the current platform user, not necessarily a specific registered key 
@@ -85,7 +93,15 @@ export class BiometricService {
       if (allowScientificCredentials.length > 0) {
           publicKey.allowCredentials = allowScientificCredentials;
       } else {
-          // If no credential registered, we can't authenticate.
+          return false;
+      }
+
+      // NATIVE PROXY: Use Electron's native handshake proxy if available to bypass scheme restrictions
+      if (window.electronAPI && window.electronAPI.biometricHandshake) {
+          const response = await window.electronAPI.biometricHandshake({ action: 'get', publicKey });
+          if (response.success && response.data) {
+              return true; // Simplified: assertion exists
+          }
           return false;
       }
 
@@ -109,7 +125,7 @@ export class BiometricService {
               challenge,
               rp: {
                   name: 'Darkstar Secure App',
-                  id: 'darkstar' // Explicit RP ID
+                  id: 'localhost' // Explicit RP ID
               },
               user: {
                   id: userId,
@@ -124,15 +140,24 @@ export class BiometricService {
               timeout: 60000
           };
 
+          // NATIVE PROXY: Use Electron's native handshake proxy for registration
+          if (window.electronAPI && window.electronAPI.biometricHandshake) {
+              const response = await window.electronAPI.biometricHandshake({ action: 'create', publicKey });
+              if (response.success && response.data) {
+                  const base64Id = this.Uint8ArrayToBase64(new Uint8Array(response.data.rawId));
+                  const storageKey = attachment === 'platform' ? 'biometric_credential_id' : 'hardware_key_credential_id';
+                  localStorage.setItem(storageKey, base64Id);
+                  return true;
+              }
+              return false;
+          }
+
           const credential = await navigator.credentials.create({ publicKey }) as PublicKeyCredential;
           
           if (credential) {
-              // Store the raw ID to allow allowCredentials check later
-              // We need to store it as base64
               const rawId = credential.rawId;
               const base64Id = this.arrayBufferToBase64(rawId);
               
-              // Key differentiation
               const storageKey = attachment === 'platform' ? 'biometric_credential_id' : 'hardware_key_credential_id';
               localStorage.setItem(storageKey, base64Id);
               
@@ -157,8 +182,11 @@ export class BiometricService {
   }
 
   private arrayBufferToBase64(buffer: ArrayBuffer): string {
+      return this.Uint8ArrayToBase64(new Uint8Array(buffer));
+  }
+
+  private Uint8ArrayToBase64(bytes: Uint8Array): string {
       let binary = '';
-      const bytes = new Uint8Array(buffer);
       const len = bytes.byteLength;
       for (let i = 0; i < len; i++) {
           binary += String.fromCharCode(bytes[i]);
