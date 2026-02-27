@@ -21,7 +21,7 @@
          </mat-form-field>
       </div>
 
-      <mat-nav-list class="custom-scroll">
+      <mat-nav-list class="custom-scroll scroll-bounce">
         @for (note of filteredNotes(); track note.id) {
           <a mat-list-item [class.active]="selectedNote()?.id === note.id" (click)="selectNote(note)" (keydown.enter)="selectNote(note)" tabindex="0">
             <h4 matListItemTitle>{{ note.title || 'Untitled Note' }}</h4>
@@ -51,6 +51,9 @@
         <div class="editor-wrapper">
           <div class="editor-header-group">
               <div class="editor-header">
+                <button mat-icon-button (click)="toggleSidenav()" [matTooltip]="sidenavOpened() ? 'Hide Notes' : 'Show Notes'" class="toggle-sidebar-btn">
+                   <mat-icon>{{ sidenavOpened() ? 'menu_open' : 'menu' }}</mat-icon>
+                </button>
                 @if (isHandset()) {
                   <button mat-icon-button (click)="showNoteList()" matTooltip="Back to Notes" class="back-btn">
                      <mat-icon>arrow_back</mat-icon>
@@ -154,7 +157,7 @@
                   </button>
                </div>
             } @else if (showPreview) {
-              <article class="markdown-preview custom-scroll">
+              <article class="markdown-preview custom-scroll scroll-bounce">
                  <markdown [data]="currentContent"></markdown>
                  
                  <!-- ATTACHMENTS PREVIEW -->
@@ -177,7 +180,7 @@
             } @else {
               <textarea 
                 #editorArea
-                class="content-input custom-scroll" 
+                class="content-input custom-scroll scroll-bounce" 
                 [(ngModel)]="currentContent" 
                 (ngModelChange)="onContentChange()" 
                 (keydown)="onKeyDown($event)"
@@ -200,6 +203,9 @@
         </div>
       } @else {
         <div class="no-selection-state">
+          <button mat-icon-button (click)="toggleSidenav()" [matTooltip]="sidenavOpened() ? 'Hide Notes' : 'Show Notes'" class="toggle-sidebar-btn empty-state-toggle">
+             <mat-icon>{{ sidenavOpened() ? 'menu_open' : 'menu' }}</mat-icon>
+          </button>
           <mat-icon class="large-icon">verified_user</mat-icon>
           <h2>Vault Unlocked</h2>
           <p>Select a note to view or create a new one.</p>

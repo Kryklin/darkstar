@@ -135,3 +135,23 @@ body.light-theme .app-title {
     box-shadow: 0 0 0 0 rgba(211, 47, 47, 0);
   }
 }
+
+// Mobile Utility: Break long hashes/addresses
+.break-word {
+  overflow-wrap: break-word !important;
+  word-wrap: break-word !important;
+  word-break: break-all !important;
+  white-space: normal !important;
+}
+
+// Premium Scroll: "Bump" effect and touch physics
+.scroll-bounce {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  
+  // Subtle visual feedback when hitting scroll limits (active state)
+  &:active {
+      cursor: grabbing;
+  }
+}

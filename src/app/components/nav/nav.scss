@@ -83,12 +83,20 @@ mat-toolbar {
   justify-content: center;
   align-items: center;
   margin-bottom: 10px;
+
+  @media (max-width: 768px) {
+    padding: 30px 16px;
+  }
 }
 
 .sidebar-logo {
   height: 180px;
   filter: drop-shadow(0 0 30px var(--glass-glow));
   transition: all 0.4s ease;
+
+  @media (max-width: 768px) {
+    height: 100px;
+  }
 
   &:hover {
     transform: scale(1.02);

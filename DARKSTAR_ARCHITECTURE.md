@@ -111,6 +111,16 @@ Darkstar V3 introduces significant upgrades to the core cryptographic primitives
 
 ---
 
+## 3.1 Quantum Resistance Analysis
+
+Darkstar V3 is architected to remain secure in the Post-Quantum era.
+
+- **AES-256 (Symmetric Resilience)**: While quantum computers can break asymmetric ciphers (RSA/ECC) using Shor's Algorithm, symmetric ciphers like AES-256 are only susceptible to **Grover's Algorithm**, which provides a quadratic speedup. This effectively reduces AES-256 to a still-unbreakable 128-bit security level against quantum attackers.
+- **Quantum-Safe Defaults**: By utilizing 256-bit keys and authenticated GCM mode, the core "Data at Rest" is considered quantum-safe today.
+- **Future-Proofing**: The architecture is designed for a hybrid upgrade path to **ML-KEM-1024** (Kyber) for asymmetric identity binding.
+
+---
+
 ## 4. Hardware-Bound Protection (Electron SafeStorage)
 
 For Secure Vault data, Darkstar utilizes **Electron SafeStorage** to provide a final layer of protection that is bound to the user's host machine.

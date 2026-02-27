@@ -23,7 +23,7 @@ export class UpdateService {
   isChecking = signal(false);
   updateStatus = signal<string>('idle');
   updateError = signal<string | null>(null);
-  versionLocked = signal(false);
+  versionLocked = signal<boolean>(localStorage.getItem('versionLocked') === null ? true : localStorage.getItem('versionLocked') === 'true');
   currentVersion = pkg.version;
 
   isElectron = !!window.electronAPI;
@@ -36,9 +36,7 @@ export class UpdateService {
   }
 
   private loadSettings() {
-    const stored = localStorage.getItem('versionLocked');
-    const locked = stored === null ? true : stored === 'true';
-    this.versionLocked.set(locked);
+    const locked = this.versionLocked();
 
     if (this.isElectron) {
       window.electronAPI.setVersionLock(locked);

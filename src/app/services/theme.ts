@@ -14,10 +14,6 @@ export interface ThemeDef {
  * Persists user preference to local storage.
  */
 export class Theme {
-  isDarkTheme = signal<boolean>(true);
-  logoSrc = signal<string>('assets/img/logo-white.png');
-  selectedTheme = signal<ThemeDef>({ name: 'Crimson Void', primary: '#D50000', className: 'theme-crimson-void' });
-
   availableThemes: ThemeDef[] = [
     { name: 'Crimson Void', primary: '#D50000', className: 'theme-crimson-void' },
     { name: 'Solar Flare', primary: '#E65100', className: 'theme-solar-flare' },
@@ -42,14 +38,16 @@ export class Theme {
     { name: 'Obsidian Shard', primary: '#000000', className: 'theme-obsidian-shard' },
   ];
 
-  constructor() {    const storedThemeName = localStorage.getItem('selectedTheme');
-    if (storedThemeName) {
-      const theme = this.availableThemes.find((t) => t.className === storedThemeName);
-      if (theme) {
-        this.selectedTheme.set(theme);
-      }
-    }
+  isDarkTheme = signal<boolean>(true);
+  logoSrc = signal<string>('assets/img/logo-white.png');
+  selectedTheme = signal<ThemeDef>(this.getInitialTheme());
 
+  private getInitialTheme(): ThemeDef {
+      const stored = localStorage.getItem('selectedTheme');
+      return this.availableThemes.find((t) => t.className === stored) || this.availableThemes[0];
+  }
+
+  constructor() {
     this.updateBodyClass();
     this.updateLogo();
     this.updateFavicon();

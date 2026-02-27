@@ -25,7 +25,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
-`darkstar` is a defense-grade client-side security tool designed to safeguard sensitive recovery phrases, data, and notes. It combines a dynamic, **V3 Obfuscation Engine** with military-grade **AES-256-GCM** authenticated encryption.
+`darkstar` is a defense-grade client-side security tool designed to safeguard sensitive recovery phrases, data, and notes. It combines a dynamic, **V3 Obfuscation Engine** with **AES-256-GCM** (Authenticators) inherently designed for **Quantum Resistance**.
 
 > [!NOTE]
 > **Architecture Overview**: Curious how it works? View the [Visual Architecture Guide](DARKSTAR_ARCHITECTURE.md).
@@ -42,7 +42,7 @@
 - **Secure Vault**: A session-based, zero-knowledge vault for managing secure notes and sensitive metadata with multi-layered encryption.
 - **Vault Signature Binding (New)**: Cryptographically bind your data to your specific Vault Identity. Decryption is only possible when authenticated with the same cryptographic signature.
 - **Identity Backup & Recovery (New)**: Securely export and import your full Vault Identity (JSON) to ensure access to bound data across devices or after a vault reset.
-- **V3 Encryption Engine (Advanced)**: Powered by Web Crypto API with **AES-256-GCM** and **ChaCha20-based PRNG**. Verified cross-language interoperability (Go, Rust, Python, Node).
+- **V3 Encryption Engine (Post-Quantum Ready)**: Powered by Web Crypto API with **AES-256-GCM** and **ChaCha20-based PRNG**. Inherent resistance to Grover's algorithm ensures long-term data survival in the quantum era.
 - **Dynamic Deterministic Cycles**: Obfuscation depth scales intelligently (12-64 layers) based on data entropy, replacing the legacy fixed-depth model.
 - **Anti-Forensic Memory**: Strict `Uint8Array` usage with explicit memory zeroing. The P2P service automatically performs an emergency shutdown if the vault is locked.
 - **Windows Hello & Biometrics**: Unlock your vault primarily using platform biometrics (TouchID, FaceID) or **Hardware Keys (YubiKey)** via WebAuthn.
