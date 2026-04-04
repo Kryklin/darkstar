@@ -116,7 +116,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "darkstar-encry"
+name = "d-kasp-1024"
 version = "0.1.0"
 dependencies = [
  "aes",

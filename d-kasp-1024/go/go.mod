@@ -1,4 +1,4 @@
-module github.com/kryklin/darkstar/darkstar-encry/go
+module github.com/kryklin/darkstar/d-kasp-1024/go
 
 go 1.25.5
 

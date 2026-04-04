@@ -83,36 +83,6 @@ let json_output = dc.encrypt("phrase", "pk_hex", false, false, false, false, tru
 **Integration Snippet**:
 ```python
 from darkstar_crypt import DarkstarCrypt
-dc = DarkstarCrypt()
-encrypted = dc.encrypt("secret", "pk_hex", force_v5=True)
-```
-
----
-
-## ⌨️ CLI Usage
-
-Standard standalone binaries are provided for Go, Rust, and Node.js implementations.
-
-### Command Structure
-```bash
-# General Syntax
-./darkstar-cli [--v5|--v4|--v3|--v2|--v1] <command> [arguments...]
-
-# V5 ML-KEM Key Generation (Python)
-python darkstar_crypt.py --v5 keygen
-
-# V5 Encryption (Requires Public Key)
-./darkstar-cli --v5 encrypt "my mnemonic" <pk_hex>
-
-# V5 Decryption (Requires Secret Key)
-./darkstar-cli --v5 decrypt <payload_json> <reverse_key_b64> <sk_hex>
-```
-
-### Protocol Overrides
-- `--v5`: (Latest) ML-KEM-1024 + 512-layer Gauntlet + 16-bit Binary Headers.
-- `--v4`: AES-GCM + ChaCha20 + 64-layer non-linear Gauntlet.
-- `--v3`: AES-GCM + ChaCha20 + 64-layer Linear Dynamic Cycles.
-- `--v2`: AES-256-CBC + Mulberry32 + 12 Cycles.
 
 ---
 

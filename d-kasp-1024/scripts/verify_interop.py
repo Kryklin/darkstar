@@ -16,7 +16,7 @@ NODE_BIN = shutil.which("node") or "node"
 
 CLI_COMMANDS = {
     "go": [GO_BIN, "run", "."],
-    "rust": [os.path.join(PROJECT_ROOT, "rust", "target", "release", "darkstar-encry.exe")],
+    "rust": [os.path.join(PROJECT_ROOT, "rust", "target", "release", "d-kasp-1024.exe")],
     "python": [PYTHON_BIN, "-u", os.path.join(PROJECT_ROOT, "python", "darkstar_crypt.py")],
     "node": [NODE_BIN, os.path.join(PROJECT_ROOT, "node", "darkstar_crypt.js")]
 }
