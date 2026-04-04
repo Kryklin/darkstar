@@ -1,6 +1,6 @@
-// Package main implements the D-KASP-1024 encryption scheme.
+﻿// Package main implements the d-kasp-512 encryption scheme.
 //
-// D-KASP-1024 (V5) Features:
+// d-kasp-512 (V5) Features:
 // - D: Darkstar ecosystem origin
 // - K: Kyber-1024 (ML-KEM-1024) NIST Root of Trust
 // - A: Augmented 64-layer SPN/ARX gauntlet
@@ -1351,8 +1351,8 @@ func parseHex(s string) ([]byte, error) {
 
 func printUsage() {
 	fmt.Println("Usage:")
-	fmt.Println("  d-kasp-1024 [flags] encrypt <mnemonic> <password>")
-	fmt.Println("  d-kasp-1024 [flags] decrypt <encrypted_data> <reverse_key> <password>")
+	fmt.Println("  d-kasp-512 [flags] encrypt <mnemonic> <password>")
+	fmt.Println("  d-kasp-512 [flags] decrypt <encrypted_data> <reverse_key> <password>")
 	fmt.Println("Flags:")
 	fmt.Println("  --v1, --v2, --v3, --v4, --v5")
 }
@@ -1426,3 +1426,4 @@ func main() {
 		printUsage()
 	}
 }
+

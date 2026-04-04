@@ -130,7 +130,7 @@ const pkg = require('../package.json');
     const CMD = {
       LINT: 'ng lint',
       // Test: Runs headless Chrome tests and executes the Python interop verification script
-      TEST: 'ng test --watch=false --browsers=ChromeHeadless && python "d-kasp-1024/scripts/verify_interop.py"',
+      TEST: 'ng test --watch=false --browsers=ChromeHeadless && python "d-kasp-512/scripts/verify_interop.py"',
       // Build: Compiles Angular (Production) and Electron (TypeScript), then generates integrity
       BUILD: 'ng build --configuration production --base-href ./ && tsc --p tsconfig.electron.json && node scripts/build-integrity.js',
       // Dev: Runs Angular Serve and Electron Watch (via Wrapper) concurrently

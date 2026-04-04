@@ -1,14 +1,14 @@
-# D-KASP-1024
+# D-KASP-512
 
-**D-KASP-1024** is the definitive high-performance, post-quantum encryption suite for the Darkstar ecosystem. It pins security to the highest available lattice-based standards while maintaining bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
+**D-KASP-512** is the definitive high-performance, post-quantum encryption suite for the Darkstar ecosystem. It pins security to the highest available lattice-based standards while maintaining bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
 
-The name **D-KASP-1024** reflects its technical depth:
+The name **D-KASP-512** reflects its technical depth:
 * **D**: Darkstar (The ecosystem/origin)
 * **K**: Kyber-1024 (ML-KEM-1024 / NIST Level 5 root of trust)
-* **A**: Augmented (**512-layer** SPN/ARX transformation beyond standard wrapping)
+* **A**: Augmented (Post-quantum layer beyond standard wrapping)
 * **S**: Sequential (Deterministic path-logic for each word)
-* **P**: Permutation (Non-linear core: S-Boxes, P-Boxes, and Galois Field mixing)
-* **1024**: Security Bits (256-bit classical/post-quantum equivalence)
+* **P**: Permutation (512-layer SPN/ARX gauntlet)
+* **512**: Permutation Depth (The number of non-linear obfuscation layers)
 
 ---
 
@@ -18,7 +18,7 @@ The suite provides bit-perfect interoperability across all supported languages a
 
 ## 🛡️ Security Architecture
 
-D-KASP-1024 (V5) employs a multi-layered post-quantum security model that fundamentally differs from standard "encrypt-and-store" approaches:
+D-KASP-512 (V5) employs a multi-layered post-quantum security model that fundamentally differs from standard "encrypt-and-store" approaches:
 
 1.  **512-Layer SPN/ARX Gauntlet**: Data passes through up to **512 non-linear** Substitution-Permutation Network and Add-Rotate-XOR primitives (e.g., S-Boxes, Matrix Hill, Galois Field). This augmented pipeline provides strict avalanche criteria and neutralizes solver analysis.
 2.  **ML-KEM-1024 (Kyber)**: Core asymmetric security is anchored by NIST FIPS 203 (ML-KEM-1024), providing a post-quantum root of trust with 256-bit classical security parity.
@@ -83,6 +83,30 @@ let json_output = dc.encrypt("phrase", "pk_hex", false, false, false, false, tru
 **Integration Snippet**:
 ```python
 from darkstar_crypt import DarkstarCrypt
+dc = DarkstarCrypt()
+encrypted = dc.encrypt("secret", "pk_hex", force_v5=True)
+```
+
+---
+
+## ⌨️ CLI Usage
+
+Standard standalone binaries are provided for Go, Rust, and Node.js implementations.
+
+### Command Structure
+```bash
+# General Syntax
+./d-kasp-512 [--v5|--v4|--v3|--v2|--v1] <command> [arguments...]
+
+# V5 ML-KEM Key Generation (Python)
+python darkstar_crypt.py --v5 keygen
+
+# V5 Encryption (Requires Public Key)
+./d-kasp-512 --v5 encrypt "my mnemonic" <pk_hex>
+
+# V5 Decryption (Requires Secret Key)
+./d-kasp-512 --v5 decrypt <payload_json> <reverse_key_b64> <sk_hex>
+```
 
 ---
 
@@ -90,7 +114,7 @@ from darkstar_crypt import DarkstarCrypt
 
 V5 output uses a JSON-encapsulated structure containing the encapsulated ciphertext (`ct`) required for ML-KEM decapsulation.
 
-### V5 Payload (D-KASP-1024 Standard)
+### V5 Payload (D-KASP-512 Standard)
 ```json
 {
   "v": 5,

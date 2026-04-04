@@ -1,12 +1,12 @@
-import { createRequire } from 'node:module';
+﻿import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const crypto = globalThis.crypto || require('node:crypto').webcrypto;
 const { ml_kem1024: kyber } = require('@noble/post-quantum/ml-kem.js');
 
 /**
- * DarkstarCrypt - Advanced Encryption Implementation (D-KASP-1024)
+ * DarkstarCrypt - Advanced Encryption Implementation (d-kasp-512)
  *
- * This class implements the D-KASP-1024 encryption scheme, featuring:
+ * This class implements the d-kasp-512 encryption scheme, featuring:
  * - D: Darkstar ecosystem origin
  * - K: Kyber-1024 (ML-KEM-1024) Root of Trust
  * - A: Augmented 64-layer SPN/ARX gauntlet
@@ -1159,7 +1159,7 @@ if (isMain) {
       decryptPassword = Buffer.from(keys.secretKey).toString('hex');
     }
 
-    console.log('--- D-KASP-1024 Node Self-Test ---');
+    console.log('--- d-kasp-512 Node Self-Test ---');
     crypt
       .encrypt(mnemonic, password, forceV2, forceV1, forceV3, forceV5)
       .then((res) => {
@@ -1179,6 +1179,7 @@ if (isMain) {
     console.log(`PK: ${Buffer.from(keys.publicKey).toString('hex')}`);
     console.log(`SK: ${Buffer.from(keys.secretKey).toString('hex')}`);
     console.log('Usage: node darkstar_crypt.js [--v5|--v4|--v3|--v2|--v1] <encrypt|decrypt|keygen|test> ...');
-    console.log('  --v5: D-KASP-1024 (Kyber-1024 + Augmented SPN/ARX)');
+    console.log('  --v5: d-kasp-512 (Kyber-1024 + Augmented SPN/ARX)');
   }
 }
+

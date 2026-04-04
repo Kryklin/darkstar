@@ -31,7 +31,7 @@
 > **Architecture Overview**: Curious how it works? View the [Visual Architecture Guide](DARKSTAR_ARCHITECTURE.md).
 
 > [!TIP]
-> **Multi-Language Suite**: Looking to integrate Darkstar into your own backend or tools? Check out the [Multi-Language Encryption Suite](d-kasp-1024/README.md) featuring Go, Rust, Python, and Node.js implementations.
+> **Multi-Language Suite**: Looking to integrate Darkstar into your own backend or tools? Check out the [Multi-Language Encryption Suite](d-kasp-512/README.md) featuring Go, Rust, Python, and Node.js implementations.
 
 ## Key Features
 

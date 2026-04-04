@@ -1,4 +1,4 @@
-import subprocess
+﻿import subprocess
 import json
 import sys
 import os
@@ -16,7 +16,7 @@ NODE_BIN = shutil.which("node") or "node"
 
 CLI_COMMANDS = {
     "go": [GO_BIN, "run", "."],
-    "rust": [os.path.join(PROJECT_ROOT, "rust", "target", "release", "d-kasp-1024.exe")],
+    "rust": [os.path.join(PROJECT_ROOT, "rust", "target", "release", "d-kasp-512.exe")],
     "python": [PYTHON_BIN, "-u", os.path.join(PROJECT_ROOT, "python", "darkstar_crypt.py")],
     "node": [NODE_BIN, os.path.join(PROJECT_ROOT, "node", "darkstar_crypt.js")]
 }
@@ -54,7 +54,7 @@ def run_cli(lang, args):
 
 def main():
     start_suite = time.perf_counter()
-    print(f"=== D-KASP-1024 Cross-Language Interop Verification ===")
+    print(f"=== d-kasp-512 Cross-Language Interop Verification ===")
     print(f"Mnemonic: {TEST_MNEMONIC}")
     print(f"Password: {TEST_PASSWORD}")
     print("-" * 50)
@@ -64,7 +64,7 @@ def main():
     versions = ["--v5", "--v4", "--v3", "--v2", "--v1"]
 
     for version in versions:
-        version_label = "D-KASP-1024 (V5)" if version == "--v5" else version.upper()
+        version_label = "d-kasp-512 (V5)" if version == "--v5" else version.upper()
         print(f"\n{'='*20} Testing {version_label} {'='*20}")
         
         v5_pk = ""
@@ -144,3 +144,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -1,4 +1,4 @@
-use aes::Aes256;
+﻿use aes::Aes256;
 use base64::{engine::general_purpose, Engine as _};
 use ml_kem::{MlKem1024, MlKem1024Params, KemCore, EncodedSizeUser};
 use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
@@ -10,7 +10,7 @@ use rand::Rng;
 use zeroize::Zeroize;
 use std::convert::TryFrom;
 
-/// D-KASP-1024 Encryption Suite
+/// d-kasp-512 Encryption Suite
 /// 
 /// Implements the definitive Darkstar protocol (V5):
 /// - D: Darkstar ecosystem origin
@@ -1053,9 +1053,9 @@ impl DarkstarCrypt {
 }
 
 fn print_usage() {
-    println!("D-KASP-1024 Encryption Suite (V5)");
+    println!("d-kasp-512 Encryption Suite (V5)");
     println!("Usage: darkstar_rust [--v5|--v4|--v3|--v2|--v1] <encrypt|decrypt|keygen|test> ...");
-    println!("  --v5: D-KASP-1024 (Kyber-1024 + Augmented SPN/ARX)");
+    println!("  --v5: d-kasp-512 (Kyber-1024 + Augmented SPN/ARX)");
     println!("  encrypt <mnemonic> <password>                   - Encrypt a mnemonic phrase");
     println!("  decrypt <encrypted_json> <reverse_key> <password> - Decrypt a phrase");
     println!("  test                                            - Run self-test");
@@ -1155,7 +1155,7 @@ fn main() {
                 test_sk = hex::encode(dk.as_bytes());
             }
 
-            println!("--- D-KASP-1024 Rust Self-Test ---");
+            println!("--- d-kasp-512 Rust Self-Test ---");
             println!("Plaintext: {}", mnemonic);
             
             match dc.encrypt(mnemonic, &password, force_v2, force_v1, force_v3, force_v4, force_v5) {
@@ -1196,3 +1196,4 @@ fn main() {
         }
     }
 }
+

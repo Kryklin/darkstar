@@ -1,4 +1,4 @@
-
+﻿
 import os
 import base64
 import json
@@ -16,7 +16,7 @@ class DarkstarCrypt:
     IV_SIZE_BYTES = 16 # 128 bits
 
     """
-    D-KASP-1024 Encryption Suite
+    d-kasp-512 Encryption Suite
     
     This suite implements the definitive Darkstar protocol (V5):
     - D: Darkstar ecosystem origin
@@ -1024,7 +1024,7 @@ if __name__ == "__main__":
         
     if not args:
         print("Usage: python darkstar_crypt.py [--v5|--v4|--v3|--v2|--v1] <encrypt|decrypt|keygen|test> ...")
-        print("  --v5: D-KASP-1024 (ML-KEM-1024 NIST Root of Trust)")
+        print("  --v5: d-kasp-512 (ML-KEM-1024 NIST Root of Trust)")
         sys.exit(1)
 
     command = args[0]
@@ -1068,3 +1068,4 @@ if __name__ == "__main__":
             sys.exit(1)
     else:
         print(f"Unknown command: {command}")
+
