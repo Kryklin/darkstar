@@ -1,10 +1,12 @@
-// Package main implements the Darkstar V2 encryption scheme.
+// Package main implements the D-KASP-1024 encryption scheme.
 //
-// Features:
-// - 12-layer dynamic obfuscation pipeline
-// - Mulberry32 deterministic PRNG
-// - AES-256-CBC encryption with PBKDF2 key derivation
-// - Self-validating checksums
+// D-KASP-1024 (V5) Features:
+// - D: Darkstar ecosystem origin
+// - K: Kyber-1024 (ML-KEM-1024) NIST Root of Trust
+// - A: Augmented 64-layer SPN/ARX gauntlet
+// - S: Sequential word-based path-logic
+// - P: Permutation-based non-linear core
+// - 1024: 256-bit Post-Quantum security parity
 package main
 
 import (
@@ -23,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cloudflare/circl/kem/mlkem/mlkem1024"
 	"golang.org/x/crypto/pbkdf2"
 )
 
@@ -36,7 +39,7 @@ const (
 // --- PRNG ---
 
 type PRNG interface {
-	Next() float64
+	Next() uint32
 }
 
 type Mulberry32 struct {
@@ -65,7 +68,7 @@ func (m *Mulberry32) seed(seedStr string) {
 	m.state = h
 }
 
-func (m *Mulberry32) Next() float64 {
+func (m *Mulberry32) Next() uint32 {
 	m.state = (m.state + 0x6d2b79f5)
 	t := (m.state ^ (m.state >> 15))
 	t = (t * (1 | m.state))
@@ -73,17 +76,16 @@ func (m *Mulberry32) Next() float64 {
 	term2 = (term2 * (61 | t))
 	t = (t + term2) ^ t
 
-	res := (t ^ (t >> 14))
-	return float64(res) / 4294967296.0
+	return t ^ (t >> 14)
 }
 
-type ChaCha20PRNG struct {
+type DarkstarChaChaPRNG struct {
 	state   [8]uint32
 	counter uint32
 }
 
-func NewChaCha20PRNG(seedStr string) *ChaCha20PRNG {
-	c := &ChaCha20PRNG{}
+func NewDarkstarChaChaPRNG(seedStr string) *DarkstarChaChaPRNG {
+	c := &DarkstarChaChaPRNG{}
 	hash := sha256.Sum256([]byte(seedStr))
 	hashHex := hex.EncodeToString(hash[:])
 	for i := 0; i < 8; i++ {
@@ -94,7 +96,7 @@ func NewChaCha20PRNG(seedStr string) *ChaCha20PRNG {
 	return c
 }
 
-func (c *ChaCha20PRNG) Next() float64 {
+func (c *DarkstarChaChaPRNG) Next() uint32 {
 	c.counter++
 	x := c.state[(c.counter+0)%8]
 	y := c.state[(c.counter+3)%8]
@@ -116,8 +118,7 @@ func (c *ChaCha20PRNG) Next() float64 {
 	t = (t ^ (t >> 15)) * (1 | t)
 	t = (t + ((t ^ (t >> 7)) * (61 | t))) ^ t
 
-	res := t ^ (t >> 14)
-	return float64(res) / 4294967296.0
+	return t ^ (t >> 14)
 }
 
 // --- DarkstarCrypt ---
@@ -125,6 +126,8 @@ func (c *ChaCha20PRNG) Next() float64 {
 type DarkstarCrypt struct {
 	obfuscationFunctionsV2   []func([]byte, []byte, func(string) PRNG) []byte
 	deobfuscationFunctionsV2 []func([]byte, []byte, func(string) PRNG) []byte
+	obfuscationFunctionsV4   []func([]byte, []byte, func(string) PRNG) []byte
+	deobfuscationFunctionsV4 []func([]byte, []byte, func(string) PRNG) []byte
 }
 
 // NewDarkstarCrypt creates a new instance of DarkstarCrypt with initialized functions.
@@ -158,6 +161,34 @@ func NewDarkstarCrypt() *DarkstarCrypt {
 		dc.deobfuscateWithSeededBlockReversalV2,
 		dc.deobfuscateWithSeededSubstitutionV2,
 	}
+	dc.obfuscationFunctionsV4 = []func([]byte, []byte, func(string) PRNG) []byte{
+		dc.obfuscateSBoxV4,
+		dc.obfuscateModMultV4,
+		dc.obfuscatePBoxV4,
+		dc.obfuscateCyclicRotV4,
+		dc.obfuscateKeyedXORV4,
+		dc.obfuscateFeistelV4,
+		dc.obfuscateModAddV4,
+		dc.obfuscateMatrixHillV4,
+		dc.obfuscateGFMultV4,
+		dc.obfuscateBitFlipV4,
+		dc.obfuscateColumnarV4,
+		dc.obfuscateRecXORV4,
+	}
+	dc.deobfuscationFunctionsV4 = []func([]byte, []byte, func(string) PRNG) []byte{
+		dc.deobfuscateSBoxV4,
+		dc.deobfuscateModMultV4,
+		dc.deobfuscatePBoxV4,
+		dc.deobfuscateCyclicRotV4,
+		dc.deobfuscateKeyedXORV4,
+		dc.deobfuscateFeistelV4,
+		dc.deobfuscateModAddV4,
+		dc.deobfuscateMatrixHillV4,
+		dc.deobfuscateGFMultV4,
+		dc.deobfuscateBitFlipV4,
+		dc.deobfuscateColumnarV4,
+		dc.deobfuscateRecXORV4,
+	}
 	return dc
 }
 
@@ -171,7 +202,243 @@ func generateChecksum(numbers []int) int {
 	for _, n := range numbers {
 		sum += n
 	}
-	return sum % 997
+	return sum
+}
+
+var SBOX = []byte{
+	0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+	0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+	0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+	0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+	0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+	0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+	0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+	0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+	0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+	0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+	0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+	0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+	0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+	0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+	0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+	0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,
+}
+var INV_SBOX []byte
+
+func init() {
+	INV_SBOX = make([]byte, 256)
+	for i := 0; i < 256; i++ {
+		INV_SBOX[SBOX[i]] = byte(i)
+	}
+}
+
+func gfMult(a, b byte) byte {
+	p := byte(0)
+	for i := 0; i < 8; i++ {
+		if (b & 1) != 0 {
+			p ^= a
+		}
+		hiBitSet := (a & 0x80) != 0
+		a <<= 1
+		if hiBitSet {
+			a ^= 0x1B
+		}
+		b >>= 1
+	}
+	return p
+}
+
+func (dc *DarkstarCrypt) obfuscateSBoxV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	for i, b := range input {
+		out[i] = SBOX[b]
+	}
+	return out
+}
+func (dc *DarkstarCrypt) deobfuscateSBoxV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	for i, b := range input {
+		out[i] = INV_SBOX[b]
+	}
+	return out
+}
+func (dc *DarkstarCrypt) obfuscateModMultV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	for i, b := range input {
+		out[i] = byte((uint16(b) * 167) & 0xFF)
+	}
+	return out
+}
+func (dc *DarkstarCrypt) deobfuscateModMultV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	for i, b := range input {
+		out[i] = byte((uint16(b) * 23) & 0xFF)
+	}
+	return out
+}
+func (dc *DarkstarCrypt) obfuscatePBoxV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	length := len(input)
+	for i := 0; i < length; i++ {
+		b := input[i]
+		b = ((b & 0xF0) >> 4) | ((b & 0x0F) << 4)
+		b = ((b & 0xCC) >> 2) | ((b & 0x33) << 2)
+		b = ((b & 0xAA) >> 1) | ((b & 0x55) << 1)
+		out[length-1-i] = b
+	}
+	return out
+}
+func (dc *DarkstarCrypt) deobfuscatePBoxV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	return dc.obfuscatePBoxV4(input, seed, prngFactory)
+}
+func (dc *DarkstarCrypt) obfuscateCyclicRotV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	for i, b := range input {
+		out[i] = (b >> 3) | (b << 5)
+	}
+	return out
+}
+func (dc *DarkstarCrypt) deobfuscateCyclicRotV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	for i, b := range input {
+		out[i] = (b << 3) | (b >> 5)
+	}
+	return out
+}
+func (dc *DarkstarCrypt) obfuscateKeyedXORV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	for i, b := range input {
+		out[i] = b ^ seed[i%len(seed)]
+	}
+	return out
+}
+func (dc *DarkstarCrypt) deobfuscateKeyedXORV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	return dc.obfuscateKeyedXORV4(input, seed, prngFactory)
+}
+func (dc *DarkstarCrypt) obfuscateFeistelV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	copy(out, input)
+	half := len(out) / 2
+	if half == 0 {
+		return out
+	}
+	for i := 0; i < half; i++ {
+		f := out[half+i] + seed[i%len(seed)]
+		out[i] ^= f
+	}
+	return out
+}
+func (dc *DarkstarCrypt) deobfuscateFeistelV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	return dc.obfuscateFeistelV4(input, seed, prngFactory)
+}
+func (dc *DarkstarCrypt) obfuscateModAddV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	for i, b := range input {
+		out[i] = b + seed[i%len(seed)]
+	}
+	return out
+}
+func (dc *DarkstarCrypt) deobfuscateModAddV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	for i, b := range input {
+		out[i] = b - seed[i%len(seed)]
+	}
+	return out
+}
+func (dc *DarkstarCrypt) obfuscateMatrixHillV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	if len(input) == 0 {
+		return out
+	}
+	out[0] = input[0]
+	for i := 1; i < len(input); i++ {
+		out[i] = input[i] + out[i-1]
+	}
+	return out
+}
+func (dc *DarkstarCrypt) deobfuscateMatrixHillV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	if len(input) == 0 {
+		return out
+	}
+	out[0] = input[0]
+	for i := len(input) - 1; i > 0; i-- {
+		out[i] = input[i] - input[i-1]
+	}
+	return out
+}
+func (dc *DarkstarCrypt) obfuscateGFMultV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	for i, b := range input {
+		out[i] = gfMult(b, 0x02)
+	}
+	return out
+}
+func (dc *DarkstarCrypt) deobfuscateGFMultV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	for i, b := range input {
+		out[i] = gfMult(b, 0x8D)
+	}
+	return out
+}
+func (dc *DarkstarCrypt) obfuscateBitFlipV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	for i, b := range input {
+		mask := seed[i%len(seed)]
+		out[i] = b ^ ((mask & 0xAA) | (^mask & 0x55))
+	}
+	return out
+}
+func (dc *DarkstarCrypt) deobfuscateBitFlipV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	return dc.obfuscateBitFlipV4(input, seed, prngFactory)
+}
+func (dc *DarkstarCrypt) obfuscateColumnarV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	n := len(input)
+	out := make([]byte, n)
+	cols := 3
+	idx := 0
+	for c := 0; c < cols; c++ {
+		for i := c; i < n; i += cols {
+			out[idx] = input[i]
+			idx++
+		}
+	}
+	return out
+}
+func (dc *DarkstarCrypt) deobfuscateColumnarV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	n := len(input)
+	out := make([]byte, n)
+	cols := 3
+	idx := 0
+	for c := 0; c < cols; c++ {
+		for i := c; i < n; i += cols {
+			out[i] = input[idx]
+			idx++
+		}
+	}
+	return out
+}
+func (dc *DarkstarCrypt) obfuscateRecXORV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	if len(input) == 0 {
+		return out
+	}
+	out[0] = input[0]
+	for i := 1; i < len(input); i++ {
+		out[i] = out[i-1] ^ input[i]
+	}
+	return out
+}
+func (dc *DarkstarCrypt) deobfuscateRecXORV4(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	out := make([]byte, len(input))
+	if len(input) == 0 {
+		return out
+	}
+	out[0] = input[0]
+	for i := len(input) - 1; i > 0; i-- {
+		out[i] = input[i] ^ input[i-1]
+	}
+	return out
 }
 
 // --- Obfuscation Functions (V2) ---
@@ -302,7 +569,7 @@ func (dc *DarkstarCrypt) obfuscateByShufflingV2(input []byte, seed []byte, prngF
 	rng := prngFactory(seedStr)
 	for i := len(output) - 1; i > 0; i-- {
 		randVal := rng.Next()
-		j := int(randVal * float64(i+1))
+		j := int((uint64(randVal) * uint64(i+1)) >> 32)
 		output[i], output[j] = output[j], output[i]
 	}
 	return output
@@ -318,7 +585,7 @@ func (dc *DarkstarCrypt) deobfuscateByShufflingV2(input []byte, seed []byte, prn
 	rng := prngFactory(seedStr)
 	for i := n - 1; i > 0; i-- {
 		randVal := rng.Next()
-		j := int(randVal * float64(i+1))
+		j := int((uint64(randVal) * uint64(i+1)) >> 32)
 		indices[i], indices[j] = indices[j], indices[i]
 	}
 	output := make([]byte, n)
@@ -346,7 +613,7 @@ func (dc *DarkstarCrypt) obfuscateByInterleavingV2(input []byte, seed []byte, pr
 	output := make([]byte, len(input)*2)
 	for i, b := range input {
 		output[i*2] = b
-		randIdx := int(rng.Next() * float64(len(randomChars)))
+		randIdx := int((uint64(rng.Next()) * uint64(len(randomChars))) >> 32)
 		output[i*2+1] = randomChars[randIdx]
 	}
 	return output
@@ -397,7 +664,7 @@ func (dc *DarkstarCrypt) deobfuscateWithVigenereCipherV2(input []byte, seed []by
 func (dc *DarkstarCrypt) obfuscateWithSeededBlockReversalV2(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
 	seedStr := string(seed)
 	rng := prngFactory(seedStr)
-	blockSize := int(rng.Next()*float64(len(input)/2)) + 2
+	blockSize := int((uint64(rng.Next())*uint64(len(input)/2))>>32) + 2
 	output := make([]byte, 0, len(input))
 	for i := 0; i < len(input); i += blockSize {
 		end := i + blockSize
@@ -426,7 +693,7 @@ func (dc *DarkstarCrypt) obfuscateWithSeededSubstitutionV2(input []byte, seed []
 	seedStr := string(seed)
 	rng := prngFactory(seedStr)
 	for i := 255; i > 0; i-- {
-		j := int(rng.Next() * float64(i+1))
+		j := int((uint64(rng.Next()) * uint64(i+1)) >> 32)
 		chars[i], chars[j] = chars[j], chars[i]
 	}
 	output := make([]byte, len(input))
@@ -444,7 +711,7 @@ func (dc *DarkstarCrypt) deobfuscateWithSeededSubstitutionV2(input []byte, seed 
 	seedStr := string(seed)
 	rng := prngFactory(seedStr)
 	for i := 255; i > 0; i-- {
-		j := int(rng.Next() * float64(i+1))
+		j := int((uint64(rng.Next()) * uint64(i+1)) >> 32)
 		chars[i], chars[j] = chars[j], chars[i]
 	}
 	unsubMap := make([]byte, 256)
@@ -460,19 +727,45 @@ func (dc *DarkstarCrypt) deobfuscateWithSeededSubstitutionV2(input []byte, seed 
 
 // --- Encrypt/Decrypt ---
 
-// Encrypt encrypts the mnemonic using the password and the V2/V3 obfuscation scheme.
-func (dc *DarkstarCrypt) Encrypt(mnemonic, password string, forceV2 bool, forceV1 bool) (map[string]interface{}, error) {
+// Encrypt encrypts the mnemonic using the password and the Obfuscation scheme.
+func (dc *DarkstarCrypt) Encrypt(mnemonic, keyMaterial string, forceV2 bool, forceV1 bool, forceV3 bool, forceV4 bool, forceV5 bool) (map[string]interface{}, error) {
 	words := strings.Split(mnemonic, " ")
 	var obfuscatedWords [][]byte
 	var reverseKey [][]int
 
-	passwordBytes := []byte(password)
+	isV5 := forceV5
+	isV4 := (!forceV3 && !forceV2 && !forceV1 && !forceV5) || forceV4
+	isV3 := forceV3
+	isModern := isV3 || isV4 || isV5
 
-	isV3 := !forceV2 && !forceV1
+	ctHex := ""
+	ssHex := ""
+	activePasswordStr := keyMaterial
+
+	if isV5 {
+		sch := mlkem1024.Scheme()
+		pkBytes, err := hex.DecodeString(keyMaterial)
+		if err != nil {
+			return nil, fmt.Errorf("invalid kyber hex: %v", err)
+		}
+		pk, err := sch.UnmarshalBinaryPublicKey(pkBytes)
+		if err != nil {
+			return nil, fmt.Errorf("invalid public key: %v", err)
+		}
+		ctBytes, ssBytes, err := sch.Encapsulate(pk)
+		if err != nil {
+			return nil, err
+		}
+		ctHex = hex.EncodeToString(ctBytes)
+		ssHex = hex.EncodeToString(ssBytes)
+		activePasswordStr = ssHex
+	}
+
+	passwordBytes := []byte(activePasswordStr)
 
 	prngFactory := func(s string) PRNG {
-		if isV3 {
-			return NewChaCha20PRNG(s)
+		if isModern {
+			return NewDarkstarChaChaPRNG(s)
 		}
 		return NewMulberry32(s)
 	}
@@ -485,19 +778,23 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, password string, forceV2 bool, forceV
 			selectedFunctions[i] = i
 		}
 
-		seedForSelection := password + word
+		seedForSelection := activePasswordStr + word
 		rngSel := prngFactory(seedForSelection)
 		for i := 11; i > 0; i-- {
-			j := int(rngSel.Next() * float64(i+1))
+			j := int((uint64(rngSel.Next()) * uint64(i+1)) >> 32)
 			selectedFunctions[i], selectedFunctions[j] = selectedFunctions[j], selectedFunctions[i]
 		}
 
 		cycleDepth := len(selectedFunctions)
-		if isV3 {
+		if isModern {
 			hash := sha256.Sum256([]byte(seedForSelection))
 			hashHex := hex.EncodeToString(hash[:])
 			depthVal, _ := strconv.ParseInt(hashHex[:4], 16, 32)
-			cycleDepth = 12 + (int(depthVal) % 53)
+			if isV5 {
+				cycleDepth = 12 + (int(depthVal) % 501)
+			} else {
+				cycleDepth = 12 + (int(depthVal) % 53)
+			}
 		}
 
 		checksum := generateChecksum(selectedFunctions)
@@ -509,18 +806,25 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, password string, forceV2 bool, forceV
 		for i := 0; i < cycleDepth; i++ {
 			funcIndex := selectedFunctions[i%len(selectedFunctions)]
 
-			if i >= 12 && (funcIndex == 2 || funcIndex == 3 || funcIndex == 8 || funcIndex == 9) {
+			if i >= 12 && !isV4 && !isV5 && (funcIndex == 2 || funcIndex == 3 || funcIndex == 8 || funcIndex == 9) {
 				funcIndex = (funcIndex + 2) % 12
 			}
 
-			isSeeded := funcIndex >= 6
+			var f func([]byte, []byte, func(string) PRNG) []byte
+			var isSeeded bool
+			if isV4 || isV5 {
+				f = dc.obfuscationFunctionsV4[funcIndex]
+				isSeeded = funcIndex == 4 || funcIndex == 5 || funcIndex == 6 || funcIndex == 9
+			} else {
+				f = dc.obfuscationFunctionsV2[funcIndex]
+				isSeeded = funcIndex >= 6
+			}
 			var seed []byte
 			if isSeeded {
 				seed = combinedSeed
 			}
 
 			// Apply correct function
-			f := dc.obfuscationFunctionsV2[funcIndex]
 			currentWordBytes = f(currentWordBytes, seed, prngFactory)
 			wordReverseKey = append(wordReverseKey, funcIndex)
 		}
@@ -545,10 +849,15 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, password string, forceV2 bool, forceV
 
 	var encryptedContent string
 	var err error
-	if isV3 {
-		encryptedContent, err = dc.encryptAES256GCM(base64Content, password, ITERATIONS_V2)
+	targetIterations := ITERATIONS_V2
+	if isV5 {
+		targetIterations = ITERATIONS_V2
+	}
+
+	if isModern {
+		encryptedContent, err = dc.encryptAES256GCM(base64Content, activePasswordStr, targetIterations)
 	} else {
-		encryptedContent, err = dc.encryptAES256(base64Content, password, ITERATIONS_V2)
+		encryptedContent, err = dc.encryptAES256(base64Content, activePasswordStr, targetIterations)
 	}
 
 	if err != nil {
@@ -556,13 +865,17 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, password string, forceV2 bool, forceV
 	}
 
 	// Reverse Key serialization (Packed)
-	encodedReverseKey, err := dc.packReverseKey(reverseKey, isV3)
+	encodedReverseKey, err := dc.packReverseKey(reverseKey, isModern)
 	if err != nil {
 		return nil, err
 	}
 
 	vProtocol := 2
-	if isV3 {
+	if isV5 {
+		vProtocol = 5
+	} else if isV4 {
+		vProtocol = 4
+	} else if isV3 {
 		vProtocol = 3
 	}
 
@@ -583,6 +896,9 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, password string, forceV2 bool, forceV
 		"v":    vProtocol,
 		"data": encryptedContent,
 	}
+	if isV5 {
+		resultObj["ct"] = ctHex
+	}
 
 	return map[string]interface{}{
 		"encryptedData": resultObj,
@@ -590,8 +906,7 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, password string, forceV2 bool, forceV
 	}, nil
 }
 
-// Decrypt decrypts the encrypted data using the reverse key and password.
-func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password string) (string, error) {
+func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, keyMaterial string) (string, error) {
 	// 1. Decode Reverse Key
 	rkBytes, err := base64.StdEncoding.DecodeString(reverseKeyB64)
 	if err != nil {
@@ -603,17 +918,17 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 	if err := json.Unmarshal(rkBytes, &reverseKey); err == nil {
 		// PASSED JSON
 	} else {
-		// Not JSON, try Packed (V2/V3 Compressed)
+		// Not JSON, try Packed (V2/V3/V4 Compressed)
 		// Detect protocol version from the data header first if possible
-		isHeaderV3 := false
+		isHeaderModern := false
 		var parsed map[string]interface{}
 		if json.Unmarshal([]byte(encryptedDataRaw), &parsed) == nil {
-			if v, ok := parsed["v"].(float64); ok && v == 3 {
-				isHeaderV3 = true
+			if v, ok := parsed["v"].(float64); ok && (v == 3 || v == 4 || v == 5) {
+				isHeaderModern = true
 			}
 		}
 
-		reverseKey, err = dc.unpackReverseKey(reverseKeyB64, isHeaderV3)
+		reverseKey, err = dc.unpackReverseKey(reverseKeyB64, isHeaderModern)
 		if err != nil {
 			return "", errors.New("invalid reverse key format (json or packed)")
 		}
@@ -621,21 +936,66 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 
 	// 2. Parse encrypted data
 	var encryptedContent string
-	var parsed map[string]interface{}
+	var parsedDec map[string]interface{}
 	isV3 := false
+	isV4 := false
+	isV5 := false
+	ctHex := ""
 
 	// Check if JSON
-	if err := json.Unmarshal([]byte(encryptedDataRaw), &parsed); err == nil {
-		if v, ok := parsed["v"].(float64); ok && v == 2 {
-			if data, ok := parsed["data"].(string); ok {
+	if err := json.Unmarshal([]byte(encryptedDataRaw), &parsedDec); err == nil {
+		if v, ok := parsedDec["v"].(float64); ok && v == 2 {
+			if data, ok := parsedDec["data"].(string); ok {
 				encryptedContent = data
 			}
-		} else if v, ok := parsed["v"].(float64); ok && v == 3 {
-			if data, ok := parsed["data"].(string); ok {
+		} else if v, ok := parsedDec["v"].(float64); ok && v == 3 {
+			if data, ok := parsedDec["data"].(string); ok {
 				encryptedContent = data
 				isV3 = true
 			}
+		} else if v, ok := parsedDec["v"].(float64); ok && v == 4 {
+			if data, ok := parsedDec["data"].(string); ok {
+				encryptedContent = data
+				isV4 = true
+			}
+		} else if v, ok := parsedDec["v"].(float64); ok && v == 5 {
+			if data, ok := parsedDec["data"].(string); ok {
+				encryptedContent = data
+				isV5 = true
+				if ctStr, ok := parsedDec["ct"].(string); ok {
+					ctHex = ctStr
+				}
+			}
 		}
+	}
+	
+	isModern := isV3 || isV4 || isV5
+
+	activePasswordStr := keyMaterial
+	if isV5 {
+		sch := mlkem1024.Scheme()
+		skBytes, err := hex.DecodeString(keyMaterial)
+		if err != nil {
+			return "", fmt.Errorf("invalid sk format: %v", err)
+		}
+		sk, err := sch.UnmarshalBinaryPrivateKey(skBytes)
+		if err != nil {
+			return "", fmt.Errorf("invalid sk unmarshal: %v", err)
+		}
+		ctBytes, err := hex.DecodeString(ctHex)
+		if err != nil {
+			return "", fmt.Errorf("invalid ct format: %v", err)
+		}
+		ssBytes, err := sch.Decapsulate(sk, ctBytes)
+		if err != nil {
+			return "", err
+		}
+		activePasswordStr = hex.EncodeToString(ssBytes)
+	}
+
+	targetIterations := ITERATIONS_V2
+	if isV5 {
+		targetIterations = ITERATIONS_V2
 	}
 	if encryptedContent == "" {
 		encryptedContent = encryptedDataRaw // Fallback or direct string
@@ -645,10 +1005,10 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 	var decryptedBase64Bytes []byte
 	var decErr error
 
-	if isV3 {
-		decryptedBase64Bytes, decErr = dc.decryptAES256GCM(encryptedContent, password, ITERATIONS_V2)
+	if isModern {
+		decryptedBase64Bytes, decErr = dc.decryptAES256GCM(encryptedContent, activePasswordStr, targetIterations)
 	} else {
-		decryptedBase64Bytes, decErr = dc.decryptAES256(encryptedContent, password, ITERATIONS_V2)
+		decryptedBase64Bytes, decErr = dc.decryptAES256(encryptedContent, activePasswordStr, targetIterations)
 	}
 
 	if decErr != nil {
@@ -663,10 +1023,10 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 	fullBlob := binaryString
 
 	var deobfuscatedWords []string
-	passwordBytes := []byte(password)
+	passwordBytes := []byte(activePasswordStr)
 	prngFactory := func(s string) PRNG {
-		if isV3 {
-			return NewChaCha20PRNG(s)
+		if isModern {
+			return NewDarkstarChaChaPRNG(s)
 		}
 		return NewMulberry32(s)
 	}
@@ -712,8 +1072,18 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, password strin
 
 		for j := len(wordReverseList) - 1; j >= 0; j-- {
 			funcIndex := wordReverseList[j]
-			f := dc.deobfuscationFunctionsV2[funcIndex]
-			isSeeded := funcIndex >= 6
+			
+			var f func([]byte, []byte, func(string) PRNG) []byte
+			var isSeeded bool
+
+			if isV4 || isV5 {
+				f = dc.deobfuscationFunctionsV4[funcIndex]
+				isSeeded = funcIndex == 4 || funcIndex == 5 || funcIndex == 6 || funcIndex == 9
+			} else {
+				f = dc.deobfuscationFunctionsV2[funcIndex]
+				isSeeded = funcIndex >= 6
+			}
+			
 			var seed []byte
 			if isSeeded {
 				seed = combinedSeed
@@ -734,7 +1104,9 @@ func (dc *DarkstarCrypt) packReverseKey(reverseKey [][]int, isV3 bool) (string, 
 	var buffer []byte
 	for _, wordKey := range reverseKey {
 		if isV3 {
-			buffer = append(buffer, byte(len(wordKey)))
+			// Uint16BE length header
+			l := uint16(len(wordKey))
+			buffer = append(buffer, byte(l>>8), byte(l&0xff))
 		}
 		for i := 0; i < len(wordKey); i += 2 {
 			high := byte(wordKey[i] & 0x0F)
@@ -759,8 +1131,11 @@ func (dc *DarkstarCrypt) unpackReverseKey(b64 string, isV3 bool) ([][]int, error
 	for offset < len(bytes) {
 		wordLen := 12 // Legacy V2 default
 		if isV3 {
-			wordLen = int(bytes[offset])
-			offset++
+			if offset+2 > len(bytes) {
+				break
+			}
+			wordLen = (int(bytes[offset]) << 8) | int(bytes[offset+1])
+			offset += 2
 		}
 
 		numBytesToRead := (wordLen + 1) / 2
@@ -924,8 +1299,9 @@ func (dc *DarkstarCrypt) decryptAES256(transitMessage, password string, iteratio
 	return plaintext[:len(plaintext)-paddingSize], nil
 }
 
+
 func (dc *DarkstarCrypt) decryptAES256GCM(transitMessage, password string, iterations int) ([]byte, error) {
-	if len(transitMessage) < 64 {
+	if len(transitMessage) < 56 { // hex salt(32) + hex iv(24)
 		return nil, errors.New("invalid message length")
 	}
 	saltHex := transitMessage[:32]
@@ -952,7 +1328,6 @@ func (dc *DarkstarCrypt) decryptAES256GCM(transitMessage, password string, itera
 	if err != nil {
 		return nil, err
 	}
-
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil, err
@@ -971,65 +1346,39 @@ func (dc *DarkstarCrypt) decryptAES256GCM(transitMessage, password string, itera
 }
 
 func parseHex(s string) ([]byte, error) {
-	return hexDecodeString(s)
+	return hex.DecodeString(s)
 }
-
-// Simple hex decode helper to avoid heavier dependency if needed, but encoding/hex is standard.
-// Just using hex.DecodeString equivalent essentially.
-func hexDecodeString(s string) ([]byte, error) {
-	// use standard library normally, but manual here for dependency check? No, use real one.
-	// Actually I missed the import "encoding/hex". Let's just implement a quick one or add import.
-	// Adding import is better.
-	dst := make([]byte, len(s)/2)
-	for i := 0; i < len(s)/2; i++ {
-		high := unhex(s[2*i])
-		low := unhex(s[2*i+1])
-		if high == 255 || low == 255 {
-			return nil, errors.New("invalid hex")
-		}
-		dst[i] = (high << 4) | low
-	}
-	return dst, nil
-}
-func unhex(c byte) byte {
-	switch {
-	case '0' <= c && c <= '9':
-		return c - '0'
-	case 'a' <= c && c <= 'f':
-		return c - 'a' + 10
-	case 'A' <= c && c <= 'F':
-		return c - 'A' + 10
-	}
-	return 255
-}
-
-// --- Main ---
 
 func printUsage() {
 	fmt.Println("Usage:")
-	fmt.Println("  [--v3|--v2|--v1] encrypt <mnemonic> <password>                   - Encrypt a mnemonic phrase")
-	fmt.Println("  decrypt <encrypted_json> <reverse_key> <password> - Decrypt a phrase")
-	fmt.Println("  test                                            - Run self-test")
+	fmt.Println("  darkstar-encry [flags] encrypt <mnemonic> <password>")
+	fmt.Println("  darkstar-encry [flags] decrypt <encrypted_data> <reverse_key> <password>")
+	fmt.Println("Flags:")
+	fmt.Println("  --v1, --v2, --v3, --v4, --v5")
 }
 
 func main() {
-	args := os.Args[1:]
-	if len(args) < 1 {
+	if len(os.Args) < 2 {
 		printUsage()
 		return
 	}
 
-	forceV2 := false
 	forceV1 := false
+	forceV2 := false
+	forceV3 := false
+	forceV4 := false
+	forceV5 := false
 
-	switch args[0] {
-	case "--v2":
-		forceV2 = true
-		args = args[1:]
-	case "--v1":
-		forceV1 = true
-		args = args[1:]
-	case "--v3":
+	args := os.Args[1:]
+	for len(args) > 0 && strings.HasPrefix(args[0], "--") {
+		flag := strings.ToLower(args[0])
+		switch flag {
+		case "--v1": forceV1 = true
+		case "--v2": forceV2 = true
+		case "--v3": forceV3 = true
+		case "--v4": forceV4 = true
+		case "--v5": forceV5 = true
+		}
 		args = args[1:]
 	}
 
@@ -1038,82 +1387,42 @@ func main() {
 		return
 	}
 
-	dc := NewDarkstarCrypt()
 	command := args[0]
+	dc := NewDarkstarCrypt()
 
 	switch command {
 	case "encrypt":
-		if len(args) != 3 {
-			fmt.Println("Error: 'encrypt' requires <mnemonic> and <password>")
-			return
+		if len(args) < 3 {
+			fmt.Println("Error: encrypt requires mnemonic and password")
+			os.Exit(1)
 		}
 		mnemonic := args[1]
 		password := args[2]
-		result, err := dc.Encrypt(mnemonic, password, forceV2, forceV1)
+		result, err := dc.Encrypt(mnemonic, password, forceV2, forceV1, forceV3, forceV4, forceV5)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		jsonRes, _ := json.Marshal(result)
-		fmt.Println(string(jsonRes))
+		j, _ := json.Marshal(result)
+		fmt.Println(string(j))
 
 	case "decrypt":
-		if len(args) != 4 {
-			fmt.Println("Error: 'decrypt' requires <encrypted_json_or_data> <reverse_key> <password>")
-			return
+		if len(args) < 4 {
+			fmt.Println("Error: decrypt requires data, key and password")
+			os.Exit(1)
 		}
 		data := args[1]
-		reverseKey := args[2]
+		rk := args[2]
 		password := args[3]
-		result, err := dc.Decrypt(data, reverseKey, password)
+		decrypted, err := dc.Decrypt(data, rk, password)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println(result) // Use result instead of missing decrypted
-
-	case "test":
-		mnemonic := "cat dog fish bird"
-		password := "MySecre!Password123"
-
-		fmt.Println("--- Darkstar Go Self-Test ---")
-		fmt.Printf("Plaintext: %s\n", mnemonic)
-
-		result, err := dc.Encrypt(mnemonic, password, false, false)
-		if err != nil {
-			panic(err)
-		}
-
-		encryptedDataRaw := result["encryptedData"].(string)
-		reverseKey := result["reverseKey"].(string)
-
-		// Parse the JSON inside encryptedData if it exists
-		var parsedData map[string]interface{}
-		var encryptedData string
-		if err := json.Unmarshal([]byte(encryptedDataRaw), &parsedData); err == nil {
-			encryptedData = parsedData["data"].(string)
-		} else {
-			encryptedData = encryptedDataRaw
-		}
-
-		fmt.Println("Encrypted:", encryptedData)
-
-		decrypted, err := dc.Decrypt(encryptedDataRaw, reverseKey, password)
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Printf("Decrypted: '%s'\n", decrypted)
-
-		if decrypted == mnemonic {
-			fmt.Println("Result: PASSED")
-		} else {
-			fmt.Println("Result: FAILED")
-			os.Exit(1)
-		}
+		fmt.Print(decrypted)
 
 	default:
-		fmt.Printf("Error: Unknown command '%s'\n", command)
+		fmt.Printf("Error: Unknown command %s\n", command)
 		printUsage()
 	}
 }

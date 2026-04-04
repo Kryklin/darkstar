@@ -16,9 +16,15 @@ class DarkstarCrypt:
     IV_SIZE_BYTES = 16 # 128 bits
 
     """
-    DarkstarCrypt - Advanced Encryption Implementation
+    D-KASP-1024 Encryption Suite
     
-    This class implements the V2 Darkstar encryption schema.
+    This suite implements the definitive Darkstar protocol (V5):
+    - D: Darkstar ecosystem origin
+    - K: ML-KEM-1024 (Kyber-1024) NIST Level 5 Root of Trust
+    - A: Augmented 64-layer SPN/ARX transformation gauntlet
+    - S: Sequential word-based path-logic
+    - P: Permutation-based non-linear core (S-Boxes, P-Boxes, Galois mixing)
+    - 1024: 256-bit Post-Quantum security parity
     """
 
     # --- PRNG ---
@@ -52,9 +58,9 @@ class DarkstarCrypt:
             t = ((t + term2) & 0xFFFFFFFF) ^ t
             
             res = (t ^ (t >> 14)) & 0xFFFFFFFF
-            return res / 4294967296.0
+            return res
 
-    class ChaCha20PRNG:
+    class DarkstarChaChaPRNG:
         def __init__(self, seed_str):
             import hashlib
             hash_hex = hashlib.sha256(seed_str.encode('utf-8')).hexdigest()
@@ -95,7 +101,7 @@ class DarkstarCrypt:
             t = ((t + term2) & 0xFFFFFFFF) ^ t
 
             res = (t ^ (t >> 14)) & 0xFFFFFFFF
-            return res / 4294967296.0
+            return res
 
     # --- Helpers ---
     def _to_bytes(self, s):
@@ -198,7 +204,7 @@ class DarkstarCrypt:
         rng = prng_factory(seed_str)
         for i in range(n - 1, 0, -1):
             rand = rng.next()
-            j = int(rand * (i + 1))
+            j = (rand * (i + 1)) // 0x100000000
             a[i], a[j] = a[j], a[i]
         return bytes(a)
 
@@ -212,7 +218,7 @@ class DarkstarCrypt:
         # Replay shuffle on indices
         for i in range(n - 1, 0, -1):
             rand = rng.next()
-            j = int(rand * (i + 1))
+            j = (rand * (i + 1)) // 0x100000000
             indices[i], indices[j] = indices[j], indices[i]
         
         unshuffled = bytearray(n)
@@ -235,7 +241,7 @@ class DarkstarCrypt:
         output = bytearray(len(data) * 2)
         for i in range(len(data)):
             output[i * 2] = data[i]
-            rand_idx = int(rng.next() * len(random_chars))
+            rand_idx = (rng.next() * len(random_chars)) // 0x100000000
             output[i * 2 + 1] = random_chars[rand_idx]
         return bytes(output)
 
@@ -276,7 +282,7 @@ class DarkstarCrypt:
     def _obfuscate_block_rev(self, data, seed=None, prng_factory=None):
         seed_str = self._bytes_to_string(seed)
         rng = prng_factory(seed_str)
-        block_size = int(rng.next() * (len(data) / 2)) + 2
+        block_size = ((rng.next() * (len(data) // 2)) // 0x100000000) + 2
         
         output = bytearray()
         for i in range(0, len(data), block_size):
@@ -293,7 +299,7 @@ class DarkstarCrypt:
         # Shuffle 0-255
         for i in range(255, 0, -1):
             rand = rng.next()
-            j = int(rand * (i + 1))
+            j = (rand * (i + 1)) // 0x100000000
             chars[i], chars[j] = chars[j], chars[i]
         
         output = bytearray(len(data))
@@ -308,7 +314,7 @@ class DarkstarCrypt:
         
         for i in range(255, 0, -1):
             rand = rng.next()
-            j = int(rand * (i + 1))
+            j = (rand * (i + 1)) // 0x100000000
             chars[i], chars[j] = chars[j], chars[i]
             
         unsub_map = [0] * 256
@@ -350,6 +356,216 @@ class DarkstarCrypt:
             self._obfuscate_block_rev, # Reverse is self-inverse
             self._deobfuscate_sub
         ]
+        
+        self.SBOX = bytearray([
+            0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+            0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+            0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+            0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+            0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+            0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+            0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+            0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+            0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+            0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+            0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+            0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+            0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+            0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+            0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+            0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
+        ])
+        
+        self.INV_SBOX = bytearray(256)
+        for i in range(256):
+            self.INV_SBOX[self.SBOX[i]] = i
+            
+        self.obfuscation_functions_v4 = [
+            self._obfuscate_sbox_v4,
+            self._obfuscate_modmult_v4,
+            self._obfuscate_pbox_v4,
+            self._obfuscate_cyclicrot_v4,
+            self._obfuscate_keyedxor_v4,
+            self._obfuscate_feistel_v4,
+            self._obfuscate_modadd_v4,
+            self._obfuscate_matrixhill_v4,
+            self._obfuscate_gfmult_v4,
+            self._obfuscate_bitflip_v4,
+            self._obfuscate_columnar_v4,
+            self._obfuscate_recxor_v4
+        ]
+        
+        self.deobfuscation_functions_v4 = [
+            self._deobfuscate_sbox_v4,
+            self._deobfuscate_modmult_v4,
+            self._deobfuscate_pbox_v4,
+            self._deobfuscate_cyclicrot_v4,
+            self._deobfuscate_keyedxor_v4,
+            self._deobfuscate_feistel_v4,
+            self._deobfuscate_modadd_v4,
+            self._deobfuscate_matrixhill_v4,
+            self._deobfuscate_gfmult_v4,
+            self._deobfuscate_bitflip_v4,
+            self._deobfuscate_columnar_v4,
+            self._deobfuscate_recxor_v4
+        ]
+
+    # --- Obfuscation Functions (V4) ---
+
+    def _gf_mult(self, a, b):
+        p = 0
+        for i in range(8):
+            if (b & 1) != 0: p ^= a
+            hi_bit_set = (a & 0x80)
+            a <<= 1
+            if hi_bit_set != 0: a ^= 0x1B
+            b >>= 1
+            a &= 0xFF
+        return p & 0xFF
+
+    def _obfuscate_sbox_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        for i, b in enumerate(data): out[i] = self.SBOX[b]
+        return bytes(out)
+        
+    def _deobfuscate_sbox_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        for i, b in enumerate(data): out[i] = self.INV_SBOX[b]
+        return bytes(out)
+        
+    def _obfuscate_modmult_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        for i, b in enumerate(data): out[i] = (b * 167) & 0xFF
+        return bytes(out)
+        
+    def _deobfuscate_modmult_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        for i, b in enumerate(data): out[i] = (b * 23) & 0xFF
+        return bytes(out)
+        
+    def _obfuscate_pbox_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        length = len(data)
+        for i in range(length):
+            b = data[i]
+            b = ((b & 0xF0) >> 4) | ((b & 0x0F) << 4)
+            b = ((b & 0xCC) >> 2) | ((b & 0x33) << 2)
+            b = ((b & 0xAA) >> 1) | ((b & 0x55) << 1)
+            out[length - 1 - i] = b
+        return bytes(out)
+        
+    def _deobfuscate_pbox_v4(self, data, seed=None, prng_factory=None):
+        return self._obfuscate_pbox_v4(data)
+        
+    def _obfuscate_cyclicrot_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        for i, b in enumerate(data): out[i] = ((b >> 3) | ((b << 5) & 0xFF)) & 0xFF
+        return bytes(out)
+        
+    def _deobfuscate_cyclicrot_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        for i, b in enumerate(data): out[i] = (((b << 3) & 0xFF) | (b >> 5)) & 0xFF
+        return bytes(out)
+        
+    def _obfuscate_keyedxor_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        for i, b in enumerate(data): out[i] = b ^ seed[i % len(seed)]
+        return bytes(out)
+        
+    def _deobfuscate_keyedxor_v4(self, data, seed=None, prng_factory=None):
+        return self._obfuscate_keyedxor_v4(data, seed)
+        
+    def _obfuscate_feistel_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(data)
+        half = len(out) // 2
+        if half == 0: return bytes(out)
+        for i in range(half):
+            f = (out[half + i] + seed[i % len(seed)]) & 0xFF
+            out[i] ^= f
+        return bytes(out)
+        
+    def _deobfuscate_feistel_v4(self, data, seed=None, prng_factory=None):
+        return self._obfuscate_feistel_v4(data, seed)
+        
+    def _obfuscate_modadd_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        for i, b in enumerate(data): out[i] = (b + seed[i % len(seed)]) & 0xFF
+        return bytes(out)
+        
+    def _deobfuscate_modadd_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        for i, b in enumerate(data): out[i] = (b - seed[i % len(seed)] + 256) & 0xFF
+        return bytes(out)
+        
+    def _obfuscate_matrixhill_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        if len(data) == 0: return bytes(out)
+        out[0] = data[0]
+        for i in range(1, len(data)): out[i] = (data[i] + out[i-1]) & 0xFF
+        return bytes(out)
+        
+    def _deobfuscate_matrixhill_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        if len(data) == 0: return bytes(out)
+        out[0] = data[0]
+        for i in range(len(data) - 1, 0, -1): out[i] = (data[i] - data[i-1] + 256) & 0xFF
+        return bytes(out)
+
+    def _obfuscate_gfmult_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        for i, b in enumerate(data): out[i] = self._gf_mult(b, 0x02)
+        return bytes(out)
+        
+    def _deobfuscate_gfmult_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        for i, b in enumerate(data): out[i] = self._gf_mult(b, 0x8D)
+        return bytes(out)
+        
+    def _obfuscate_bitflip_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        for i, b in enumerate(data):
+            mask = seed[i % len(seed)]
+            out[i] = b ^ ((mask & 0xAA) | (~mask & 0x55))
+        return bytes(out)
+        
+    def _deobfuscate_bitflip_v4(self, data, seed=None, prng_factory=None):
+        return self._obfuscate_bitflip_v4(data, seed)
+        
+    def _obfuscate_columnar_v4(self, data, seed=None, prng_factory=None):
+        n = len(data)
+        out = bytearray(n)
+        cols = 3
+        idx = 0
+        for c in range(cols):
+            for i in range(c, n, cols):
+                out[idx] = data[i]
+                idx += 1
+        return bytes(out)
+        
+    def _deobfuscate_columnar_v4(self, data, seed=None, prng_factory=None):
+        n = len(data)
+        out = bytearray(n)
+        cols = 3
+        idx = 0
+        for c in range(cols):
+            for i in range(c, n, cols):
+                out[i] = data[idx]
+                idx += 1
+        return bytes(out)
+        
+    def _obfuscate_recxor_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        if len(data) == 0: return bytes(out)
+        out[0] = data[0]
+        for i in range(1, len(data)): out[i] = out[i-1] ^ data[i]
+        return bytes(out)
+        
+    def _deobfuscate_recxor_v4(self, data, seed=None, prng_factory=None):
+        out = bytearray(len(data))
+        if len(data) == 0: return bytes(out)
+        out[0] = data[0]
+        for i in range(len(data) - 1, 0, -1): out[i] = data[i] ^ data[i-1]
+        return bytes(out)
 
     # --- Core AES Encryption ---
     def _encrypt_aes256(self, data_bytes, password, iterations):
@@ -483,18 +699,33 @@ class DarkstarCrypt:
             return None
 
     # --- Public API ---
-    def encrypt(self, mnemonic, password, force_v2=False, force_v1=False):
+    def encrypt(self, mnemonic, key_material, force_v2=False, force_v1=False, force_v3=False, force_v4=False, force_v5=False):
         words = mnemonic.split(' ')
         obfuscated_words = []
         reverse_key = []
         
-        password_bytes = self._to_bytes(password)
+        is_v5 = force_v5
+        is_v4 = not force_v3 and not force_v2 and not force_v1 and not force_v5
+        if force_v4: is_v4 = True
+        is_v3 = force_v3
+        is_modern = is_v3 or is_v4 or is_v5
         
-        is_v3 = not force_v2 and not force_v1 
+        ct_hex = ""
+        ss_hex = ""
+        active_password_str = key_material
+        if is_v5:
+            import pqcrypto.kem.ml_kem_1024 as kem
+            pk_bytes = bytes.fromhex(key_material)
+            ct_bytes, ss_bytes = kem.encrypt(pk_bytes)
+            ct_hex = ct_bytes.hex()
+            ss_hex = ss_bytes.hex()
+            active_password_str = ss_hex
+
+        password_bytes = self._to_bytes(active_password_str)
         
         def prng_factory(s_str):
-            if is_v3:
-                return self.ChaCha20PRNG(s_str)
+            if is_modern:
+                return self.DarkstarChaChaPRNG(s_str)
             return self.Mulberry32(s_str)
         
         for word in words:
@@ -502,22 +733,22 @@ class DarkstarCrypt:
             
             selected_functions = list(range(len(self.obfuscation_functions_v2)))
             
-            seed_for_selection = password + word
+            seed_for_selection = active_password_str + word
             rng_sel = prng_factory(seed_for_selection)
             
             for i in range(len(selected_functions) - 1, 0, -1):
                 rand = rng_sel.next()
-                j = int(rand * (i + 1))
+                j = (rand * (i + 1)) // 0x100000000
                 selected_functions[i], selected_functions[j] = selected_functions[j], selected_functions[i]
 
             word_reverse_key = []
             
             cycle_depth = len(selected_functions)
-            if is_v3:
+            if is_modern:
                 import hashlib
                 depth_hash = hashlib.sha256(seed_for_selection.encode('utf-8')).hexdigest()
                 depth_val = int(depth_hash[:4], 16)
-                cycle_depth = 12 + (depth_val % 53)
+                cycle_depth = 12 + (depth_val % 501) if is_v5 else 12 + (depth_val % 53)
             
             checksum = self._generate_checksum(selected_functions)
             checksum_str = str(checksum)
@@ -527,11 +758,16 @@ class DarkstarCrypt:
             for i in range(cycle_depth):
                 func_index = selected_functions[i % len(selected_functions)]
                 
-                if i >= 12 and func_index in [2, 3, 8, 9]:
+                if i >= 12 and not is_v4 and not is_v5 and func_index in [2, 3, 8, 9]:
                     func_index = (func_index + 2) % 12
                     
-                func = self.obfuscation_functions_v2[func_index]
-                is_seeded = func_index >= 6
+                if is_v4 or is_v5:
+                    func = self.obfuscation_functions_v4[func_index]
+                    is_seeded = func_index in [4, 5, 6, 9]
+                else:
+                    func = self.obfuscation_functions_v2[func_index]
+                    is_seeded = func_index >= 6
+                    
                 seed = combined_seed if is_seeded else None
                 
                 if is_seeded:
@@ -553,14 +789,14 @@ class DarkstarCrypt:
             final_blob.extend(wb)
             
         # Base64 encode final blob for AES
-        # JS: const base64Content = btoa(binaryString);
-        # Python:
         base64_content = base64.b64encode(final_blob).decode('ascii')
         
-        if is_v3:
-            encrypted_content = self._encrypt_aes256_gcm(self._to_bytes(base64_content), password, self.ITERATIONS_V2)
+        target_iterations = (1 if is_v5 else self.ITERATIONS_V2) # Placeholder for removal logic
+        target_iterations = self.ITERATIONS_V2
+        if is_modern:
+            encrypted_content = self._encrypt_aes256_gcm(self._to_bytes(base64_content), active_password_str, target_iterations)
         else:
-            encrypted_content = self._encrypt_aes256(self._to_bytes(base64_content), password, self.ITERATIONS_V2)
+            encrypted_content = self._encrypt_aes256(self._to_bytes(base64_content), active_password_str, target_iterations)
         
         if force_v1:
             return {
@@ -569,37 +805,38 @@ class DarkstarCrypt:
             }
             
         result_obj = {
-            "v": 3 if is_v3 else 2,
+            "v": 5 if is_v5 else (4 if is_v4 else (3 if is_v3 else 2)),
             "data": encrypted_content
         }
+        if is_v5: result_obj["ct"] = ct_hex
         
         # Compress Reverse Key
-        encoded_reverse_key = self._pack_reverse_key(reverse_key, is_v3=is_v3)
+        encoded_reverse_key = self._pack_reverse_key(reverse_key, is_v3=is_modern)
         
         return {
             "encryptedData": json.dumps(result_obj, separators=(',', ':')),
             "reverseKey": encoded_reverse_key
         }
 
-    def decrypt(self, encrypted_data_raw, reverse_key_b64, password):
+    def decrypt(self, encrypted_data_raw, reverse_key_b64, key_material):
         # 1. Decode Reverse Key
         try:
             # Try to decode as packed binary first (or auto-detect)
             decoded_b64 = base64.b64decode(reverse_key_b64)
             # Detect protocol version from the data header first if possible, or pass hint
-            is_header_v3 = False
+            is_header_modern = False
             if encrypted_data_raw.strip().startswith('{'):
                 try:
                     parsed = json.loads(encrypted_data_raw)
-                    if parsed.get('v') == 3:
-                        is_header_v3 = True
+                    if parsed.get('v') in [3, 4, 5]:
+                        is_header_modern = True
                 except:
                     pass
 
             if decoded_b64.strip().startswith(b'['):
                 reverse_key = json.loads(decoded_b64)
             else:
-                reverse_key = self._unpack_reverse_key(reverse_key_b64, is_v3=is_header_v3)
+                reverse_key = self._unpack_reverse_key(reverse_key_b64, is_v3=is_header_modern)
         except Exception:
              # Fallback
              reverse_key = self._unpack_reverse_key(reverse_key_b64, is_v3=False)
@@ -608,6 +845,9 @@ class DarkstarCrypt:
         iterations = self.ITERATIONS_V2 
         encrypted_content = encrypted_data_raw
         is_v3 = False
+        is_v4 = False
+        is_v5 = False
+        ct_hex = ""
         
         try:
             if encrypted_data_raw.strip().startswith('{'):
@@ -617,14 +857,33 @@ class DarkstarCrypt:
                 elif parsed.get('v') == 3 and parsed.get('data'):
                     encrypted_content = parsed['data']
                     is_v3 = True
+                elif parsed.get('v') == 4 and parsed.get('data'):
+                    encrypted_content = parsed['data']
+                    is_v4 = True
+                elif parsed.get('v') == 5 and parsed.get('data'):
+                    encrypted_content = parsed['data']
+                    is_v5 = True
+                    ct_hex = parsed.get('ct', '')
         except:
             pass 
 
+        is_modern = is_v3 or is_v4 or is_v5
+
+        active_password_str = key_material
+        if is_v5:
+            import pqcrypto.kem.ml_kem_1024 as kem
+            sk_bytes = bytes.fromhex(key_material)
+            ct_bytes = bytes.fromhex(ct_hex)
+            ss_bytes = kem.decrypt(sk_bytes, ct_bytes)
+            active_password_str = ss_bytes.hex()
+            
+        iterations = self.ITERATIONS_V2
+
         # 3. Decrypt AES
-        if is_v3:
-            decrypted_base64_bytes = self._decrypt_aes256_gcm(encrypted_content, password, iterations)
+        if is_modern:
+            decrypted_base64_bytes = self._decrypt_aes256_gcm(encrypted_content, active_password_str, iterations)
         else:
-            decrypted_base64_bytes = self._decrypt_aes256(encrypted_content, password, iterations)
+            decrypted_base64_bytes = self._decrypt_aes256(encrypted_content, active_password_str, iterations)
         
         if not decrypted_base64_bytes:
             raise ValueError("AES decryption failed Check password")
@@ -638,11 +897,11 @@ class DarkstarCrypt:
         full_blob = binary_string
         
         deobfuscated_words = []
-        password_bytes = self._to_bytes(password)
+        password_bytes = self._to_bytes(active_password_str)
         
         def prng_factory(s_str):
-            if is_v3:
-                return self.ChaCha20PRNG(s_str)
+            if is_modern:
+                return self.DarkstarChaChaPRNG(s_str)
             return self.Mulberry32(s_str)
         
         offset = 0
@@ -670,9 +929,14 @@ class DarkstarCrypt:
             # Apply Deobfuscation (Reverse Order)
             for j in range(len(word_reverse_list) - 1, -1, -1):
                 func_index = word_reverse_list[j]
-                func = self.deobfuscation_functions_v2[func_index]
                 
-                is_seeded = func_index >= 6
+                if is_v4 or is_v5:
+                    func = self.deobfuscation_functions_v4[func_index]
+                    is_seeded = func_index in [4, 5, 6, 9]
+                else:
+                    func = self.deobfuscation_functions_v2[func_index]
+                    is_seeded = func_index >= 6
+                    
                 seed = combined_seed if is_seeded else None
                 
                 if is_seeded:
@@ -687,10 +951,12 @@ class DarkstarCrypt:
 
     # --- Compression Helpers ---
     def _pack_reverse_key(self, reverse_key, is_v3=True):
+        import struct
         buffer = bytearray()
         for word_key in reverse_key:
             if is_v3:
-                buffer.append(len(word_key))
+                # Uint16BE length header
+                buffer.extend(struct.pack('>H', len(word_key)))
             for i in range(0, len(word_key), 2):
                 high = word_key[i] & 0x0F
                 low = word_key[i+1] & 0x0F if i+1 < len(word_key) else 0x00
@@ -699,6 +965,7 @@ class DarkstarCrypt:
         return base64.b64encode(buffer).decode('ascii')
 
     def _unpack_reverse_key(self, b64, is_v3=True):
+        import struct
         buffer = base64.b64decode(b64)
         reverse_key = []
         
@@ -706,8 +973,9 @@ class DarkstarCrypt:
         while offset < len(buffer):
             word_len = 12 # Legacy V2
             if is_v3:
-                word_len = buffer[offset]
-                offset += 1
+                if offset + 2 > len(buffer): break
+                word_len = struct.unpack('>H', buffer[offset:offset+2])[0]
+                offset += 2
             
             num_bytes_to_read = (word_len + 1) // 2
             
@@ -735,6 +1003,9 @@ if __name__ == "__main__":
 
     force_v2 = False
     force_v1 = False
+    force_v3 = False
+    force_v4 = False
+    force_v5 = False
     if args[0] == '--v2':
         force_v2 = True
         args = args[1:]
@@ -742,11 +1013,19 @@ if __name__ == "__main__":
         force_v1 = True
         args = args[1:]
     elif args[0] == '--v3':
+        force_v3 = True
+        args = args[1:]
+    elif args[0] == '--v4':
+        force_v4 = True
+        args = args[1:]
+    elif args[0] == '--v5':
+        force_v5 = True
         args = args[1:]
         
     if not args:
-        print("Usage: python darkstar_crypt.py [--v3|--v2|--v1] <encrypt|decrypt|test> ...")
-        sys.exit(0)
+        print("Usage: python darkstar_crypt.py [--v5|--v4|--v3|--v2|--v1] <encrypt|decrypt|keygen|test> ...")
+        print("  --v5: D-KASP-1024 (ML-KEM-1024 NIST Root of Trust)")
+        sys.exit(1)
 
     command = args[0]
     crypt = DarkstarCrypt()
@@ -755,7 +1034,7 @@ if __name__ == "__main__":
         if len(args) < 3:
             print("Usage: [flags] encrypt <mnemonic> <password>")
             sys.exit(1)
-        res = crypt.encrypt(args[1], args[2], force_v2=force_v2, force_v1=force_v1)
+        res = crypt.encrypt(args[1], args[2], force_v2=force_v2, force_v1=force_v1, force_v3=force_v3, force_v4=force_v4, force_v5=force_v5)
         print(json.dumps(res))
     elif command == 'decrypt':
         if len(args) < 4:
@@ -763,12 +1042,24 @@ if __name__ == "__main__":
             sys.exit(1)
         res = crypt.decrypt(args[1], args[2], args[3])
         print(res)
+    elif command == 'keygen':
+        import pqcrypto.kem.ml_kem_1024 as kem
+        pk, sk = kem.generate_keypair()
+        print(f"PK: {pk.hex()}\nSK: {sk.hex()}")
     elif command == 'test':
         mnemonic = "cat dog fish bird"
         password = "MySecre!Password123"
+        dec_psw = password
+        
+        if force_v5:
+            import pqcrypto.kem.ml_kem_1024 as kem
+            pk, sk = kem.generate_keypair()
+            password = pk.hex()
+            dec_psw = sk.hex()
+            
         print(f"--- Darkstar Python Self-Test ---")
-        res = crypt.encrypt(mnemonic, password)
-        decrypted = crypt.decrypt(res['encryptedData'], res['reverseKey'], password)
+        res = crypt.encrypt(mnemonic, password, force_v2=force_v2, force_v1=force_v1, force_v3=force_v3, force_v4=force_v4, force_v5=force_v5)
+        decrypted = crypt.decrypt(res['encryptedData'], res['reverseKey'], dec_psw)
         print(f"Decrypted: '{decrypted}'")
         if decrypted == mnemonic:
             print("Result: PASSED")
