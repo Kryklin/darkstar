@@ -25,7 +25,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
-`darkstar` is a defense-grade client-side security tool designed to safeguard sensitive recovery phrases, data, and notes. It combines a dynamic, **V3 Obfuscation Engine** with **AES-256-GCM** (Authenticators) inherently designed for **Quantum Resistance**.
+`darkstar` is a defense-grade client-side security tool designed to safeguard sensitive recovery phrases, data, and notes. It combines a dynamic, **V5 (D-KASP-512) Obfuscation Engine** with **AES-256-GCM** (Authenticators) inherently designed for **Quantum Resistance**.
 
 > [!NOTE]
 > **Architecture Overview**: Curious how it works? View the [Visual Architecture Guide](DARKSTAR_ARCHITECTURE.md).
@@ -40,13 +40,13 @@
 - **Capacitor Mobile Native**: Full cross-platform support. Darkstar compiles into native Android (APK) and iOS (IPA) apps while sharing 100% of the cryptographic logic.
 - **Time-Lock Encryption**: Secure notes can be mathematically locked using a Verifiable Delay Function (VDF), guaranteeing they remain encrypted for a predefined temporal computation period.
 - **Secure Vault**: A session-based, zero-knowledge vault for managing secure notes and sensitive metadata with multi-layered encryption.
-- **Vault Signature Binding (New)**: Cryptographically bind your data to your specific Vault Identity. Decryption is only possible when authenticated with the same cryptographic signature.
-- **Identity Backup & Recovery (New)**: Securely export and import your full Vault Identity (JSON) to ensure access to bound data across devices or after a vault reset.
-- **V3 Encryption Engine (Quantum-Resistant)**: Powered by Web Crypto API with **AES-256-GCM** and hybrid **ML-KEM-1024** identity encapsulation. Inherent resistance to Grover's algorithm ensures long-term data survival in the quantum era.
-- **Dynamic Deterministic Cycles**: Obfuscation depth scales intelligently (12-64 layers) based on data entropy, replacing the legacy fixed-depth model.
+- **Vault Signature Binding**: Cryptographically bind your data to your specific Vault Identity. Decryption is only possible when authenticated with the same cryptographic signature.
+- **Identity Backup & Recovery**: Securely export and import your full Vault Identity (JSON) to ensure access to bound data across devices or after a vault reset.
+- **V5 Encryption Engine (Quantum-Resistant)**: Powered by Web Crypto API with **AES-256-GCM** and **ML-KEM-1024** identity encapsulation. Inherent resistance to Grover's algorithm ensures long-term data survival in the quantum era.
+- **Dynamic Deterministic Cycles**: Obfuscation depth scales intelligently (up to 512 layers) based on data entropy, ensuring high diffusion across all payloads.
 - **Anti-Forensic Memory**: Strict `Uint8Array` usage with explicit memory zeroing. The P2P service automatically performs an emergency shutdown if the vault is locked.
 - **Windows Hello & Biometrics**: Unlock your vault primarily using platform biometrics (TouchID, FaceID) or **Hardware Keys (YubiKey)** via WebAuthn.
-- **Audio Steganography (New)**: Embed encrypted data into WAV audio files using LSB encoding. Supports uploading custom cover audio or generating white noise.
+- **Audio Steganography**: Embed encrypted data into WAV audio files using LSB encoding. Supports uploading custom cover audio or generating white noise.
 - **Time-Based One-Time Passwords (TOTP)**: Enforce a second layer of security inside the vault via a standards-compliant authenticator app.
 - **Automated Scheduled Backups**: Seamless background exports of the encrypted user vault based on customizable intervals.
 
@@ -77,8 +77,8 @@ npm install
 `darkstar` employs a "Defense in Depth" strategy:
 
 1.  **Identity Generation**: Upon vault creation, a unique Master Key and Cryptographic Identity are generated.
-2.  **Obfuscation Pipeline**: A gauntlet of obfuscation functions is **shuffled deterministically** based on your password, applying 12-64 layers of transformation.
-3.  **Layered Encryption**: The data is encapsulated and encrypted using **AES-256-GCM** (V3) for verified authenticity and confidentiality.
+2.  **Obfuscation Pipeline**: A gauntlet of obfuscation functions is **shuffled deterministically** based on your password, applying up to 512 layers of transformation.
+3.  **Layered Encryption**: The data is encapsulated and encrypted using **AES-256-GCM** (V5/D-KASP) for verified authenticity and confidentiality.
 4.  **Hardware & Identity Binding**: Payloads can be further protected by **Electron SafeStorage** and bound to the vault's unique **Signature Key**.
 5.  **Verified Integrity**: The Electron application hashes its own JavaScript code upon initialization to detect any local malware tampering.
 

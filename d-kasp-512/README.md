@@ -38,7 +38,7 @@ D-KASP-512 (V5) employs a multi-layered post-quantum security model that fundame
 
 ## 🚀 Integration Guide
 
-The Darkstar Encryption Suite is now distributed as high-performance, single-file implementations for maximum portability.
+The Darkstar Encryption Suite is distributed as high-performance, single-file implementations for maximum portability.
 
 ### 🟢 Node.js Implementation
 **Target**: Web backends and distributed desktop applications.
@@ -132,7 +132,7 @@ V5 output uses a JSON-encapsulated structure containing the encapsulated ciphert
 ```
 
 > [!IMPORTANT]
-> The **Reverse Key** is now packed using a **16-bit Big-Endian** binary format (Base64 encoded) across all implementations for V3, V4, and V5. This ensures bit-perfect alignment for massive cycle depths.
+> The **Reverse Key** is packed using a **16-bit Big-Endian** binary format (Base64 encoded) across all implementations for V3, V4, and V5. This ensures bit-perfect alignment for high-depth gauntlets.
 
 ---
 

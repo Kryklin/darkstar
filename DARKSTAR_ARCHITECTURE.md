@@ -21,9 +21,9 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License"/>
 </p>
 
-# Darkstar V3 Encryption & P2P Architecture
+# Darkstar V5 (D-KASP-512) Security Architecture
 
-This document illustrates the internal workings of the Darkstar V3 Security System. It combines **Dynamic Structural Obfuscation**, **AES-256-GCM Authenticated Encryption**, and **Application Anti-Tampering** to create a comprehensive defense-grade security suite.
+This document illustrates the internal workings of the Darkstar V5 Security System. It combines **D-KASP-512 High-Depth Obfuscation**, **AES-256-GCM Authenticated Encryption**, and **Application Anti-Tampering** to create a comprehensive defense-grade security suite.
 
 ## 1. High-Level Workflow
 
@@ -69,7 +69,7 @@ flowchart TD
     ShuffledList[Result: 7, 2, 11, 4...]
 
     CycleDepth{Calculate Dynamic Cycle Depth}
-    Execute(Execute Stage Gauntlet: 12-64 Iterations)
+    Execute(Execute Stage Gauntlet: up to 512 layers)
     Result(Final Obfuscated Blob)
 
     %% Connections
@@ -93,20 +93,20 @@ flowchart TD
 
 Because the functions are shuffled randomly for every word, we must save the **order** in which they were applied to reverse the process tailored to that specific word.
 
-**V3: Dynamic Deterministic Cycles**
-In V3, the number of obfuscation iterations is no longer fixed at 12. It is derived deterministically from a SHA-256 hash of the `password + word`, scaling between **12 and 64 layers** of transformation.
+**V5: D-KASP-512 High-Depth Cycles**
+In V5, the number of obfuscation iterations scales deterministically from a SHA-256 hash of the `password + word`, applying **up to 512 layers** of transformation.
 
 **Reverse Key Compression**
 The reverse key is compressed using binary packing (4 bits per value), reducing the key size by ~75%. V3 supports variable-length reverse keys due to the dynamic cycle depth.
 
 ---
 
-## 3. V3 Cryptography: AES-GCM & ChaCha20
+## 3. V5 Cryptography: AES-GCM & ChaCha20
 
-Darkstar V3 introduces significant upgrades to the core cryptographic primitives:
+Darkstar V5 utilizes high-performance cryptographic primitives:
 
-- **AES-256-GCM**: Transitioned from CBC to GCM (Galois/Counter Mode). This provides **Authenticated Encryption with Associated Data (AEAD)**, ensuring both confidentiality and integrity while protecting against padding oracle attacks.
-- **ChaCha20 Simulated PRNG**: Replaced Mulberry32 with a deterministic ChaCha20-based stream generator for obfuscation seeding. This provides cryptographic-grade deterministic randomization for the mutation gauntlet.
+- **AES-256-GCM**: Provides **Authenticated Encryption with Associated Data (AEAD)**, ensuring both confidentiality and integrity while protecting against padding oracle attacks.
+- **ChaCha20-Based PRNG**: Utilizes a deterministic ChaCha20-based stream generator for obfuscation seeding. This provides cryptographic-grade deterministic randomization for the mutation gauntlet.
 - **Argon2/PBKDF2 Hardening**: Uses 600,000 PBKDF2 iterations for key derivation, ensuring high resistance to brute-force and dictionary attacks.
 
 ---
@@ -116,8 +116,8 @@ Darkstar V3 introduces significant upgrades to the core cryptographic primitives
 Darkstar V3 is architected to remain secure in the Post-Quantum era.
 
 - **AES-256 (Symmetric Resilience)**: While quantum computers can break asymmetric ciphers (RSA/ECC) using Shor's Algorithm, symmetric ciphers like AES-256 are only susceptible to **Grover's Algorithm**, which provides a quadratic speedup. This effectively reduces AES-256 to a still-unbreakable 128-bit security level against quantum attackers.
-- **Quantum-Safe Defaults**: By utilizing 256-bit keys and authenticated GCM mode, the core "Data at Rest" is considered quantum-safe today.
-- **Hybrid Quantum Resistance**: The architecture now utilizes a hybrid upgrade path with **ML-KEM-1024** (Kyber) for asymmetric identity binding, alongside AES-256-GCM for data encryption.
+- **Quantum-Safe Defaults**: By utilizing 256-bit keys and authenticated GCM mode, the core "Data at Rest" is considered quantum-safe.
+- **Hybrid Quantum Resistance**: The architecture utilizes a post-quantum upgrade path with **ML-KEM-1024** (Kyber) for asymmetric identity binding, alongside AES-256-GCM for data encryption.
 
 ---
 
