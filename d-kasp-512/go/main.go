@@ -836,6 +836,12 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, keyMaterial string, forceV2 bool, for
 		reverseKey = append(reverseKey, wordReverseKey)
 	}
 
+	encodedReverseKey, _ := dc.packReverseKey(reverseKey, isModern)
+	var aad []byte
+	if isV5 {
+		aad = []byte(encodedReverseKey)
+	}
+
 	// Construct final blob
 	totalLen := 0
 	for _, wb := range obfuscatedWords {
@@ -848,39 +854,49 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, keyMaterial string, forceV2 bool, for
 		finalBlob = append(finalBlob, wb...)
 	}
 
-	// Base64 encode for AES
-	base64Content := base64.StdEncoding.EncodeToString(finalBlob)
+	var finalPayload []byte
+	if isV5 {
+		if len(finalBlob) > 2048 {
+			return nil, fmt.Errorf("obfuscated payload exceeds 2048-byte limit (%d bytes)", len(finalBlob))
+		}
+		padded := make([]byte, 2048)
+		copy(padded, finalBlob)
+		finalPayload = padded
+	} else {
+		finalPayload = finalBlob
+	}
 
 	var encryptedContent string
-	var err error
 	targetIterations := ITERATIONS_V2
-	if isV5 {
-		targetIterations = ITERATIONS_V2
-	}
 
 	if isModern {
-		encryptedContent, err = dc.encryptAES256GCM(base64Content, activePasswordStr, targetIterations)
+		payloadToEncrypt := finalPayload
+		if !isV5 {
+			// Legacy V3/V4: payload is base64 encoded BEFORE encryption
+			payloadToEncrypt = []byte(base64.StdEncoding.EncodeToString(finalPayload))
+		}
+		res, err := dc.encryptAES256GCM(payloadToEncrypt, activePasswordStr, targetIterations, aad)
+		if err != nil {
+			return nil, err
+		}
+		encryptedContent = res
 	} else {
-		encryptedContent, err = dc.encryptAES256(base64Content, activePasswordStr, targetIterations)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Reverse Key serialization (Packed)
-	encodedReverseKey, err := dc.packReverseKey(reverseKey, isModern)
-	if err != nil {
-		return nil, err
+		// V1/V2: payload is base64 encoded BEFORE encryption
+		payloadToEncrypt := base64.StdEncoding.EncodeToString(finalPayload)
+		res, err := dc.encryptAES256(payloadToEncrypt, activePasswordStr, targetIterations)
+		if err != nil {
+			return nil, err
+		}
+		encryptedContent = res
 	}
 
 	vProtocol := 2
-	if isV5 {
-		vProtocol = 5
+	if isV3 {
+		vProtocol = 3
 	} else if isV4 {
 		vProtocol = 4
-	} else if isV3 {
-		vProtocol = 3
+	} else if isV5 {
+		vProtocol = 5
 	}
 
 	if forceV1 {
@@ -994,37 +1010,56 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, keyMaterial st
 		if err != nil {
 			return "", err
 		}
+		defer func() {
+			// Zeroize shared secret
+			for i := range ssBytes {
+				ssBytes[i] = 0
+			}
+		}()
 		activePasswordStr = hex.EncodeToString(ssBytes)
 	}
 
-	targetIterations := ITERATIONS_V2
+	var aad []byte
 	if isV5 {
-		targetIterations = ITERATIONS_V2
+		aad = []byte(reverseKeyB64)
 	}
+
+	targetIterations := ITERATIONS_V2
+
 	if encryptedContent == "" {
-		encryptedContent = encryptedDataRaw // Fallback or direct string
+		encryptedContent = encryptedDataRaw
 	}
 
 	// 3. AES Decrypt
-	var decryptedBase64Bytes []byte
-	var decErr error
-
+	var fullBlob []byte
 	if isModern {
-		decryptedBase64Bytes, decErr = dc.decryptAES256GCM(encryptedContent, activePasswordStr, targetIterations)
+		decryptedBytes, err := dc.decryptAES256GCM(encryptedContent, activePasswordStr, targetIterations, aad)
+		if err != nil {
+			return "", err
+		}
+
+		if isV5 {
+			fullBlob = decryptedBytes
+		} else {
+			// Legacy V3/V4: decrypted data is a base64 string
+			decoded, err := base64.StdEncoding.DecodeString(string(decryptedBytes))
+			if err != nil {
+				return "", err
+			}
+			fullBlob = decoded
+		}
 	} else {
-		decryptedBase64Bytes, decErr = dc.decryptAES256(encryptedContent, activePasswordStr, targetIterations)
+		decryptedBytes, err := dc.decryptAES256(encryptedContent, activePasswordStr, targetIterations)
+		if err != nil {
+			return "", err
+		}
+		// Legacy V1/V2: decrypted data is a base64 string
+		decoded, err := base64.StdEncoding.DecodeString(string(decryptedBytes))
+		if err != nil {
+			return "", err
+		}
+		fullBlob = decoded
 	}
-
-	if decErr != nil {
-		return "", fmt.Errorf("aes decryption failed: %v", decErr)
-	}
-
-	// 4. Decode Base64 Blob
-	binaryString, err := base64.StdEncoding.DecodeString(string(decryptedBase64Bytes))
-	if err != nil {
-		return "", errors.New("failed to decode inner base64 blob")
-	}
-	fullBlob := binaryString
 
 	var deobfuscatedWords []string
 	prngFactory := func(s string) PRNG {
@@ -1208,42 +1243,6 @@ func (dc *DarkstarCrypt) encryptAES256(data, password string, iterations int) (s
 	return saltHex + ivHex + contentBase64, nil
 }
 
-func (dc *DarkstarCrypt) encryptAES256GCM(data, password string, iterations int) (string, error) {
-	salt := make([]byte, SALT_SIZE_BYTES)
-	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
-		return "", err
-	}
-
-	key := pbkdf2.Key([]byte(password), salt, iterations, KEY_SIZE, sha256.New)
-
-	iv := make([]byte, 12)
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return "", err
-	}
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	ciphertext := aesgcm.Seal(nil, iv, []byte(data), nil)
-
-	for i := range key {
-		key[i] = 0
-	}
-
-	saltHex := hex.EncodeToString(salt)
-	ivHex := hex.EncodeToString(iv)
-	contentBase64 := base64.StdEncoding.EncodeToString(ciphertext)
-
-	return saltHex + ivHex + contentBase64, nil
-}
-
 func (dc *DarkstarCrypt) decryptAES256(transitMessage, password string, iterations int) ([]byte, error) {
 	if len(transitMessage) < 64 {
 		return nil, errors.New("invalid message length")
@@ -1305,8 +1304,43 @@ func (dc *DarkstarCrypt) decryptAES256(transitMessage, password string, iteratio
 	return plaintext[:len(plaintext)-paddingSize], nil
 }
 
+func (dc *DarkstarCrypt) encryptAES256GCM(data []byte, password string, iterations int, aad []byte) (string, error) {
+	salt := make([]byte, SALT_SIZE_BYTES)
+	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
+		return "", err
+	}
 
-func (dc *DarkstarCrypt) decryptAES256GCM(transitMessage, password string, iterations int) ([]byte, error) {
+	key := pbkdf2.Key([]byte(password), salt, iterations, KEY_SIZE, sha256.New)
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, 12)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	ciphertext := aesgcm.Seal(nil, nonce, data, aad)
+
+	saltHex := hex.EncodeToString(salt)
+	ivHex := hex.EncodeToString(nonce)
+	cipherB64 := base64.StdEncoding.EncodeToString(ciphertext)
+
+	for i := range key {
+		key[i] = 0
+	}
+
+	return saltHex + ivHex + cipherB64, nil
+}
+
+func (dc *DarkstarCrypt) decryptAES256GCM(transitMessage, password string, iterations int, aad []byte) ([]byte, error) {
 	if len(transitMessage) < 56 { // hex salt(32) + hex iv(24)
 		return nil, errors.New("invalid message length")
 	}
@@ -1339,7 +1373,7 @@ func (dc *DarkstarCrypt) decryptAES256GCM(transitMessage, password string, itera
 		return nil, err
 	}
 
-	plaintext, err := aesgcm.Open(nil, iv, ciphertext, nil)
+	plaintext, err := aesgcm.Open(nil, iv, ciphertext, aad)
 	if err != nil {
 		return nil, err
 	}

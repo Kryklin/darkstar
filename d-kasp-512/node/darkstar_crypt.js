@@ -137,8 +137,9 @@ export class DarkstarCrypt {
       const pkBytes = this.hex2buf(keyMaterial);
       const encap = kyber.encapsulate(pkBytes);
       ctHex = this.buf2hex(encap.cipherText);
-      ssHex = this.buf2hex(encap.sharedSecret);
-      activePasswordStr = ssHex; // Shared Secret drives AES and Gauntlet
+      const ss_bytes = encap.sharedSecret; // Uint8Array
+      activePasswordStr = this.buf2hex(ss_bytes);
+      // We will zeroize ss_bytes later if possible
     }
 
 
@@ -215,20 +216,39 @@ export class DarkstarCrypt {
       offset += 2 + wb.length;
     }
 
-    const binaryString = String.fromCharCode(...finalBlob); 
-    const base64Content = btoa(binaryString);
+    const encodedReverseKey = this.packReverseKey(reverseKey, isModern);
+    const aad = isV5 ? this.stringToBytes(encodedReverseKey) : null;
+
+    let finalPayload;
+    if (isV5) {
+      if (finalBlob.length > 2048) {
+        throw new Error(`Obfuscated payload exceeds 2048-byte limit (${finalBlob.length} bytes). Increase V5_PADDING_SIZE or reduce gauntlet depth.`);
+      }
+      const paddedData = new Uint8Array(2048);
+      paddedData.set(finalBlob);
+      finalPayload = paddedData; // raw bytes
+    } else {
+      // Legacy V1-V4: payload is base64 encoded BEFORE encryption
+      finalPayload = this.buf2base64(finalBlob); // string
+    }
+
+    const iterations = this.ITERATIONS_V2;
 
     let encryptedContent;
-    let targetIterations = this.ITERATIONS_V2; 
-    if (isModern) {
-        encryptedContent = await this.encryptAES256GCMAsync(base64Content, activePasswordStr, targetIterations);
-    } else {
-        encryptedContent = await this.encryptAES256Async(base64Content, activePasswordStr, targetIterations);
+    try {
+      if (isModern) {
+        encryptedContent = await this.encryptAES256GCMAsync(finalPayload, activePasswordStr, iterations, aad);
+      } else {
+        encryptedContent = await this.encryptAES256Async(finalPayload, activePasswordStr, iterations);
+      }
+    } catch (e) {
+      throw e;
     }
+
 
     if (forceV1) {
       // V1 uses uncompressed JSON array for reverse key, base64 encoded
-      const uncompressedB64 = Buffer.from(JSON.stringify(reverseKey)).toString('base64');
+      const uncompressedB64 = this.buf2base64(this.stringToBytes(JSON.stringify(reverseKey)));
       return { encryptedData: encryptedContent, reverseKey: uncompressedB64 };
     }
 
@@ -238,9 +258,9 @@ export class DarkstarCrypt {
     };
     if (isV5) resultObj.ct = ctHex;
 
-    const encodedReverseKey = this.packReverseKey(reverseKey, isModern);
-
-    return { encryptedData: JSON.stringify(resultObj), reverseKey: encodedReverseKey };
+    const finalResult = { encryptedData: JSON.stringify(resultObj), reverseKey: encodedReverseKey };
+    if (isV5) activePasswordStr = "";
+    return finalResult;
   }
 
   /**
@@ -290,20 +310,30 @@ export class DarkstarCrypt {
     }
 
     let iterations = this.ITERATIONS_V2;
+    const aad = isV5 ? this.stringToBytes(reverseKeyB64) : null;
 
     // Decrypt AES
-    let decryptedObfuscatedString;
-    if (isModern) {
-      decryptedObfuscatedString = await this.decryptAES256GCMAsync(encryptedContent, activePasswordStr, iterations);
-    } else {
-      decryptedObfuscatedString = await this.decryptAES256Async(encryptedContent, activePasswordStr, iterations);
+    let fullBlob;
+    try {
+      if (isModern) {
+        const decrypted = await this.decryptAES256GCMAsync(encryptedContent, activePasswordStr, iterations, aad);
+        if (isV5) {
+            fullBlob = decrypted; // Uint8Array
+        } else {
+            // Legacy V3/V4: decrypted data is a base64 string
+            const b64 = new TextDecoder().decode(decrypted);
+            fullBlob = this.base64ToBuf(b64);
+        }
+      } else {
+        const decryptedString = await this.decryptAES256Async(encryptedContent, activePasswordStr, iterations);
+        if (!decryptedString) throw new Error('Decryption failed');
+        // Legacy V1/V2: decrypted data is a base64 string
+        fullBlob = this.base64ToBuf(decryptedString);
+      }
+    } catch (e) {
+      throw e;
     }
-    if (!decryptedObfuscatedString) throw new Error('Decryption failed');
 
-    // Decrypt V2 Blob
-    const binaryString = atob(decryptedObfuscatedString);
-    const fullBlob = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) fullBlob[i] = binaryString.charCodeAt(i);
 
     // Decode Reverse Key
     let reverseKeyJson;
@@ -369,7 +399,9 @@ export class DarkstarCrypt {
       wordIndex++;
     }
 
-    return deobfuscatedWords.join(' ');
+    const deobfuscatedRes = deobfuscatedWords.join(' ');
+    if (isV5) activePasswordStr = "";
+    return deobfuscatedRes;
   }
 
   // --- AES Async (Using WebCrypto) ---
@@ -402,7 +434,7 @@ export class DarkstarCrypt {
     return saltHex + ivHex + ciphertextBase64;
   }
 
-  async encryptAES256GCMAsync(data, password, iterations) {
+  async encryptAES256GCMAsync(data, password, iterations, aad = null) {
     const enc = new TextEncoder();
     const salt = crypto.getRandomValues(new Uint8Array(this.SALT_SIZE_BYTES));
     const iv = crypto.getRandomValues(new Uint8Array(12)); 
@@ -416,7 +448,11 @@ export class DarkstarCrypt {
       ['encrypt']
     );
 
-    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, enc.encode(data));
+    const dataToEncrypt = (typeof data === 'string') ? enc.encode(data) : data;
+    const encryptParams = { name: 'AES-GCM', iv: iv };
+    if (aad) encryptParams.additionalData = aad;
+
+    const encrypted = await crypto.subtle.encrypt(encryptParams, key, dataToEncrypt);
 
     const saltHex = this.buf2hex(salt);
     const ivHex = this.buf2hex(iv);
@@ -460,7 +496,7 @@ export class DarkstarCrypt {
     }
   }
 
-  async decryptAES256GCMAsync(transitmessage, password, iterations) {
+  async decryptAES256GCMAsync(transitmessage, password, iterations, aad = null) {
     try {
       const saltHex = transitmessage.substr(0, 32);
       const ivHex = transitmessage.substr(32, 24); 
@@ -481,12 +517,15 @@ export class DarkstarCrypt {
         ['decrypt']
       );
 
-      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, encryptedBytes);
+      const decryptParams = { name: 'AES-GCM', iv: iv };
+      if (aad) decryptParams.additionalData = aad;
 
-      return new TextDecoder().decode(decrypted);
+      const decrypted = await crypto.subtle.decrypt(decryptParams, key, encryptedBytes);
+
+      return new Uint8Array(decrypted); 
     } catch (error) {
       console.error('Async GCM Decryption failed:', error);
-      return '';
+      throw error;
     }
   }
 
@@ -540,13 +579,8 @@ export class DarkstarCrypt {
     return this.buf2base64(buffer.slice(0, offset));
   }
 
-  unpackReverseKey(base64, isV3 = true) {
-    const binary = atob(base64);
-    const buffer = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      buffer[i] = binary.charCodeAt(i);
-    }
-
+  unpackReverseKey(b64, isV3 = true) {
+    const buffer = this.base64ToBuf(b64);
     const reverseKey = [];
 
     let offset = 0;
@@ -558,8 +592,8 @@ export class DarkstarCrypt {
           wordKeyLength = (buffer[offset++] << 8) | buffer[offset++];
       }
       
-      const wordKey = [];
       const numBytesToRead = Math.ceil(wordKeyLength / 2);
+      const wordKey = [];
 
       for (let i = 0; i < numBytesToRead; i++) {
         if (offset >= buffer.length) break;
@@ -575,6 +609,23 @@ export class DarkstarCrypt {
     }
 
     return reverseKey;
+  }
+
+  base64ToBuf(b64) {
+    const bin = Buffer.from(b64, 'base64');
+    return new Uint8Array(bin.buffer, bin.byteOffset, bin.length);
+  }
+
+  buf2base64(buf) {
+    return Buffer.from(buf).toString('base64');
+  }
+
+  hex2buf(hex) {
+    return new Uint8Array(Buffer.from(hex, 'hex'));
+  }
+
+  buf2hex(buf) {
+    return Buffer.from(buf).toString('hex');
   }
 
   stringToBytes(str) {

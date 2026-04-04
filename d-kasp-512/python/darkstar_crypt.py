@@ -638,7 +638,7 @@ class DarkstarCrypt:
             print(f"Decryption failed: {e}")
             return None
 
-    def _encrypt_aes256_gcm(self, data_bytes, password, iterations):
+    def _encrypt_aes256_gcm(self, data_bytes, password, iterations, aad=None):
         backend = default_backend()
         salt = os.urandom(self.SALT_SIZE_BYTES)
         kdf = PBKDF2HMAC(
@@ -652,6 +652,10 @@ class DarkstarCrypt:
         iv = os.urandom(12) 
         cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=backend)
         encryptor = cipher.encryptor()
+        
+        if aad:
+            encryptor.authenticate_additional_data(aad)
+            
         ciphertext = encryptor.update(data_bytes) + encryptor.finalize()
         tag = encryptor.tag
         
@@ -664,7 +668,7 @@ class DarkstarCrypt:
             
         return salt_hex + iv_hex + cipher_b64
 
-    def _decrypt_aes256_gcm(self, transit_message, password, iterations):
+    def _decrypt_aes256_gcm(self, transit_message, password, iterations, aad=None):
         try:
             salt_hex = transit_message[:32]
             iv_hex = transit_message[32:56] 
@@ -688,15 +692,19 @@ class DarkstarCrypt:
             
             cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag), backend=backend)
             decryptor = cipher.decryptor()
-            data = decryptor.update(ciphertext) + decryptor.finalize()
+            
+            if aad:
+                decryptor.authenticate_additional_data(aad)
+                
+            plaintext = decryptor.update(ciphertext) + decryptor.finalize()
             
             if isinstance(key, bytearray):
                 for i in range(len(key)): key[i] = 0
                 
-            return data
+            return plaintext
         except Exception as e:
             print(f"GCM Decryption failed: {e}")
-            return None
+            raise e
 
     # --- Public API ---
     def encrypt(self, mnemonic, key_material, force_v2=False, force_v1=False, force_v3=False, force_v4=False, force_v5=False):
@@ -778,43 +786,54 @@ class DarkstarCrypt:
             obfuscated_words.append(current_word_bytes)
             reverse_key.append(word_reverse_key)
             
-        # Join words in V2 Blob format [Size-High, Size-Low, Data...]
-        final_blob = bytearray()
-        for wb in obfuscated_words:
-            length = len(wb)
-            final_blob.append((length >> 8) & 0xFF)
-            final_blob.append(length & 0xFF)
-            final_blob.extend(wb)
-            
-        # Base64 encode final blob for AES
-        base64_content = base64.b64encode(final_blob).decode('ascii')
+        import struct
+        final_blob = b"".join([struct.pack(">H", len(wb)) + wb for wb in obfuscated_words])
         
-        target_iterations = (1 if is_v5 else self.ITERATIONS_V2) # Placeholder for removal logic
+        encoded_reverse_key = self._pack_reverse_key(reverse_key, is_v3=is_modern)
+        aad = encoded_reverse_key.encode('utf-8') if is_v5 else None
+
+        final_payload = final_blob
+        if is_v5:
+            final_payload = final_payload.ljust(1024, b"\x00")
+
         target_iterations = self.ITERATIONS_V2
+        
         if is_modern:
-            encrypted_content = self._encrypt_aes256_gcm(self._to_bytes(base64_content), active_password_str, target_iterations)
+            payload_to_encrypt = final_payload
+            if not is_v5:
+                # Legacy V3/V4: payload is base64 encoded BEFORE encryption
+                payload_to_encrypt = base64.b64encode(final_payload)
+            encrypted_content = self._encrypt_aes256_gcm(payload_to_encrypt, active_password_str, target_iterations, aad)
         else:
-            encrypted_content = self._encrypt_aes256(self._to_bytes(base64_content), active_password_str, target_iterations)
+            # Legacy V1/V2: payload is base64 encoded BEFORE encryption
+            payload_to_encrypt = base64.b64encode(final_payload)
+            encrypted_content = self._encrypt_aes256(payload_to_encrypt, active_password_str, target_iterations)
         
         if force_v1:
+            rk_json = json.dumps(reverse_key)
+            uncompressed_rk_b64 = base64.b64encode(rk_json.encode('utf-8')).decode('ascii')
             return {
                 "encryptedData": encrypted_content,
-                "reverseKey": base64.b64encode(json.dumps(reverse_key).encode('utf-8')).decode('ascii')
+                "reverseKey": uncompressed_rk_b64
             }
             
-        result_obj = {
-            "v": 5 if is_v5 else (4 if is_v4 else (3 if is_v3 else 2)),
+        v_protocol = 5 if is_v5 else (4 if is_v4 else (3 if is_v3 else 2))
+        res_obj = {
+            "v": v_protocol,
             "data": encrypted_content
         }
-        if is_v5: result_obj["ct"] = ct_hex
+        if is_v5:
+            res_obj["ct"] = ct_hex
         
-        # Compress Reverse Key
-        encoded_reverse_key = self._pack_reverse_key(reverse_key, is_v3=is_modern)
-        
-        return {
-            "encryptedData": json.dumps(result_obj, separators=(',', ':')),
+        result_json = {
+            "encryptedData": json.dumps(res_obj, separators=(',', ':')),
             "reverseKey": encoded_reverse_key
         }
+        
+        if is_v5:
+            active_password_str = ""
+            
+        return result_json
 
     def decrypt(self, encrypted_data_raw, reverse_key_b64, key_material):
         # 1. Decode Reverse Key
@@ -872,31 +891,38 @@ class DarkstarCrypt:
             import pqcrypto.kem.ml_kem_1024 as kem
             sk_bytes = bytes.fromhex(key_material)
             ct_bytes = bytes.fromhex(ct_hex)
-            ss_bytes = kem.decrypt(sk_bytes, ct_bytes)
+            ss_bytes = bytearray(kem.decrypt(sk_bytes, ct_bytes))
             active_password_str = ss_bytes.hex()
+            # Interop cleanup
+            ss_bytes[:] = b'\x00' * len(ss_bytes)
             
         iterations = self.ITERATIONS_V2
+        aad = reverse_key_b64.encode('utf-8') if is_v5 else None
 
         # 3. Decrypt AES
-        if is_modern:
-            decrypted_base64_bytes = self._decrypt_aes256_gcm(encrypted_content, active_password_str, iterations)
-        else:
-            decrypted_base64_bytes = self._decrypt_aes256(encrypted_content, active_password_str, iterations)
-        
-        if not decrypted_base64_bytes:
-            raise ValueError("AES decryption failed Check password")
-
-        # 4. Decode the Base64 Blob
         try:
-            binary_string = base64.b64decode(decrypted_base64_bytes)
-        except:
-             raise ValueError("Failed to decode inner base64 blob")
-             
-        full_blob = binary_string
+            if is_modern:
+                decrypted_bytes = self._decrypt_aes256_gcm(encrypted_content, active_password_str, iterations, aad)
+            else:
+                decrypted_bytes = self._decrypt_aes256(encrypted_content, active_password_str, iterations)
+        finally:
+            pass
+        
+        if not decrypted_bytes:
+            raise ValueError("Decryption failed")
+
+        # 4. Extract Binary Blob
+        if is_v5:
+            full_blob = decrypted_bytes
+        else:
+            # Legacy V1-V4: payload was base64 encoded BEFORE encryption
+            try:
+                full_blob = base64.b64decode(decrypted_bytes)
+            except:
+                raise ValueError("Failed to decode inner base64 blob")
         
         deobfuscated_words = []
 
-        
         def prng_factory(s_str):
             if is_modern:
                 return self.DarkstarChaChaPRNG(s_str)
@@ -909,6 +935,8 @@ class DarkstarCrypt:
             if word_index >= len(reverse_key): break
             
             length = (full_blob[offset] << 8) | full_blob[offset + 1]
+            if length == 0:
+                break
             offset += 2
             
             current_word_bytes = full_blob[offset : offset + length]
@@ -939,9 +967,10 @@ class DarkstarCrypt:
                 else:
                     current_word_bytes = func(current_word_bytes)
                     
-            deobfuscated_words.append(self._bytes_to_string(current_word_bytes))
+            deobfuscated_words.append(current_word_bytes.decode('utf-8'))
             word_index += 1
-            
+        
+        if is_v5: active_password_str = ""
         return " ".join(deobfuscated_words)
 
     # --- Compression Helpers ---

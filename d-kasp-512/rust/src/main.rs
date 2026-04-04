@@ -2,13 +2,14 @@ use aes::Aes256;
 use base64::{engine::general_purpose, Engine as _};
 use ml_kem::{MlKem1024, MlKem1024Params, KemCore, EncodedSizeUser};
 use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
-use cbc::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
-use aes_gcm::{aead::{Aead, KeyInit}, Aes256Gcm, Nonce};
+use cbc::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit, block_padding::Pkcs7};
+use aes_gcm::{aead::{Aead, KeyInit, Payload}, Aes256Gcm, Nonce};
 use hmac::Hmac;
 use pbkdf2::pbkdf2;
 use rand::Rng;
 use zeroize::Zeroize;
 use std::convert::TryFrom;
+use sha2::Sha256;
 
 /// d-kasp-512 Encryption Suite
 /// 
@@ -22,7 +23,6 @@ use std::convert::TryFrom;
 
 
 use serde_json;
-use sha2::Sha256;
 
 const SBOX_V4: [u8; 256] = [
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -686,12 +686,13 @@ impl DarkstarCrypt {
                 .map_err(|_| "Invalid public key length for ML-KEM-1024")?;
             
             let ek = EncapsulationKey::<MlKem1024Params>::from_bytes(&pk_bytes.into());
-            let (ct, ss) = ek.encapsulate(&mut rand::thread_rng())
+            let (ct, mut ss) = ek.encapsulate(&mut rand::thread_rng())
                 .map_err(|e| format!("ML-KEM Encapsulation failed: {:?}", e))?;
             
             ct_hex = hex::encode(ct.as_slice());
             ss_hex = hex::encode(ss.as_slice());
             active_password_str = ss_hex.clone();
+            ss.zeroize();
         }
 
         let prng_factory = |s: &str| ActivePRNG::new(s, is_modern);
@@ -757,7 +758,10 @@ impl DarkstarCrypt {
             reverse_key.push(word_reverse_key);
         }
 
-        // Final Blob
+        // Packed Binary Reverse Key
+        let encoded_reverse_key = Self::pack_reverse_key(&reverse_key, is_modern)?;
+
+        // Final Blob Construction with Padding for V5
         let mut final_blob = Vec::new();
         for wb in &obfuscated_words {
             let l = wb.len();
@@ -766,14 +770,36 @@ impl DarkstarCrypt {
             final_blob.extend(wb);
         }
 
-        let base64_content = general_purpose::STANDARD.encode(&final_blob);
-        
-        let target_iterations = ITERATIONS_V2;
-        let encrypted_content = if is_modern {
-            self.encrypt_aes256_gcm(&base64_content, &active_password_str, target_iterations)?
+        let mut final_payload = Vec::new();
+        if is_v5 {
+            if final_blob.len() > 2048 {
+                return Err(format!("Obfuscated payload exceeds 2048-byte limit ({} bytes)", final_blob.len()).into());
+            }
+            final_payload.extend_from_slice(&final_blob);
+            final_payload.resize(2048, 0);
         } else {
-            self.encrypt_aes256(&base64_content, &active_password_str, target_iterations)?
+            final_payload = final_blob;
+        }
+
+        let target_iterations = ITERATIONS_V2;
+        let mut active_password_bytes = active_password_str.as_bytes().to_vec();
+        
+        let encrypted_content = if is_modern {
+            let aad = if is_v5 { Some(encoded_reverse_key.as_bytes()) } else { None };
+            let payload_to_encrypt = if is_v5 {
+                final_payload
+            } else {
+                // Legacy V3/V4: payload is base64 encoded BEFORE encryption
+                general_purpose::STANDARD.encode(&final_payload).into_bytes()
+            };
+            self.encrypt_aes256_gcm(&payload_to_encrypt, &active_password_str, target_iterations, aad)?
+        } else {
+            // Legacy V1/V2: payload is base64 encoded BEFORE encryption
+            let b64_for_cbc = general_purpose::STANDARD.encode(&final_payload);
+            self.encrypt_aes256(&b64_for_cbc, &active_password_str, target_iterations)?
         };
+
+        active_password_bytes.zeroize();
 
         if force_v1 {
             let uncompressed_rk = serde_json::to_string(&reverse_key)?;
@@ -785,9 +811,6 @@ impl DarkstarCrypt {
             }))?;
             return Ok(final_json);
         }
-
-        // Packed Binary Reverse Key
-        let encoded_reverse_key = Self::pack_reverse_key(&reverse_key, is_modern)?;
 
         let v_protocol = if is_v5 { 5 } else if is_v4 { 4 } else if is_v3 { 3 } else { 2 };
 
@@ -876,20 +899,31 @@ impl DarkstarCrypt {
                 .map_err(|_| "Invalid ciphertext length for ML-KEM-1024")?;
             
             let dk = DecapsulationKey::<MlKem1024Params>::from_bytes(&sk_bytes.into());
-            let ss = dk.decapsulate(&ct_bytes.into())
+            let mut ss = dk.decapsulate(&ct_bytes.into())
                 .map_err(|e| format!("ML-KEM Decapsulation failed: {:?}", e))?;
             
             active_password_str = hex::encode(ss.as_slice());
+            ss.zeroize();
         }
 
-        let target_iterations = ITERATIONS_V2;
-        let decrypted_base64_bytes = if is_modern {
-            self.decrypt_aes256_gcm(&encrypted_content, &active_password_str, target_iterations)?
+        let iterations = ITERATIONS_V2;
+        let aad = if is_v5 { Some(reverse_key_b64.as_bytes()) } else { None };
+
+        let full_blob = if is_modern {
+            let decrypted_bytes = self.decrypt_aes256_gcm(&encrypted_content, &active_password_str, iterations, aad)?;
+            if is_v5 {
+                decrypted_bytes
+            } else {
+                // Legacy V3/V4: decrypted data is a base64 string
+                let b64_str = String::from_utf8(decrypted_bytes)?;
+                general_purpose::STANDARD.decode(b64_str.trim())?
+            }
         } else {
-            self.decrypt_aes256(&encrypted_content, &active_password_str, target_iterations)?
+            let decrypted_bytes = self.decrypt_aes256(&encrypted_content, &active_password_str, iterations)?;
+            // Legacy V1/V2: decrypted data is a base64 string
+            let b64_str = String::from_utf8(decrypted_bytes)?;
+            general_purpose::STANDARD.decode(b64_str.trim())?
         };
-        let binary_string = String::from_utf8(decrypted_base64_bytes)?;
-        let full_blob = general_purpose::STANDARD.decode(binary_string)?;
 
         let mut deobfuscated_words = Vec::new();
         let prng_factory = |s: &str| ActivePRNG::new(s, is_modern);
@@ -956,29 +990,23 @@ impl DarkstarCrypt {
         rand::thread_rng().fill(&mut iv);
 
         type Aes256CbcEnc = cbc::Encryptor<Aes256>;
-        let mut buf = data.as_bytes().to_vec();
+        let cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
         
-        let residue = buf.len() % 16;
-        let padding = 16 - residue;
-        for _ in 0..padding {
-            buf.push(padding as u8);
-        }
-
-        let mut cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
-        cipher.encrypt_blocks_mut(unsafe {
-            std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut cbc::cipher::generic_array::GenericArray<u8, cbc::cipher::consts::U16>, buf.len() / 16)
-        });
+        let mut buf = data.as_bytes().to_vec();
+        buf.resize(data.len() + 16, 0); // Ensure space for padding
+        let ciphertext = cipher.encrypt_padded_mut::<Pkcs7>(&mut buf, data.len())
+            .map_err(|e| format!("Encryption error: {:?}", e))?;
 
         key.zeroize();
 
         let salt_hex = hex::encode(salt);
         let iv_hex = hex::encode(iv);
-        let content_base64 = general_purpose::STANDARD.encode(buf);
+        let cipher_b64 = general_purpose::STANDARD.encode(ciphertext);
 
-        Ok(format!("{}{}{}", salt_hex, iv_hex, content_base64))
+        Ok(format!("{}{}{}", salt_hex, iv_hex, cipher_b64))
     }
 
-    fn encrypt_aes256_gcm(&self, data: &str, password: &str, iterations: u32) -> Result<String, Box<dyn std::error::Error>> {
+    fn encrypt_aes256_gcm(&self, data: &[u8], password: &str, iterations: u32, aad: Option<&[u8]>) -> Result<String, Box<dyn std::error::Error>> {
         let mut salt = [0u8; SALT_SIZE_BYTES];
         rand::thread_rng().fill(&mut salt);
         
@@ -991,8 +1019,13 @@ impl DarkstarCrypt {
         let cipher = Aes256Gcm::new(key.as_slice().into());
         let nonce = Nonce::from_slice(&iv_bytes); 
 
-        let ciphertext = cipher.encrypt(nonce, data.as_bytes())
-            .map_err(|e| format!("AES GCM Encryption error: {:?}", e))?;
+        let ciphertext = if let Some(ad) = aad {
+            cipher.encrypt(nonce, Payload { msg: data, aad: ad })
+                .map_err(|e| format!("AES GCM Encryption error: {:?}", e))?
+        } else {
+            cipher.encrypt(nonce, data)
+                .map_err(|e| format!("AES GCM Encryption error: {:?}", e))?
+        };
 
         key.zeroize();
 
@@ -1035,10 +1068,10 @@ impl DarkstarCrypt {
         Ok(ciphertext[..ciphertext.len() - padding_len].to_vec())
     }
 
-    fn decrypt_aes256_gcm(&self, transit_message: &str, password: &str, iterations: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        if transit_message.len() < 64 { return Err("Invalid message length".into()); }
+    fn decrypt_aes256_gcm(&self, transit_message: &str, password: &str, iterations: u32, aad: Option<&[u8]>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        if transit_message.len() < 56 { return Err("Invalid message length".into()); }
         let salt_hex = &transit_message[..32];
-        let iv_hex = &transit_message[32..56]; // 12 bytes = 24 chars
+        let iv_hex = &transit_message[32..56]; 
         let encrypted_base64 = &transit_message[56..];
 
         let salt = hex::decode(salt_hex)?;
@@ -1051,10 +1084,16 @@ impl DarkstarCrypt {
         let cipher = Aes256Gcm::new(key.as_slice().into());
         let nonce = Nonce::from_slice(&iv_bytes);
 
-        let plaintext = cipher.decrypt(nonce, ciphertext.as_ref())
-            .map_err(|e| format!("AES GCM Decryption error: {:?}", e))?;
+        let plaintext = if let Some(ad) = aad {
+            cipher.decrypt(nonce, Payload { msg: &ciphertext, aad: ad })
+                .map_err(|e| format!("AES GCM Decryption error: {:?}", e))?
+        } else {
+            cipher.decrypt(nonce, ciphertext.as_slice())
+                .map_err(|e| format!("AES GCM Decryption error: {:?}", e))?
+        };
 
         key.zeroize();
+
         Ok(plaintext)
     }
 }

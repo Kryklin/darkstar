@@ -114,6 +114,21 @@ Darkstar V5 utilizes high-performance cryptographic primitives:
 
 ---
 
+## 3.2 V5 Metadata Hardening (Hardened Gold)
+
+The V5 protocol implements advanced cryptographic hardening to eliminate metadata leaks and prevent gauntlet-path tampering:
+
+### 3.2.1 Constant-Length Padding (1024 Bytes)
+To mask the structure and complexity of the underlying mnemonic phrase, V5 enforces a **constant-length padding** of 1024 bytes for all internal binary blobs prior to encryption. 
+- **Effect**: All V5 ciphertexts have an identical length, regardless of whether the original mnemonic was 12, 18, or 24 words.
+- **Security**: Prevents side-channel length analysis from leaking information about the obfuscation depth or word count.
+
+### 3.2.2 AAD Binding (Authenticated Associated Data)
+V5 utilizes the **AES-GCM AAD** field to cryptographically bind the `reverseKey` (the gauntlet path) to the encrypted payload.
+- **Process**: The packed `reverseKey` string is passed as Authenticated Associated Data to the AES-GCM primitive.
+- **Integrity**: Any attempt to modify the `reverseKey` or swap it with another will cause an authentication failure during decryption, even if the AES-GCM ciphertext itself is untouched.
+- **Defense**: Mitigates "Gauntlet Injection" attacks where an attacker might try to redirect the deobfuscation path to a weaker sequence.
+
 ## 3.1 Quantum Resistance Analysis
 
 Darkstar V3 is architected to remain secure in the Post-Quantum era.
