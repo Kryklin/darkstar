@@ -61,8 +61,8 @@ Unlike standard encryption which applies a static algorithm, the Mnemonic Engine
 flowchart TD
     %% Nodes
     Start(Start: Word Input)
-    SeedGen{Generate Seed}
-    PRNG[Initialize Mulberry32 PRNG]
+    SeedGen{Generate Seed (V5: Index-Salted)}
+    PRNG[Initialize ChaCha20/Mulberry PRNG]
 
     DefaultList[Default Function List: 0..11]
     Shuffle[Shuffle List using Seed]
@@ -74,7 +74,7 @@ flowchart TD
 
     %% Connections
     Start --> SeedGen
-    SeedGen -->|Password + Word| PRNG
+    SeedGen -->|V5: Password + Word + Index| PRNG
     PRNG --> Shuffle
     DefaultList --> Shuffle
     Shuffle -->|Randomized| ShuffledList
@@ -93,11 +93,14 @@ flowchart TD
 
 Because the functions are shuffled randomly for every word, we must save the **order** in which they were applied to reverse the process tailored to that specific word.
 
-**V5: D-KASP-512 High-Depth Cycles**
-In V5, the number of obfuscation iterations scales deterministically from a SHA-256 hash of the `password + word`, applying **up to 512 layers** of transformation.
+**V5: D-KASP-512 Hardened Cycles**
+In V5, the number of obfuscation iterations scales deterministically from a SHA-256 hash of the `password + word + index`. This "Positional Salt" ensures that identical words (e.g., "apple") in different positions generate entirely unique gauntlet paths, preventing frequency analysis and block-correlation attacks. V5 supports **up to 512 layers** of transformation.
+
+**V5: Entropy Anchoring**
+The `combinedSeed` in V5 incorporates the word index, ensuring that the XOR and Vigenere keys are fresh and unique for every word in the sequence, even if the gauntlet functions remain the same.
 
 **Reverse Key Compression**
-The reverse key is compressed using binary packing (4 bits per value), reducing the key size by ~75%. V3 supports variable-length reverse keys due to the dynamic cycle depth.
+The reverse key is compressed using binary packing (4 bits per value), reducing the key size by ~75%. V3+ supports variable-length reverse keys due to the dynamic cycle depth.
 
 ---
 

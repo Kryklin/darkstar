@@ -42,8 +42,8 @@
 - **Secure Vault**: A session-based, zero-knowledge vault for managing secure notes and sensitive metadata with multi-layered encryption.
 - **Vault Signature Binding**: Cryptographically bind your data to your specific Vault Identity. Decryption is only possible when authenticated with the same cryptographic signature.
 - **Identity Backup & Recovery**: Securely export and import your full Vault Identity (JSON) to ensure access to bound data across devices or after a vault reset.
-- **V5 Encryption Engine (Quantum-Resistant)**: Powered by Web Crypto API with **AES-256-GCM** and **ML-KEM-1024** identity encapsulation. Inherent resistance to Grover's algorithm ensures long-term data survival in the quantum era.
-- **Dynamic Deterministic Cycles**: Obfuscation depth scales intelligently (up to 512 layers) based on data entropy, ensuring high diffusion across all payloads.
+- **V5 Encryption Engine (Hardened Standard)**: Powered by Web Crypto API with **AES-256-GCM** and **ML-KEM-1024** and **Positional Salting**. Inherent resistance to Grover's algorithm ensures long-term data survival in the quantum era.
+- **Dynamic Deterministic Cycles (V5)**: Obfuscation depth scales intelligently (up to 512 layers) with **Positional Salting**, ensuring that identical words in different positions generate unique paths.
 - **Anti-Forensic Memory**: Strict `Uint8Array` usage with explicit memory zeroing. The P2P service automatically performs an emergency shutdown if the vault is locked.
 - **Windows Hello & Biometrics**: Unlock your vault primarily using platform biometrics (TouchID, FaceID) or **Hardware Keys (YubiKey)** via WebAuthn.
 - **Audio Steganography**: Embed encrypted data into WAV audio files using LSB encoding. Supports uploading custom cover audio or generating white noise.

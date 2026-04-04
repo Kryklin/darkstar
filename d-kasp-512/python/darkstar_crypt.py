@@ -1,4 +1,4 @@
-﻿
+
 import os
 import base64
 import json
@@ -721,19 +721,19 @@ class DarkstarCrypt:
             ss_hex = ss_bytes.hex()
             active_password_str = ss_hex
 
-        password_bytes = self._to_bytes(active_password_str)
+
         
         def prng_factory(s_str):
             if is_modern:
                 return self.DarkstarChaChaPRNG(s_str)
             return self.Mulberry32(s_str)
         
-        for word in words:
+        for index, word in enumerate(words):
             current_word_bytes = self._to_bytes(word)
             
             selected_functions = list(range(len(self.obfuscation_functions_v2)))
             
-            seed_for_selection = active_password_str + word
+            seed_for_selection = active_password_str + word + (str(index) if is_v5 else "")
             rng_sel = prng_factory(seed_for_selection)
             
             for i in range(len(selected_functions) - 1, 0, -1):
@@ -751,9 +751,7 @@ class DarkstarCrypt:
                 cycle_depth = 12 + (depth_val % 501) if is_v5 else 12 + (depth_val % 53)
             
             checksum = self._generate_checksum(selected_functions)
-            checksum_str = str(checksum)
-            checksum_bytes = self._to_bytes(checksum_str)
-            combined_seed = password_bytes + checksum_bytes
+            combined_seed = (active_password_str + str(checksum) + (str(index) if is_v5 else "")).encode('utf-8')
             
             for i in range(cycle_depth):
                 func_index = selected_functions[i % len(selected_functions)]
@@ -897,7 +895,7 @@ class DarkstarCrypt:
         full_blob = binary_string
         
         deobfuscated_words = []
-        password_bytes = self._to_bytes(active_password_str)
+
         
         def prng_factory(s_str):
             if is_modern:
@@ -921,10 +919,7 @@ class DarkstarCrypt:
             # Setup Seed (only core first 12 cycles determine checksum)
             unique_set = list(dict.fromkeys(word_reverse_list[:12]))
             checksum = self._generate_checksum(unique_set)
-            
-            checksum_str = str(checksum)
-            checksum_bytes = self._to_bytes(checksum_str)
-            combined_seed = password_bytes + checksum_bytes
+            combined_seed = (active_password_str + str(checksum) + (str(word_index) if is_v5 else "")).encode('utf-8')
             
             # Apply Deobfuscation (Reverse Order)
             for j in range(len(word_reverse_list) - 1, -1, -1):

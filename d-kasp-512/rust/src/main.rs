@@ -1,4 +1,4 @@
-﻿use aes::Aes256;
+use aes::Aes256;
 use base64::{engine::general_purpose, Engine as _};
 use ml_kem::{MlKem1024, MlKem1024Params, KemCore, EncodedSizeUser};
 use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
@@ -694,14 +694,17 @@ impl DarkstarCrypt {
             active_password_str = ss_hex.clone();
         }
 
-        let password_bytes = active_password_str.as_bytes();
         let prng_factory = |s: &str| ActivePRNG::new(s, is_modern);
 
-        for word in words {
+        for (index, word) in words.iter().enumerate() {
             let mut current_word_bytes = word.as_bytes().to_vec();
 
             let mut selected_functions: Vec<usize> = (0..12).collect();
-            let seed_for_selection = format!("{}{}", active_password_str, word);
+            let seed_for_selection = if is_v5 {
+                format!("{}{}{}", active_password_str, word, index)
+            } else {
+                format!("{}{}", active_password_str, word)
+            };
             let mut rng_sel = prng_factory(&seed_for_selection);
             
             for i in (1..12).rev() {
@@ -720,8 +723,11 @@ impl DarkstarCrypt {
             }
 
             let checksum = Self::generate_checksum(&selected_functions);
-            let checksum_bytes = checksum.to_string().into_bytes();
-            let combined_seed = [password_bytes, &checksum_bytes].concat();
+            let combined_seed = if is_v5 {
+                format!("{}{}{}", active_password_str, checksum, index).into_bytes()
+            } else {
+                format!("{}{}", active_password_str, checksum).into_bytes()
+            };
 
             let mut word_reverse_key = Vec::new();
 
@@ -886,7 +892,6 @@ impl DarkstarCrypt {
         let full_blob = general_purpose::STANDARD.decode(binary_string)?;
 
         let mut deobfuscated_words = Vec::new();
-        let password_bytes = active_password_str.as_bytes();
         let prng_factory = |s: &str| ActivePRNG::new(s, is_modern);
 
         let mut offset = 0;
@@ -911,9 +916,11 @@ impl DarkstarCrypt {
                 if !unique_set.contains(&f) { unique_set.push(f); }
             }
             let checksum = Self::generate_checksum(&unique_set);
-            
-            let checksum_bytes = checksum.to_string().into_bytes();
-            let combined_seed = [password_bytes, &checksum_bytes].concat();
+            let combined_seed = if is_v5 {
+                format!("{}{}{}", active_password_str, checksum, word_index).into_bytes()
+            } else {
+                format!("{}{}", active_password_str, checksum).into_bytes()
+            };
 
             for &func_index in word_reverse_list.iter().rev() {
                 let is_seeded = if is_v4 || is_v5 {

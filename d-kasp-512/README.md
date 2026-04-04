@@ -20,19 +20,21 @@ The suite provides bit-perfect interoperability across all supported languages a
 
 D-KASP-512 (V5) employs a multi-layered post-quantum security model that fundamentally differs from standard "encrypt-and-store" approaches:
 
-1.  **512-Layer SPN/ARX Gauntlet**: Data passes through up to **512 non-linear** Substitution-Permutation Network and Add-Rotate-XOR primitives (e.g., S-Boxes, Matrix Hill, Galois Field). This augmented pipeline provides strict avalanche criteria and neutralizes solver analysis.
-2.  **ML-KEM-1024 (Kyber)**: Core asymmetric security is anchored by NIST FIPS 203 (ML-KEM-1024), providing a post-quantum root of trust with 256-bit classical security parity.
-3.  **Military-Grade AES-GCM**: High-entropy blobs are encapsulated and encrypted using **AES-256-GCM** driven by the Kyber-derived shared secret.
-4.  **16-bit Big-Endian Binary Protocol**: Reverse keys are packed using a high-fidelity 16-bit header system to support massive gauntlet depths without overflow.
+1.  **512-Layer SPN/ARX Gauntlet**: Data passes through up to **512 non-linear** Substitution-Permutation Network and Add-Rotate-XOR primitives.
+2.  **Positional Salting (Hardened V5)**: Word index injection into seeding logic. This ensures identical words (e.g., "apple") produce unique cipher-strengths at different positions.
+3.  **ML-KEM-1024 (Kyber)**: Core asymmetric security anchored by NIST FIPS 203 (Kyber-1024).
+4.  **Military-Grade AES-GCM**: High-entropy blobs are encapsulated and encrypted using **AES-256-GCM**.
+5.  **16-bit Big-Endian Binary Protocol**: Reverse keys are packed using a high-fidelity 16-bit header system.
 
 | Feature                 | Description                                                       |
 | :---------------------- | :---------------------------------------------------------------- |
+| **V5 Hardened Standard**| **Final standard** for D-KASP-512 with positional salting.        |
 | **PQ Root of Trust**    | V5 uses ML-KEM-1024 (Kyber) for post-quantum key encapsulation.   |
 | **AEAD Authentication** | V3/V4/V5 uses AES-GCM to provide built-in integrity and authenticity. |
-| **SPN/ARX Primitives**  | uses 12 highly non-linear transformations for cryptographic diffusion. |
+| **SPN/ARX Primitives**  | Uses 12 non-linear transformations for cryptographic diffusion.   |
 | **Consolidated Source** | Single-file implementations for Go, Rust, Python, and Node.js.    |
-| **Interop Matrix**      | Bit-perfect matching across all 4 supported languages.            |
-| **Backward Compat**     | Seamlessly decrypts V1, V2, V3, and V4 payloads.                  |
+| **Interop Matrix**      | **Bit-perfect matching** across all 4 supported languages.        |
+| **Backward Compat**     | Seamlessly decrypts V1, V2, V3, and V4 legacy payloads.           |
 
 ---
 

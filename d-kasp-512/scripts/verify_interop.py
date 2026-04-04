@@ -1,4 +1,4 @@
-﻿import subprocess
+import subprocess
 import json
 import sys
 import os
@@ -45,7 +45,7 @@ def run_cli(lang, args):
     cwd = CLI_CWD.get(lang, PROJECT_ROOT)
     
     start_time = time.perf_counter()
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, encoding="utf-8", errors="replace")
     elapsed = time.perf_counter() - start_time
     
     if result.returncode != 0:

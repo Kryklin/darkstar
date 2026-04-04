@@ -1,4 +1,4 @@
-﻿import { createRequire } from 'node:module';
+import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const crypto = globalThis.crypto || require('node:crypto').webcrypto;
 const { ml_kem1024: kyber } = require('@noble/post-quantum/ml-kem.js');
@@ -141,17 +141,17 @@ export class DarkstarCrypt {
       activePasswordStr = ssHex; // Shared Secret drives AES and Gauntlet
     }
 
-    const passwordBytes = this.stringToBytes(activePasswordStr);
-    
+
     // PRNG Selection
     const prngFactory = isModern ? this.darkstar_chacha_prng.bind(this) : this.mulberry32.bind(this);
 
-    for (const word of words) {
+    for (let index = 0; index < words.length; index++) {
+      const word = words[index];
       let currentWordBytes = this.stringToBytes(word);
 
       // Select functions
       const selectedFunctions = Array.from({ length: 12 }, (_, i) => i);
-      const deterministicSeed = activePasswordStr + word;
+      const deterministicSeed = activePasswordStr + word + (isV5 ? index : "");
       this.shuffleArray(selectedFunctions, deterministicSeed, prngFactory);
 
       // V3/V4: Dynamic Depth Engine
@@ -165,11 +165,9 @@ export class DarkstarCrypt {
       const wordReverseKey = [];
       const checksum = this._generateChecksum(selectedFunctions);
       const checksumStr = checksum.toString();
-      const checksumBytes = this.stringToBytes(checksumStr);
-
-      const combinedSeed = new Uint8Array(passwordBytes.length + checksumBytes.length);
-      combinedSeed.set(passwordBytes);
-      combinedSeed.set(checksumBytes, passwordBytes.length);
+      const indexStr = index.toString();
+      
+      const combinedSeed = this.stringToBytes(activePasswordStr + checksumStr + (isV5 ? indexStr : ""));
 
       for (let i = 0; i < cycleDepth; i++) {
         let funcIndex = selectedFunctions[i % selectedFunctions.length];
@@ -324,7 +322,6 @@ export class DarkstarCrypt {
     }
 
     const deobfuscatedWords = [];
-    const passwordBytes = this.stringToBytes(activePasswordStr);
     const prngFactory = isModern ? this.darkstar_chacha_prng.bind(this) : this.mulberry32.bind(this);
 
     let offset = 0;
@@ -345,10 +342,9 @@ export class DarkstarCrypt {
       const checksum = this._generateChecksum(uniqueSet);
 
       const checksumStr = checksum.toString();
-      const checksumBytes = this.stringToBytes(checksumStr);
-      const combinedSeed = new Uint8Array(passwordBytes.length + checksumBytes.length);
-      combinedSeed.set(passwordBytes);
-      combinedSeed.set(checksumBytes, passwordBytes.length);
+      const indexStr = wordIndex.toString();
+      
+      const combinedSeed = this.stringToBytes(activePasswordStr + checksumStr + (isV5 ? indexStr : ""));
 
       for (let j = wordReverseKey.length - 1; j >= 0; j--) {
         const funcIndex = wordReverseKey[j];

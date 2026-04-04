@@ -1,4 +1,4 @@
-﻿// Package main implements the d-kasp-512 encryption scheme.
+// Package main implements the d-kasp-512 encryption scheme.
 //
 // d-kasp-512 (V5) Features:
 // - D: Darkstar ecosystem origin
@@ -761,8 +761,6 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, keyMaterial string, forceV2 bool, for
 		activePasswordStr = ssHex
 	}
 
-	passwordBytes := []byte(activePasswordStr)
-
 	prngFactory := func(s string) PRNG {
 		if isModern {
 			return NewDarkstarChaChaPRNG(s)
@@ -770,7 +768,7 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, keyMaterial string, forceV2 bool, for
 		return NewMulberry32(s)
 	}
 
-	for _, word := range words {
+	for index, word := range words {
 		currentWordBytes := []byte(word)
 
 		selectedFunctions := make([]int, 12)
@@ -779,6 +777,9 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, keyMaterial string, forceV2 bool, for
 		}
 
 		seedForSelection := activePasswordStr + word
+		if isV5 {
+			seedForSelection += strconv.Itoa(index)
+		}
 		rngSel := prngFactory(seedForSelection)
 		for i := 11; i > 0; i-- {
 			j := int((uint64(rngSel.Next()) * uint64(i+1)) >> 32)
@@ -798,8 +799,11 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, keyMaterial string, forceV2 bool, for
 		}
 
 		checksum := generateChecksum(selectedFunctions)
-		checksumBytes := []byte(strconv.Itoa(checksum))
-		combinedSeed := append(append([]byte{}, passwordBytes...), checksumBytes...)
+		combinedSeedStr := activePasswordStr + strconv.Itoa(checksum)
+		if isV5 {
+			combinedSeedStr += strconv.Itoa(index)
+		}
+		combinedSeed := []byte(combinedSeedStr)
 
 		var wordReverseKey []int
 
@@ -1023,7 +1027,6 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, keyMaterial st
 	fullBlob := binaryString
 
 	var deobfuscatedWords []string
-	passwordBytes := []byte(activePasswordStr)
 	prngFactory := func(s string) PRNG {
 		if isModern {
 			return NewDarkstarChaChaPRNG(s)
@@ -1067,8 +1070,11 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, keyMaterial st
 		}
 
 		checksum := generateChecksum(uniqueSet)
-		checksumBytes := []byte(strconv.Itoa(checksum))
-		combinedSeed := append(append([]byte{}, passwordBytes...), checksumBytes...)
+		combinedSeedStr := activePasswordStr + strconv.Itoa(checksum)
+		if isV5 {
+			combinedSeedStr += strconv.Itoa(wordIndex)
+		}
+		combinedSeed := []byte(combinedSeedStr)
 
 		for j := len(wordReverseList) - 1; j >= 0; j-- {
 			funcIndex := wordReverseList[j]
