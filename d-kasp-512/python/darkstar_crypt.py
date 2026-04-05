@@ -1019,70 +1019,102 @@ class DarkstarCrypt:
         return reverse_key
 
 if __name__ == "__main__":
+    import argparse
     import sys
-    args = sys.argv[1:]
-    if not args:
-        print("Usage: python darkstar_crypt.py [--v3|--v2|--v1] <encrypt|decrypt|test> ...")
+
+    parser = argparse.ArgumentParser(description="Darkstar D-KASP-512 (V5) Cryptographic Suite")
+    
+    # Global Flags
+    parser.add_argument("-v", "--v", type=int, choices=[1, 2, 3, 4, 5], default=5, help="D-KASP Protocol Version (default: 5)")
+    parser.add_argument("-c", "--core", choices=["aes", "arx"], default="aes", help="Encryption Core (default: aes)")
+    parser.add_argument("-f", "--format", choices=["json", "csv", "text"], default=None, help="Output format (default: json for encrypt/keygen, text for decrypt)")
+    
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+    
+    # Encrypt
+    enc_parser = subparsers.add_parser("encrypt", help="Encrypt mnemonic")
+    enc_parser.add_argument("mnemonic", help="The mnemonic phrase to encrypt")
+    enc_parser.add_argument("password", help="The user password (V1-V4) OR Kyber-1024 Public Key Hex (V5)")
+    
+    # Decrypt
+    dec_parser = subparsers.add_parser("decrypt", help="Decrypt data")
+    dec_parser.add_argument("data", help="The encrypted JSON data object")
+    dec_parser.add_argument("reverse_key", help="The Base64 encoded reverse key")
+    dec_parser.add_argument("password", help="The user password (V1-V4) OR Kyber-1024 Private Key Hex (V5)")
+    
+    # Keygen
+    subparsers.add_parser("keygen", help="Generate ML-KEM-1024 / Kyber-1024 Keypair")
+    
+    # Test
+    subparsers.add_parser("test", help="Run self-test suite")
+    
+    args = parser.parse_args()
+    
+    if not args.command:
+        parser.print_help()
         sys.exit(0)
 
-    force_v2 = False
-    force_v1 = False
-    force_v3 = False
-    force_v4 = False
-    force_v5 = False
-    if args[0] == '--v2':
-        force_v2 = True
-        args = args[1:]
-    elif args[0] == '--v1':
-        force_v1 = True
-        args = args[1:]
-    elif args[0] == '--v3':
-        force_v3 = True
-        args = args[1:]
-    elif args[0] == '--v4':
-        force_v4 = True
-        args = args[1:]
-    elif args[0] == '--v5':
-        force_v5 = True
-        args = args[1:]
-        
-    if not args:
-        print("Usage: python darkstar_crypt.py [--v5|--v4|--v3|--v2|--v1] <encrypt|decrypt|keygen|test> ...")
-        print("  --v5: d-kasp-512 (ML-KEM-1024 NIST Root of Trust)")
-        sys.exit(1)
-
-    command = args[0]
     crypt = DarkstarCrypt()
+    v = args.v
+    
+    # Map version to flags (Internal legacy support)
+    v_flags = {
+        "force_v1": v == 1,
+        "force_v2": v == 2,
+        "force_v3": v == 3,
+        "force_v4": v == 4,
+        "force_v5": v == 5
+    }
 
-    if command == 'encrypt':
-        if len(args) < 3:
-            print("Usage: [flags] encrypt <mnemonic> <password>")
+    if args.command == 'encrypt':
+        output_format = args.format or "json"
+        res = crypt.encrypt(args.mnemonic, args.password, **v_flags)
+        
+        if output_format == "json":
+            print(json.dumps(res))
+        elif output_format == "csv":
+            print(f"{res['encryptedData']},{res['reverseKey']}")
+        else: # text
+            print(f"Data: {res['encryptedData']}\nReverseKey: {res['reverseKey']}")
+            
+    elif args.command == 'decrypt':
+        output_format = args.format or "text"
+        try:
+            res = crypt.decrypt(args.data, args.reverse_key, args.password)
+            if output_format == "json":
+                print(json.dumps({"decrypted": res}))
+            elif output_format == "csv":
+                print(res) # Just the text for CSV simplicity
+            else:
+                print(res)
+        except Exception as e:
+            print(f"ERROR: {str(e)}", file=sys.stderr)
             sys.exit(1)
-        res = crypt.encrypt(args[1], args[2], force_v2=force_v2, force_v1=force_v1, force_v3=force_v3, force_v4=force_v4, force_v5=force_v5)
-        print(json.dumps(res))
-    elif command == 'decrypt':
-        if len(args) < 4:
-            print("Usage: [flags] decrypt <data> <rk> <password>")
-            sys.exit(1)
-        res = crypt.decrypt(args[1], args[2], args[3])
-        print(res)
-    elif command == 'keygen':
+            
+    elif args.command == 'keygen':
+        output_format = args.format or "text"
         import pqcrypto.kem.ml_kem_1024 as kem
         pk, sk = kem.generate_keypair()
-        print(f"PK: {pk.hex()}\nSK: {sk.hex()}")
-    elif command == 'test':
-        mnemonic = "cat dog fish bird"
+        if output_format == "json":
+            print(json.dumps({"pk": pk.hex(), "sk": sk.hex()}))
+        elif output_format == "csv":
+            print(f"{pk.hex()},{sk.hex()}")
+        else:
+            print(f"PK: {pk.hex()}\nSK: {sk.hex()}")
+            
+    elif args.command == 'test':
+        mnemonic = "apple banana cherry date"
         password = "MySecre!Password123"
         dec_psw = password
         
-        if force_v5:
+        if v == 5:
             import pqcrypto.kem.ml_kem_1024 as kem
             pk, sk = kem.generate_keypair()
             password = pk.hex()
             dec_psw = sk.hex()
             
-        print(f"--- Darkstar Python Self-Test ---")
-        res = crypt.encrypt(mnemonic, password, force_v2=force_v2, force_v1=force_v1, force_v3=force_v3, force_v4=force_v4, force_v5=force_v5)
+        print(f"--- Darkstar Python Self-Test (V{v}) ---")
+        res = crypt.encrypt(mnemonic, password, **v_flags)
         decrypted = crypt.decrypt(res['encryptedData'], res['reverseKey'], dec_psw)
         print(f"Decrypted: '{decrypted}'")
         if decrypted == mnemonic:

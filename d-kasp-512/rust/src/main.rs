@@ -1099,79 +1099,99 @@ impl DarkstarCrypt {
 }
 
 fn print_usage() {
-    println!("d-kasp-512 Encryption Suite (V5)");
-    println!("Usage: darkstar_rust [--v5|--v4|--v3|--v2|--v1] <encrypt|decrypt|keygen|test> ...");
-    println!("  --v5: d-kasp-512 (Kyber-1024 + Augmented SPN/ARX)");
-    println!("  encrypt <mnemonic> <password>                   - Encrypt a mnemonic phrase");
-    println!("  decrypt <encrypted_json> <reverse_key> <password> - Decrypt a phrase");
-    println!("  test                                            - Run self-test");
+    println!("Darkstar D-KASP-512 (V5) Cryptographic Suite");
+    println!("\nUsage:");
+    println!("  darkstar [flags] <command> [args]");
+    println!("\nFlags:");
+    println!("  -v, --v <1-5>       D-KASP Protocol Version (default: 5)");
+    println!("  -c, --core <aes|arx> Encryption Core (default: aes)");
+    println!("  -f, --format <json|csv|text> Output format");
+    println!("\nCommands:");
+    println!("  encrypt <mnemonic> <password>    Encrypt a mnemonic phrase");
+    println!("  decrypt <data> <rk> <password>   Decrypt a Darkstar payload");
+    println!("  keygen                          Generate ML-KEM-1024 Keypair");
+    println!("  test                            Run internal self-test");
 }
 
 fn main() {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let mut v: i32 = 5;
+    let mut format: String = String::new();
+    let mut _core: String = "aes".to_string();
+
+    while !args.is_empty() && args[0].starts_with('-') {
+        let arg = args.remove(0);
+        if arg == "-h" || arg == "--help" {
+            print_usage();
+            return;
+        }
+        if (arg == "-v" || arg == "--v") && !args.is_empty() {
+            v = args.remove(0).parse().unwrap_or(5);
+        } else if (arg == "-f" || arg == "--format") && !args.is_empty() {
+            format = args.remove(0);
+        } else if (arg == "-c" || arg == "--core") && !args.is_empty() {
+            _core = args.remove(0);
+        } else {
+            // Legacy flags
+            if arg == "--v1" { v = 1; }
+            else if arg == "--v2" { v = 2; }
+            else if arg == "--v3" { v = 3; }
+            else if arg == "--v4" { v = 4; }
+            else if arg == "--v5" { v = 5; }
+        }
+    }
 
     if args.is_empty() {
         print_usage();
         return;
     }
 
-    let mut force_v2 = false;
-    let mut force_v1 = false;
-    let mut force_v3 = false;
-    let mut force_v4 = false;
-    let mut force_v5 = false;
-    if args[0] == "--v2" {
-        force_v2 = true;
-        args.remove(0);
-    } else if args[0] == "--v1" {
-        force_v1 = true;
-        args.remove(0);
-    } else if args[0] == "--v3" {
-        force_v3 = true;
-        args.remove(0);
-    } else if args[0] == "--v4" {
-        force_v4 = true;
-        args.remove(0);
-    } else if args[0] == "--v5" {
-        force_v5 = true;
-        args.remove(0);
-    }
-
-    if args.is_empty() {
-        print_usage();
-        return;
-    }
-
-    let command = &args[0];
+    let command = args.remove(0);
     let dc = DarkstarCrypt::new();
+    
+    let force_v1 = v == 1;
+    let force_v2 = v == 2;
+    let force_v3 = v == 3;
+    let force_v4 = v == 4;
+    let force_v5 = v == 5;
 
     match command.as_str() {
         "encrypt" => {
-            if args.len() < 3 {
+            if args.len() < 2 {
                 eprintln!("Usage: encrypt <mnemonic> <password>");
                 std::process::exit(1);
             }
-            let mnemonic = &args[1];
-            let password = &args[2];
-            match dc.encrypt(mnemonic, password, force_v2, force_v1, force_v3, force_v4, force_v5) {
-                Ok(res) => println!("{}", res),
+            let res = match dc.encrypt(&args[0], &args[1], force_v2, force_v1, force_v3, force_v4, force_v5) {
+                Ok(r) => r,
                 Err(e) => {
-                    eprintln!("Encryption failed: {}", e);
+                    eprintln!("Error: {}", e);
                     std::process::exit(1);
                 }
+            };
+            
+            let f = if format.is_empty() { "json" } else { &format };
+            if f == "json" {
+                println!("{}", res);
+            } else if f == "csv" {
+                let j: serde_json::Value = serde_json::from_str(&res).unwrap();
+                println!("{},{}", j["encryptedData"].as_str().unwrap(), j["reverseKey"].as_str().unwrap());
+            } else {
+                let j: serde_json::Value = serde_json::from_str(&res).unwrap();
+                println!("Data: {}\nReverseKey: {}", j["encryptedData"].as_str().unwrap(), j["reverseKey"].as_str().unwrap());
             }
         }
         "decrypt" => {
-            if args.len() < 4 {
-                eprintln!("Usage: decrypt <encrypted_data> <reverse_key> <password>");
+            if args.len() < 3 {
+                eprintln!("Usage: decrypt <data> <rk> <password>");
                 std::process::exit(1);
             }
-            let enc_data = &args[1];
-            let rev_key = &args[2];
-            let password = &args[3];
-            match dc.decrypt(enc_data, rev_key, password) {
+            match dc.decrypt(&args[0], &args[1], &args[2]) {
                 Ok(res) => {
-                    print!("{}", res);
+                    if format == "json" {
+                        println!("{{\"decrypted\":\"{}\"}}", res);
+                    } else {
+                        print!("{}", res);
+                    }
                     std::process::exit(0);
                 }
                 Err(e) => {
@@ -1184,44 +1204,46 @@ fn main() {
             use ml_kem::KemCore;
             let mut rng = rand::thread_rng();
             let (ek, dk) = MlKem1024::generate(&mut rng);
+            let pk_hex = hex::encode(ek.as_bytes());
+            let sk_hex = hex::encode(dk.as_bytes());
             
-            println!("PublicKey: {}", hex::encode(ek.as_bytes()));
-            println!("PrivateKey: {}", hex::encode(dk.as_bytes()));
+            let f = if format.is_empty() { "text" } else { &format };
+            if f == "json" {
+                println!("{{\"pk\":\"{}\",\"sk\":\"{}\"}}", pk_hex, sk_hex);
+            } else if f == "csv" {
+                println!("{},{}", pk_hex, sk_hex);
+            } else {
+                println!("PK: {}\nSK: {}", pk_hex, sk_hex);
+            }
             std::process::exit(0);
         }
         "test" => {
-            let mnemonic = "cat dog fish bird";
+            let mnemonic = "apple banana cherry date";
             let mut password = "MySecre!Password123".to_string();
+            let mut dec_psw = password.clone();
 
-            let mut test_sk = String::new();
-            if force_v5 {
+            if v == 5 {
                 let mut rng = rand::thread_rng();
                 let (ek, dk) = MlKem1024::generate(&mut rng);
                 password = hex::encode(ek.as_bytes());
-                test_sk = hex::encode(dk.as_bytes());
+                dec_psw = hex::encode(dk.as_bytes());
             }
 
-            println!("--- d-kasp-512 Rust Self-Test ---");
-            println!("Plaintext: {}", mnemonic);
-            
+            println!("--- Darkstar Rust Self-Test (V{}) ---", v);
             match dc.encrypt(mnemonic, &password, force_v2, force_v1, force_v3, force_v4, force_v5) {
                 Ok(result_json) => {
                     let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
-                    
-                    let encrypted_data = result["encryptedData"].as_str().unwrap();
-                    let reverse_key = result["reverseKey"].as_str().unwrap();
+                    let enc_data = result["encryptedData"].as_str().unwrap();
+                    let rev_key = result["reverseKey"].as_str().unwrap();
 
-                    println!("Encrypted: {}", encrypted_data);
-                    
-                    let dec_psw = if force_v5 { &test_sk } else { &password };
-                    let decrypted = match dc.decrypt(encrypted_data, reverse_key, dec_psw) {
+                    let decrypted = match dc.decrypt(enc_data, rev_key, &dec_psw) {
                         Ok(d) => d,
                         Err(e) => {
                             eprintln!("Test Decryption Failed: {}", e);
                             std::process::exit(1);
                         }
                     };
-                    println!("Decrypted: {}", decrypted);
+                    println!("Decrypted: '{}'", decrypted);
 
                     if decrypted == mnemonic {
                         println!("Result: PASSED");
@@ -1237,9 +1259,9 @@ fn main() {
             }
         }
         _ => {
-            println!("Error: Unknown command '{}'", command);
+            eprintln!("Error: Unknown command '{}'", command);
             print_usage();
+            std::process::exit(1);
         }
     }
 }
-

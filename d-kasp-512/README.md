@@ -51,7 +51,7 @@ The Darkstar Encryption Suite is distributed as high-performance, single-file im
 ```javascript
 import { DarkstarCrypt } from './darkstar_crypt.js';
 const crypt = new DarkstarCrypt();
-const { encryptedData, reverseKey } = await crypt.encrypt('mnemonic', 'pk_hex', false, false, false, false, true); // forceV5
+const { encryptedData, reverseKey, ct } = await crypt.encrypt('mnemonic', 'pk_hex', false, false, false, true); // forceV5
 ```
 
 ### 🔷 Go Implementation
@@ -80,12 +80,13 @@ let json_output = dc.encrypt("phrase", "pk_hex", false, false, false, false, tru
 ### 🐍 Python Implementation
 **Target**: Data science, security scripting, and rapid prototyping.
 - **Source**: `python/darkstar_crypt.py` (Single File)
-- **Dependency**: `cryptography`
+- **Dependency**: `cryptography`, `pqcrypto`
 
 **Integration Snippet**:
 ```python
 from darkstar_crypt import DarkstarCrypt
 dc = DarkstarCrypt()
+# V5 Encryption (Kyber Root of Trust)
 encrypted = dc.encrypt("secret", "pk_hex", force_v5=True)
 ```
 
@@ -93,21 +94,29 @@ encrypted = dc.encrypt("secret", "pk_hex", force_v5=True)
 
 ## ⌨️ CLI Usage
 
-Standard standalone binaries are provided for Go, Rust, and Node.js implementations.
+Standard standalone binaries are provided for Go, Rust, Node.js, and Python implementations.
 
 ### Command Structure
 ```bash
 # General Syntax
-./d-kasp-512 [--v5|--v4|--v3|--v2|--v1] <command> [arguments...]
+./darkstar [flags] <command> [arguments...]
 
-# V5 ML-KEM Key Generation (Python)
-python darkstar_crypt.py --v5 keygen
+# Flags
+# -v, --v <1-5>       D-KASP Protocol Version (default: 5)
+# -f, --format <fmt>  Output format: json|csv|text
+# -c, --core <type>   Encryption core: aes|arx
+
+# V5 ML-KEM Key Generation
+./darkstar keygen
 
 # V5 Encryption (Requires Public Key)
-./d-kasp-512 --v5 encrypt "my mnemonic" <pk_hex>
+./darkstar -v 5 encrypt "my mnemonic" <pk_hex>
 
-# V5 Decryption (Requires Secret Key)
-./d-kasp-512 --v5 decrypt <payload_json> <reverse_key_b64> <sk_hex>
+# V5 Decryption (Requires Private Key)
+./darkstar -v 5 decrypt <payload_json> <reverse_key_b64> <sk_hex>
+
+# V5 Self-Test
+./darkstar -v 5 test
 ```
 
 ---

@@ -40,8 +40,7 @@ graph TD
         Identity[Vault Identity Binding: Signature Key]
     end
 
-    Safe -->|Encrypted Payload| Storage[(Device Storage)]
-    Safe -->|Encrypted Payload| Storage[(Device Storage)]
+    Layers -->|Encrypted Payload| Storage[(Device Storage)]
 
     style User fill:#f9f,stroke:#333
     style Layers fill:#f8f9fa,stroke:#333

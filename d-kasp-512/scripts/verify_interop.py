@@ -61,17 +61,17 @@ def main():
 
     total_tests = 0
     passed_tests = 0
-    versions = ["--v5", "--v4", "--v3", "--v2", "--v1"]
+    versions = ["5", "4", "3", "2", "1"]
 
     for version in versions:
-        version_label = "d-kasp-512 (V5)" if version == "--v5" else version.upper()
+        version_label = f"d-kasp-512 (V{version})"
         print(f"\n{'='*20} Testing {version_label} {'='*20}")
         
         v5_pk = ""
         v5_sk = ""
-        if version == "--v5":
+        if version == "5":
             print("  Generating ML-KEM-1024 Keypair (using Python)...", end=" ", flush=True)
-            keygen_out, elapsed = run_cli("python", ["--v5", "keygen"])
+            keygen_out, elapsed = run_cli("python", ["-v", "5", "keygen"])
             if not keygen_out:
                 print(f"FAILED ({elapsed:.3f}s)")
                 continue
@@ -82,14 +82,14 @@ def main():
             print(f"  PK: {v5_pk[:16]}...{v5_pk[-16:]}")
 
         for src_lang in LANGS:
-            print(f"\n  [Source: {src_lang.upper()} {version.upper()}]")
+            print(f"\n  [Source: {src_lang.upper()} V{version}]")
             
-            encrypt_pass = v5_pk if version == "--v5" else TEST_PASSWORD
-            decrypt_pass = v5_sk if version == "--v5" else TEST_PASSWORD
+            encrypt_pass = v5_pk if version == "5" else TEST_PASSWORD
+            decrypt_pass = v5_sk if version == "5" else TEST_PASSWORD
             
             # 1. Encrypt with source
             print(f"  Encrypting with {src_lang}...", end=" ", flush=True)
-            encrypt_output, elapsed = run_cli(src_lang, [version, "encrypt", TEST_MNEMONIC, encrypt_pass])
+            encrypt_output, elapsed = run_cli(src_lang, ["-v", version, "encrypt", TEST_MNEMONIC, encrypt_pass])
             
             if not encrypt_output:
                 print(f"FAILED ({elapsed:.3f}s)")
@@ -121,7 +121,7 @@ def main():
                 total_tests += 1
                 print(f"    -> Decrypt with {dest_lang.upper()}:", end=" ", flush=True)
                 
-                decrypt_output, elapsed = run_cli(dest_lang, [version, "decrypt", encrypted_data, reverse_key, decrypt_pass])
+                decrypt_output, elapsed = run_cli(dest_lang, ["-v", version, "decrypt", encrypted_data, reverse_key, decrypt_pass])
                 
                 if decrypt_output == TEST_MNEMONIC:
                     print(f"PASS ({elapsed:.3f}s)")

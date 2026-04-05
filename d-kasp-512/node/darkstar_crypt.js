@@ -1147,35 +1147,61 @@ if (isMain) {
   let args = process.argv.slice(2);
   let forceV2 = false;
   let forceV1 = false;
-  let forceV3 = false;
-  let forceV5 = false;
+  let v = 5;
+  let format = '';
+  let _core = 'aes';
 
-  if (args[0] === '--v2') {
-    forceV2 = true;
-    args = args.slice(1);
-  } else if (args[0] === '--v1') {
-    forceV1 = true;
-    args = args.slice(1);
-  } else if (args[0] === '--v3') {
-    forceV3 = true;
-    args = args.slice(1);
-  } else if (args[0] === '--v4') {
-    args = args.slice(1);
-  } else if (args[0] === '--v5') {
-    forceV5 = true;
-    args = args.slice(1);
+  while (args.length > 0 && args[0].startsWith('-')) {
+    const arg = args.shift();
+    if (arg === '-h' || arg === '--help') {
+      console.log('Darkstar D-KASP-512 (V5) Cryptographic Suite');
+      console.log('\nUsage:');
+      console.log('  node darkstar_crypt.js [flags] <command> [args]');
+      console.log('\nFlags:');
+      console.log('  -v, --v <1-5>       D-KASP Protocol Version (default: 5)');
+      console.log('  -c, --core <aes|arx> Encryption Core (default: aes)');
+      console.log('  -f, --format <json|csv|text> Output format');
+      console.log('\nCommands:');
+      console.log('  encrypt <mnemonic> <password>    Encrypt a mnemonic phrase');
+      console.log('  decrypt <data> <rk> <password>   Decrypt a Darkstar payload');
+      console.log('  keygen                          Generate ML-KEM-1024 Keypair');
+      console.log('  test                            Run internal self-test');
+      process.exit(0);
+    }
+    if ((arg === '-v' || arg === '--v') && args.length > 0) {
+      v = parseInt(args.shift(), 10) || 5;
+    } else if ((arg === '-f' || arg === '--format') && args.length > 0) {
+      format = args.shift();
+    } else if ((arg === '-c' || arg === '--core') && args.length > 0) {
+      _core = args.shift();
+    } else {
+      // Legacy flags
+      if (arg === '--v1') v = 1;
+      if (arg === '--v2') v = 2;
+      if (arg === '--v3') v = 3;
+      if (arg === '--v4') v = 4;
+      if (arg === '--v5') v = 5;
+    }
   }
 
   const command = args[0];
   const crypt = new DarkstarCrypt();
+  const v1 = v === 1, v2 = v === 2, v3 = v === 3, v4 = v === 4, v5 = v === 5;
 
   if (command === 'encrypt') {
     const mnemonic = args[1];
     const password = args[2];
     crypt
-      .encrypt(mnemonic, password, forceV2, forceV1, forceV3, forceV5)
+      .encrypt(mnemonic, password, v2, v1, v3, v5)
       .then((res) => {
-        console.log(JSON.stringify(res));
+        const f = format || 'json';
+        if (f === 'json') {
+          console.log(JSON.stringify(res));
+        } else if (f === 'csv') {
+          console.log(`${res.encryptedData},${res.reverseKey}`);
+        } else {
+          console.log(`Data: ${res.encryptedData}\nReverseKey: ${res.reverseKey}`);
+        }
       })
       .catch((err) => {
         console.error(err);
@@ -1188,45 +1214,63 @@ if (isMain) {
     crypt
       .decrypt(data, rk, password)
       .then((res) => {
-        console.log(res);
+        if (format === 'json') {
+          console.log(JSON.stringify({ decrypted: res }));
+        } else {
+          process.stdout.write(res);
+        }
       })
       .catch((err) => {
         console.error(err);
         process.exit(1);
       });
   } else if (command === 'test') {
-    const mnemonic = 'cat dog fish bird';
+    const mnemonic = 'apple banana cherry date';
     let password = 'MySecre!Password123';
     let decryptPassword = password;
 
-    if (forceV5) {
-      const { ml_kem1024: kyber } = require('@noble/post-quantum/ml-kem.js');
-      const keys = kyber.keygen();
-      password = Buffer.from(keys.publicKey).toString('hex');
-      decryptPassword = Buffer.from(keys.secretKey).toString('hex');
-    }
+    const runTest = async () => {
+      if (v5) {
+        const { ml_kem1024: kyber } = require('@noble/post-quantum/ml-kem.js');
+        const keys = kyber.keygen();
+        password = Buffer.from(keys.publicKey).toString('hex');
+        decryptPassword = Buffer.from(keys.secretKey).toString('hex');
+      }
 
-    console.log('--- d-kasp-512 Node Self-Test ---');
-    crypt
-      .encrypt(mnemonic, password, forceV2, forceV1, forceV3, forceV5)
-      .then((res) => {
-        return crypt.decrypt(res.encryptedData, res.reverseKey, decryptPassword);
-      })
-      .then((decrypted) => {
-        if (decrypted === 'cat dog fish bird') {
-          console.log('Test Passed!');
+      console.log(`--- Darkstar Node Self-Test (V${v}) ---`);
+      try {
+        const res = await crypt.encrypt(mnemonic, password, v2, v1, v3, v5);
+        const decrypted = await crypt.decrypt(res.encryptedData, res.reverseKey, decryptPassword);
+        console.log(`Decrypted: '${decrypted}'`);
+        if (decrypted === mnemonic) {
+          console.log('Result: PASSED');
         } else {
-          console.error('Test Failed! Decrypted:', decrypted);
+          console.error('Result: FAILED');
           process.exit(1);
         }
-      });
+      } catch (err) {
+        console.error('Test Error:', err);
+        process.exit(1);
+      }
+    };
+    runTest();
   } else if (command === 'keygen') {
     const { ml_kem1024: kyber } = require('@noble/post-quantum/ml-kem.js');
     const keys = kyber.keygen();
-    console.log(`PK: ${Buffer.from(keys.publicKey).toString('hex')}`);
-    console.log(`SK: ${Buffer.from(keys.secretKey).toString('hex')}`);
-    console.log('Usage: node darkstar_crypt.js [--v5|--v4|--v3|--v2|--v1] <encrypt|decrypt|keygen|test> ...');
-    console.log('  --v5: d-kasp-512 (Kyber-1024 + Augmented SPN/ARX)');
+    const pkHex = Buffer.from(keys.publicKey).toString('hex');
+    const skHex = Buffer.from(keys.secretKey).toString('hex');
+    
+    const f = format || 'text';
+    if (f === 'json') {
+      console.log(JSON.stringify({ pk: pkHex, sk: skHex }));
+    } else if (f === 'csv') {
+      console.log(`${pkHex},${skHex}`);
+    } else {
+      console.log(`PK: ${pkHex}\nSK: ${skHex}`);
+    }
+  } else {
+    console.error('Error: Unknown command');
+    process.exit(1);
   }
 }
 

@@ -1390,36 +1390,50 @@ func parseHex(s string) ([]byte, error) {
 }
 
 func printUsage() {
-	fmt.Println("Usage:")
-	fmt.Println("  d-kasp-512 [flags] encrypt <mnemonic> <password>")
-	fmt.Println("  d-kasp-512 [flags] decrypt <encrypted_data> <reverse_key> <password>")
-	fmt.Println("Flags:")
-	fmt.Println("  --v1, --v2, --v3, --v4, --v5")
+	fmt.Println("Darkstar D-KASP-512 (V5) Cryptographic Suite")
+	fmt.Println("\nUsage:")
+	fmt.Println("  darkstar [flags] <command> [args]")
+	fmt.Println("\nFlags:")
+	fmt.Println("  -v, --v <1-5>       D-KASP Protocol Version (default: 5)")
+	fmt.Println("  -c, --core <aes|arx> Encryption Core (default: aes)")
+	fmt.Println("  -f, --format <json|csv|text> Output format")
+	fmt.Println("\nCommands:")
+	fmt.Println("  encrypt <mnemonic> <password>    Encrypt a mnemonic phrase")
+	fmt.Println("  decrypt <data> <rk> <password>   Decrypt a Darkstar payload")
+	fmt.Println("  keygen                          Generate ML-KEM-1024 Keypair")
+	fmt.Println("  test                            Run internal self-test")
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		printUsage()
-		return
-	}
-
-	forceV1 := false
-	forceV2 := false
-	forceV3 := false
-	forceV4 := false
-	forceV5 := false
+	var v int = 5
+	var format string = ""
+	// var core string = "aes"
 
 	args := os.Args[1:]
-	for len(args) > 0 && strings.HasPrefix(args[0], "--") {
-		flag := strings.ToLower(args[0])
-		switch flag {
-		case "--v1": forceV1 = true
-		case "--v2": forceV2 = true
-		case "--v3": forceV3 = true
-		case "--v4": forceV4 = true
-		case "--v5": forceV5 = true
+	for len(args) > 0 && strings.HasPrefix(args[0], "-") {
+		arg := args[0]
+		if arg == "-h" || arg == "--help" {
+			printUsage()
+			return
 		}
-		args = args[1:]
+		if (arg == "-v" || arg == "--v") && len(args) > 1 {
+			v, _ = strconv.Atoi(args[1])
+			args = args[2:]
+		} else if (arg == "-f" || arg == "--format") && len(args) > 1 {
+			format = args[1]
+			args = args[2:]
+		} else if (arg == "-c" || arg == "--core") && len(args) > 1 {
+			// core = args[1]
+			args = args[2:]
+		} else {
+			// Legacy flags or unknown
+			if arg == "--v1" { v = 1 }
+			if arg == "--v2" { v = 2 }
+			if arg == "--v3" { v = 3 }
+			if arg == "--v4" { v = 4 }
+			if arg == "--v5" { v = 5 }
+			args = args[1:]
+		}
 	}
 
 	if len(args) < 1 {
@@ -1430,36 +1444,102 @@ func main() {
 	command := args[0]
 	dc := NewDarkstarCrypt()
 
+	v1, v2, v3, v4, v5 := v == 1, v == 2, v == 3, v == 4, v == 5
+
 	switch command {
 	case "encrypt":
 		if len(args) < 3 {
 			fmt.Println("Error: encrypt requires mnemonic and password")
 			os.Exit(1)
 		}
-		mnemonic := args[1]
-		password := args[2]
-		result, err := dc.Encrypt(mnemonic, password, forceV2, forceV1, forceV3, forceV4, forceV5)
+		res, err := dc.Encrypt(args[1], args[2], v2, v1, v3, v4, v5)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		j, _ := json.Marshal(result)
-		fmt.Println(string(j))
+		
+		f := format
+		if f == "" { f = "json" }
+		
+		if f == "json" {
+			j, _ := json.Marshal(res)
+			fmt.Println(string(j))
+		} else if f == "csv" {
+			fmt.Printf("%s,%s\n", res["encryptedData"], res["reverseKey"])
+		} else {
+			fmt.Printf("Data: %s\nReverseKey: %s\n", res["encryptedData"], res["reverseKey"])
+		}
 
 	case "decrypt":
 		if len(args) < 4 {
-			fmt.Println("Error: decrypt requires data, key and password")
+			fmt.Println("Error: decrypt requires data, rk and password")
 			os.Exit(1)
 		}
-		data := args[1]
-		rk := args[2]
-		password := args[3]
-		decrypted, err := dc.Decrypt(data, rk, password)
+		res, err := dc.Decrypt(args[1], args[2], args[3])
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Print(decrypted)
+		
+		if format == "json" {
+			fmt.Printf("{\"decrypted\":\"%s\"}\n", res)
+		} else {
+			fmt.Print(res)
+		}
+
+	case "keygen":
+		sch := mlkem1024.Scheme()
+		pk, sk, _ := sch.GenerateKeyPair()
+		pkBytes, _ := pk.MarshalBinary()
+		skBytes, _ := sk.MarshalBinary()
+		pkHex := hex.EncodeToString(pkBytes)
+		skHex := hex.EncodeToString(skBytes)
+		
+		f := format
+		if f == "" { f = "text" }
+		
+		if f == "json" {
+			fmt.Printf("{\"pk\":\"%s\",\"sk\":\"%s\"}\n", pkHex, skHex)
+		} else if f == "csv" {
+			fmt.Printf("%s,%s\n", pkHex, skHex)
+		} else {
+			fmt.Printf("PK: %s\nSK: %s\n", pkHex, skHex)
+		}
+
+	case "test":
+		mnemonic := "apple banana cherry date"
+		password := "MySecre!Password123"
+		decPsw := password
+		
+		if v == 5 {
+			sch := mlkem1024.Scheme()
+			pk, sk, _ := sch.GenerateKeyPair()
+			pkBytes, _ := pk.MarshalBinary()
+			skBytes, _ := sk.MarshalBinary()
+			password = hex.EncodeToString(pkBytes)
+			decPsw = hex.EncodeToString(skBytes)
+		}
+		
+		fmt.Printf("--- Darkstar Go Self-Test (V%d) ---\n", v)
+		res, err := dc.Encrypt(mnemonic, password, v2, v1, v3, v4, v5)
+		if err != nil {
+			fmt.Printf("Test Encryption Failed: %v\n", err)
+			os.Exit(1)
+		}
+		
+		decrypted, err := dc.Decrypt(res["encryptedData"].(string), res["reverseKey"].(string), decPsw)
+		if err != nil {
+			fmt.Printf("Test Decryption Failed: %v\n", err)
+			os.Exit(1)
+		}
+		
+		fmt.Printf("Decrypted: '%s'\n", decrypted)
+		if decrypted == mnemonic {
+			fmt.Println("Result: PASSED")
+		} else {
+			fmt.Println("Result: FAILED")
+			os.Exit(1)
+		}
 
 	default:
 		fmt.Printf("Error: Unknown command %s\n", command)
