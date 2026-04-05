@@ -51,7 +51,7 @@ The Darkstar Encryption Suite is distributed as high-performance, single-file im
 ```javascript
 import { DarkstarCrypt } from './darkstar_crypt.js';
 const crypt = new DarkstarCrypt();
-const { encryptedData, reverseKey, ct } = await crypt.encrypt('mnemonic', 'pk_hex', false, false, false, true); // forceV5
+const { encryptedData, reverseKey } = await crypt.encrypt('mnemonic', 'pk_hex', 5); // Version 5
 ```
 
 ### 🔷 Go Implementation
@@ -63,7 +63,7 @@ const { encryptedData, reverseKey, ct } = await crypt.encrypt('mnemonic', 'pk_he
 ```go
 // Direct integration from go/main.go
 dc := NewDarkstarCrypt()
-result, _ := dc.Encrypt("phrase", "pk_hex", false, false, false, false, true) // forceV5
+result, _ := dc.Encrypt("phrase", "pk_hex", 5) // Version 5
 ```
 
 ### 🦀 Rust Implementation
@@ -74,7 +74,7 @@ result, _ := dc.Encrypt("phrase", "pk_hex", false, false, false, false, true) //
 **Integration Snippet**:
 ```rust
 let dc = DarkstarCrypt::new();
-let json_output = dc.encrypt("phrase", "pk_hex", false, false, false, false, true); // forceV5
+let json_output = dc.encrypt("phrase", "pk_hex", 5); // Version 5
 ```
 
 ### 🐍 Python Implementation
@@ -87,7 +87,7 @@ let json_output = dc.encrypt("phrase", "pk_hex", false, false, false, false, tru
 from darkstar_crypt import DarkstarCrypt
 dc = DarkstarCrypt()
 # V5 Encryption (Kyber Root of Trust)
-encrypted = dc.encrypt("secret", "pk_hex", force_v5=True)
+encrypted = dc.encrypt("secret", "pk_hex", version=5)
 ```
 
 ---

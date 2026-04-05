@@ -104,8 +104,11 @@ def main():
                     raise ValueError("No JSON found")
                 res_json = json.loads(encrypt_output[start:end])
                 
+                if not res_json or 'encryptedData' not in res_json:
+                    print(f"  FAILED: Invalid JSON structure from {src_lang}")
+                    continue
+                
                 encrypted_data = res_json["encryptedData"]
-                # In modern versions, encryptedData might be a dict. stringify it for CLI args.
                 if isinstance(encrypted_data, (dict, list)):
                     encrypted_data = json.dumps(encrypted_data)
                     

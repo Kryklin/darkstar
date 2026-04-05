@@ -118,15 +118,17 @@ export class DarkstarCrypt {
    * @param {string} keyMaterial - The password (V1-V4) OR Kyber-1024 Public Key Hex (V5).
    * @returns {Promise<{encryptedData: string, reverseKey: string}>} The encrypted result object.
    */
-  async encrypt(mnemonic, keyMaterial, forceV2 = false, forceV1 = false, forceV3 = false, forceV5 = false) {
+  async encrypt(mnemonic, keyMaterial, version = 5) {
     const words = mnemonic.split(' ');
     const obfuscatedWords = [];
     const reverseKey = [];
 
-    // V5 Engine Upgrade
-    const isV5 = forceV5;
-    const isV3 = forceV3;
-    const isV4 = !forceV3 && !forceV2 && !forceV1 && !forceV5;
+    // V5 Engine Upgrade - Unified Version Mapping
+    const isV5 = version === 5;
+    const isV4 = version === 4;
+    const isV3 = version === 3;
+    const isV2 = version === 2;
+    const isV1 = version === 1;
     const isModern = isV3 || isV4 || isV5;
 
     let ssHex = "";
@@ -246,7 +248,7 @@ export class DarkstarCrypt {
     }
 
 
-    if (forceV1) {
+    if (isV1) {
       // V1 uses uncompressed JSON array for reverse key, base64 encoded
       const uncompressedB64 = this.buf2base64(this.stringToBytes(JSON.stringify(reverseKey)));
       return { encryptedData: encryptedContent, reverseKey: uncompressedB64 };
@@ -1184,23 +1186,27 @@ if (isMain) {
     }
   }
 
-  const command = args[0];
   const crypt = new DarkstarCrypt();
-  const v1 = v === 1, v2 = v === 2, v3 = v === 3, v4 = v === 4, v5 = v === 5;
-
+  const command = args.shift();
   if (command === 'encrypt') {
-    const mnemonic = args[1];
-    const password = args[2];
+    const mnemonic = args[0];
+    const password = args[1];
+    if (!mnemonic || !password) {
+      console.error('Usage: encrypt <mnemonic> <password>');
+      process.exit(1);
+    }
     crypt
-      .encrypt(mnemonic, password, v2, v1, v3, v5)
+      .encrypt(mnemonic, password, v)
       .then((res) => {
         const f = format || 'json';
+        const resObj = typeof res === 'string' ? JSON.parse(res) : res;
+        
         if (f === 'json') {
-          console.log(JSON.stringify(res));
+          console.log(typeof res === 'string' ? res : JSON.stringify(res));
         } else if (f === 'csv') {
-          console.log(`${res.encryptedData},${res.reverseKey}`);
+          console.log(`${resObj.encryptedData},${resObj.reverseKey}`);
         } else {
-          console.log(`Data: ${res.encryptedData}\nReverseKey: ${res.reverseKey}`);
+          console.log(`Data: ${resObj.encryptedData}\nReverseKey: ${resObj.reverseKey}`);
         }
       })
       .catch((err) => {
@@ -1208,9 +1214,13 @@ if (isMain) {
         process.exit(1);
       });
   } else if (command === 'decrypt') {
-    const data = args[1];
-    const rk = args[2];
-    const password = args[3];
+    const data = args[0];
+    const rk = args[1];
+    const password = args[2];
+    if (!data || !rk || !password) {
+      console.error('Usage: decrypt <data> <rk> <password>');
+      process.exit(1);
+    }
     crypt
       .decrypt(data, rk, password)
       .then((res) => {
@@ -1239,7 +1249,7 @@ if (isMain) {
 
       console.log(`--- Darkstar Node Self-Test (V${v}) ---`);
       try {
-        const res = await crypt.encrypt(mnemonic, password, v2, v1, v3, v5);
+        const res = await crypt.encrypt(mnemonic, password, v);
         const decrypted = await crypt.decrypt(res.encryptedData, res.reverseKey, decryptPassword);
         console.log(`Decrypted: '${decrypted}'`);
         if (decrypted === mnemonic) {

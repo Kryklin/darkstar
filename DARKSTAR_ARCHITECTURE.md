@@ -44,7 +44,7 @@ graph TD
 
     style User fill:#f9f,stroke:#333
     style Layers fill:#f8f9fa,stroke:#333
-    style Safe fill:#bbf,stroke:#333
+    style Storage fill:#bbf,stroke:#333
     style Obf fill:#bfb,stroke:#333
 ```
 

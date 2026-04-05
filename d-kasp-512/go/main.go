@@ -727,15 +727,19 @@ func (dc *DarkstarCrypt) deobfuscateWithSeededSubstitutionV2(input []byte, seed 
 
 // --- Encrypt/Decrypt ---
 
-// Encrypt encrypts the mnemonic using the password and the Obfuscation scheme.
-func (dc *DarkstarCrypt) Encrypt(mnemonic, keyMaterial string, forceV2 bool, forceV1 bool, forceV3 bool, forceV4 bool, forceV5 bool) (map[string]interface{}, error) {
+// Encrypt transforms a plaintext mnemonic into an obfuscated and encrypted payload.
+// Updated to use a single version integer (1-5).
+func (dc *DarkstarCrypt) Encrypt(mnemonic string, keyMaterial string, version int) (map[string]interface{}, error) {
 	words := strings.Split(mnemonic, " ")
 	var obfuscatedWords [][]byte
 	var reverseKey [][]int
 
-	isV5 := forceV5
-	isV4 := (!forceV3 && !forceV2 && !forceV1 && !forceV5) || forceV4
-	isV3 := forceV3
+	// V5 Engine Upgrade - Unified Version Mapping
+	isV1 := version == 1
+	isV2 := version == 2
+	isV3 := version == 3
+	isV4 := version == 4
+	isV5 := version == 5
 	isModern := isV3 || isV4 || isV5
 
 	ctHex := ""
@@ -890,16 +894,18 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic, keyMaterial string, forceV2 bool, for
 		encryptedContent = res
 	}
 
-	vProtocol := 2
-	if isV3 {
+	vProtocol := 5 // Default to V5
+	if isV1 {
+		vProtocol = 1
+	} else if isV2 {
+		vProtocol = 2
+	} else if isV3 {
 		vProtocol = 3
 	} else if isV4 {
 		vProtocol = 4
-	} else if isV5 {
-		vProtocol = 5
 	}
 
-	if forceV1 {
+	if isV1 {
 		uncompressedRK, err := json.Marshal(reverseKey)
 		if err != nil {
 			return nil, err
@@ -1444,15 +1450,13 @@ func main() {
 	command := args[0]
 	dc := NewDarkstarCrypt()
 
-	v1, v2, v3, v4, v5 := v == 1, v == 2, v == 3, v == 4, v == 5
-
 	switch command {
 	case "encrypt":
 		if len(args) < 3 {
 			fmt.Println("Error: encrypt requires mnemonic and password")
 			os.Exit(1)
 		}
-		res, err := dc.Encrypt(args[1], args[2], v2, v1, v3, v4, v5)
+		res, err := dc.Encrypt(args[1], args[2], v)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -1521,7 +1525,7 @@ func main() {
 		}
 		
 		fmt.Printf("--- Darkstar Go Self-Test (V%d) ---\n", v)
-		res, err := dc.Encrypt(mnemonic, password, v2, v1, v3, v4, v5)
+		res, err := dc.Encrypt(mnemonic, password, v)
 		if err != nil {
 			fmt.Printf("Test Encryption Failed: %v\n", err)
 			os.Exit(1)

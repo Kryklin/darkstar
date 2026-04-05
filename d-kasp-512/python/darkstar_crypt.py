@@ -707,15 +707,16 @@ class DarkstarCrypt:
             raise e
 
     # --- Public API ---
-    def encrypt(self, mnemonic, key_material, force_v2=False, force_v1=False, force_v3=False, force_v4=False, force_v5=False):
+    def encrypt(self, mnemonic, key_material, version=5):
         words = mnemonic.split(' ')
         obfuscated_words = []
         reverse_key = []
-        
-        is_v5 = force_v5
-        is_v4 = not force_v3 and not force_v2 and not force_v1 and not force_v5
-        if force_v4: is_v4 = True
-        is_v3 = force_v3
+
+        is_v1 = version == 1
+        is_v2 = version == 2
+        is_v3 = version == 3
+        is_v4 = version == 4
+        is_v5 = version == 5
         is_modern = is_v3 or is_v4 or is_v5
         
         ct_hex = ""
@@ -809,15 +810,18 @@ class DarkstarCrypt:
             payload_to_encrypt = base64.b64encode(final_payload)
             encrypted_content = self._encrypt_aes256(payload_to_encrypt, active_password_str, target_iterations)
         
-        if force_v1:
-            rk_json = json.dumps(reverse_key)
-            uncompressed_rk_b64 = base64.b64encode(rk_json.encode('utf-8')).decode('ascii')
+        v_protocol = 5
+        if is_v1: v_protocol = 1
+        elif is_v2: v_protocol = 2
+        elif is_v3: v_protocol = 3
+        elif is_v4: v_protocol = 4
+
+        if is_v1:
+            uncompressed_rk = json.dumps(reverse_key)
             return {
                 "encryptedData": encrypted_content,
-                "reverseKey": uncompressed_rk_b64
+                "reverseKey": base64.b64encode(uncompressed_rk.encode()).decode()
             }
-            
-        v_protocol = 5 if is_v5 else (4 if is_v4 else (3 if is_v3 else 2))
         res_obj = {
             "v": v_protocol,
             "data": encrypted_content
@@ -1056,26 +1060,20 @@ if __name__ == "__main__":
 
     crypt = DarkstarCrypt()
     v = args.v
+    format_opt = args.format
     
-    # Map version to flags (Internal legacy support)
-    v_flags = {
-        "force_v1": v == 1,
-        "force_v2": v == 2,
-        "force_v3": v == 3,
-        "force_v4": v == 4,
-        "force_v5": v == 5
-    }
-
-    if args.command == 'encrypt':
-        output_format = args.format or "json"
-        res = crypt.encrypt(args.mnemonic, args.password, **v_flags)
+    if args.command == "encrypt":
+        res = crypt.encrypt(args.mnemonic, args.password, version=v)
         
+        output_format = format_opt or 'json'
         if output_format == "json":
             print(json.dumps(res))
         elif output_format == "csv":
-            print(f"{res['encryptedData']},{res['reverseKey']}")
+            res_dict = json.loads(res)
+            print(f"{res_dict['encryptedData']},{res_dict['reverseKey']}")
         else: # text
-            print(f"Data: {res['encryptedData']}\nReverseKey: {res['reverseKey']}")
+            res_dict = json.loads(res)
+            print(f"Data: {res_dict['encryptedData']}\nReverseKey: {res_dict['reverseKey']}")
             
     elif args.command == 'decrypt':
         output_format = args.format or "text"
@@ -1114,13 +1112,18 @@ if __name__ == "__main__":
             dec_psw = sk.hex()
             
         print(f"--- Darkstar Python Self-Test (V{v}) ---")
-        res = crypt.encrypt(mnemonic, password, **v_flags)
-        decrypted = crypt.decrypt(res['encryptedData'], res['reverseKey'], dec_psw)
-        print(f"Decrypted: '{decrypted}'")
-        if decrypted == mnemonic:
-            print("Result: PASSED")
-        else:
-            print("Result: FAILED")
+        try:
+            res_json = crypt.encrypt(mnemonic, password, version=v)
+            res = json.loads(res_json)
+            decrypted = crypt.decrypt(res['encryptedData'], res['reverseKey'], dec_psw)
+            print(f"Decrypted: '{decrypted}'")
+            if decrypted == mnemonic:
+                print("Result: PASSED")
+            else:
+                print("Result: FAILED")
+                sys.exit(1)
+        except Exception as e:
+            print(f"Result: FAILED with error {e}")
             sys.exit(1)
     else:
         print(f"Unknown command: {command}")
