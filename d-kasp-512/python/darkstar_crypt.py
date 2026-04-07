@@ -595,9 +595,8 @@ class DarkstarCrypt:
         iv_hex = iv.hex()
         cipher_b64 = base64.b64encode(ciphertext).decode('ascii')
         
-        # Best effort zeroing
-        if isinstance(key, bytearray):
-            for i in range(len(key)): key[i] = 0
+        # Python natively manages `bytes` objects and prevents modifying memory.
+        # We allow the PBKDF2 key object to drop via GARBAGE COLLECTION.
             
         return salt_hex + iv_hex + cipher_b64
 
@@ -629,9 +628,8 @@ class DarkstarCrypt:
             unpadder = padding.PKCS7(128).unpadder()
             data = unpadder.update(padded_data) + unpadder.finalize()
             
-            # Best effort zeroing
-            if isinstance(key, bytearray):
-                for i in range(len(key)): key[i] = 0
+            # Python natively manages `bytes` objects and prevents modifying memory.
+            # We allow the PBKDF2 key object to drop via GARBAGE COLLECTION.
                 
             return data
         except Exception as e:
@@ -663,8 +661,7 @@ class DarkstarCrypt:
         iv_hex = iv.hex()
         cipher_b64 = base64.b64encode(ciphertext + tag).decode('ascii')
         
-        if isinstance(key, bytearray):
-            for i in range(len(key)): key[i] = 0
+        # Python natively manages `bytes` objects and prevents modifying memory.
             
         return salt_hex + iv_hex + cipher_b64
 
@@ -698,8 +695,7 @@ class DarkstarCrypt:
                 
             plaintext = decryptor.update(ciphertext) + decryptor.finalize()
             
-            if isinstance(key, bytearray):
-                for i in range(len(key)): key[i] = 0
+            # Python natively manages `bytes` objects and prevents modifying memory.
                 
             return plaintext
         except Exception as e:
@@ -725,10 +721,13 @@ class DarkstarCrypt:
         if is_v5:
             import pqcrypto.kem.ml_kem_1024 as kem
             pk_bytes = bytes.fromhex(key_material)
-            ct_bytes, ss_bytes = kem.encrypt(pk_bytes)
+            ct_bytes, ss_bytes_tup = kem.encrypt(pk_bytes)
+            # ML-KEM outputs tuple, need mutable copy if we want to wipe it.
+            ss_bytes = bytearray(ss_bytes_tup)
             ct_hex = ct_bytes.hex()
             ss_hex = ss_bytes.hex()
             active_password_str = ss_hex
+            for i in range(len(ss_bytes)): ss_bytes[i] = 0 # Zeroized
 
 
         
@@ -795,7 +794,7 @@ class DarkstarCrypt:
 
         final_payload = final_blob
         if is_v5:
-            final_payload = final_payload.ljust(1024, b"\x00")
+            final_payload = final_payload.ljust(2048, b"\x00")
 
         target_iterations = self.ITERATIONS_V2
         

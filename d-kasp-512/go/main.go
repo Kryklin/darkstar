@@ -634,7 +634,7 @@ func (dc *DarkstarCrypt) obfuscateWithVigenereCipherV2(input []byte, seed []byte
 			parts = append(parts, byte(44))
 		}
 		keyCode := seed[i%len(seed)]
-		val := int(b) + int(keyCode) // Can exceed 255? JS: input[i] + seed... result is string.
+		val := int(b) + int(keyCode)
 		valStr := strconv.Itoa(val)
 		parts = append(parts, []byte(valStr)...)
 	}
@@ -763,6 +763,9 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic string, keyMaterial string, version in
 		ctHex = hex.EncodeToString(ctBytes)
 		ssHex = hex.EncodeToString(ssBytes)
 		activePasswordStr = ssHex
+		for i := range ssBytes {
+		    ssBytes[i] = 0
+		}
 	}
 
 	prngFactory := func(s string) PRNG {

@@ -19,7 +19,7 @@ const { ml_kem1024: kyber } = require('@noble/post-quantum/ml-kem.js');
 export class DarkstarCrypt {
   ITERATIONS_V1 = 1000;
   ITERATIONS_V2 = 600000;
-  KEY_SIZE = 256 / 32;
+  KEY_SIZE = 256 / 8; // 32 bytes (256 bits)
   SALT_SIZE_BYTES = 128 / 8;
   IV_SIZE_BYTES = 128 / 8;
 
@@ -141,8 +141,9 @@ export class DarkstarCrypt {
       ctHex = this.buf2hex(encap.cipherText);
       const ss_bytes = encap.sharedSecret; // Uint8Array
       activePasswordStr = this.buf2hex(ss_bytes);
-      // We will zeroize ss_bytes later if possible
+      ss_bytes.fill(0); // Zeroized
     }
+
 
 
     // PRNG Selection
@@ -309,7 +310,9 @@ export class DarkstarCrypt {
       const ctBytes = this.hex2buf(ctHex);
       const ss_bytes = kyber.decapsulate(ctBytes, skBytes);
       activePasswordStr = this.buf2hex(ss_bytes);
+      ss_bytes.fill(0); // Zeroized
     }
+
 
     let iterations = this.ITERATIONS_V2;
     const aad = isV5 ? this.stringToBytes(reverseKeyB64) : null;
@@ -413,7 +416,8 @@ export class DarkstarCrypt {
     const salt = crypto.getRandomValues(new Uint8Array(this.SALT_SIZE_BYTES));
     const iv = crypto.getRandomValues(new Uint8Array(this.IV_SIZE_BYTES));
 
-    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
+    const pBytes = enc.encode(password);
+    const keyMaterial = await crypto.subtle.importKey('raw', pBytes, { name: 'PBKDF2' }, false, ['deriveKey']);
     const key = await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
@@ -426,6 +430,7 @@ export class DarkstarCrypt {
       false,
       ['encrypt'],
     );
+    pBytes.fill(0);
 
     const encrypted = await crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv }, key, enc.encode(data));
 
@@ -441,7 +446,8 @@ export class DarkstarCrypt {
     const salt = crypto.getRandomValues(new Uint8Array(this.SALT_SIZE_BYTES));
     const iv = crypto.getRandomValues(new Uint8Array(12)); 
 
-    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
+    const pBytes = enc.encode(password);
+    const keyMaterial = await crypto.subtle.importKey('raw', pBytes, { name: 'PBKDF2' }, false, ['deriveKey']);
     const key = await crypto.subtle.deriveKey(
       { name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' },
       keyMaterial,
@@ -449,6 +455,7 @@ export class DarkstarCrypt {
       false,
       ['encrypt']
     );
+    pBytes.fill(0);
 
     const dataToEncrypt = (typeof data === 'string') ? enc.encode(data) : data;
     const encryptParams = { name: 'AES-GCM', iv: iv };
@@ -474,7 +481,8 @@ export class DarkstarCrypt {
       const encryptedBytes = Uint8Array.from(atob(encryptedBase64), (c) => c.charCodeAt(0));
 
       const enc = new TextEncoder();
-      const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
+      const pBytes = enc.encode(password);
+      const keyMaterial = await crypto.subtle.importKey('raw', pBytes, { name: 'PBKDF2' }, false, ['deriveKey']);
 
       const key = await crypto.subtle.deriveKey(
         {
@@ -488,6 +496,7 @@ export class DarkstarCrypt {
         false,
         ['decrypt'],
       );
+      pBytes.fill(0);
 
       const decrypted = await crypto.subtle.decrypt({ name: 'AES-CBC', iv: iv }, key, encryptedBytes);
 
@@ -509,7 +518,8 @@ export class DarkstarCrypt {
       const encryptedBytes = Uint8Array.from(atob(encryptedBase64), (c) => c.charCodeAt(0));
 
       const enc = new TextEncoder();
-      const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
+      const pBytes = enc.encode(password);
+      const keyMaterial = await crypto.subtle.importKey('raw', pBytes, { name: 'PBKDF2' }, false, ['deriveKey']);
 
       const key = await crypto.subtle.deriveKey(
         { name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' },
@@ -518,6 +528,7 @@ export class DarkstarCrypt {
         false,
         ['decrypt']
       );
+      pBytes.fill(0);
 
       const decryptParams = { name: 'AES-GCM', iv: iv };
       if (aad) decryptParams.additionalData = aad;

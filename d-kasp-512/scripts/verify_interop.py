@@ -4,6 +4,18 @@ import sys
 import os
 import shutil
 import time
+import platform
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
+from rich.console import Console
+from rich.live import Live
+from rich.layout import Layout
+from rich.panel import Panel
+from rich.table import Table
+from rich import box
 
 # Configuration
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,7 +33,6 @@ CLI_COMMANDS = {
     "node": [NODE_BIN, os.path.join(PROJECT_ROOT, "node", "darkstar_crypt.js")]
 }
 
-# Directories to run commands in
 CLI_CWD = {
     "go": os.path.join(PROJECT_ROOT, "go"),
     "rust": PROJECT_ROOT,
@@ -31,9 +42,31 @@ CLI_CWD = {
 
 TEST_MNEMONIC = "apple banana cherry date elderberry fig grape honeydew"
 TEST_PASSWORD = "Strong!Password#2026"
+TOTAL_EXPECTED_TESTS = 80 # 5 versions * 4 langs * 4 langs
+
+def get_sys_info():
+    uname = platform.uname()
+    ram_gb = "N/A"
+    cpu_freq = "N/A"
+    if psutil:
+        mem = psutil.virtual_memory()
+        ram_gb = f"{mem.total / (1024**3):.1f} GB"
+        try:
+            freq = psutil.cpu_freq()
+            cpu_freq = f"{freq.max:.0f}Mhz" if freq else "N/A"
+        except:
+            pass
+            
+    table = Table(box=box.SIMPLE_HEAVY, expand=True)
+    table.add_column("Property", style="#888888")
+    table.add_column("Value", style="#aaaaaa")
+    table.add_row("OS", f"{uname.system} {uname.release} ({uname.machine})")
+    table.add_row("Processor", f"{uname.processor} @ {cpu_freq}")
+    table.add_row("System RAM", ram_gb)
+    table.add_row("Python Ver.", platform.python_version())
+    return Panel(table, title="[bold #cccccc][ DARKSTAR // HOST TELEMETRY ][/bold #cccccc]", border_style="#555555")
 
 def run_cli(lang, args):
-    # Ensure all args are strings (especially if they were parsed from JSON)
     str_args = []
     for a in args:
         if isinstance(a, (dict, list)):
@@ -52,99 +85,149 @@ def run_cli(lang, args):
         return f"ERROR: {result.stderr.strip()}", elapsed
     return result.stdout.strip(), elapsed
 
-def main():
-    start_suite = time.perf_counter()
-    print(f"=== d-kasp-512 Cross-Language Interop Verification ===")
-    print(f"Mnemonic: {TEST_MNEMONIC}")
-    print(f"Password: {TEST_PASSWORD}")
-    print("-" * 50)
 
+console = Console()
+
+def main():
+    layout = Layout()
+    layout.split_column(
+        Layout(name="header", size=8),
+        Layout(name="dashboard", size=6)
+    )
+    
     total_tests = 0
     passed_tests = 0
+    start_suite = time.perf_counter()
+    current_action = "STANDBY"
+    action_start_time = time.perf_counter()
+    current_version_int = 5
+
+    def generate_dashboard():
+        t = Table(expand=True, box=box.HEAVY, border_style="#555555")
+        t.add_column("PROGRESS", justify="center", style="#888888", width=14)
+        t.add_column("PASS", justify="center", style="#888888", width=12)
+        t.add_column("OPERATION", justify="center", style="#888888", ratio=1)
+        t.add_column("PROTOCOL", justify="center", style="#888888", width=16)
+        t.add_column("UPTIME", justify="center", style="#888888", width=12)
+        
+        uptime_s = time.perf_counter() - start_suite
+        uptime = f"{uptime_s:.2f}s"
+        
+        # Reactive progress: dim -> bright white as tests complete
+        pct = total_tests / TOTAL_EXPECTED_TESTS if TOTAL_EXPECTED_TESTS else 0
+        if pct < 0.25:
+            prog_color = "#666666"
+        elif pct < 0.5:
+            prog_color = "#999999"
+        elif pct < 0.75:
+            prog_color = "#bbbbbb"
+        else:
+            prog_color = "#ffffff"
+        progress_str = f"[{prog_color}]{total_tests} / {TOTAL_EXPECTED_TESTS}[/{prog_color}]"
+        
+        # Reactive pass: green tint scales with count
+        if passed_tests == 0:
+            pass_str = f"[#666666]{passed_tests}[/#666666]"
+        elif passed_tests < TOTAL_EXPECTED_TESTS:
+            pass_str = f"[#5faf5f]{passed_tests}[/#5faf5f]"
+        else:
+            pass_str = f"[#87d787]{passed_tests}[/#87d787]"
+        
+        # Protocol bar: cyan pips
+        filled = "|" * current_version_int
+        empty = "." * (5 - current_version_int)
+        version_bar = f"[#5fafaf]{filled}[/#5fafaf][#444444]{empty}[/#444444] [#5fafaf]V{current_version_int}[/#5fafaf]"
+        
+        # Reactive uptime: warm shift over time
+        if uptime_s < 10:
+            up_color = "#888888"
+        elif uptime_s < 30:
+            up_color = "#d7af5f"
+        else:
+            up_color = "#d78700"
+        uptime_str = f"[{up_color}]{uptime}[/{up_color}]"
+        
+        t.add_row(progress_str, pass_str, current_action, version_bar, uptime_str)
+        return Panel(t, title="[bold #cccccc][ DARKSTAR // INTEROP BENCHMARK ][/bold #cccccc]", border_style="#555555")
+
+    layout["header"].update(get_sys_info())
+    layout["dashboard"].update(generate_dashboard())
+
     versions = ["5", "4", "3", "2", "1"]
 
-    for version in versions:
-        version_label = f"d-kasp-512 (V{version})"
-        print(f"\n{'='*20} Testing {version_label} {'='*20}")
-        
-        v5_pk = ""
-        v5_sk = ""
-        if version == "5":
-            print("  Generating ML-KEM-1024 Keypair (using Python)...", end=" ", flush=True)
-            keygen_out, elapsed = run_cli("python", ["-v", "5", "keygen"])
-            if not keygen_out:
-                print(f"FAILED ({elapsed:.3f}s)")
-                continue
-            print(f"DONE ({elapsed:.3f}s)")
-            lines = [l for l in keygen_out.split('\n') if ':' in l]
-            v5_pk = lines[0].split(': ')[1].strip()
-            v5_sk = lines[1].split(': ')[1].strip()
-            print(f"  PK: {v5_pk[:16]}...{v5_pk[-16:]}")
-
-        for src_lang in LANGS:
-            print(f"\n  [Source: {src_lang.upper()} V{version}]")
-            
-            encrypt_pass = v5_pk if version == "5" else TEST_PASSWORD
-            decrypt_pass = v5_sk if version == "5" else TEST_PASSWORD
-            
-            # 1. Encrypt with source
-            print(f"  Encrypting with {src_lang}...", end=" ", flush=True)
-            encrypt_output, elapsed = run_cli(src_lang, ["-v", version, "encrypt", TEST_MNEMONIC, encrypt_pass])
-            
-            if not encrypt_output:
-                print(f"FAILED ({elapsed:.3f}s)")
-                continue
-            print(f"DONE ({elapsed:.3f}s)")
-
-            try:
-                # Find the first { and last } to isolate JSON
-                start = encrypt_output.find('{')
-                end = encrypt_output.rfind('}') + 1
-                if start == -1 or end == 0:
-                    raise ValueError("No JSON found")
-                res_json = json.loads(encrypt_output[start:end])
+    with Live(layout, console=console, refresh_per_second=10) as live:
+        for version in versions:
+            current_version_int = int(version)
+            v5_pk = ""
+            v5_sk = ""
+            if version == "5":
+                current_action = "V5 >> KEYGEN ML-KEM-1024"
+                action_start_time = time.perf_counter()
+                layout["dashboard"].update(generate_dashboard())
+                live.update(layout, refresh=True)
                 
-                if not res_json or 'encryptedData' not in res_json:
-                    print(f"  FAILED: Invalid JSON structure from {src_lang}")
+                keygen_out, elapsed = run_cli("python", ["-v", "5", "keygen"])
+                if keygen_out and not keygen_out.startswith("ERROR"):
+                    lines = [l for l in keygen_out.split('\n') if ':' in l]
+                    if len(lines) >= 2:
+                        v5_pk = lines[0].split(': ')[1].strip()
+                        v5_sk = lines[1].split(': ')[1].strip()
+
+            for src_lang in LANGS:
+                encrypt_pass = v5_pk if version == "5" else TEST_PASSWORD
+                decrypt_pass = v5_sk if version == "5" else TEST_PASSWORD
+                
+                current_action = f"V{version} >> {src_lang.upper()} ENCRYPT"
+                action_start_time = time.perf_counter()
+                layout["dashboard"].update(generate_dashboard())
+                live.update(layout, refresh=True)
+                
+                encrypt_output, elapsed = run_cli(src_lang, ["-v", version, "encrypt", TEST_MNEMONIC, encrypt_pass])
+                if not encrypt_output or "ERROR" in encrypt_output:
                     continue
-                
-                encrypted_data = res_json["encryptedData"]
-                if isinstance(encrypted_data, (dict, list)):
-                    encrypted_data = json.dumps(encrypted_data)
+
+                try:
+                    start = encrypt_output.find('{')
+                    end = encrypt_output.rfind('}') + 1
+                    if start == -1 or end == 0:
+                        continue
+                    res_json = json.loads(encrypt_output[start:end])
+                    if not res_json or 'encryptedData' not in res_json:
+                        continue
                     
-                reverse_key = res_json["reverseKey"]
-                if isinstance(reverse_key, (dict, list)):
-                    reverse_key = json.dumps(reverse_key)
-            except Exception as e:
-                print(f"  FAILED: Could not parse JSON from {src_lang}. Error: {e}")
-                continue
+                    encrypted_data = res_json["encryptedData"]
+                    if isinstance(encrypted_data, (dict, list)):
+                        encrypted_data = json.dumps(encrypted_data)
+                        
+                    reverse_key = res_json["reverseKey"]
+                    if isinstance(reverse_key, (dict, list)):
+                        reverse_key = json.dumps(reverse_key)
+                except Exception:
+                    continue
 
-            # 2. Decrypt with all
-            for dest_lang in LANGS:
-                total_tests += 1
-                print(f"    -> Decrypt with {dest_lang.upper()}:", end=" ", flush=True)
-                
-                decrypt_output, elapsed = run_cli(dest_lang, ["-v", version, "decrypt", encrypted_data, reverse_key, decrypt_pass])
-                
-                if decrypt_output == TEST_MNEMONIC:
-                    print(f"PASS ({elapsed:.3f}s)")
-                    passed_tests += 1
-                else:
-                    print(f"FAILED ({elapsed:.3f}s)")
-                    if decrypt_output:
-                        print(f"        Got: {decrypt_output}")
+                for dest_lang in LANGS:
+                    total_tests += 1
+                    current_action = f"V{version} >> {src_lang.upper()} > {dest_lang.upper()} DECRYPT"
+                    action_start_time = time.perf_counter()
+                    layout["dashboard"].update(generate_dashboard())
+                    live.update(layout, refresh=True)
+                    
+                    decrypt_output, telapsed = run_cli(dest_lang, ["-v", version, "decrypt", encrypted_data, reverse_key, decrypt_pass])
+                    
+                    if decrypt_output == TEST_MNEMONIC:
+                        passed_tests += 1
+                        
+                    layout["dashboard"].update(generate_dashboard())
+                    live.update(layout, refresh=True)
 
-    end_suite = time.perf_counter()
-    print("\n" + "="*50)
-    print(f"INTEROP VERIFICATION {'PASSED' if passed_tests == total_tests else 'FAILED'}!")
-    print(f"Tests Run:    {total_tests}")
-    print(f"Tests Passed: {passed_tests}")
-    print(f"Total Time:   {end_suite - start_suite:.3f}s")
-    print("="*50)
-
-    if passed_tests != total_tests:
+    elapsed_total = f"{time.perf_counter() - start_suite:.2f}s"
+    console.print()
+    if passed_tests == TOTAL_EXPECTED_TESTS:
+        console.print(f"[bold #aaaaaa]>>> DARKSTAR VERIFIED  {passed_tests}/{TOTAL_EXPECTED_TESTS} passed  {elapsed_total} <<<[/bold #aaaaaa]")
+        sys.exit(0)
+    else:
+        console.print(f"[bold #aa3333]>>> BREACH DETECTED  {passed_tests}/{TOTAL_EXPECTED_TESTS} passed  {elapsed_total} <<<[/bold #aa3333]")
         sys.exit(1)
 
 if __name__ == "__main__":
     main()
-

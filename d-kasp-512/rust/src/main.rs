@@ -8,7 +8,6 @@ use hmac::Hmac;
 use pbkdf2::pbkdf2;
 use rand::Rng;
 use zeroize::Zeroize;
-use std::convert::TryFrom;
 use sha2::Sha256;
 
 /// d-kasp-512 Encryption Suite
@@ -1045,21 +1044,14 @@ impl DarkstarCrypt {
 
         type Aes256CbcDec = cbc::Decryptor<Aes256>;
         let iv_arr = cbc::cipher::generic_array::GenericArray::from_slice(&iv);
-        let mut cipher = Aes256CbcDec::new(&key.into(), iv_arr);
-
-        if ciphertext.len() % 16 != 0 { return Err("Ciphertext not multiple of block size".into()); }
-
-        cipher.decrypt_blocks_mut(unsafe {
-            std::slice::from_raw_parts_mut(ciphertext.as_mut_ptr() as *mut cbc::cipher::generic_array::GenericArray<u8, cbc::cipher::consts::U16>, ciphertext.len() / 16)
-        });
+        let plaintext = Aes256CbcDec::new(&key.into(), iv_arr)
+            .decrypt_padded_mut::<Pkcs7>(&mut ciphertext)
+            .map_err(|e| format!("CBC Decryption/Unpad error: {:?}", e))?
+            .to_vec();
 
         key.zeroize();
 
-        // Unpad
-        let padding_len = ciphertext.last().copied().unwrap_or(0) as usize;
-        if padding_len == 0 || padding_len > 16 { return Err("Invalid padding".into()); }
-        
-        Ok(ciphertext[..ciphertext.len() - padding_len].to_vec())
+        Ok(plaintext)
     }
 
     fn decrypt_aes256_gcm(&self, transit_message: &str, password: &str, iterations: u32, aad: Option<&[u8]>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
