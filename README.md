@@ -25,65 +25,43 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
-`darkstar` is a defense-grade client-side security tool designed to safeguard sensitive recovery phrases, data, and notes. It combines a dynamic, **V5 (D-KASP-512) Obfuscation Engine** with **AES-256-GCM** (Authenticators) inherently designed for **Quantum Resistance**.
+`darkstar` is a defense-grade client-side security tool designed to safeguard sensitive recovery phrases, data, and notes. It combines the **V5 (D-KASP-512) Obfuscation Engine** with **ML-KEM-1024** (Kyber) and **AES-256-GCM** for industry-leading Quantum Resistance.
 
-> [!NOTE]
-> **Architecture Overview**: Curious how it works? View the [Visual Architecture Guide](DARKSTAR_ARCHITECTURE.md).
+---
 
-> [!TIP]
-> **Multi-Language Suite**: Looking to integrate Darkstar into your own backend or tools? Check out the [Multi-Language Encryption Suite](d-kasp-512/README.md) featuring Go, Rust, Python, and Node.js implementations.
+## 🛡️ Core Security Features
 
-## Key Features
+| Category             | Key Capabilities                                                                 |
+| :------------------- | :------------------------------------------------------------------------------- |
+| **PQC Encryption**   | V5 D-KASP-512 engine with ML-KEM-1024, AES-256-GCM, and Positional Salting.      |
+| **Advanced Privacy** | Air-Gapped QR Transfer, Audio Steganography (WAV), and Anti-Forensic Memory.     |
+| **Vault Management** | Zero-knowledge Secure Vault, Identity Binding, and Automated Scheduled Backups.  |
+| **Access Control**   | Biometric Unlock (FaceID/TouchID), YubiKey Support (WebAuthn), and TOTP 2FA.     |
+| **Integrity**        | Application Anti-Tamper Checks and mathematical Time-Lock Encryption (VDF).      |
+| **Modern UX**        | Premium Glassmorphism UI with custom themes and cross-platform native builds.   |
 
-- **Anti-Tamper Integrity Checks**: Cryptographic verification of the application payload on startup prevents malicious modifications or supply-chain injection.
-- **Air-Gapped QR Protocol**: Optically transmit and receive AES-encrypted payloads directly over webcam between isolated laptops and mobile devices.
-- **Capacitor Mobile Native**: Full cross-platform support. Darkstar compiles into native Android (APK) and iOS (IPA) apps while sharing 100% of the cryptographic logic.
-- **Time-Lock Encryption**: Secure notes can be mathematically locked using a Verifiable Delay Function (VDF), guaranteeing they remain encrypted for a predefined temporal computation period.
-- **Secure Vault**: A session-based, zero-knowledge vault for managing secure notes and sensitive metadata with multi-layered encryption.
-- **Vault Signature Binding**: Cryptographically bind your data to your specific Vault Identity. Decryption is only possible when authenticated with the same cryptographic signature.
-- **Identity Backup & Recovery**: Securely export and import your full Vault Identity (JSON) to ensure access to bound data across devices or after a vault reset.
-- **V5 Encryption Engine (Hardened Standard)**: Powered by Web Crypto API with **AES-256-GCM** and **ML-KEM-1024** and **Positional Salting**. Inherent resistance to Grover's algorithm ensures long-term data survival in the quantum era.
-- **Dynamic Deterministic Cycles (V5)**: Obfuscation depth scales intelligently (up to 512 layers) with **Positional Salting**, ensuring that identical words in different positions generate unique paths.
-- **Anti-Forensic Memory**: Strict `Uint8Array` usage with explicit memory zeroing. The P2P service automatically performs an emergency shutdown if the vault is locked.
-- **Windows Hello & Biometrics**: Unlock your vault primarily using platform biometrics (TouchID, FaceID) or **Hardware Keys (YubiKey)** via WebAuthn.
-- **Audio Steganography**: Embed encrypted data into WAV audio files using LSB encoding. Supports uploading custom cover audio or generating white noise.
-- **Time-Based One-Time Passwords (TOTP)**: Enforce a second layer of security inside the vault via a standards-compliant authenticator app.
-- **Automated Scheduled Backups**: Seamless background exports of the encrypted user vault based on customizable intervals.
+---
 
-- **Premium UI**: A high-fidelity Glassmorphism interface with custom themes and smooth animations.
-- **Offline First**: Zero telemetry. All core encryption operations occur locally on your device.
+## 🚀 Getting Started
 
-## Getting Started
-
-### Installation
-
+### Installation & Development
 ```bash
 git clone https://github.com/Kryklin/darkstar.git
 cd darkstar
 npm install
+npm start # Start interactive UI
 ```
 
-### Development
+## 🏗️ Technical Architecture
 
-| Command                    | Description                                |
-| :------------------------- | :----------------------------------------- |
-| `npm start`                | Start the interactive pipeline (Menu UI)   |
-| `npm run cap:sync`         | Sync Web assets to Android/iOS platforms   |
-| `npm run cap:open:ios`     | Open the iOS project in Xcode              |
-| `npm run cap:open:android` | Open the Android project in Android Studio |
+1.  **Identity Generation**: Unique Master Key and Cryptographic Identity generated upon vault creation.
+2.  **Obfuscation Pipeline**: Shuffled 512-layer transformation gauntlet driven by index-salted entropy.
+3.  **Layered Encryption**: ML-KEM-1024 (Kyber) and AES-256-GCM encapsulation.
+4.  **Hardware Binding**: OS-level protection via Electron SafeStorage and Signature Key binding.
 
-## How it Works
-
-`darkstar` employs a "Defense in Depth" strategy:
-
-1.  **Identity Generation**: Upon vault creation, a unique Master Key and Cryptographic Identity are generated.
-2.  **Obfuscation Pipeline**: A gauntlet of obfuscation functions is **shuffled deterministically** based on your password, applying up to 512 layers of transformation.
-3.  **Layered Encryption**: The data is encapsulated and encrypted using **AES-256-GCM** (V5/D-KASP) for verified authenticity and confidentiality.
-4.  **Hardware & Identity Binding**: Payloads can be further protected by **Electron SafeStorage** and bound to the vault's unique **Signature Key**.
-5.  **Verified Integrity**: The Electron application hashes its own JavaScript code upon initialization to detect any local malware tampering.
-
-This ensures that your data is secure at rest, in transit, and in use.
+> [!NOTE]
+> View the [Visual Architecture Guide](DARKSTAR_ARCHITECTURE.md) or the [Multi-Language Suite](d-kasp-512/README.md) for more technical details.
 
 ## Authors
+**Victor Kane** - [GitHub](https://github.com/Kryklin)
 
-**Victor Kane** - [https://github.com/Kryklin](https://github.com/Kryklin)
