@@ -118,34 +118,28 @@ export class DarkstarCrypt {
    * @param {string} keyMaterial - The password (V1-V4) OR Kyber-1024 Public Key Hex (V5).
    * @returns {Promise<{encryptedData: string, reverseKey: string}>} The encrypted result object.
    */
-  async encrypt(mnemonic, keyMaterial, version = 5) {
+  async encrypt(mnemonic, keyMaterial) {
     const words = mnemonic.split(' ');
     const obfuscatedWords = [];
     const reverseKey = [];
 
-    // V5 Engine Upgrade - Unified Version Mapping
-    const isV5 = version === 5;
-    const isV4 = version === 4;
-    const isV3 = version === 3;
-    const isV2 = version === 2;
-    const isV1 = version === 1;
-    const isModern = isV3 || isV4 || isV5;
+    // Protocol strictly enforces V5 for encryption
+    const isV5 = true;
+    const isV4 = false;
+    const isModern = true;
 
     let ssHex = "";
     let ctHex = "";
     let activePasswordStr = keyMaterial;
 
-    if (isV5) {
-      const pkBytes = this.hex2buf(keyMaterial);
-      const encap = kyber.encapsulate(pkBytes);
-      ctHex = this.buf2hex(encap.cipherText);
-      const ss_bytes = encap.sharedSecret; // Uint8Array
-      activePasswordStr = this.buf2hex(ss_bytes);
-      ss_bytes.fill(0); // Zeroized
-    }
+    const pkBytes = this.hex2buf(keyMaterial);
+    const encap = kyber.encapsulate(pkBytes);
+    ctHex = this.buf2hex(encap.cipherText);
+    const ss_bytes = encap.sharedSecret; // Uint8Array
+    activePasswordStr = this.buf2hex(ss_bytes);
+    ss_bytes.fill(0); // Zeroized
 
-
-
+    // PRNG Selection
     // PRNG Selection
     const prngFactory = isModern ? this.darkstar_chacha_prng.bind(this) : this.mulberry32.bind(this);
 
@@ -220,50 +214,35 @@ export class DarkstarCrypt {
     }
 
     const encodedReverseKey = this.packReverseKey(reverseKey, isModern);
-    const aad = isV5 ? this.stringToBytes(encodedReverseKey) : null;
+    const aad = this.stringToBytes(encodedReverseKey);
 
     let finalPayload;
-    if (isV5) {
-      if (finalBlob.length > 2048) {
-        throw new Error(`Obfuscated payload exceeds 2048-byte limit (${finalBlob.length} bytes). Increase V5_PADDING_SIZE or reduce gauntlet depth.`);
-      }
-      const paddedData = new Uint8Array(2048);
-      paddedData.set(finalBlob);
-      finalPayload = paddedData; // raw bytes
-    } else {
-      // Legacy V1-V4: payload is base64 encoded BEFORE encryption
-      finalPayload = this.buf2base64(finalBlob); // string
+    if (finalBlob.length > 2048) {
+      throw new Error(`Obfuscated payload exceeds 2048-byte limit (${finalBlob.length} bytes). Increase V5_PADDING_SIZE or reduce gauntlet depth.`);
     }
+    const paddedData = new Uint8Array(2048);
+    paddedData.set(finalBlob);
+    finalPayload = paddedData; // raw bytes
 
     const iterations = this.ITERATIONS_V2;
 
     let encryptedContent;
     try {
-      if (isModern) {
-        encryptedContent = await this.encryptAES256GCMAsync(finalPayload, activePasswordStr, iterations, aad);
-      } else {
-        encryptedContent = await this.encryptAES256Async(finalPayload, activePasswordStr, iterations);
-      }
+      encryptedContent = await this.encryptAES256GCMAsync(finalPayload, activePasswordStr, iterations, aad);
     } catch (e) {
       throw e;
     }
 
-
-    if (isV1) {
-      // V1 uses uncompressed JSON array for reverse key, base64 encoded
-      const uncompressedB64 = this.buf2base64(this.stringToBytes(JSON.stringify(reverseKey)));
-      return { encryptedData: encryptedContent, reverseKey: uncompressedB64 };
-    }
-
-    const resultObj = {
-      v: isV5 ? 5 : (isV4 ? 4 : (isV3 ? 3 : 2)),
+    const resObj = {
+      v: 5,
       data: encryptedContent,
+      ct: ctHex
     };
-    if (isV5) resultObj.ct = ctHex;
 
-    const finalResult = { encryptedData: JSON.stringify(resultObj), reverseKey: encodedReverseKey };
-    if (isV5) activePasswordStr = "";
-    return finalResult;
+    return {
+      encryptedData: resObj,
+      reverseKey: encodedReverseKey
+    };
   }
 
   /**
@@ -1251,12 +1230,10 @@ if (isMain) {
     let decryptPassword = password;
 
     const runTest = async () => {
-      if (v5) {
-        const { ml_kem1024: kyber } = require('@noble/post-quantum/ml-kem.js');
-        const keys = kyber.keygen();
-        password = Buffer.from(keys.publicKey).toString('hex');
-        decryptPassword = Buffer.from(keys.secretKey).toString('hex');
-      }
+      const { ml_kem1024: kyber } = require('@noble/post-quantum/ml-kem.js');
+      const keys = kyber.keygen();
+      password = Buffer.from(keys.publicKey).toString('hex');
+      decryptPassword = Buffer.from(keys.secretKey).toString('hex');
 
       console.log(`--- Darkstar Node Self-Test (V${v}) ---`);
       try {

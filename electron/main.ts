@@ -378,6 +378,50 @@ ipcMain.handle('open-backup', async (_event, filePath: string) => {
   try { return await fs.readFile(filePath, 'utf-8'); } catch { return null; }
 });
 
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+const execFileAsync = promisify(execFile);
+
+async function runDKaspCommand(engine: string, args: string[]): Promise<unknown> {
+    const isWindows = process.platform === 'win32';
+    const ext = isWindows ? '.exe' : '';
+    let cmd = '';
+    let execArgs: string[] = [];
+
+    const basePath = app.isPackaged 
+      ? path.join(process.resourcesPath, 'd-kasp-512') 
+      : path.join(__dirname, '..', '..', 'd-kasp-512');
+
+    if (engine === 'rust') {
+        cmd = path.join(basePath, 'rust', 'target', 'release', `d-kasp-512${ext}`);
+        execArgs = args;
+    } else if (engine === 'go') {
+        cmd = path.join(basePath, 'go', `d-kasp-512${ext}`);
+        execArgs = args;
+    } else {
+        // default Node
+        cmd = 'node';
+        execArgs = [path.join(basePath, 'node', 'darkstar_crypt.js'), ...args];
+    }
+
+    try {
+        const { stdout } = await execFileAsync(cmd, execArgs);
+        return JSON.parse(stdout);
+    } catch (e: unknown) {
+        const err = e as Error & { stderr?: string };
+        throw new Error(`D-KASP Engine (${engine}) failed: ${err.stderr || err.message}`);
+    }
+}
+
+ipcMain.handle('dkasp-encrypt', async (_event, mnemonic: string, pkHex: string, engine: string) => {
+    return await runDKaspCommand(engine, ['encrypt', mnemonic, pkHex]);
+});
+
+ipcMain.handle('dkasp-decrypt', async (_event, data: string, rk: string, password_or_sk: string, engine: string) => {
+    return await runDKaspCommand(engine, ['decrypt', data, rk, password_or_sk]);
+});
+
+
 // --- WebAuthn Native Proxy (Windows Hello Fix) ---
 
 ipcMain.handle('biometric-handshake', async (_event: unknown, options: { action: 'create' | 'get', publicKey: unknown }) => {

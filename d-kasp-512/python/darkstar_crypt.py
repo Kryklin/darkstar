@@ -703,34 +703,25 @@ class DarkstarCrypt:
             raise e
 
     # --- Public API ---
-    def encrypt(self, mnemonic, key_material, version=5):
+    def encrypt(self, mnemonic, key_material):
         words = mnemonic.split(' ')
         obfuscated_words = []
         reverse_key = []
 
-        is_v1 = version == 1
-        is_v2 = version == 2
-        is_v3 = version == 3
-        is_v4 = version == 4
-        is_v5 = version == 5
-        is_modern = is_v3 or is_v4 or is_v5
+        is_v5 = True
+        is_v4 = False
+        is_modern = True
         
-        ct_hex = ""
-        ss_hex = ""
         active_password_str = key_material
-        if is_v5:
-            import pqcrypto.kem.ml_kem_1024 as kem
-            pk_bytes = bytes.fromhex(key_material)
-            ct_bytes, ss_bytes_tup = kem.encrypt(pk_bytes)
-            # ML-KEM outputs tuple, need mutable copy if we want to wipe it.
-            ss_bytes = bytearray(ss_bytes_tup)
-            ct_hex = ct_bytes.hex()
-            ss_hex = ss_bytes.hex()
-            active_password_str = ss_hex
-            for i in range(len(ss_bytes)): ss_bytes[i] = 0 # Zeroized
-
-
-        
+        import pqcrypto.kem.ml_kem_1024 as kem
+        pk_bytes = bytes.fromhex(key_material)
+        ct_bytes, ss_bytes_tup = kem.encrypt(pk_bytes)
+        # ML-KEM outputs tuple, need mutable copy if we want to wipe it.
+        ss_bytes = bytearray(ss_bytes_tup)
+        ct_hex = ct_bytes.hex()
+        ss_hex = ss_bytes.hex()
+        active_password_str = ss_hex
+        for i in range(len(ss_bytes)): ss_bytes[i] = 0 # Zeroized        
         def prng_factory(s_str):
             if is_modern:
                 return self.DarkstarChaChaPRNG(s_str)
@@ -790,51 +781,28 @@ class DarkstarCrypt:
         final_blob = b"".join([struct.pack(">H", len(wb)) + wb for wb in obfuscated_words])
         
         encoded_reverse_key = self._pack_reverse_key(reverse_key, is_v3=is_modern)
-        aad = encoded_reverse_key.encode('utf-8') if is_v5 else None
+        aad = encoded_reverse_key.encode('utf-8')
 
         final_payload = final_blob
-        if is_v5:
-            final_payload = final_payload.ljust(2048, b"\x00")
+        final_payload = final_payload.ljust(2048, b"\x00")
 
         target_iterations = self.ITERATIONS_V2
         
-        if is_modern:
-            payload_to_encrypt = final_payload
-            if not is_v5:
-                # Legacy V3/V4: payload is base64 encoded BEFORE encryption
-                payload_to_encrypt = base64.b64encode(final_payload)
-            encrypted_content = self._encrypt_aes256_gcm(payload_to_encrypt, active_password_str, target_iterations, aad)
-        else:
-            # Legacy V1/V2: payload is base64 encoded BEFORE encryption
-            payload_to_encrypt = base64.b64encode(final_payload)
-            encrypted_content = self._encrypt_aes256(payload_to_encrypt, active_password_str, target_iterations)
+        payload_to_encrypt = final_payload
+        encrypted_content = self._encrypt_aes256_gcm(payload_to_encrypt, active_password_str, target_iterations, aad)
         
-        v_protocol = 5
-        if is_v1: v_protocol = 1
-        elif is_v2: v_protocol = 2
-        elif is_v3: v_protocol = 3
-        elif is_v4: v_protocol = 4
-
-        if is_v1:
-            uncompressed_rk = json.dumps(reverse_key)
-            return {
-                "encryptedData": encrypted_content,
-                "reverseKey": base64.b64encode(uncompressed_rk.encode()).decode()
-            }
         res_obj = {
-            "v": v_protocol,
-            "data": encrypted_content
+            "v": 5,
+            "data": encrypted_content,
+            "ct": ct_hex
         }
-        if is_v5:
-            res_obj["ct"] = ct_hex
         
         result_json = {
-            "encryptedData": json.dumps(res_obj, separators=(',', ':')),
+            "encryptedData": res_obj,
             "reverseKey": encoded_reverse_key
         }
         
-        if is_v5:
-            active_password_str = ""
+        active_password_str = ""
             
         return result_json
 
@@ -1062,7 +1030,7 @@ if __name__ == "__main__":
     format_opt = args.format
     
     if args.command == "encrypt":
-        res = crypt.encrypt(args.mnemonic, args.password, version=v)
+        res = crypt.encrypt(args.mnemonic, args.password)
         
         output_format = format_opt or 'json'
         if output_format == "json":

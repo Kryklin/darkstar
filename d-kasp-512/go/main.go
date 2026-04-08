@@ -728,44 +728,38 @@ func (dc *DarkstarCrypt) deobfuscateWithSeededSubstitutionV2(input []byte, seed 
 // --- Encrypt/Decrypt ---
 
 // Encrypt transforms a plaintext mnemonic into an obfuscated and encrypted payload.
-// Updated to use a single version integer (1-5).
-func (dc *DarkstarCrypt) Encrypt(mnemonic string, keyMaterial string, version int) (map[string]interface{}, error) {
+// Minified to strictly support V5 encryption.
+func (dc *DarkstarCrypt) Encrypt(mnemonic string, keyMaterial string) (map[string]interface{}, error) {
 	words := strings.Split(mnemonic, " ")
 	var obfuscatedWords [][]byte
 	var reverseKey [][]int
 
-	// V5 Engine Upgrade - Unified Version Mapping
-	isV1 := version == 1
-	isV2 := version == 2
-	isV3 := version == 3
-	isV4 := version == 4
-	isV5 := version == 5
-	isModern := isV3 || isV4 || isV5
+	isV5 := true
+	isV4 := false
+	isModern := true
 
 	ctHex := ""
 	ssHex := ""
 	activePasswordStr := keyMaterial
 
-	if isV5 {
-		sch := mlkem1024.Scheme()
-		pkBytes, err := hex.DecodeString(keyMaterial)
-		if err != nil {
-			return nil, fmt.Errorf("invalid kyber hex: %v", err)
-		}
-		pk, err := sch.UnmarshalBinaryPublicKey(pkBytes)
-		if err != nil {
-			return nil, fmt.Errorf("invalid public key: %v", err)
-		}
-		ctBytes, ssBytes, err := sch.Encapsulate(pk)
-		if err != nil {
-			return nil, err
-		}
-		ctHex = hex.EncodeToString(ctBytes)
-		ssHex = hex.EncodeToString(ssBytes)
-		activePasswordStr = ssHex
-		for i := range ssBytes {
-		    ssBytes[i] = 0
-		}
+	sch := mlkem1024.Scheme()
+	pkBytes, err := hex.DecodeString(keyMaterial)
+	if err != nil {
+		return nil, fmt.Errorf("invalid kyber hex: %v", err)
+	}
+	pk, err := sch.UnmarshalBinaryPublicKey(pkBytes)
+	if err != nil {
+		return nil, fmt.Errorf("invalid public key: %v", err)
+	}
+	ctBytes, ssBytes, err := sch.Encapsulate(pk)
+	if err != nil {
+		return nil, err
+	}
+	ctHex = hex.EncodeToString(ctBytes)
+	ssHex = hex.EncodeToString(ssBytes)
+	activePasswordStr = ssHex
+	for i := range ssBytes {
+		ssBytes[i] = 0
 	}
 
 	prngFactory := func(s string) PRNG {
@@ -844,10 +838,7 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic string, keyMaterial string, version in
 	}
 
 	encodedReverseKey, _ := dc.packReverseKey(reverseKey, isModern)
-	var aad []byte
-	if isV5 {
-		aad = []byte(encodedReverseKey)
-	}
+	var aad = []byte(encodedReverseKey)
 
 	// Construct final blob
 	totalLen := 0
@@ -862,71 +853,25 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic string, keyMaterial string, version in
 	}
 
 	var finalPayload []byte
-	if isV5 {
-		if len(finalBlob) > 2048 {
-			return nil, fmt.Errorf("obfuscated payload exceeds 2048-byte limit (%d bytes)", len(finalBlob))
-		}
-		padded := make([]byte, 2048)
-		copy(padded, finalBlob)
-		finalPayload = padded
-	} else {
-		finalPayload = finalBlob
+	if len(finalBlob) > 2048 {
+		return nil, fmt.Errorf("obfuscated payload exceeds 2048-byte limit (%d bytes)", len(finalBlob))
 	}
+	padded := make([]byte, 2048)
+	copy(padded, finalBlob)
+	finalPayload = padded
 
-	var encryptedContent string
 	targetIterations := ITERATIONS_V2
-
-	if isModern {
-		payloadToEncrypt := finalPayload
-		if !isV5 {
-			// Legacy V3/V4: payload is base64 encoded BEFORE encryption
-			payloadToEncrypt = []byte(base64.StdEncoding.EncodeToString(finalPayload))
-		}
-		res, err := dc.encryptAES256GCM(payloadToEncrypt, activePasswordStr, targetIterations, aad)
-		if err != nil {
-			return nil, err
-		}
-		encryptedContent = res
-	} else {
-		// V1/V2: payload is base64 encoded BEFORE encryption
-		payloadToEncrypt := base64.StdEncoding.EncodeToString(finalPayload)
-		res, err := dc.encryptAES256(payloadToEncrypt, activePasswordStr, targetIterations)
-		if err != nil {
-			return nil, err
-		}
-		encryptedContent = res
+	res, err := dc.encryptAES256GCM(finalPayload, activePasswordStr, targetIterations, aad)
+	if err != nil {
+		return nil, err
 	}
-
-	vProtocol := 5 // Default to V5
-	if isV1 {
-		vProtocol = 1
-	} else if isV2 {
-		vProtocol = 2
-	} else if isV3 {
-		vProtocol = 3
-	} else if isV4 {
-		vProtocol = 4
-	}
-
-	if isV1 {
-		uncompressedRK, err := json.Marshal(reverseKey)
-		if err != nil {
-			return nil, err
-		}
-
-		return map[string]interface{}{
-			"encryptedData": encryptedContent,
-			"reverseKey":    base64.StdEncoding.EncodeToString(uncompressedRK),
-		}, nil
-	}
+	encryptedContent := res
 
 	// Construct result structure
 	resultObj := map[string]interface{}{
-		"v":    vProtocol,
+		"v":    5,
 		"data": encryptedContent,
-	}
-	if isV5 {
-		resultObj["ct"] = ctHex
+		"ct":   ctHex,
 	}
 
 	return map[string]interface{}{
@@ -1459,7 +1404,7 @@ func main() {
 			fmt.Println("Error: encrypt requires mnemonic and password")
 			os.Exit(1)
 		}
-		res, err := dc.Encrypt(args[1], args[2], v)
+		res, err := dc.Encrypt(args[1], args[2])
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -1528,7 +1473,7 @@ func main() {
 		}
 		
 		fmt.Printf("--- Darkstar Go Self-Test (V%d) ---\n", v)
-		res, err := dc.Encrypt(mnemonic, password, v)
+		res, err := dc.Encrypt(mnemonic, password)
 		if err != nil {
 			fmt.Printf("Test Encryption Failed: %v\n", err)
 			os.Exit(1)

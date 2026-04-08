@@ -211,7 +211,7 @@
           <p>Select a note to view or create a new one.</p>
           
           @if (identityFingerprint()) {
-            <div class="identity-card">
+            <div class="identity-card glass-card">
                 <div class="id-header">
                     <mat-icon>fingerprint</mat-icon>
                     <span>Cryptographic Identity</span>
@@ -240,7 +240,7 @@
           }
 
           @if (hardwareId()) {
-            <div class="identity-card" style="margin-top: 16px;">
+            <div class="identity-card glass-card" style="margin-top: 16px;">
                 <div class="id-header">
                     <mat-icon>memory</mat-icon>
                     <span>Machine Hardware ID</span>

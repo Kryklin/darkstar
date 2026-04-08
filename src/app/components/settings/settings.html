@@ -1,7 +1,7 @@
-<div class="settings-container">
+<div class="settings-container page-layout-wrapper">
   <h1>Settings</h1>
 
-  <section class="settings-section">
+  <section class="settings-section glass-card">
     <h2>Appearance</h2>
     <mat-divider></mat-divider>
 
@@ -33,7 +33,7 @@
   </section>
 
 
-  <section class="settings-section">
+  <section class="settings-section glass-card">
     <h2>System</h2>
     <mat-divider></mat-divider>
 
@@ -78,9 +78,24 @@
     </div>
   </section>
 
-  <section class="settings-section">
+  <section class="settings-section glass-card">
     <h2>Security</h2>
     <mat-divider></mat-divider>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span class="title">Cryptographic Engine</span>
+        <span class="description">Select the backend engine executing D-KASP-512 matrix transformations. All run strictly offline.</span>
+      </div>
+      <mat-form-field appearance="outline">
+        <mat-label>Execution Backend</mat-label>
+        <mat-select [(ngModel)]="dkaspEngine">
+          <mat-option value="rust">Rust (High Performance, Default)</mat-option>
+          <mat-option value="go">Go (Optimized Concurrency)</mat-option>
+          <mat-option value="node">Node.js (Native JS Fallback)</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
 
     <div class="setting-row">
       <div class="setting-label">

@@ -1,10 +1,9 @@
-<div class="container">
+<div class="container page-layout-wrapper">
   @if (!showResult) {
-    <mat-card class="decrypt-card">
+    <mat-card class="decrypt-card glass-card">
       <mat-card-header>
         <mat-card-title>Decrypt {{ protocolTitle }}</mat-card-title>
-        <mat-card-subtitle>Enter the encrypted data, reverse key, and password to decrypt your mnemonic phrase.</mat-card-subtitle>
-        <a mat-button color="accent" [href]="protocolLink" target="_blank" class="learn-more-btn"> Learn More <mat-icon>open_in_new</mat-icon> </a>
+      <mat-card-subtitle>Enter the encrypted data, reverse key, and password to decrypt your mnemonic phrase.</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
         <mat-stepper linear #stepper>
@@ -91,11 +90,16 @@
               </mat-form-field>
               <div class="stepper-buttons">
                 <button mat-button matStepperPrevious>Back</button>
-                <button mat-button matStepperNext>Next</button>
+                @if (isV5Payload) {
+                  <button mat-raised-button color="primary" [disabled]="!firstFormGroup.valid || !secondFormGroup.valid" (click)="onSubmit()">Decrypt with Vault Identity</button>
+                } @else {
+                  <button mat-button matStepperNext>Next</button>
+                }
               </div>
             </form>
           </mat-step>
-          <mat-step [stepControl]="thirdFormGroup">
+          @if (!isV5Payload) {
+            <mat-step [stepControl]="thirdFormGroup">
             <form [formGroup]="thirdFormGroup">
               <ng-template matStepLabel>Enter Password</ng-template>
 
@@ -124,10 +128,11 @@
 
               <div class="stepper-buttons">
                 <button mat-button matStepperPrevious>Back</button>
-                <button mat-raised-button color="primary" (click)="onSubmit()">Decrypt</button>
+                <button mat-raised-button color="primary" [disabled]="!firstFormGroup.valid || !secondFormGroup.valid || !thirdFormGroup.valid" (click)="onSubmit()">Decrypt</button>
               </div>
             </form>
           </mat-step>
+          }
         </mat-stepper>
       </mat-card-content>
       <mat-card-footer>

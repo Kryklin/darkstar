@@ -1,60 +1,26 @@
-<mat-card class="encrypt-card">
+<div class="page-layout-wrapper">
+<mat-card class="encrypt-card glass-card">
   @if (!showResult) {
     <mat-card-header>
       <mat-card-title>{{ protocolTitle }}</mat-card-title>
       <mat-card-subtitle>{{ protocolSummary }}</mat-card-subtitle>
-      <a mat-button color="accent" [href]="protocolLink" target="_blank" class="learn-more-btn"> Learn More <mat-icon>open_in_new</mat-icon> </a>
     </mat-card-header>
     <mat-card-content>
-      <mat-stepper linear #stepper>
-        <mat-step [stepControl]="firstFormGroup">
-          <form [formGroup]="firstFormGroup">
-            <ng-template matStepLabel>Enter Recovery Phrase</ng-template>
-            <mat-form-field class="full-width">
-              <mat-label>{{ mnemonicLabel }}</mat-label>
-              <textarea matInput formControlName="firstCtrl" cdkTextareaAutosize #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="4" [placeholder]="mnemonicPlaceholder"></textarea>
-            </mat-form-field>
-            <div class="stepper-buttons">
-              @if (randomWordsGenerator) {
-                <button mat-button (click)="onGenerateRandomWords()">Generate Random Words</button>
-              }
-              <button mat-button matStepperNext>Next</button>
-            </div>
-          </form>
-        </mat-step>
-        <mat-step [stepControl]="secondFormGroup">
-          <form [formGroup]="secondFormGroup">
-            <ng-template matStepLabel>Set Password</ng-template>
-
-            <div class="security-controls" style="margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px">
-              <mat-slide-toggle [(ngModel)]="virtualKeyboardEnabled" [ngModelOptions]="{ standalone: true }" color="primary"> Enable Anti-Keylogger Mode </mat-slide-toggle>
-              @if (vaultService.isUnlocked()) {
-                <mat-slide-toggle [(ngModel)]="useVaultSignature" [ngModelOptions]="{ standalone: true }" color="accent"> Bind to Vault Signature </mat-slide-toggle>
-              }
-              <mat-slide-toggle [(ngModel)]="useHardwareId" [ngModelOptions]="{ standalone: true }" color="warn"> Bind to Machine Hardware ID </mat-slide-toggle>
-            </div>
-
-            <mat-form-field class="full-width">
-              <mat-label>Encryption password</mat-label>
-              <input matInput formControlName="secondCtrl" type="password" required [readonly]="virtualKeyboardEnabled" />
-              @if (virtualKeyboardEnabled) {
-                <mat-hint>Physical keyboard disabled for security</mat-hint>
-              }
-            </mat-form-field>
-
-            <app-entropy-meter [value]="secondFormGroup.controls['secondCtrl'].value || ''"></app-entropy-meter>
-
-            @if (virtualKeyboardEnabled) {
-              <app-virtual-keyboard (keyPress)="onVirtualKeyPress($event)" (backspace)="onVirtualBackspace()"></app-virtual-keyboard>
-            }
-
-            <div class="stepper-buttons">
-              <button mat-button matStepperPrevious>Back</button>
-              <button mat-raised-button color="primary" (click)="onSubmit()">Submit</button>
-            </div>
-          </form>
-        </mat-step>
-      </mat-stepper>
+      <form [formGroup]="firstFormGroup">
+        <mat-form-field class="full-width">
+          <mat-label>{{ mnemonicLabel }}</mat-label>
+          <textarea matInput formControlName="firstCtrl" cdkTextareaAutosize #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="4" [placeholder]="mnemonicPlaceholder"></textarea>
+        </mat-form-field>
+        <div class="stepper-buttons" style="margin-top: 16px;">
+          @if (randomWordsGenerator) {
+            <button mat-button (click)="onGenerateRandomWords()">Generate Random</button>
+          }
+          <button mat-raised-button color="primary" [disabled]="!firstFormGroup.valid || !vaultService.isUnlocked()" (click)="onSubmit()">Encrypt with Vault Key (V5)</button>
+        </div>
+        @if (!vaultService.isUnlocked()) {
+          <p class="hint-text" style="color: var(--mat-sys-error)">Your Vault must be unlocked to access your ML-KEM-1024 encryption keys.</p>
+        }
+      </form>
     </mat-card-content>
     <mat-card-footer>
       <p class="footer-text">Encryption is performed locally on your device. Your private data is never transmitted.</p>
@@ -153,3 +119,4 @@
     </mat-card-footer>
   }
 </mat-card>
+</div>

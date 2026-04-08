@@ -665,35 +665,29 @@ impl DarkstarCrypt {
         Ok(reverse_key)
     }
 
-    fn encrypt(&self, mnemonic: &str, key_material: &str, version: i32) -> Result<String, Box<dyn std::error::Error>> {
+    fn encrypt(&self, mnemonic: &str, key_material: &str) -> Result<String, Box<dyn std::error::Error>> {
         let words: Vec<&str> = mnemonic.split(' ').collect();
         let mut obfuscated_words = Vec::new();
         let mut reverse_key = Vec::new();
 
-        let is_v1 = version == 1;
-        let is_v2 = version == 2;
-        let is_v3 = version == 3;
-        let is_v4 = version == 4;
-        let is_v5 = version == 5;
-        let is_modern = is_v3 || is_v4 || is_v5;
+        let is_v5 = true;
+        let is_v4 = false;
+        let is_modern = true;
         
-        let mut ct_hex = String::new();
         let mut active_password_str = key_material.to_string();
 
-        if is_v5 {
-            let pk_bytes: [u8; 1568] = hex::decode(key_material)?
-                .try_into()
-                .map_err(|_| "Invalid public key length for ML-KEM-1024")?;
-            
-            let ek = EncapsulationKey::<MlKem1024Params>::from_bytes(&pk_bytes.into());
-            let (ct, mut ss) = ek.encapsulate(&mut rand::thread_rng())
-                .map_err(|e| format!("ML-KEM Encapsulation failed: {:?}", e))?;
-            
-            ct_hex = hex::encode(ct.as_slice());
-            let ss_hex = hex::encode(ss.as_slice());
-            active_password_str = ss_hex;
-            ss.zeroize();
-        }
+        let pk_bytes: [u8; 1568] = hex::decode(key_material)?
+            .try_into()
+            .map_err(|_| "Invalid public key length for ML-KEM-1024")?;
+        
+        let ek = EncapsulationKey::<MlKem1024Params>::from_bytes(&pk_bytes.into());
+        let (ct, mut ss) = ek.encapsulate(&mut rand::thread_rng())
+            .map_err(|e| format!("ML-KEM Encapsulation failed: {:?}", e))?;
+        
+        let ct_hex = hex::encode(ct.as_slice());
+        let ss_hex = hex::encode(ss.as_slice());
+        active_password_str = ss_hex;
+        ss.zeroize();
 
         let prng_factory = |s: &str| ActivePRNG::new(s, is_modern);
 
@@ -771,53 +765,25 @@ impl DarkstarCrypt {
         }
 
         let mut final_payload = Vec::new();
-        if is_v5 {
-            if final_blob.len() > 2048 {
-                return Err(format!("Obfuscated payload exceeds 2048-byte limit ({} bytes)", final_blob.len()).into());
-            }
-            final_payload.extend_from_slice(&final_blob);
-            final_payload.resize(2048, 0);
-        } else {
-            final_payload = final_blob;
+        if final_blob.len() > 2048 {
+            return Err(format!("Obfuscated payload exceeds 2048-byte limit ({} bytes)", final_blob.len()).into());
         }
+        final_payload.extend_from_slice(&final_blob);
+        final_payload.resize(2048, 0);
 
         let target_iterations = ITERATIONS_V2;
         let mut active_password_bytes = active_password_str.as_bytes().to_vec();
         
-        let encrypted_content = if is_modern {
-            let aad = if is_v5 { Some(encoded_reverse_key.as_bytes()) } else { None };
-            let payload_to_encrypt = if is_v5 {
-                final_payload
-            } else {
-                // Legacy V3/V4: payload is base64 encoded BEFORE encryption
-                general_purpose::STANDARD.encode(&final_payload).into_bytes()
-            };
-            self.encrypt_aes256_gcm(&payload_to_encrypt, &active_password_str, target_iterations, aad)?
-        } else {
-            // Legacy V1/V2: payload is base64 encoded BEFORE encryption
-            let b64_for_cbc = general_purpose::STANDARD.encode(&final_payload);
-            self.encrypt_aes256(&b64_for_cbc, &active_password_str, target_iterations)?
-        };
+        let aad = Some(encoded_reverse_key.as_bytes());
+        let encrypted_content = self.encrypt_aes256_gcm(&final_payload, &active_password_str, target_iterations, aad)?;
 
         active_password_bytes.zeroize();
 
-        if is_v1 {
-            let uncompressed = serde_json::to_string(&reverse_key)?;
-            let rk_b64 = general_purpose::STANDARD.encode(uncompressed);
-            return Ok(serde_json::json!({
-                "encryptedData": encrypted_content,
-                "reverseKey": rk_b64
-            }).to_string());
-        }
-
-        let v_p = if is_v1 { 1 } else if is_v2 { 2 } else if is_v3 { 3 } else if is_v4 { 4 } else { 5 };
         let mut res_obj = serde_json::json!({
-            "v": v_p,
-            "data": encrypted_content
+            "v": 5,
+            "data": encrypted_content,
+            "ct": ct_hex
         });
-        if is_v5 {
-            res_obj["ct"] = serde_json::json!(ct_hex);
-        }
         
         Ok(serde_json::json!({
             "encryptedData": res_obj.to_string(),
@@ -1128,7 +1094,7 @@ fn main() {
             let mnemonic = &args[0];
             let password = &args[1];
 
-            match dc.encrypt(mnemonic, password, v) {
+            match dc.encrypt(mnemonic, password) {
                 Ok(res_json) => {
                     if output_format == "csv" {
                         let j: serde_json::Value = serde_json::from_str(&res_json).unwrap();
@@ -1178,7 +1144,7 @@ fn main() {
             }
 
             println!("--- Darkstar Rust Self-Test (V{}) ---", v);
-            match dc.encrypt(mnemonic, &password, v) {
+            match dc.encrypt(mnemonic, &password) {
                 Ok(res_json) => {
                     let res: serde_json::Value = serde_json::from_str(&res_json).unwrap();
                     let enc_owned = match res["encryptedData"].as_str() {

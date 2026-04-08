@@ -155,3 +155,61 @@ body.light-theme .app-title {
       cursor: grabbing;
   }
 }
+
+// Global Re-Architecture: Page Width Constraint
+// Ensures app content doesn't stretch infinitely on ultrawide monitors and maintains a premium centered reading posture.
+.page-layout-wrapper {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 0 24px;
+  width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    margin: 1rem auto;
+    padding: 0 16px;
+  }
+}
+
+// Premium Component Aesthetic
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 12px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+  overflow: hidden;
+
+  // Inner glow effect
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    z-index: 1;
+  }
+
+  // Interactive hover physics
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(64, 196, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+// Apply premium background to native material cards directly if they don't have .glass-card
+mat-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px !important;
+}
+
+mat-card-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+}

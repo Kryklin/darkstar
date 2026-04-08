@@ -54,6 +54,14 @@ export class Settings implements OnInit {
 
   resolvedBackupPath = '';
 
+  get dkaspEngine(): string {
+    return localStorage.getItem('dkasp_engine') || 'rust';
+  }
+
+  set dkaspEngine(value: string) {
+    localStorage.setItem('dkasp_engine', value);
+  }
+
   ngOnInit() {
       if (this.isElectron) {
           this.updateResolvedBackupPath();

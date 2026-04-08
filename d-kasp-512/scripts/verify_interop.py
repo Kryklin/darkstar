@@ -30,6 +30,7 @@ CLI_COMMANDS = {
     "go": [GO_BIN, "run", "."],
     "rust": [os.path.join(PROJECT_ROOT, "rust", "target", "release", "d-kasp-512.exe")],
     "python": [PYTHON_BIN, "-u", os.path.join(PROJECT_ROOT, "python", "darkstar_crypt.py")],
+    "python_old": [PYTHON_BIN, "-u", os.path.join(PROJECT_ROOT, "python", "darkstar_crypt_old.py")],
     "node": [NODE_BIN, os.path.join(PROJECT_ROOT, "node", "darkstar_crypt.js")]
 }
 
@@ -37,12 +38,13 @@ CLI_CWD = {
     "go": os.path.join(PROJECT_ROOT, "go"),
     "rust": PROJECT_ROOT,
     "python": PROJECT_ROOT,
+    "python_old": PROJECT_ROOT,
     "node": PROJECT_ROOT
 }
 
 TEST_MNEMONIC = "apple banana cherry date elderberry fig grape honeydew"
 TEST_PASSWORD = "Strong!Password#2026"
-TOTAL_EXPECTED_TESTS = 80 # 5 versions * 4 langs * 4 langs
+TOTAL_EXPECTED_TESTS = 16 # 1 version * 4 langs * 4 langs
 
 def get_sys_info():
     uname = platform.uname()
@@ -97,6 +99,7 @@ def main():
     
     total_tests = 0
     passed_tests = 0
+    errors = []
     start_suite = time.perf_counter()
     current_action = "STANDBY"
     action_start_time = time.perf_counter()
@@ -153,7 +156,7 @@ def main():
     layout["header"].update(get_sys_info())
     layout["dashboard"].update(generate_dashboard())
 
-    versions = ["5", "4", "3", "2", "1"]
+    versions = ["5"]
 
     with Live(layout, console=console, refresh_per_second=10) as live:
         for version in versions:
@@ -184,12 +187,14 @@ def main():
                 
                 encrypt_output, elapsed = run_cli(src_lang, ["-v", version, "encrypt", TEST_MNEMONIC, encrypt_pass])
                 if not encrypt_output or "ERROR" in encrypt_output:
+                    errors.append(f"ENCRYPT EXEC FAILED for {src_lang}: {encrypt_output}")
                     continue
 
                 try:
                     start = encrypt_output.find('{')
                     end = encrypt_output.rfind('}') + 1
                     if start == -1 or end == 0:
+                        errors.append(f"ENCRYPT PARSE FAILED for {src_lang}: Missing JSON brackets in '{encrypt_output}'")
                         continue
                     res_json = json.loads(encrypt_output[start:end])
                     if not res_json or 'encryptedData' not in res_json:
@@ -213,15 +218,18 @@ def main():
                     live.update(layout, refresh=True)
                     
                     decrypt_output, telapsed = run_cli(dest_lang, ["-v", version, "decrypt", encrypted_data, reverse_key, decrypt_pass])
-                    
                     if decrypt_output == TEST_MNEMONIC:
                         passed_tests += 1
+                    else:
+                        errors.append(f"DECRYPT FAILED: src={src_lang}, dest={dest_lang}, ver={version}\n  Decrypted: '{decrypt_output}'\n  Expected: '{TEST_MNEMONIC}'")
                         
                     layout["dashboard"].update(generate_dashboard())
                     live.update(layout, refresh=True)
 
     elapsed_total = f"{time.perf_counter() - start_suite:.2f}s"
     console.print()
+    for e in errors:
+        console.print(f"[bold red]{e}[/bold red]")
     if passed_tests == TOTAL_EXPECTED_TESTS:
         console.print(f"[bold #aaaaaa]>>> DARKSTAR VERIFIED  {passed_tests}/{TOTAL_EXPECTED_TESTS} passed  {elapsed_total} <<<[/bold #aaaaaa]")
         sys.exit(0)

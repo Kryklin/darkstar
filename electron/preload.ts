@@ -22,12 +22,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   vaultListFiles: () => ipcRenderer.invoke('vault-list-files'),
   vaultGenerateTotp: () => ipcRenderer.invoke('vault-generate-totp'),
   vaultVerifyTotp: (token: string, secret: string) => ipcRenderer.invoke('vault-verify-totp', token, secret),
+  dKaspEncrypt: (mnemonic: string, keyHex: string, engine: string) => ipcRenderer.invoke('dkasp-encrypt', mnemonic, keyHex, engine),
+  dKaspDecrypt: (data: string, rk: string, keyOrPass: string, engine: string) => ipcRenderer.invoke('dkasp-decrypt', data, rk, keyOrPass, engine),
   getDefaultBackupPath: () => ipcRenderer.invoke('get-default-backup-path'),
   saveBackup: (dir: string, filename: string, data: string) => ipcRenderer.invoke('save-backup', dir, filename, data),
   showDirectoryPicker: () => ipcRenderer.invoke('show-directory-picker'),
   checkIntegrity: () => ipcRenderer.invoke('check-integrity'),
   getMachineId: (): Promise<string | null> => ipcRenderer.invoke('get-machine-id'),
-  biometricHandshake: (options: { action: 'create' | 'get', publicKey: any }): Promise<{ success: boolean, data?: any, error?: string }> => ipcRenderer.invoke('biometric-handshake', options),
+  biometricHandshake: (options: { action: 'create' | 'get', publicKey: unknown }): Promise<{ success: boolean, data?: unknown, error?: string }> => ipcRenderer.invoke('biometric-handshake', options),
   getPlatform: () => process.platform,
 });
 

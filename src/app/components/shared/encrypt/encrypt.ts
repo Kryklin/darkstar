@@ -7,8 +7,7 @@ import { Clipboard } from '@angular/cdk/clipboard';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SteganographyService } from '../../../services/steganography.service';
 import { StealthMode, StealthOptions } from '../../../services/generators/types';
-import { VirtualKeyboard } from '../../virtual-keyboard/virtual-keyboard';
-import { EntropyMeter } from '../../entropy-meter/entropy-meter';
+
 import { PaperWalletService } from '../../../services/paper-wallet.service';
 import { QrSender } from '../qr-sender/qr-sender';
 import { VaultService } from '../../../services/vault';
@@ -16,7 +15,7 @@ import { VaultService } from '../../../services/vault';
 @Component({
   selector: 'app-shared-encrypt',
   standalone: true,
-  imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule, VirtualKeyboard, EntropyMeter, QrSender],
+  imports: [FormsModule, ReactiveFormsModule, TextFieldModule, MaterialModule, QrSender],
   templateUrl: './encrypt.html',
   styleUrl: './encrypt.scss',
 })
@@ -33,7 +32,7 @@ export class SharedEncryptComponent implements OnInit {
   @Output() generateRandom = new EventEmitter<void>();
 
   firstFormGroup: FormGroup;
-  secondFormGroup: FormGroup;
+
   showResult = false;
   encryptedData = '';
   reverseKey = '';
@@ -52,16 +51,8 @@ export class SharedEncryptComponent implements OnInit {
   stealthNoiseLevel = 0.5;
   selectedCoverImage: File | null = null;
   selectedCoverAudio: File | null = null;
-
-
-  virtualKeyboardEnabled = false;
-  
-
   showQrSender = false;
 
-
-  useVaultSignature = false;
-  useHardwareId = false;
   vaultService = inject(VaultService);
 
   private _formBuilder = inject(FormBuilder);
@@ -75,9 +66,7 @@ export class SharedEncryptComponent implements OnInit {
     this.firstFormGroup = this._formBuilder.group({
       firstCtrl: ['', [Validators.required]],
     });
-    this.secondFormGroup = this._formBuilder.group({
-      secondCtrl: ['', Validators.required],
-    });
+
   }
 
   ngOnInit() {
@@ -93,33 +82,29 @@ export class SharedEncryptComponent implements OnInit {
   }
 
   async onSubmit() {
-    if (this.firstFormGroup.valid && this.secondFormGroup.valid) {
+    if (this.firstFormGroup.valid) {
       const mnemonic = this.firstFormGroup.controls['firstCtrl'].value;
-      let password = this.secondFormGroup.controls['secondCtrl'].value;
 
-      if (this.useVaultSignature && this.vaultService.isUnlocked()) {
-          const id = this.vaultService.identity();
-          if (id && id.privateKey && id.privateKey.d) {
-              password = password + id.privateKey.d;
-          } else {
-              console.error("Failed to retrieve vault identity private key");
-              this.snackBar.open('Failed to bind encryption to Vault. Identity missing.', 'Close', { duration: 3000 });
-              return;
-          }
+      if (!this.vaultService.isUnlocked()) {
+          this.snackBar.open('Vault is locked. Cannot retrieve ML-KEM key.', 'Close', { duration: 3000 });
+          return;
       }
 
-      if (this.useHardwareId) {
-          const hwId = await this.vaultService.getHardwareId();
-          if (hwId) {
-              password = password + hwId;
-          } else {
-              console.error("Failed to retrieve Machine Hardware ID");
-              this.snackBar.open('Failed to bind encryption to Machine ID. Hardware identification unavailable.', 'Close', { duration: 3000 });
-              return;
-          }
+      const id = this.vaultService.identity();
+      if (!id || !id.pqcPublicKey) {
+          this.snackBar.open('No Vault Identity or ML-KEM-1024 public key found.', 'Close', { duration: 3000 });
+          return;
       }
 
-      const { encryptedData, reverseKey } = await this.cryptService.encrypt(mnemonic, password);
+      // Convert Base64 PQC Public Key to Hex for the engine payload
+      const rawBody = atob(id.pqcPublicKey);
+      let pkHex = '';
+      for (let i = 0; i < rawBody.length; i++) {
+          const hex = rawBody.charCodeAt(i).toString(16);
+          pkHex += (hex.length === 2 ? hex : '0' + hex);
+      }
+
+      const { encryptedData, reverseKey } = await this.cryptService.encrypt(mnemonic, pkHex);
 
       this.encryptedData = encryptedData;
       this.reverseKey = reverseKey;
@@ -254,28 +239,11 @@ export class SharedEncryptComponent implements OnInit {
 
   reset() {
     this.firstFormGroup.reset();
-    this.secondFormGroup.reset();
     this.showResult = false;
     this.encryptedData = '';
     this.reverseKey = '';
     this.stealthMode = 'standard';
     this.stealthNoiseLevel = 0.5;
-    this.virtualKeyboardEnabled = false;
     this.showQrSender = false;
-    this.useVaultSignature = false;
-    this.useHardwareId = false;
-  }
-
-  onVirtualKeyPress(key: string) {
-    const currentVal = this.secondFormGroup.controls['secondCtrl'].value || '';
-    this.secondFormGroup.controls['secondCtrl'].setValue(currentVal + key);
-    this.secondFormGroup.controls['secondCtrl'].markAsDirty();
-  }
-
-  onVirtualBackspace() {
-    const currentVal = this.secondFormGroup.controls['secondCtrl'].value || '';
-    if (currentVal.length > 0) {
-      this.secondFormGroup.controls['secondCtrl'].setValue(currentVal.slice(0, -1));
-    }
   }
 }
