@@ -51,9 +51,6 @@
         <div class="editor-wrapper">
           <div class="editor-header-group">
               <div class="editor-header">
-                <button mat-icon-button (click)="toggleSidenav()" [matTooltip]="sidenavOpened() ? 'Hide Notes' : 'Show Notes'" class="toggle-sidebar-btn">
-                   <mat-icon>{{ sidenavOpened() ? 'menu_open' : 'menu' }}</mat-icon>
-                </button>
                 @if (isHandset()) {
                   <button mat-icon-button (click)="showNoteList()" matTooltip="Back to Notes" class="back-btn">
                      <mat-icon>arrow_back</mat-icon>
@@ -203,9 +200,6 @@
         </div>
       } @else {
         <div class="no-selection-state">
-          <button mat-icon-button (click)="toggleSidenav()" [matTooltip]="sidenavOpened() ? 'Hide Notes' : 'Show Notes'" class="toggle-sidebar-btn empty-state-toggle">
-             <mat-icon>{{ sidenavOpened() ? 'menu_open' : 'menu' }}</mat-icon>
-          </button>
           <mat-icon class="large-icon">verified_user</mat-icon>
           <h2>Vault Unlocked</h2>
           <p>Select a note to view or create a new one.</p>

@@ -15,6 +15,7 @@ export interface ThemeDef {
  */
 export class Theme {
   availableThemes: ThemeDef[] = [
+    { name: 'Obsidian Black', primary: '#000000', className: 'theme-obsidian-shard' },
     { name: 'Crimson Void', primary: '#D50000', className: 'theme-crimson-void' },
     { name: 'Solar Flare', primary: '#E65100', className: 'theme-solar-flare' },
     { name: 'Amber Glow', primary: '#FF6F00', className: 'theme-amber-glow' },
@@ -22,20 +23,14 @@ export class Theme {
     { name: 'Teal Torrent', primary: '#009688', className: 'theme-teal-torrent' },
     { name: 'Neon Cyberpunk', primary: '#00E5FF', className: 'theme-neon-cyberpunk' },
     { name: 'Oceanic Depth', primary: '#1A237E', className: 'theme-oceanic-depth' },
-    { name: 'Indigo Night', primary: '#304FFE', className: 'theme-indigo-night' },
     { name: 'Royal Amethyst', primary: '#4A148C', className: 'theme-royal-amethyst' },
     { name: 'Magenta Madness', primary: '#D500F9', className: 'theme-magenta-madness' },
-    { name: 'Sakura Breeze', primary: '#C2185B', className: 'theme-sakura-breeze' },
     { name: 'Golden Sands', primary: '#5D4037', className: 'theme-golden-sands' },
     { name: 'Midnight Slate', primary: '#263238', className: 'theme-midnight-slate' },
-    // New Creative Themes
     { name: 'Barbie Pink', primary: '#E0218A', className: 'theme-barbie-pink' },
     { name: 'Toxic Sludge', primary: '#76FF03', className: 'theme-toxic-sludge' },
     { name: 'Vapor Wave', primary: '#6200EA', className: 'theme-vapor-wave' },
-    { name: 'Electric Violet', primary: '#651FFF', className: 'theme-electric-violet' },
-    { name: 'Sunset Drive', primary: '#FF3D00', className: 'theme-sunset-drive' },
     { name: 'Arctic Frost', primary: '#00BCD4', className: 'theme-arctic-frost' },
-    { name: 'Obsidian Shard', primary: '#000000', className: 'theme-obsidian-shard' },
   ];
 
   isDarkTheme = signal<boolean>(true);

@@ -32,7 +32,7 @@ export class VaultDashboardComponent {
   notes = this.vaultService.notes;
   selectedNote = signal<VaultNote | null>(null);
   isHandset = signal(false);
-  sidenavOpened = signal<boolean>(localStorage.getItem('vaultSidenavOpened') !== 'false');
+  sidenavOpened = signal<boolean>(true);
 
   readonly separatorKeysCodes = [ENTER, COMMA] as const;
   searchTerm = signal('');
@@ -72,18 +72,9 @@ export class VaultDashboardComponent {
      this.breakpointObserver.observe([Breakpoints.Handset])
        .subscribe(result => {
            this.isHandset.set(result.matches);
-           // Auto-hide list on mobile if a note is selected
-           if (result.matches && this.selectedNote()) {
-               this.sidenavOpened.set(false);
-           }
        });
   }
 
-  toggleSidenav() {
-      const newState = !this.sidenavOpened();
-      this.sidenavOpened.set(newState);
-      localStorage.setItem('vaultSidenavOpened', String(newState));
-  }
 
   async loadHardwareId() {
       try {
@@ -172,7 +163,7 @@ export class VaultDashboardComponent {
     this.showPreview = true;
     
     if (this.isHandset()) {
-        this.sidenavOpened.set(false);
+        // No longer auto-hiding
     }
   }
 

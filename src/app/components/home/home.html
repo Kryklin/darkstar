@@ -4,27 +4,31 @@
   }
 
   <div class="content-wrapper page-layout-wrapper">
-    <mat-card class="info-card glass-card">
+    <mat-card class="info-card glass-card hero-card">
       <mat-card-header>
-        <mat-card-title class="app-title glitch-on-hover" data-text="DARKSTAR">DARKSTAR</mat-card-title>
-        <mat-card-subtitle>Created by Victor Kane</mat-card-subtitle>
+        <mat-card-title class="app-title premium-glitch" data-text="DARKSTAR">DARKSTAR</mat-card-title>
+        <mat-card-subtitle class="subtitle-text">Quantum-Safe Information Security</mat-card-subtitle>
       </mat-card-header>
 
-      <div class="verify-shield" [class.verified]="integrityPassed()">
-        <div class="shield-icon-wrapper">
-          <mat-icon class="shield-icon">{{ integrityPassed() ? 'verified_user' : 'security' }}</mat-icon>
-          <div class="pulse-ring"></div>
+      <mat-card-content class="hero-content">
+        <div class="verify-shield" [class.verified]="integrityPassed()">
+          <div class="shield-icon-wrapper">
+            <mat-icon class="shield-icon">{{ integrityPassed() ? 'verified_user' : 'security' }}</mat-icon>
+            <div class="pulse-ring"></div>
+          </div>
+          <div class="shield-text">
+            <span class="shield-title">Application Integrity</span>
+            <span class="shield-status">{{ integrityPassed() ? 'Verified & Secure' : 'Authenticating Node...' }}</span>
+          </div>
+          <div class="shine"></div>
         </div>
-        <div class="shield-text">
-          <span class="shield-title">Application Integrity</span>
-          <span class="shield-status">{{ integrityPassed() ? 'Verified & Secure' : 'Authenticating...' }}</span>
-        </div>
-        <div class="shine"></div>
-      </div>
+
+      </mat-card-content>
+      
     </mat-card>
 
     <footer class="footer">
-      <p>&copy; 2026 Victor Kane. All Rights Reserved.</p>
+      <p>&copy; 2026. All Rights Reserved.</p>
 
       <div class="version-badge">
         <span class="version-text" (click)="handleVersionClick()" (keydown.enter)="handleVersionClick()" (keydown.space)="handleVersionClick()" tabindex="0" role="button">

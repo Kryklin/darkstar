@@ -3,65 +3,49 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   { path: 'home', loadComponent: () => import('./components/home/home').then((m) => m.Home) },
   {
-    path: 'encrypt',
-    loadComponent: () => import('./components/bip39/encrypt').then((m) => m.Encrypt),
+    path: 'bip39',
+    loadComponent: () => import('./components/bip39/bip39').then((m) => m.Bip39Tools),
   },
   {
-    path: 'decrypt',
-    loadComponent: () => import('./components/bip39/decrypt').then((m) => m.Decrypt),
-  },
-  // Electrum Legacy
-  {
-    path: 'electrum-legacy/encrypt',
-    loadComponent: () => import('./components/electrum-legacy/encrypt').then((m) => m.ElectrumLegacyEncrypt),
+    path: 'slip39',
+    loadComponent: () => import('./components/slip39/slip39').then((m) => m.Slip39Tools),
   },
   {
-    path: 'electrum-legacy/decrypt',
-    loadComponent: () => import('./components/electrum-legacy/decrypt').then((m) => m.ElectrumLegacyDecrypt),
-  },
-  // Electrum V2
-  {
-    path: 'electrum-v2/encrypt',
-    loadComponent: () => import('./components/electrum-v2/encrypt').then((m) => m.ElectrumV2Encrypt),
+    path: 'electrum',
+    loadComponent: () => import('./components/electrum-v2/electrum-tools').then((m) => m.ElectrumTools),
   },
   {
-    path: 'electrum-v2/decrypt',
-    loadComponent: () => import('./components/electrum-v2/decrypt').then((m) => m.ElectrumV2Decrypt),
-  },
-  // SLIP39
-  {
-    path: 'slip39/encrypt',
-    loadComponent: () => import('./components/slip39/encrypt').then((m) => m.Slip39Encrypt),
-  },
-  {
-    path: 'slip39/decrypt',
-    loadComponent: () => import('./components/slip39/decrypt').then((m) => m.Slip39Decrypt),
-  },
-  {
-    path: 'update-check',
-    loadComponent: () => import('./components/update-checker/update-checker').then((m) => m.UpdateChecker),
-  },
-  {
-    path: 'settings',
-    loadComponent: () => import('./components/settings/settings').then((m) => m.Settings),
-  },
-
-  {
-    path: 'about',
-    loadComponent: () => import('./components/about/about').then((m) => m.About),
-  },
-  {
-    path: 'secure-notes/encrypt',
-    loadComponent: () => import('./components/secure-notes/encrypt').then((m) => m.SecureNotesEncrypt),
-  },
-  {
-    path: 'secure-notes/decrypt',
-    loadComponent: () => import('./components/secure-notes/decrypt').then((m) => m.SecureNotesDecrypt),
+    path: 'secure-notes',
+    loadComponent: () => import('./components/secure-notes/secure-notes-view').then((m) => m.SecureNotesView),
   },
   {
     path: 'vault',
     loadComponent: () => import('./components/vault/vault.component').then((m) => m.VaultComponent),
   },
+  {
+    path: 'settings',
+    loadComponent: () => import('./components/settings/settings').then((m) => m.Settings),
+  },
+  {
+    path: 'about',
+    loadComponent: () => import('./components/about/about').then((m) => m.About),
+  },
+  {
+    path: 'update-check',
+    loadComponent: () => import('./components/update-checker/update-checker').then((m) => m.UpdateChecker),
+  },
+
+  // Legacy Redirects for backwards compatibility with dashboard links if any
+  { path: 'encrypt', redirectTo: 'bip39', pathMatch: 'full' },
+  { path: 'decrypt', redirectTo: 'bip39', pathMatch: 'full' },
+  { path: 'secure-notes/encrypt', redirectTo: 'secure-notes', pathMatch: 'full' },
+  { path: 'secure-notes/decrypt', redirectTo: 'secure-notes', pathMatch: 'full' },
+  { path: 'slip39/encrypt', redirectTo: 'slip39', pathMatch: 'full' },
+  { path: 'slip39/decrypt', redirectTo: 'slip39', pathMatch: 'full' },
+  { path: 'electrum-v2/encrypt', redirectTo: 'electrum', pathMatch: 'full' },
+  { path: 'electrum-v2/decrypt', redirectTo: 'electrum', pathMatch: 'full' },
+  { path: 'electrum-legacy/encrypt', redirectTo: 'electrum', pathMatch: 'full' },
+  { path: 'electrum-legacy/decrypt', redirectTo: 'electrum', pathMatch: 'full' },
 
   { path: '', redirectTo: 'home', pathMatch: 'full' },
 ];

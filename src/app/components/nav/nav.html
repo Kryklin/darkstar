@@ -8,145 +8,68 @@
         <img [src]="theme.logoSrc()" alt="DARKSTAR" class="sidebar-logo" />
       </div>
       <mat-nav-list>
+        <!-- Home Dashboard -->
         <a mat-list-item routerLink="/home" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
           <div class="nav-link-center">
             <mat-icon>dashboard</mat-icon>
-            <span style="margin-left: 10px">Home</span>
+            <span style="margin-left: 10px">Dashboard</span>
           </div>
         </a>
+
+        <!-- Vault -->
         <a mat-list-item routerLink="/vault" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
           <div class="nav-link-center">
             <mat-icon>enhanced_encryption</mat-icon>
-            <span style="margin-left: 10px">Vault</span>
+            <span style="margin-left: 10px">Secure Vault</span>
           </div>
         </a>
 
-        <!-- Encryption Protocols Group -->
-        <a
-          mat-list-item
-          (click)="toggleSection('encryption')"
-          (keydown.enter)="toggleSection('encryption')"
-          (keydown.space)="toggleSection('encryption')"
-          tabindex="0"
-          class="nav-group-header root-header"
-        >
+        <div class="nav-divider"></div>
+        <span class="nav-section-title">Security Tools</span>
+
+        <!-- Secure Notes -->
+        <a mat-list-item routerLink="/secure-notes" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
           <div class="nav-link-center">
-            <mat-icon>lock</mat-icon>
-            <span style="margin-left: 10px; flex: 1">Encryption</span>
-            <mat-icon class="expand-icon" [class.expanded]="isExpanded('encryption')">expand_more</mat-icon>
+            <mat-icon>notes</mat-icon>
+            <span style="margin-left: 10px">Secure Messages</span>
           </div>
         </a>
 
-        @if (isExpanded('encryption')) {
-          <div class="nested-group-container">
-            <!-- Secure Message -->
-            <a
-              mat-list-item
-              (click)="toggleSection('secure-notes')"
-              (keydown.enter)="toggleSection('secure-notes')"
-              (keydown.space)="toggleSection('secure-notes')"
-              tabindex="0"
-              class="nav-group-header sub-header"
-            >
-              <div class="nav-link-center">
-                <mat-icon>notes</mat-icon>
-                <span style="margin-left: 10px; flex: 1">Generic Message</span>
-                <mat-icon class="expand-icon" [class.expanded]="isExpanded('secure-notes')">expand_more</mat-icon>
-              </div>
-            </a>
-            @if (isExpanded('secure-notes')) {
-              <a mat-list-item routerLink="/secure-notes/encrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
-                <span style="margin-left: 34px">Encrypt</span>
-              </a>
-              <a mat-list-item routerLink="/secure-notes/decrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
-                <span style="margin-left: 34px">Decrypt</span>
-              </a>
-            }
-
-            <!-- BIP39 -->
-            <a mat-list-item (click)="toggleSection('bip39')" (keydown.enter)="toggleSection('bip39')" (keydown.space)="toggleSection('bip39')" tabindex="0" class="nav-group-header sub-header">
-              <div class="nav-link-center">
-                <mat-icon>security</mat-icon>
-                <span style="margin-left: 10px; flex: 1">BIP39</span>
-                <mat-icon class="expand-icon" [class.expanded]="isExpanded('bip39')">expand_more</mat-icon>
-              </div>
-            </a>
-            @if (isExpanded('bip39')) {
-              <a mat-list-item routerLink="/encrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
-                <span style="margin-left: 34px">Encrypt</span>
-              </a>
-              <a mat-list-item routerLink="/decrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
-                <span style="margin-left: 34px">Decrypt</span>
-              </a>
-            }
-
-            <!-- Electrum Legacy -->
-            <a
-              mat-list-item
-              (click)="toggleSection('electrum-legacy')"
-              (keydown.enter)="toggleSection('electrum-legacy')"
-              (keydown.space)="toggleSection('electrum-legacy')"
-              tabindex="0"
-              class="nav-group-header sub-header"
-            >
-              <div class="nav-link-center">
-                <mat-icon>history_edu</mat-icon>
-                <span style="margin-left: 10px; flex: 1">Electrum Old</span>
-                <mat-icon class="expand-icon" [class.expanded]="isExpanded('electrum-legacy')">expand_more</mat-icon>
-              </div>
-            </a>
-            @if (isExpanded('electrum-legacy')) {
-              <a mat-list-item routerLink="/electrum-legacy/encrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
-                <span style="margin-left: 34px">Encrypt</span>
-              </a>
-              <a mat-list-item routerLink="/electrum-legacy/decrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
-                <span style="margin-left: 34px">Decrypt</span>
-              </a>
-            }
-
-            <!-- Electrum V2 -->
-            <a
-              mat-list-item
-              (click)="toggleSection('electrum-v2')"
-              (keydown.enter)="toggleSection('electrum-v2')"
-              (keydown.space)="toggleSection('electrum-v2')"
-              tabindex="0"
-              class="nav-group-header sub-header"
-            >
-              <div class="nav-link-center">
-                <mat-icon>bolt</mat-icon>
-                <span style="margin-left: 10px; flex: 1">Electrum V2</span>
-                <mat-icon class="expand-icon" [class.expanded]="isExpanded('electrum-v2')">expand_more</mat-icon>
-              </div>
-            </a>
-            @if (isExpanded('electrum-v2')) {
-              <a mat-list-item routerLink="/electrum-v2/encrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
-                <span style="margin-left: 34px">Encrypt</span>
-              </a>
-              <a mat-list-item routerLink="/electrum-v2/decrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
-                <span style="margin-left: 34px">Decrypt</span>
-              </a>
-            }
-
-            <!-- SLIP39 -->
-            <a mat-list-item (click)="toggleSection('slip39')" (keydown.enter)="toggleSection('slip39')" (keydown.space)="toggleSection('slip39')" tabindex="0" class="nav-group-header sub-header">
-              <div class="nav-link-center">
-                <mat-icon>splitscreen</mat-icon>
-                <span style="margin-left: 10px; flex: 1">SLIP39</span>
-                <mat-icon class="expand-icon" [class.expanded]="isExpanded('slip39')">expand_more</mat-icon>
-              </div>
-            </a>
-            @if (isExpanded('slip39')) {
-              <a mat-list-item routerLink="/slip39/encrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
-                <span style="margin-left: 34px">Encrypt</span>
-              </a>
-              <a mat-list-item routerLink="/slip39/decrypt" routerLinkActive="active-link" class="nested-item level-2" (click)="closeOnMobile()">
-                <span style="margin-left: 34px">Decrypt</span>
-              </a>
-            }
+        <!-- BIP39 Tools -->
+        <a mat-list-item routerLink="/bip39" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
+          <div class="nav-link-center">
+            <mat-icon>security</mat-icon>
+            <span style="margin-left: 10px">BIP39 Tools</span>
           </div>
-        }
+        </a>
 
+        <!-- SLIP39 Tools -->
+        <a mat-list-item routerLink="/slip39" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
+          <div class="nav-link-center">
+            <mat-icon>splitscreen</mat-icon>
+            <span style="margin-left: 10px">SLIP39 Tools</span>
+          </div>
+        </a>
+
+        <!-- Electrum Tools -->
+        <a mat-list-item routerLink="/electrum" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
+          <div class="nav-link-center">
+            <mat-icon>bolt</mat-icon>
+            <span style="margin-left: 10px">Electrum Tools</span>
+          </div>
+        </a>
+
+        <div class="nav-divider"></div>
+
+        <!-- Settings -->
+        <a mat-list-item routerLink="/settings" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
+          <div class="nav-link-center">
+            <mat-icon>settings</mat-icon>
+            <span style="margin-left: 10px">Settings</span>
+          </div>
+        </a>
+
+        <!-- About -->
         <a mat-list-item routerLink="/about" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
           <div class="nav-link-center">
             <mat-icon>info</mat-icon>
@@ -161,11 +84,29 @@
       <button type="button" aria-label="Toggle sidenav" mat-icon-button (click)="drawer.toggle()">
         <mat-icon aria-label="Side nav toggle icon">menu</mat-icon>
       </button>
+
+      <!-- Vault Status Indicator (Moved to left) -->
+      <div class="vault-status-badge" [class.unlocked]="vaultService.isUnlocked()" routerLink="/vault">
+          <mat-icon>{{ vaultService.isUnlocked() ? 'lock_open' : 'lock' }}</mat-icon>
+          <span class="status-label">{{ vaultService.isUnlocked() ? 'Vault Unlocked' : 'Vault Locked' }}</span>
+      </div>
+      
       <span class="spacer"></span>
+
+      <!-- Realtime Clock (Muted & Centeredish) -->
+      <div class="toolbar-center-wrapper">
+          <div class="toolbar-clock">
+            <span class="time">{{ currentTime() | date:'HH:mm:ss' }}</span>
+            <span class="date">{{ currentTime() | date:'EEE, MMM d' }}</span>
+          </div>
+      </div>
+
       <span class="spacer"></span>
-      <button mat-icon-button routerLink="/settings" aria-label="Open settings" (click)="closeOnMobile()">
+
+      <button mat-icon-button routerLink="/settings" aria-label="Open settings" (click)="closeOnMobile()" class="settings-cog">
         <mat-icon>settings</mat-icon>
       </button>
+
       @if (isElectron) {
         <button mat-icon-button (click)="minimize()">
           <mat-icon>minimize</mat-icon>
