@@ -61,13 +61,6 @@
 
         <div class="nav-divider"></div>
 
-        <!-- Settings -->
-        <a mat-list-item routerLink="/settings" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
-          <div class="nav-link-center">
-            <mat-icon>settings</mat-icon>
-            <span style="margin-left: 10px">Settings</span>
-          </div>
-        </a>
 
         <!-- About -->
         <a mat-list-item routerLink="/about" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">

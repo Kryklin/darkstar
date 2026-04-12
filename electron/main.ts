@@ -91,6 +91,8 @@ function createWindow() {
       devTools: !app.isPackaged && !process.env['ELECTRON_PROD_DEBUG'],
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
+      disableBlinkFeatures: 'Auxclick,Autofill',
     },
   });
 
@@ -202,17 +204,39 @@ app.whenReady().then(async () => {
             '.json': 'application/json', '.svg': 'image/svg+xml'
         };
         return new Response(new Uint8Array(fileContent), {
-            headers: { 'content-type': mimeTypes[extension] || 'application/octet-stream' }
+            headers: { 
+              'content-type': mimeTypes[extension] || 'application/octet-stream',
+              'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net;",
+              'X-Content-Type-Options': 'nosniff',
+              'X-Frame-Options': 'DENY'
+            }
         });
     } catch (_e) {
         try {
             const indexContent = await fs.readFile(path.join(distPath, 'index.html'));
-            return new Response(new Uint8Array(indexContent), { headers: { 'content-type': 'text/html' } });
+            return new Response(new Uint8Array(indexContent), { 
+              headers: { 
+                'content-type': 'text/html',
+                'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net;",
+                'X-Content-Type-Options': 'nosniff',
+                'X-Frame-Options': 'DENY'
+              } 
+            });
         } catch { return new Response('Not Found', { status: 404 }); }
     }
   });
 
   await verifyIntegrity();
+  
+  // Hardened Permission Request Handler
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    // Allow camera access for Air-Gap QR features, deny everything else
+    if (permission === 'media') {
+      return callback(true);
+    }
+    callback(false);
+  });
+
   createWindow();
   createTray();
   initUpdater();

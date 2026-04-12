@@ -18,6 +18,7 @@ body {
   margin: 0;
   font-family: 'Roboto', sans-serif;
   overflow: hidden; // Prevent body scroll (app content scrolls)
+  background-color: #0b0b0b !important; // Prevent initial white flash
 
   // Dynamic Background using Theme Variables
   background: linear-gradient(-45deg, var(--mat-sys-surface-container-lowest), var(--mat-sys-surface-container-low), var(--mat-sys-surface-container), var(--mat-sys-surface-container-high));

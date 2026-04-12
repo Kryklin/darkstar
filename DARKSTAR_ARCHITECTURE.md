@@ -1,12 +1,14 @@
 <p align="center">
   <picture>
+<p align="center">
+  <picture>
     <source media="(prefers-color-scheme: dark)" srcset="public/assets/img/logo-white.png">
     <img src="public/assets/img/logo-black.png" alt="Darkstar Logo" width="220">
   </picture>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.1.6-blue" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-3.0.0-blue" alt="Version"/>
   <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular" alt="Angular"/>
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript"/>
@@ -91,3 +93,21 @@ Darkstar identities are bound by:
 1. **Something You Know**: Master Password.
 2. **Something You Have**: Machine Hardware (OS Entropy).
 3. **Something You Are**: Biometric Signature (WebAuthn).
+
+---
+
+## 7. Dashboard V3 Architecture (Modernized UX)
+
+The V3 update introduces a flattened navigation and a stateful toolbar to improve split-second decision-making and data visibility.
+
+### 7.1 Unified Workspace
+All cryptographic tools (BIP39, SLIP39, Secure Notes) have been consolidated into a single workspace view, reducing route-traversal overhead and ensuring the security enclave remains focused.
+
+### 7.2 Stateful Taskbar
+The navigation bar now includes a reactive security status indicator:
+- **Locked/Unlocked State**: Direct visual feedback from the `VaultService`.
+- **System Clock**: Real-time display for time-sensitive cryptographic operations.
+- **Global Settings**: Rapid access to environmental configurations.
+
+### 7.3 Persistent Vault View
+The Vault interface has been redesigned to be "Sticky." The note list is non-dismissible, ensuring the user always has a clear context of their stored secrets, while the editor provides a high-focus Markdown environment.

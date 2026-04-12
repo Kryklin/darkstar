@@ -77,9 +77,32 @@
             <mat-form-field appearance="outline">
               <mat-label>Execution Backend</mat-label>
               <mat-select [(ngModel)]="dkaspEngine">
-                <mat-option value="rust">Rust (High Performance, Default)</mat-option>
-                <mat-option value="go">Go (Optimized Concurrency)</mat-option>
-                <mat-option value="node">Node.js (Native JS Fallback)</mat-option>
+                <mat-select-trigger>
+                  <div class="engine-option-trigger">
+                    @if (dkaspEngine === 'rust') { <i class="devicon-rust-plain colored"></i> }
+                    @if (dkaspEngine === 'go') { <i class="devicon-go-plain colored"></i> }
+                    @if (dkaspEngine === 'node') { <i class="devicon-nodejs-plain colored"></i> }
+                    <span style="margin-left: 8px; text-transform: capitalize;">{{ dkaspEngine === 'node' ? 'Node.js' : dkaspEngine }}</span>
+                  </div>
+                </mat-select-trigger>
+                <mat-option value="rust">
+                  <div class="engine-option">
+                    <i class="devicon-rust-plain colored"></i>
+                    <span>Rust</span>
+                  </div>
+                </mat-option>
+                <mat-option value="go">
+                  <div class="engine-option">
+                    <i class="devicon-go-plain colored"></i>
+                    <span>Go</span>
+                  </div>
+                </mat-option>
+                <mat-option value="node">
+                  <div class="engine-option">
+                    <i class="devicon-nodejs-plain colored"></i>
+                    <span>Node.js</span>
+                  </div>
+                </mat-option>
               </mat-select>
             </mat-form-field>
           </div>

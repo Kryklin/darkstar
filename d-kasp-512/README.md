@@ -1,5 +1,5 @@
 # D-KASP-512
-The **D-KASP-512** suite is a post-quantum encryption engine designed for the Darkstar ecosystem, providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
+The **D-KASP-512** suite is a post-quantum encryption engine designed for the Darkstar ecosystem (Core v3.0.0), providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
 
 - **ML-KEM-1024 (Kyber)**: NIST Level 5 Post-Quantum root of trust.
 - **512-Layer Gauntlet**: Deterministic, non-linear SPN/ARX obfuscation layers.

@@ -58,3 +58,23 @@
   display: flex;
   gap: 12px;
 }
+
+.engine-option, .engine-option-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  i {
+    font-size: 1.2rem;
+    
+    &.colored {
+       filter: drop-shadow(0 0 5px rgba(255,255,255,0.1));
+    }
+  }
+}
+
+.engine-option-trigger {
+  i {
+     font-size: 1.1rem;
+  }
+}

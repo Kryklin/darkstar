@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.1.6-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-3.0.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular&logoColor=white" alt="Angular">
   <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron&logoColor=white" alt="Electron">
   <img src="https://img.shields.io/badge/TypeScript-v5.9.2-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
@@ -38,7 +38,7 @@
 | **Vault Management** | Zero-knowledge Secure Vault, Identity Binding, and Automated Scheduled Backups.  |
 | **Access Control**   | Biometric Unlock (FaceID/TouchID), YubiKey Support (WebAuthn), and TOTP 2FA.     |
 | **Integrity**        | Application Anti-Tamper Checks and mathematical Time-Lock Encryption (VDF).      |
-| **Modern UX**        | Premium Glassmorphism UI with custom themes and cross-platform native builds.   |
+| **Modern UX**        | Premium V3 Dashboard with flat navigation, stateful taskbar, and persistent vault view. |
 
 ---
 
@@ -58,6 +58,7 @@ npm start # Start interactive UI
 2.  **Obfuscation Pipeline**: Shuffled 512-layer transformation gauntlet driven by index-salted entropy.
 3.  **Layered Encryption**: ML-KEM-1024 (Kyber) and AES-256-GCM encapsulation.
 4.  **Hardware Binding**: OS-level protection via Electron SafeStorage and Signature Key binding.
+5.  **V3 Workflow**: Stateful navigation with real-time vault status and non-dismissible note management.
 
 > [!NOTE]
 > View the [Visual Architecture Guide](DARKSTAR_ARCHITECTURE.md) or the [Multi-Language Suite](d-kasp-512/README.md) for more technical details.

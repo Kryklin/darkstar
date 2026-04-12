@@ -6,17 +6,23 @@
 
     <h2>{{ requiresTotp ? 'Two-Factor Authentication' : (hasVault() ? 'Unlock Vault' : 'Create Vault') }}</h2>
     <p class="subtitle">
-      {{ requiresTotp ? 'Enter the code from your Authenticator app.' : (hasVault() ? 'Enter your master password to decrypt your notes.' : 'Set a strong master password. This cannot be recovered if lost.') }}
+      @if (hardwareLoading || biometricsLoading) {
+        Please complete the authentication on your device...
+      } @else {
+        {{ requiresTotp ? 'Enter the code from your Authenticator app.' : (hasVault() ? 'Enter your master password to decrypt your notes.' : 'Set a strong master password. This cannot be recovered if lost.') }}
+      }
     </p>
 
     @if (!requiresTotp) {
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Master Password</mat-label>
-        <input matInput [type]="hidePassword ? 'password' : 'text'" [(ngModel)]="password" (keyup.enter)="submit()" />
-        <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword">
-          <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
-        </button>
-      </mat-form-field>
+      @if (!hardwareLoading && !biometricsLoading) {
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Master Password</mat-label>
+          <input matInput [type]="hidePassword ? 'password' : 'text'" [(ngModel)]="password" (keyup.enter)="submit()" />
+          <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword">
+            <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+        </mat-form-field>
+      }
 
       @if (!hasVault()) {
         <app-entropy-meter [value]="password"></app-entropy-meter>
