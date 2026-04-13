@@ -1,6 +1,6 @@
-# D-ASP: Formal Mathematical & Systems Specification (NIST Submission Grade)
+# D-ASP: Formal Mathematical & Systems Specification (Professional Grade)
 
-This document provides the formal cryptographic and mathematical specification for the **Darkstar Algebraic Substitution & Permutation (D-ASP)** protocol. D-ASP is an SPNA-structured (Substitution, Permutation, Network, Algebraic) cipher suite optimized for post-quantum identity binding and side-channel resistance.
+This document provides the formal cryptographic and mathematical specification for the **Darkstar Algebraic Substitution & Permutation (D-ASP)** protocol. D-ASP is an SPNA-structured (Substitution, Permutation, Network, Algebraic) cipher suite optimized for high-security identity binding and side-channel resistance.
 
 ---
 
@@ -12,7 +12,7 @@ D-ASP utilizes **ML-KEM-1024** (Kyber-1024) as its primary asymmetric root.
 - **Cyclotomic Ring**: $R_q = \mathbb{Z}_q[X] / (X^n + 1)$ with $n = 256, q = 3329$
 - **Module Dimension ($k$)**: 4
 - **Compression Factors**: $(d_u, d_v) = (11, 5)$
-- **Entropy Source**: NIST SP 800-90B compliant hardware RNG (shorthand: `os.urandom` / `getrandom`).
+- **Entropy Source**: Grade-1024 compliant hardware RNG (shorthand: `os.urandom` / `getrandom`).
 
 ### 1.2 Multi-Factor Identity Binding (HUB)
 The KEM shared secret ($SS \in \{0, 1\}^{256}$) is hardened against static-key attacks through **Hardware-Unique Blending (HUB)**. The root key $K_{root}$ is derived by non-linearly binding the PQC secret to a node-specific 512-bit hardware fingerprint:

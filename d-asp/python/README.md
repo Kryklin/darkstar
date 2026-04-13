@@ -8,7 +8,7 @@ The Python implementation is provided primarily for cross-platform validation, r
 
 ## 🛡️ Security Profile
 
-- **KEM**: NIST Level 5 (ML-KEM-1024) via [`pqcrypto`](https://github.com/kpeters93/pqcrypto).
+- **KEM**: Grade-1024 (ML-KEM-1024) via [`pqcrypto`](https://github.com/kpeters93/pqcrypto).
 - **Hardening**:
   - Uses `hmac.compare_digest` for timing-resistant MAC validation.
   - Relies on Standard Library `hashlib` for SHA-256.

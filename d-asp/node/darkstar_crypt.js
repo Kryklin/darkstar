@@ -82,11 +82,17 @@ export class DarkstarCrypt {
   }
 
   async encrypt(payload, keyMaterial, hwidHex = null) {
+    const totalStart = performance.now();
     const pkBytes = this.hex2buf(keyMaterial);
+    
+    const kemStart = performance.now();
     const encap = kyber.encapsulate(pkBytes);
+    const kemDuration = performance.now() - kemStart;
+    
     const ctHex = this.buf2hex(encap.cipherText);
     const ss_bytes = encap.sharedSecret;
 
+    const kdfStart = performance.now();
     let combinedSS = ss_bytes;
     if (hwidHex) {
       combinedSS = Buffer.concat([ss_bytes, this.hex2buf(hwidHex)]);
@@ -97,6 +103,7 @@ export class DarkstarCrypt {
     const activePasswordStr = this.buf2hex(cipherKey);
     const activeHmacKey = hmacKey;
     ss_bytes.fill(0);
+    const kdfDuration = performance.now() - kdfStart;
 
     const prngFactory = this.darkstar_chacha_prng.bind(this);
     let chainState = await this.sha256Bytes('dasp-chain-' + activePasswordStr);
@@ -113,6 +120,7 @@ export class DarkstarCrypt {
     const funcKey = await this.hmacSha256Bytes(wordKey, `keyed-${checksum}`);
 
     const rngPath = prngFactory(wordKeyHex);
+    const gauntletStart = performance.now();
     for (let i = 0; i < 16; i++) {
       let sIdx = i % 4 === 0 ? 0 : i % 4 === 2 ? 1 : this.groupS[rngPath() % this.groupS.length];
       currentWordBytes = this.forwardPipeline[sIdx](currentWordBytes, funcKey, prngFactory);
@@ -120,25 +128,39 @@ export class DarkstarCrypt {
       currentWordBytes = this.forwardPipeline[this.groupN[rngPath() % this.groupN.length]](currentWordBytes, funcKey, prngFactory);
       currentWordBytes = this.forwardPipeline[this.groupA[rngPath() % this.groupA.length]](currentWordBytes, funcKey, prngFactory);
     }
+    const gauntletDuration = performance.now() - gauntletStart;
 
     const macData = Buffer.concat([this.hex2buf(ctHex), currentWordBytes]);
     const mac = require('node:crypto').createHmac('sha256', activeHmacKey).update(macData).digest();
+
+    const totalDuration = performance.now() - totalStart;
 
     return {
       data: this.buf2hex(currentWordBytes),
       ct: ctHex,
       mac: this.buf2hex(mac),
+      timings: {
+        kem_us: Math.round(kemDuration * 1000),
+        kdf_us: Math.round(kdfDuration * 1000),
+        gauntlet_us: Math.round(gauntletDuration * 1000),
+        total_us: Math.round(totalDuration * 1000)
+      }
     };
   }
 
   async decrypt(encryptedDataRaw, reverseKeyB64, keyMaterial, hwidHex = null) {
+    const totalStart = performance.now();
     const parsed = typeof encryptedDataRaw === 'string' ? JSON.parse(encryptedDataRaw) : encryptedDataRaw;
     const ctHex = parsed.ct;
 
     const skBytes = this.hex2buf(keyMaterial.length > 6336 ? keyMaterial.slice(0, 6336) : keyMaterial);
     const ctBytes = this.hex2buf(ctHex);
+    
+    const kemStart = performance.now();
     const ss_bytes = kyber.decapsulate(ctBytes, skBytes);
+    const kemDuration = performance.now() - kemStart;
 
+    const kdfStart = performance.now();
     let combinedSS = ss_bytes;
     if (hwidHex) {
       combinedSS = Buffer.concat([ss_bytes, this.hex2buf(hwidHex)]);
@@ -149,6 +171,7 @@ export class DarkstarCrypt {
     const activePasswordStr = this.buf2hex(cipherKey);
     const activeHmacKey = hmacKey;
     ss_bytes.fill(0);
+    const kdfDuration = performance.now() - kdfStart;
 
     const payloadBytes = this.hex2buf(parsed.data);
     const macData = Buffer.concat([this.hex2buf(ctHex), payloadBytes]);
@@ -173,6 +196,7 @@ export class DarkstarCrypt {
     const checksum = this._generateChecksum(Array.from({ length: 12 }, (_, i) => i));
     const funcKey = await this.hmacSha256Bytes(wordKey, `keyed-${checksum}`);
 
+    const gauntletStart = performance.now();
     for (let j = 15; j >= 0; j--) {
       const r = roundPaths[j];
       currentWordBytes = this.reversePipeline[r.a](currentWordBytes, funcKey, prngFactory);
@@ -180,10 +204,22 @@ export class DarkstarCrypt {
       currentWordBytes = this.reversePipeline[r.p](currentWordBytes, funcKey, prngFactory);
       currentWordBytes = this.reversePipeline[r.s](currentWordBytes, funcKey, prngFactory);
     }
+    const gauntletDuration = performance.now() - gauntletStart;
 
     for (let i = 0; i < currentWordBytes.length; i++) {
       currentWordBytes[i] ^= chainState[i % 32];
     }
+    
+    const totalDuration = performance.now() - totalStart;
+    process.stderr.write(JSON.stringify({
+      timings: {
+        kem_us: Math.round(kemDuration * 1000),
+        kdf_us: Math.round(kdfDuration * 1000),
+        gauntlet_us: Math.round(gauntletDuration * 1000),
+        total_us: Math.round(totalDuration * 1000)
+      }
+    }) + '\n');
+
     return this.bytesToString(currentWordBytes);
   }
 

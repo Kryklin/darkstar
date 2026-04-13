@@ -8,7 +8,7 @@ The Node.js implementation acts as the primary bridge for web applications and E
 
 ## 🛡️ Security Profile
 
-- **KEM**: NIST Level 5 (ML-KEM-1024) via [@noble/post-quantum](https://github.com/paulmillr/noble-post-quantum).
+- **KEM**: Grade-1024 (ML-KEM-1024) via [@noble/post-quantum](https://github.com/paulmillr/noble-post-quantum).
 - **Hardening**:
   - Leverages Node.js `crypto` module for high-entropy PBKDF2 and SHA-256 operations.
   - Implements `timingSafeEqual` for MAC verification.

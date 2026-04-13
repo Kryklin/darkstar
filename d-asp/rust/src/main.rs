@@ -375,18 +375,20 @@ impl DarkstarCrypt {
         Ok(out)
     }
 
-    fn encrypt(&self, payload: &str, pk_hex: &str, hwid: Option<Vec<u8>>) -> Result<String, Box<dyn std::error::Error>> {
+    fn encrypt(&self, payload: &str, pk_hex: &str, hwid: Option<Vec<u8>>) -> Result<String, Box<dyn std::error::Error>> {        let total_start = std::time::Instant::now();
+        let payload_bytes = payload.as_bytes();
         let pk_bytes: [u8; 1568] = hex::decode(clean_hex(pk_hex))?
-            .try_into()
-            .map_err(|_| format!("Invalid public key length (Arg length: {})", pk_hex.len()))?;
-        
+            .try_into().map_err(|_| format!("Invalid public key length (Arg length: {})", pk_hex.len()))?;
+
+        let kem_start = std::time::Instant::now();
         let ek = EncapsulationKey::<MlKem1024Params>::from_bytes(&pk_bytes.into());
         let (ct, mut ss) = ek.encapsulate(&mut rand::thread_rng())
-            .map_err(|e| format!("KEM Encapsulation failed: {:?}", e))?;
-        
-        let ct_hex = hex::encode(ct.as_slice());
-        let ss_bytes = ss.as_slice();
-        
+            .map_err(|e| format!("KEM encapsulation failed: {:?}", e))?;
+        let ct_hex = hex::encode(&ct[..]);
+        let ss_bytes = &ss[..];
+        let kem_duration = kem_start.elapsed();
+
+        let kdf_start = std::time::Instant::now();
         use sha2::Digest;
         let mut combined_ss = ss_bytes.to_vec();
         if let Some(h) = hwid {
@@ -406,13 +408,14 @@ impl DarkstarCrypt {
         let active_hmac_key = hmac_key.to_vec();
         ss.zeroize();
         combined_ss.zeroize();
+        let kdf_duration = kdf_start.elapsed();
 
         let prng_factory = |s: &str| ActivePRNG::new(s);
         let mut chain_hasher = Sha256::new();
         chain_hasher.update(format!("dasp-chain-{}", active_password_str).as_bytes());
         let chain_state = chain_hasher.finalize().to_vec();
 
-        let mut current_word_bytes = payload.as_bytes().to_vec();
+        let mut current_word_bytes = payload_bytes.to_vec();
 
         use hmac::{Hmac, Mac};
         type HmacSha256 = Hmac<sha2::Sha256>;
@@ -442,6 +445,7 @@ impl DarkstarCrypt {
         let group_n = [12usize, 12, 11];
         let group_a = [4usize, 6, 9];
 
+        let gauntlet_start = std::time::Instant::now();
         for i in 0..16 {
             let s_idx = if i % 4 == 0 { 0 } else if i % 4 == 2 { 1 } else { group_s[(rng_path.next() as usize) % group_s.len()] };
             current_word_bytes = (self.forward_pipeline[s_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
@@ -455,6 +459,7 @@ impl DarkstarCrypt {
             let a_idx = group_a[(rng_path.next() as usize) % group_a.len()];
             current_word_bytes = (self.forward_pipeline[a_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
         }
+        let gauntlet_duration = gauntlet_start.elapsed();
 
         let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&active_hmac_key)
             .map_err(|e| format!("HMAC error: {:?}", e))?;
@@ -462,16 +467,25 @@ impl DarkstarCrypt {
         mac.update(&current_word_bytes);
         let mac_tag = hex::encode(mac.finalize().into_bytes());
 
+        let total_duration = total_start.elapsed();
+
         let res_obj = serde_json::json!({
             "data": hex::encode(&current_word_bytes),
             "ct": ct_hex,
-            "mac": mac_tag
+            "mac": mac_tag,
+            "timings": {
+                "kem_us": kem_duration.as_micros(),
+                "kdf_us": kdf_duration.as_micros(),
+                "gauntlet_us": gauntlet_duration.as_micros(),
+                "total_us": total_duration.as_micros()
+            }
         });
         
         Ok(res_obj.to_string())
     }
 
     fn decrypt(&self, encrypted_data_raw: &str, sk_hex: &str, hwid: Option<Vec<u8>>) -> Result<String, Box<dyn std::error::Error>> {
+        let total_start = std::time::Instant::now();
         let value: serde_json::Value = serde_json::from_str(encrypted_data_raw)?;
         
         let ct_hex = value["ct"].as_str().ok_or("Missing CT")?;
@@ -484,11 +498,14 @@ impl DarkstarCrypt {
         let ct_bytes: [u8; 1568] = hex::decode(clean_hex(ct_hex))?
             .try_into().map_err(|_| "Invalid CT length")?;
 
+        let kem_start = std::time::Instant::now();
         let dk = DecapsulationKey::<MlKem1024Params>::from_bytes(&sk_bytes.into());
         let mut ss = dk.decapsulate(&ct_bytes.into())
             .map_err(|e| format!("KEM decapsulation failed: {:?}", e))?;
-        let ss_bytes = ss.as_slice();
+        let ss_bytes = &ss[..];
+        let kem_duration = kem_start.elapsed();
 
+        let kdf_start = std::time::Instant::now();
         use sha2::Digest;
         let mut combined_ss = ss_bytes.to_vec();
         if let Some(h) = hwid {
@@ -508,6 +525,7 @@ impl DarkstarCrypt {
         let active_hmac_key = hmac_key.to_vec();
         ss.zeroize();
         combined_ss.zeroize();
+        let kdf_duration = kdf_start.elapsed();
 
         use hmac::{Hmac, Mac};
         type HmacSha256 = Hmac<sha2::Sha256>;
@@ -555,6 +573,7 @@ impl DarkstarCrypt {
             mac.finalize().into_bytes().to_vec()
         };
 
+        let gauntlet_start = std::time::Instant::now();
         let mut current_word_bytes = payload_bytes;
         for j in (0..16).rev() {
             let (s, p, n, a) = round_paths[j];
@@ -563,12 +582,39 @@ impl DarkstarCrypt {
             current_word_bytes = (self.reverse_pipeline[p])(&current_word_bytes, Some(&func_key), &prng_factory)?;
             current_word_bytes = (self.reverse_pipeline[s])(&current_word_bytes, Some(&func_key), &prng_factory)?;
         }
+        let gauntlet_duration = gauntlet_start.elapsed();
 
         for (i, b) in current_word_bytes.iter_mut().enumerate() {
             *b ^= chain_state[i % 32];
         }
 
-        Ok(String::from_utf8(current_word_bytes)?)
+        let result = String::from_utf8(current_word_bytes)?;
+        let total_duration = total_start.elapsed();
+        
+        // Output with timings (hidden by default unless we use specialized logger)
+        // For interop suite, we keep the original text but append JSON results for automated parsing
+        // Wait, standard decrypt returns raw string. I should return JSON if it's for bench.
+        // Actually, the user wants "extensive logs".
+        
+        // I'll make it so if sk_hex has a prefix or something, we output JSON.
+        // Alternatively, I'll always output the decrypted payload, BUT if it's a CLI flag, I'll output JSON.
+        // The user said "capture the time taken... that way its extensive".
+        
+        // I'll just return the decrypted string. The benchmark script will time the process.
+        // BUT wait, I need internal timings.
+        // I'll print the timings to stderr if a flag is set? Or just print a JSON line.
+        
+        // I'll print the timings in a standardized JSON to stderr so it doesn't pollute stdout.
+        eprintln!("{}", serde_json::json!({
+            "timings": {
+                "kem_us": kem_duration.as_micros(),
+                "kdf_us": kdf_duration.as_micros(),
+                "gauntlet_us": gauntlet_duration.as_micros(),
+                "total_us": total_duration.as_micros()
+            }
+        }));
+
+        Ok(result)
     }
 }
 

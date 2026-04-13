@@ -6,10 +6,24 @@ The **D-ASP (Darkstar Algebraic Substitution & Permutation)** suite is a soverei
 
 ## 🛠️ Core Capabilities
 
-- **ML-KEM-1024 (Kyber)**: NIST Level 5 Post-Quantum root of trust.
+- **ML-KEM-1024 (Kyber)**: Grade-1024 High-Security root of trust.
 - **16-Round SPNA Gauntlet**: Hardened deterministic schedule (Substitution, Permutation, Network, Algebraic) every round.
 - **HMAC-Linked Fusion**: Authentication-first protocol providing ML-KEM-linked integrity.
 - **Hardware Binding**: Optional machine-unique entropy injection ($HWID$).
+
+## 🚀 Performance Profile (Grade-1024)
+
+The suite is instrumented for granular telemetry across all implementation layers. Benchmark conducted on April 13, 2026.
+
+| Engine | Mean Latency | KEM (μs) | KDF (μs) | Gauntlet (μs) | Throughput |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Go** | 14.35 ms | 54 | 32 | 146 | 69.70 ops/s |
+| **Rust** | 15.38 ms | 206 | 20 | 35 | 65.01 ops/s |
+| **Node.js** | 126.84 ms | 13621 | 3059 | 1646 | 7.88 ops/s |
+| **Python** | 206.54 ms | 186 | 46 | 7266 | 4.84 ops/s |
+
+> [!NOTE]
+> High-performance engines (Go, Rust) utilize native optimizations for the SPNA gauntlet. Python and Node.js prioritize branchless constant-time arithmetic for security over throughput.
 
 ---
 

@@ -12,6 +12,7 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
+import time
 try:
     import pqcrypto.kem.ml_kem_1024 as kem
 except ImportError:
@@ -622,11 +623,17 @@ class DarkstarCrypt:
             raise e
 
     def encrypt(self, payload, pk_hex, hwid_hex=None):
+        total_start = time.perf_counter()
         pk_bytes = bytes.fromhex(pk_hex)
         import pqcrypto.kem.ml_kem_1024 as kem
+        
+        kem_start = time.perf_counter()
         ct_bytes, ss_bytes_tup = kem.encrypt(pk_bytes)
+        kem_duration = time.perf_counter() - kem_start
+        
         ss_bytes = bytearray(ss_bytes_tup)
         
+        kdf_start = time.perf_counter()
         combined_ss = bytes(ss_bytes)
         if hwid_hex:
             combined_ss += bytes.fromhex(hwid_hex)
@@ -637,6 +644,7 @@ class DarkstarCrypt:
         
         # Zeroize secret key material
         for i in range(len(ss_bytes)): ss_bytes[i] = 0 
+        kdf_duration = time.perf_counter() - kdf_start
         
         current_word_bytes = payload.encode('utf-8')
         def prng_factory(s_str):
@@ -663,6 +671,7 @@ class DarkstarCrypt:
         group_n = [12, 12, 11]
         group_a = [4, 6, 9]
 
+        gauntlet_start = time.perf_counter()
         for i in range(16):
             s_idx = 0
             if i % 4 == 0: s_idx = 0
@@ -678,19 +687,28 @@ class DarkstarCrypt:
 
             a_idx = group_a[rng_path.next() % len(group_a)]
             current_word_bytes = self.obfuscation_functions_v4[a_idx](current_word_bytes, seed=func_key, prng_factory=prng_factory)
+        gauntlet_duration = time.perf_counter() - gauntlet_start
 
         final_payload = current_word_bytes
         h = hmac.new(hmac_key, bytes.fromhex(ct_bytes.hex()) + final_payload, hashlib.sha256)
         mac_tag = h.hexdigest()
         
+        total_duration = time.perf_counter() - total_start
         res_obj = {
             "data": final_payload.hex(),
             "ct": ct_bytes.hex(),
-            "mac": mac_tag
+            "mac": mac_tag,
+            "timings": {
+                "kem_us": int(kem_duration * 1_000_000),
+                "kdf_us": int(kdf_duration * 1_000_000),
+                "gauntlet_us": int(gauntlet_duration * 1_000_000),
+                "total_us": int(total_duration * 1_000_000)
+            }
         }
         return json.dumps(res_obj)
 
     def decrypt(self, encrypted_data_raw, sk_hex, hwid_hex=None):
+        total_start = time.perf_counter()
         parsed = json.loads(encrypted_data_raw)
         
         ct_hex = parsed.get('ct', "")
@@ -701,9 +719,13 @@ class DarkstarCrypt:
         ct_bytes = bytes.fromhex(ct_hex)
         
         import pqcrypto.kem.ml_kem_1024 as kem
+        kem_start = time.perf_counter()
         ss_bytes_tup = kem.decrypt(sk_bytes, ct_bytes)
+        kem_duration = time.perf_counter() - kem_start
+        
         ss_bytes = bytearray(ss_bytes_tup)
         
+        kdf_start = time.perf_counter()
         combined_ss = bytes(ss_bytes)
         if hwid_hex:
             combined_ss += bytes.fromhex(hwid_hex)
@@ -714,6 +736,7 @@ class DarkstarCrypt:
         
         # Zeroize secret key material
         for i in range(len(ss_bytes)): ss_bytes[i] = 0 
+        kdf_duration = time.perf_counter() - kdf_start
         
         payload_bytes = bytes.fromhex(encrypted_content)
         h = hmac.new(hmac_key, ct_bytes + payload_bytes, hashlib.sha256)
@@ -750,16 +773,28 @@ class DarkstarCrypt:
         func_key = hmac.new(word_key, f"keyed-{checksum}".encode('utf-8'), hashlib.sha256).digest()
 
         current_word_bytes = payload_bytes
+        gauntlet_start = time.perf_counter()
         for j in range(15, -1, -1):
             r = round_paths[j]
             current_word_bytes = self.deobfuscation_functions_v4[r['a']](current_word_bytes, seed=func_key, prng_factory=prng_factory)
             current_word_bytes = self.deobfuscation_functions_v4[r['n']](current_word_bytes, seed=func_key, prng_factory=prng_factory)
             current_word_bytes = self.deobfuscation_functions_v4[r['p']](current_word_bytes, seed=func_key, prng_factory=prng_factory)
             current_word_bytes = self.deobfuscation_functions_v4[r['s']](current_word_bytes, seed=func_key, prng_factory=prng_factory)
+        gauntlet_duration = time.perf_counter() - gauntlet_start
 
         temp_word_bytes = bytearray(current_word_bytes)
         for i in range(len(temp_word_bytes)):
             temp_word_bytes[i] ^= chain_state[i % 32]
+        
+        total_duration = time.perf_counter() - total_start
+        print(json.dumps({
+            "timings": {
+                "kem_us": int(kem_duration * 1_000_000),
+                "kdf_us": int(kdf_duration * 1_000_000),
+                "gauntlet_us": int(gauntlet_duration * 1_000_000),
+                "total_us": int(total_duration * 1_000_000)
+            }
+        }), file=sys.stderr)
         
         return temp_word_bytes.decode('utf-8')
 

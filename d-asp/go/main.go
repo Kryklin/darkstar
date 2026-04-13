@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cloudflare/circl/kem/mlkem/mlkem1024"
 )
@@ -363,6 +364,7 @@ func (dc *DarkstarCrypt) invTransMDSNetwork(input []byte, seed []byte, prngFacto
 }
 
 func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (string, error) {
+	totalStart := time.Now()
 	pkRaw, err := hex.DecodeString(pkHex)
 	if err != nil { return "", fmt.Errorf("invalid pk hex: %v", err) }
 	
@@ -382,12 +384,15 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	pk, err := sch.UnmarshalBinaryPublicKey(pkBytes)
 	if err != nil { return "", fmt.Errorf("invalid public key: %v", err) }
 	
+	kemStart := time.Now()
 	ct, ss, err := sch.Encapsulate(pk)
 	if err != nil { return "", err }
+	kemDuration := time.Since(kemStart)
 	
 	ctHex := hex.EncodeToString(ct)
 	ssBytes := ss
 
+	kdfStart := time.Now()
 	combinedSS := append([]byte{}, ssBytes...)
 	if len(finalHwid) > 0 { combinedSS = append(combinedSS, finalHwid...) }
 
@@ -396,6 +401,7 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 
 	hHasher := sha256.New(); hHasher.Write([]byte("dasp-hmac-key")); hHasher.Write(combinedSS)
 	activeHmacKey := hHasher.Sum(nil)
+	kdfDuration := time.Since(kdfStart)
 
 	for i := range ssBytes { ssBytes[i] = 0 }
 
@@ -419,6 +425,7 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	groupS := []int{0, 1, 5}; groupP := []int{2, 3, 10}
 	groupN := []int{12, 12, 11}; groupA := []int{4, 6, 9}
 
+	gauntletStart := time.Now()
 	for i := 0; i < 16; i++ {
 		sIdx := 0
 		if i%4 == 0 { sIdx = 0 } else if i%4 == 2 { sIdx = 1 } else { sIdx = groupS[int(rngPath.Next()%uint32(len(groupS)))] }
@@ -433,21 +440,31 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 		aIdx := groupA[int(rngPath.Next()%uint32(len(groupA)))]
 		currentWordBytes = dc.forwardPipeline[aIdx](currentWordBytes, funcKey, prngFactory)
 	}
+	gauntletDuration := time.Since(gauntletStart)
 
 	h := hmac.New(sha256.New, activeHmacKey)
 	h.Write(ct); h.Write(currentWordBytes)
 	macTag := hex.EncodeToString(h.Sum(nil))
 
+	totalDuration := time.Since(totalStart)
+
 	inner := map[string]interface{}{
 		"data": hex.EncodeToString(currentWordBytes),
 		"ct":   ctHex,
 		"mac":  macTag,
+		"timings": map[string]interface{}{
+			"kem_us":      kemDuration.Microseconds(),
+			"kdf_us":      kdfDuration.Microseconds(),
+			"gauntlet_us": gauntletDuration.Microseconds(),
+			"total_us":    totalDuration.Microseconds(),
+		},
 	}
 	innerJson, _ := json.Marshal(inner)
 	return string(innerJson), nil
 }
 
 func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []byte) (string, error) {
+	totalStart := time.Now()
 	var value map[string]interface{}
 	if err := json.Unmarshal([]byte(encryptedDataRaw), &value); err != nil { return "", err }
 	
@@ -473,8 +490,12 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []b
 	ctBytes, err := hex.DecodeString(ctHex); if err != nil { return "", err }
 	sch := mlkem1024.Scheme()
 	sk, err := sch.UnmarshalBinaryPrivateKey(skBytes); if err != nil { return "", err }
-	ssBytes, err := sch.Decapsulate(sk, ctBytes); if err != nil { return "", err }
 	
+	kemStart := time.Now()
+	ssBytes, err := sch.Decapsulate(sk, ctBytes); if err != nil { return "", err }
+	kemDuration := time.Since(kemStart)
+	
+	kdfStart := time.Now()
 	combinedSS := append([]byte{}, ssBytes...)
 	if len(finalHwid) > 0 { combinedSS = append(combinedSS, finalHwid...) }
 
@@ -483,6 +504,8 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []b
 
 	hHasher := sha256.New(); hHasher.Write([]byte("dasp-hmac-key")); hHasher.Write(combinedSS)
 	activeHmacKey := hHasher.Sum(nil)
+	kdfDuration := time.Since(kdfStart)
+
 	for i := range ssBytes { ssBytes[i] = 0 }
 
 	payloadBytes, err := hex.DecodeString(encryptedContent); if err != nil { return "", err }
@@ -514,6 +537,7 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []b
 	mac2 := hmac.New(sha256.New, wordKey); mac2.Write([]byte(fmt.Sprintf("keyed-%d", chk)))
 	funcKey := mac2.Sum(nil)
 
+	gauntletStart := time.Now()
 	currentWordBytes := payloadBytes
 	for j := 15; j >= 0; j-- {
 		r := roundPaths[j]
@@ -522,8 +546,21 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []b
 		currentWordBytes = dc.reversePipeline[r.p](currentWordBytes, funcKey, prngFactory)
 		currentWordBytes = dc.reversePipeline[r.s](currentWordBytes, funcKey, prngFactory)
 	}
+	gauntletDuration := time.Since(gauntletStart)
 
 	for i := range currentWordBytes { currentWordBytes[i] ^= chainState[i%32] }
+	
+	totalDuration := time.Since(totalStart)
+	
+	timings := map[string]interface{}{
+		"kem_us":      kemDuration.Microseconds(),
+		"kdf_us":      kdfDuration.Microseconds(),
+		"gauntlet_us": gauntletDuration.Microseconds(),
+		"total_us":    totalDuration.Microseconds(),
+	}
+	tJson, _ := json.Marshal(map[string]interface{}{"timings": timings})
+	fmt.Fprintf(os.Stderr, "%s\n", tJson)
+
 	return string(currentWordBytes), nil
 }
 

@@ -23,7 +23,7 @@
 
 `darkstar` is a defense-grade client-side security enclave designed to safeguard recovery phrases, identities, and sensitive records using post-quantum cryptographic primitives.
 
-At its core, Darkstar utilizes the **D-ASP (Darkstar Algebraic Substitution & Permutation)** protocol—a sovereign 16-round structural permutation gauntlet paired with **ML-KEM-1024 (Kyber)** for NIST Level 5 security parity.
+At its core, Darkstar utilizes the **D-ASP (Darkstar Algebraic Substitution & Permutation)** protocol—a sovereign 16-round structural permutation gauntlet paired with **ML-KEM-1024 (Kyber)** for Grade-1024 security parity.
 
 ---
 

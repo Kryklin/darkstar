@@ -8,7 +8,7 @@ The Rust implementation serves as the definitive source of truth for bit-perfect
 
 ## 🛡️ Security Profile
 
-- **KEM**: NIST Level 5 (ML-KEM-1024).
+- **KEM**: Grade-1024 (ML-KEM-1024).
 - **Hardening**:
   - `zeroize`: All sensitive key material and internal Shared Secrets are zeroed in memory upon drop.
   - `sha2`: High-fidelity SHA-256 implementation.
