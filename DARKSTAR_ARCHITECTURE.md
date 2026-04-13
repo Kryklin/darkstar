@@ -40,6 +40,7 @@ where the mask is derived via branchless arithmetic:
 $$
 \text{mask} = -(a \gg 7)
 $$
+
 *Proof of Constant-Time*: If the high bit of $a$ is 1, $a \gg 7$ yields 1, and $-(1)$ in two's complement is `0xFF` (all bits set), triggering the `0x1B` XOR. If the high bit is 0, the mask is `0x00`, resulting in a pure shift. Both paths execute identical CPU instruction sequences.
 
 ---
@@ -59,6 +60,7 @@ Bits are transposed across word boundaries using a **3-Way Columnar Transpositio
 $$
 P(x) = \text{Transpose}_{\text{cols}=3}(x)
 $$
+
 This ensures that any single bit change in Round $n$ cascades across 3 unique byte positions in Round $n+1$.
 
 ### 3.3 Network (N) Layer: MDS Diffusion
@@ -72,6 +74,7 @@ M = \begin{bmatrix}
 03 & 01 & 01 & 02
 \end{bmatrix}
 $$
+
 The branch weight of $M$ is 5, ensuring that if $w$ bytes of the input block change, at least $5-w$ bytes of the output block will change.
 
 ### 3.4 Algebraic (A) Layer: ARX Mixing
