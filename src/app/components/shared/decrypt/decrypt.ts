@@ -223,10 +223,12 @@ export class SharedDecryptComponent {
           }
       }
 
+      let hwid: string | undefined = undefined;
+
       if (this.useHardwareId) {
           const hwId = await this.vaultService.getHardwareId();
           if (hwId) {
-              passwordOrSk = passwordOrSk + hwId;
+              hwid = hwId;
           } else {
               console.error("Failed to retrieve Machine Hardware ID");
               this.error = "Decryption failed: Unable to retrieve Machine Hardware ID from system.";
@@ -236,20 +238,12 @@ export class SharedDecryptComponent {
       }
 
       try {
-        const result = await this.cryptService.decrypt(encryptedData, reverseKey, passwordOrSk);
+        const result = await this.cryptService.decrypt(encryptedData, reverseKey, passwordOrSk, hwid);
         this.decryptedMnemonic = result.decrypted;
-
-        if (result.isLegacy) {
-          this.snackBar.open('Notice: Legacy encryption detected. Please re-encrypt your data for enhanced security.', 'OK', {
-            duration: 10000,
-            panelClass: ['legacy-warning-snackbar'],
-            verticalPosition: 'top',
-            horizontalPosition: 'center',
-          });
-        }
 
         this.error = '';
         this.showResult = true;
+
       } catch (e: unknown) {
         let errorMessage = 'An error occurred';
         if (e instanceof Error) {

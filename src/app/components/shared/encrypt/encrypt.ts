@@ -44,7 +44,6 @@ export class SharedEncryptComponent implements OnInit {
     { value: 'log', label: 'System Log (.log)' },
     { value: 'csv', label: 'Dataset (.csv)' },
     { value: 'json', label: 'Configuration (.json)' },
-    { value: 'json', label: 'Configuration (.json)' },
     { value: 'image', label: 'Image (PNG)' },
     { value: 'audio', label: 'Audio (WAV)' },
   ];
@@ -104,19 +103,19 @@ export class SharedEncryptComponent implements OnInit {
           pkHex += (hex.length === 2 ? hex : '0' + hex);
       }
 
-      let keyMaterial = pkHex;
+      let hwid: string | undefined = undefined;
 
       if (this.useHardwareId) {
           const hwId = await this.vaultService.getHardwareId();
           if (hwId) {
-              keyMaterial = keyMaterial + hwId;
+              hwid = hwId;
           } else {
               this.snackBar.open('Failed to retrieve Machine Hardware ID from system.', 'Close', { duration: 3000 });
               return;
           }
       }
 
-      const { encryptedData, reverseKey } = await this.cryptService.encrypt(mnemonic, keyMaterial, 8);
+      const { encryptedData, reverseKey } = await this.cryptService.encrypt(mnemonic, pkHex, hwid);
 
       this.encryptedData = encryptedData;
       this.reverseKey = reverseKey;

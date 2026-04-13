@@ -19,6 +19,9 @@ interface Enemy {
   rotation: number;
   rotationSpeed: number;
   vertices: { x: number; y: number }[];
+  isBig?: boolean;
+  health?: number;
+  maxHealth?: number;
 }
 
 type PowerUpType = 'MULTISHOT' | 'RAPID_FIRE' | 'SHIELD' | 'NUKE' | 'SPEED';
@@ -466,12 +469,26 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
 
         if (Bullet.active && Enemy.active && Bullet.x < ex + ew && Bullet.x + Bullet.width > ex && Bullet.y < ey + eh && Bullet.y + Bullet.height > ey) {
           Bullet.active = false;
+          
+          if (Enemy.isBig && Enemy.health) {
+            Enemy.health--;
+            this.spawnExplosion(Bullet.x, Bullet.y, '#ffffff'); // Impact spark
+            if (Enemy.health > 0) continue;
+          }
+
           Enemy.active = false;
-          this.score += 100;
+          this.score += Enemy.isBig ? 500 : 100;
           this.spawnExplosion(Enemy.x + Enemy.width / 2, Enemy.y + Enemy.height / 2); // EXPLOSION
 
+          // Splitting logic
+          if (Enemy.isBig) {
+            for (let i = 0; i < 3; i++) {
+                this.spawnMiniAsteroid(Enemy.x + Enemy.width/2, Enemy.y + Enemy.height/2);
+            }
+          }
+
           // Drop Powerup Chance (15% now since there are more types)
-          if (Math.random() < 0.15) {
+          if (Math.random() < (Enemy.isBig ? 0.4 : 0.15)) {
             this.spawnPowerUp(Enemy.x + Enemy.width / 2, Enemy.y + Enemy.height / 2);
           }
         }
@@ -479,7 +496,7 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
     }
 
     // Win Condition
-    if (this.score >= 3000) {
+    if (this.score >= 30000) {
       this.triggerWin();
     }
 
@@ -511,7 +528,7 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
     // Enemy cleanup (bottom of screen)
     if (this.enemies.some((e) => e.y > canvas.height - 50 && e.active)) {
       this.enemies = this.enemies.filter((e) => e.y <= canvas.height - 50);
-      this.score = Math.max(0, this.score - 50);
+      // Removed score penalty for better V9 experience
     }
 
     this.enemies = this.enemies.filter((e) => e.active);
@@ -521,9 +538,10 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
   }
 
   spawnEnemy(canvasWidth: number) {
-    // Create random asteroid shape
-    const size = 30 + Math.random() * 15;
-    const numPoints = 6 + Math.floor(Math.random() * 6);
+    const isBig = Math.random() < 0.2; // 20% Mega spawn
+    const baseSize = isBig ? 100 : 30;
+    const size = baseSize + Math.random() * (isBig ? 40 : 15);
+    const numPoints = isBig ? 12 : 6 + Math.floor(Math.random() * 6);
     const vertices = [];
     for (let i = 0; i < numPoints; i++) {
       const angle = (i / numPoints) * Math.PI * 2;
@@ -535,15 +553,42 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
     }
 
     this.enemies.push({
-      x: Math.random() * (canvasWidth - 50),
-      y: -50,
+      x: Math.random() * (canvasWidth - size),
+      y: -size,
       width: size,
       height: size,
-      speed: 2 + Math.random() * 3,
+      speed: isBig ? 1 + Math.random() : 2 + Math.random() * 3,
       active: true,
       rotation: 0,
-      rotationSpeed: (Math.random() - 0.5) * 0.15,
+      rotationSpeed: (Math.random() - 0.5) * 0.1,
       vertices: vertices,
+      isBig: isBig,
+      health: isBig ? 3 : 1,
+      maxHealth: isBig ? 3 : 1
+    });
+  }
+
+  spawnMiniAsteroid(x: number, y: number) {
+    const size = 20 + Math.random() * 10;
+    const numPoints = 6;
+    const vertices = [];
+    for (let i = 0; i < numPoints; i++) {
+        const angle = (i / numPoints) * Math.PI * 2;
+        const rad = (size / 2) * (0.7 + Math.random() * 0.3);
+        vertices.push({ x: Math.cos(angle) * rad, y: Math.sin(angle) * rad });
+    }
+    
+    this.enemies.push({
+        x: x - size/2,
+        y: y - size/2,
+        width: size,
+        height: size,
+        speed: 3 + Math.random() * 2,
+        active: true,
+        rotation: 0,
+        rotationSpeed: (Math.random() - 0.5) * 0.2,
+        vertices: vertices,
+        isBig: false
     });
   }
 
@@ -604,7 +649,8 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
 
   triggerWin() {
     this.gameState = 'WON';
-    this.score = 3000;
+    this.score = 30000;
+    localStorage.setItem('darkstar_asteroid_achievement', 'true');
     setTimeout(() => {
       this.gameState = 'BACK_TO_WORK';
       setTimeout(() => {
@@ -636,20 +682,23 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
       // For simplicity: RAPID_FIRE spawns 2 bullets in sequence or just faster bullets?
       // Let's make RAPID_FIRE spawn a second wave slightly offset
 
-      const count = this.activeEffects['RAPID_FIRE'] ? 2 : 1;
+      const isHyperShot = this.score >= 10000;
+      const count = (this.activeEffects['RAPID_FIRE'] ? 2 : 1) + (isHyperShot ? 1 : 0);
+      const bWidth = isHyperShot ? 8 : 4;
+      const bHeight = isHyperShot ? 14 : 10;
 
       for (let i = 0; i < count; i++) {
-        const yOff = i * 15; // Offset second bullet
+        const yOff = i * (isHyperShot ? 8 : 15); 
 
         if (this.activeEffects['MULTISHOT']) {
           // Center
-          this.bullets.push({ x: bulletX, y: bulletY + yOff, vx: 0, vy: vy, width: 4, height: 10, active: true });
+          this.bullets.push({ x: bulletX, y: bulletY + yOff, vx: 0, vy: vy, width: bWidth, height: bHeight, active: true });
           // Left
-          this.bullets.push({ x: bulletX, y: bulletY + yOff, vx: -2, vy: vy * 0.9, width: 4, height: 10, active: true });
+          this.bullets.push({ x: bulletX, y: bulletY + yOff, vx: -2, vy: vy * 0.9, width: bWidth, height: bHeight, active: true });
           // Right
-          this.bullets.push({ x: bulletX, y: bulletY + yOff, vx: 2, vy: vy * 0.9, width: 4, height: 10, active: true });
+          this.bullets.push({ x: bulletX, y: bulletY + yOff, vx: 2, vy: vy * 0.9, width: bWidth, height: bHeight, active: true });
         } else {
-          this.bullets.push({ x: bulletX, y: bulletY + yOff, vx: 0, vy: vy, width: 4, height: 10, active: true });
+          this.bullets.push({ x: bulletX, y: bulletY + yOff, vx: 0, vy: vy, width: bWidth, height: bHeight, active: true });
         }
       }
     }
@@ -798,27 +847,64 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
     });
 
     // Enemies (Asteroids)
-    ctx.fillStyle = '#ff1744';
     this.enemies.forEach((e) => {
+      if (!e.active) return;
+
       ctx.save();
       ctx.translate(e.x + e.width / 2, e.y + e.height / 2);
       ctx.rotate(e.rotation);
 
+      // Draw Shape
       ctx.beginPath();
-      if (e.vertices.length > 0) {
-        ctx.moveTo(e.vertices[0].x, e.vertices[0].y);
-        for (let i = 1; i < e.vertices.length; i++) {
-          ctx.lineTo(e.vertices[i].x, e.vertices[i].y);
-        }
+      ctx.moveTo(e.vertices[0].x, e.vertices[0].y);
+      for (let i = 1; i < e.vertices.length; i++) {
+        ctx.lineTo(e.vertices[i].x, e.vertices[i].y);
       }
       ctx.closePath();
-      ctx.fill();
 
-      ctx.strokeStyle = '#ff8a80';
-      ctx.lineWidth = 1;
+      // Premium styling for asteroids
+      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, e.width / 2);
+      if (e.isBig) {
+          gradient.addColorStop(0, '#455a64');
+          gradient.addColorStop(1, '#263238');
+      } else {
+          gradient.addColorStop(0, '#78909c');
+          gradient.addColorStop(1, '#455a64');
+      }
+      
+      ctx.fillStyle = gradient;
+      ctx.fill();
+      ctx.strokeStyle = e.isBig ? '#90a4ae' : '#546e7a';
+      ctx.lineWidth = 2;
       ctx.stroke();
 
       ctx.restore();
+
+      // Health Bar for Big ones
+      if (e.isBig && e.health !== undefined && e.maxHealth !== undefined) {
+          const barW = e.width;
+          const barH = 4;
+          const bx = e.x;
+          const by = e.y - 12;
+
+          ctx.fillStyle = 'rgba(0,0,0,0.5)';
+          ctx.fillRect(bx, by, barW, barH);
+          
+          const healthPct = e.health / e.maxHealth;
+          ctx.fillStyle = healthPct > 0.5 ? '#00e676' : (healthPct > 0.25 ? '#ffeb3b' : '#ff1744');
+          ctx.fillRect(bx, by, barW * healthPct, barH);
+      }
     });
+
+    // Hyper-Shot Indicator
+    if (this.score >= 10000) {
+        ctx.save();
+        ctx.fillStyle = '#ff1744';
+        ctx.font = 'bold 14px "Roboto Mono", monospace';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ff1744';
+        ctx.fillText('>>> HYPER-SHOT ACTIVE <<<', 20, canvas.height - 30);
+        ctx.restore();
+    }
   }
 }

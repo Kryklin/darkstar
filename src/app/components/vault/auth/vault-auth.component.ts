@@ -47,10 +47,6 @@ export class VaultAuthComponent implements OnInit {
     return this.biometricService.getDeviceAuthName();
   }
 
-  hasVault() {
-    return this.vaultService.hasVault();
-  }
-
   ngOnInit() {
     if (localStorage.getItem('vault_recovered_notice') === 'true') {
         localStorage.removeItem('vault_recovered_notice');
@@ -81,8 +77,6 @@ export class VaultAuthComponent implements OnInit {
         const result = await this.vaultService.unlockWithHardwareKey();
         if (result && result.requiresTotp) {
             this.requiresTotp = true;
-        } else if (result && result.requiresMigration) {
-            await this.handleMigration();
         }
     } finally {
         this.loading = false;
@@ -97,8 +91,6 @@ export class VaultAuthComponent implements OnInit {
         const result = await this.vaultService.unlockWithBiometrics();
         if (result && result.requiresTotp) {
             this.requiresTotp = true;
-        } else if (result && result.requiresMigration) {
-            await this.handleMigration();
         }
     } finally {
         this.loading = false;
@@ -114,12 +106,10 @@ export class VaultAuthComponent implements OnInit {
 
     setTimeout(async () => {
       try {
-        if (this.hasVault()) {
+        if (this.vaultService.exists()) {
           const result = await this.vaultService.unlock(this.password);
           if (result && result.requiresTotp) {
               this.requiresTotp = true;
-          } else if (result && result.requiresMigration) {
-              await this.handleMigration();
           }
         } else {
           await this.vaultService.createVault(this.password);
@@ -150,7 +140,7 @@ export class VaultAuthComponent implements OnInit {
       const ref = this.dialog.open(GenericDialog, {
           data: {
               title: 'Quantum Security Upgrade',
-              message: 'A security upgrade is available for your vault. Would you like to migrate your data to the D-KASP-512 (V5) protocol for post-quantum protection?\n\nThis is a one-time process and is highly recommended.',
+              message: 'A security upgrade is available for your vault. Would you like to migrate your data to the D-KASP protocol for post-quantum protection?\n\nThis is a one-time process and is highly recommended.',
               buttons: [
                   { label: 'Later', value: false },
                   { label: 'Migrate Now', value: true, color: 'primary' }
@@ -164,10 +154,11 @@ export class VaultAuthComponent implements OnInit {
       if (result) {
           this.loading = true;
           try {
-              await this.vaultService.performV5Migration();
+              await this.vaultService.performMigration();
           } finally {
               this.loading = false;
           }
       }
+
   }
 }

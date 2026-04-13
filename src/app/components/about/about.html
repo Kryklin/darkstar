@@ -142,6 +142,26 @@
     </div>
   </section>
 
+  @if (hasAchievement()) {
+    <section class="achievements-section animate-slide-up">
+      <div class="achievement-badge mega-badge">
+        <div class="badge-glow"></div>
+        <div class="badge-content">
+          <mat-icon class="badge-icon">military_tech</mat-icon>
+          <div class="badge-info">
+            <span class="badge-title">GAUNTLET CERTIFIED</span>
+            <span class="badge-subtitle">D-KASP V9 ELITE INTEROP VALIDATION</span>
+          </div>
+        </div>
+        <div class="badge-decoration">
+          <span class="material-icons">stars</span>
+          <span class="material-icons">security</span>
+          <span class="material-icons">auto_awesome</span>
+        </div>
+      </div>
+    </section>
+  }
+
   <section class="meta-section">
     <div class="meta-links">
       <button mat-stroked-button (click)="openLink(repoUrl)">

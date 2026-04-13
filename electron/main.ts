@@ -443,13 +443,24 @@ async function runDKaspCommand(engine: string, args: string[]): Promise<unknown>
     }
 }
 
-ipcMain.handle('dkasp-encrypt', async (_event, mnemonic: string, pkHex: string, engine: string, version = 8) => {
-    return await runDKaspCommand(engine, ['-v', version.toString(), 'encrypt', mnemonic, pkHex]);
+ipcMain.handle('dkasp-encrypt', async (_event, mnemonic: string, pkHex: string, engine: string, hwid?: string) => {
+    const args: string[] = [];
+    if (hwid) {
+        args.push('--hwid', hwid);
+    }
+    args.push('encrypt', mnemonic, pkHex);
+    return await runDKaspCommand(engine, args);
 });
 
-ipcMain.handle('dkasp-decrypt', async (_event, data: string, rk: string, skHex: string, engine: string, version = 8) => {
-    return await runDKaspCommand(engine, ['-v', version.toString(), 'decrypt', data, rk, skHex]);
+ipcMain.handle('dkasp-decrypt', async (_event, data: string, rk: string, skHex: string, engine: string, hwid?: string) => {
+    const args: string[] = [];
+    if (hwid) {
+        args.push('--hwid', hwid);
+    }
+    args.push('decrypt', data, skHex); // rk is legacy/unused
+    return await runDKaspCommand(engine, args);
 });
+
 
 
 // --- WebAuthn Native Proxy (Windows Hello Fix) ---

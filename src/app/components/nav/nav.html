@@ -79,9 +79,11 @@
       </button>
 
       <!-- Vault Status Indicator (Moved to left) -->
-      <div class="vault-status-badge" [class.unlocked]="vaultService.isUnlocked()" routerLink="/vault">
-          <mat-icon>{{ vaultService.isUnlocked() ? 'lock_open' : 'lock' }}</mat-icon>
-          <span class="status-label">{{ vaultService.isUnlocked() ? 'Vault Unlocked' : 'Vault Locked' }}</span>
+      <div class="vault-status-badge" [class.unlocked]="vaultService.isUnlocked()" [class.missing]="!vaultService.exists()" routerLink="/vault">
+          <mat-icon>{{ !vaultService.exists() ? 'warning' : (vaultService.isUnlocked() ? 'lock_open' : 'lock') }}</mat-icon>
+          <span class="status-label">
+            {{ !vaultService.exists() ? 'No Vault Created' : (vaultService.isUnlocked() ? 'Vault Unlocked' : 'Vault Locked') }}
+          </span>
       </div>
       
       <span class="spacer"></span>
