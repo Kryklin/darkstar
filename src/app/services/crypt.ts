@@ -328,11 +328,12 @@ export class CryptService {
    * Extracted out to high-performance localized binaries (Rust/Go/Node).
    * @param {string} mnemonic The space-separated recovery phrase.
    * @param {string} keyMaterial The user-defined master password (legacy) or PK hex (V5).
+   * @param {number} version The protocol version (default 8).
    * @returns {Promise<{ encryptedData: string; reverseKey: string }>} JSON envelope + B64 packed key.
    */
-  async encrypt(mnemonic: string, keyMaterial: string): Promise<{ encryptedData: string; reverseKey: string }> {
+  async encrypt(mnemonic: string, keyMaterial: string, version: number = 8): Promise<{ encryptedData: string; reverseKey: string }> {
     const engine = localStorage.getItem('dkasp_engine') || 'rust';
-    const result = (await window.electronAPI.dKaspEncrypt(mnemonic, keyMaterial, engine)) as { encryptedData: string, reverseKey: string };
+    const result = (await window.electronAPI.dKaspEncrypt(mnemonic, keyMaterial, engine, version)) as { encryptedData: string, reverseKey: string };
     return {
       encryptedData: result.encryptedData,
       reverseKey: result.reverseKey,
@@ -344,15 +345,19 @@ export class CryptService {
    * Auto-identifies protocol version (V1-V5).
    * @param {string} encryptedDataRaw The ciphertext string or JSON envelope.
    * @param {string} reverseKey The functional map required for de-obfuscation.
-   * @param {string} password The master password or SK hex (V5).
+   * @param {string} passwordOrSk The master password or SK hex (V5).
+   * @param {number} version Optional protocol version override.
    * @returns {Promise<DecryptionResult>} Decrypted phrase and legacy flag.
    */
-  async decrypt(encryptedDataRaw: string, reverseKey: string, passwordOrSk: string): Promise<DecryptionResult> {
+  async decrypt(encryptedDataRaw: string, reverseKey: string, passwordOrSk: string, version?: number): Promise<DecryptionResult> {
     let isLegacy = true;
+    let v = version;
+
     try {
       if (encryptedDataRaw.trim().startsWith('{')) {
         const parsed = JSON.parse(encryptedDataRaw);
-        if (parsed.v === 5) {
+        v = v || parsed.v;
+        if (parsed.v >= 5) {
           isLegacy = false;
         }
       }
@@ -361,7 +366,7 @@ export class CryptService {
     }
 
     const engine = localStorage.getItem('dkasp_engine') || 'rust';
-    const decrypted = (await window.electronAPI.dKaspDecrypt(encryptedDataRaw, reverseKey, passwordOrSk, engine)) as string;
+    const decrypted = (await window.electronAPI.dKaspDecrypt(encryptedDataRaw, reverseKey, passwordOrSk, engine, v || 8)) as string;
     
     return {
       decrypted,

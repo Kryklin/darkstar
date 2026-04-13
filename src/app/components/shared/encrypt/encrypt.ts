@@ -103,8 +103,7 @@ export class SharedEncryptComponent implements OnInit {
           const hex = rawBody.charCodeAt(i).toString(16);
           pkHex += (hex.length === 2 ? hex : '0' + hex);
       }
-
-      const { encryptedData, reverseKey } = await this.cryptService.encrypt(mnemonic, pkHex);
+      const { encryptedData, reverseKey } = await this.cryptService.encrypt(mnemonic, pkHex, 8);
 
       this.encryptedData = encryptedData;
       this.reverseKey = reverseKey;

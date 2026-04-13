@@ -1,8 +1,9 @@
-# D-KASP-512
-The **D-KASP-512** suite is a post-quantum encryption engine designed for the Darkstar ecosystem (Core v3.0.0), providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
+# D-KASP V8 (SPNA-Hardened)
+The **D-KASP V8** suite is a sovereign post-quantum encryption engine designed for the Darkstar ecosystem, providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
 
 - **ML-KEM-1024 (Kyber)**: NIST Level 5 Post-Quantum root of trust.
-- **512-Layer Gauntlet**: Deterministic, non-linear SPN/ARX obfuscation layers.
+- **16-Round, 64-Layer SPNA Gauntlet**: Hardened deterministic schedule (Substitution, Permutation, Network, Algebraic) every round.
+- **HMAC-Linked Fusion**: Authentication-first protocol providing ML-KEM-linked integrity.
 - **Positional Salting**: Index-based entropy injection ensures unique cipher paths for identical data.
 
 ---
@@ -25,30 +26,30 @@ All implementations are provided as **high-performance, single-file** sources fo
 # General Syntax
 ./darkstar [flags] <command> [arguments...]
 
-# Common Operations (V5 ML-KEM)
+# Common Operations
 ./darkstar keygen                                     # Generate PQ keys
-./darkstar encrypt "my mnemonic" <public_key_hex>      # Encrypt
-./darkstar decrypt <json_payload> <rk_b64> <sk_hex>    # Decrypt
+./darkstar encrypt "my mnemonic" <public_key_hex>      # Encrypt (Forces V8)
+./darkstar decrypt <json_payload> <rk_b64> <sk_hex>    # Decrypt (Auto-detects V2-V8)
 ./darkstar test                                       # Run engine self-test
 ```
 
 ---
 
-## 📜 Standard Specification (V5)
+## 📜 Standard Specification (V8)
 
-D-KASP-512 (V5) produces a JSON-encapsulated envelope:
+D-KASP V8 produces a JSON-encapsulated envelope with a 64-layer gauntlet:
 ```json
 {
-  "v": 5,
-  "data": "SALT(32)NONCE(24)CIPHERTEXT(B64)TAG(32)",
-  "ct": "ML_KEM_ENCAPSULATED_KEY_HEX"
+  "v": 8,
+  "data": "HEX_ENCODED_OBFUSCATED_PAYLOAD",
+  "ct": "ML_KEM_ENCAPSULATED_KEY_HEX",
+  "mac": "HMAC_SHA256_TAG_HEX"
 }
 ```
 > [!IMPORTANT]
-> The **Reverse Key** is packed using a **16-bit Big-Endian** binary format (Base64 encoded) across all implementations to ensure bit-perfect cross-platform alignment.
+> **V8 Gauntlet Schedule**: Every word undergoes 16 rounds of SPNA (Substitution, Permutation, Network, Algebraic) transformations. High-diffusion layers (S-Box, ModMult, GFMult, MatrixHill) are enforced at fixed intervals to ensure maximum statistical entropy and prevent linear cryptanalysis.
 
 ---
 
 ## ⚖️ License
 Released under the **MIT License**.
-

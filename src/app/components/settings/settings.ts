@@ -54,6 +54,14 @@ export class Settings implements OnInit {
 
   resolvedBackupPath = '';
 
+  get isBiometricForced(): boolean {
+      return this.vaultService.isBiometricForced();
+  }
+
+  set isBiometricForced(value: boolean) {
+      this.vaultService.setBiometricForce(value);
+  }
+
   get dkaspEngine(): string {
     return localStorage.getItem('dkasp_engine') || 'rust';
   }

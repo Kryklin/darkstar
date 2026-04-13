@@ -168,6 +168,16 @@
             </div>
           </div>
 
+          @if (isBiometricEnabled) {
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="title">Enforce Biometric Unlock</span>
+                <span class="description">Hide the master password box and require hardware authentication on load</span>
+              </div>
+              <mat-slide-toggle [(ngModel)]="isBiometricForced" [disabled]="!vaultService.isUnlocked()" color="primary"></mat-slide-toggle>
+            </div>
+          }
+
           <div class="setting-row">
             <div class="setting-label">
               <span class="title">Hardware Security Key</span>

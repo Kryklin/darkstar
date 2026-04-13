@@ -3,6 +3,7 @@ import { Home } from './home';
 import { MaterialModule } from '../../modules/material/material';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Theme } from '../../services/theme';
+import { provideRouter } from '@angular/router';
 
 import packageJson from '../../../../package.json';
 
@@ -12,15 +13,21 @@ describe('Home', () => {
   let compiled: HTMLElement;
 
   beforeEach(async () => {
+    // Mock Electron API
+    (window as any).electronAPI = {
+      onUpdateStatus: jasmine.createSpy('onUpdateStatus'),
+      onInitiateUpdateCheck: jasmine.createSpy('onInitiateUpdateCheck'),
+      setVersionLock: jasmine.createSpy('setVersionLock'),
+      checkIntegrity: jasmine.createSpy('checkIntegrity').and.returnValue(Promise.resolve(true))
+    };
+
     await TestBed.configureTestingModule({
       imports: [Home, MaterialModule, NoopAnimationsModule],
-      providers: [Theme],
+      providers: [Theme, provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Home);
     component = fixture.componentInstance;
-    // Do not run detectChanges here, as ngOnInit will be called
-    // and the timer will start before we are in fakeAsync
     compiled = fixture.nativeElement;
   });
 
@@ -35,21 +42,21 @@ describe('Home', () => {
     expect(card).toBeTruthy();
   });
 
-  it('should display the creator name after loading', fakeAsync(() => {
+  it('should display the correct subtitle', fakeAsync(() => {
     fixture.detectChanges();
     tick(500);
     fixture.detectChanges();
-    const subtitle = compiled.querySelector('mat-card-subtitle');
-    expect(subtitle?.textContent).toContain('Created by Victor Kane');
+    const subtitle = compiled.querySelector('.subtitle-text');
+    expect(subtitle?.textContent).toContain('Quantum-Safe Information Security');
   }));
 
-  it('should display the footer after loading', fakeAsync(() => {
+  it('should display the footer with correct version', fakeAsync(() => {
     fixture.detectChanges();
     tick(500);
     fixture.detectChanges();
     const footer = compiled.querySelector('.footer');
     expect(footer).toBeTruthy();
-    expect(footer?.textContent).toContain('© 2026 Victor Kane. All Rights Reserved.');
+    expect(footer?.textContent).toContain('© 2026. All Rights Reserved.');
     expect(footer?.textContent).toContain(`Version ${packageJson.version}`);
   }));
 });

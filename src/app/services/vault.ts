@@ -33,7 +33,8 @@ export interface VaultNote {
 
 interface VaultStorage {
   v: number;
-  data: string; // Encrypted blob (salt + iv + ciphertext)
+  data: string; // Encrypted blob (salt + iv + ciphertext or D-KASP JSON)
+  rk?: string;  // D-KASP Reverse Key (Packed B64)
   s?: boolean; // isSafeStorageUsed
 }
 
@@ -80,6 +81,9 @@ export class VaultService {
   /** Cached deterministic Machine ID */
   public hardwareId = signal<string | null>(null);
 
+  /** Indicates if biometrics are mandated for vault access. */
+  public isBiometricForced = signal<boolean>(localStorage.getItem('darkstar_force_biometrics') === 'true');
+
   /** Holds transient error messages related to vault operations. */
   public error = signal<string | null>(null);
 
@@ -119,7 +123,7 @@ export class VaultService {
     }
   }
 
-  async unlockWithBiometrics(): Promise<{ success: boolean; requiresTotp: boolean }> {
+  async unlockWithBiometrics(): Promise<{ success: boolean; requiresTotp: boolean; requiresMigration?: boolean }> {
     if (!this.biometricService.isAvailable()) return { success: false, requiresTotp: false };
     
     // 1. Verify User Presence/Identity
@@ -151,7 +155,7 @@ export class VaultService {
     return { success: false, requiresTotp: false };
   }
 
-  async unlockWithHardwareKey(): Promise<{ success: boolean; requiresTotp: boolean }> {
+  async unlockWithHardwareKey(): Promise<{ success: boolean; requiresTotp: boolean; requiresMigration?: boolean }> {
     if (!this.biometricService.isAvailable()) return { success: false, requiresTotp: false };
     
     // 1. Verify User Presence/Identity with Hardware Key
@@ -206,7 +210,7 @@ export class VaultService {
       return false;
   }
 
-  async unlock(password: string): Promise<{ success: boolean; requiresTotp: boolean }> {
+  async unlock(password: string): Promise<{ success: boolean; requiresTotp: boolean; requiresMigration?: boolean }> {
     // SECURITY: Check for Duress Password
     if (this.duressService.checkDuress(password)) {
       this.duressService.triggerDuress();
@@ -223,6 +227,7 @@ export class VaultService {
       try {
         envelope = JSON.parse(raw);
         if (!envelope.v) isLegacy = true; 
+        if (envelope.v && envelope.v < 8) isLegacy = true; // Mark PQC V5-V7 as legacy for migration to V8
       } catch {
         isLegacy = true;
         envelope = { v: 1, data: raw }; 
@@ -239,14 +244,37 @@ export class VaultService {
         }
       }
 
-      let jsonStr = '';
-      if (envelope.v === 3) {
+      let jsonStr: string | null = null;
+
+      if (envelope.v >= 5) {
+        // Post-Quantum D-KASP (V5+) Decryption
+        // Versions >= 6 do not require rk (zero-overhead or deterministic)
+        if (envelope.v === 5 && !envelope.rk) throw new Error('D-KASP V5 vault missing Reverse Key (rk).');
+        const { skHex } = await this.derivePqcKeys(password);
+        const res = await this.crypt.decrypt(envelope.data, envelope.rk || '', skHex, envelope.v);
+        
+        jsonStr = res.decrypted;
+        
+        // Robust result validation
+        if (!jsonStr) throw new Error('Password mismatch or engine failure.');
+        
+        // If the engine returned an object, stringify it for the parsing block below
+        if (typeof jsonStr !== 'string') {
+            jsonStr = JSON.stringify(jsonStr);
+        }
+
+        if (jsonStr.startsWith('Error:')) throw new Error(`Engine Error: ${jsonStr}`);
+        if (!jsonStr.trim().startsWith('{') && !jsonStr.trim().startsWith('[')) {
+            throw new Error('Vault Data Corruption: Decrypted content is not a valid JSON structure.');
+        }
+      } else if (envelope.v === 3) {
         // Modern AES-GCM Authenticated Decryption
         jsonStr = await this.crypt.decryptAES256GCMAsync(encryptedData, password, this.crypt.ITERATIONS_V2);
+        isLegacy = true;
       } else if (envelope.v === 2) {
         // V2 AES-CBC Decryption
         jsonStr = await this.crypt.decryptAES256Async(encryptedData, password, this.crypt.ITERATIONS_V2);
-        isLegacy = true; // Flag for upgrade to V3
+        isLegacy = true; 
       } else {
         console.warn('Detected Legacy V1 Vault. Attempting migration...');
         jsonStr = await this.crypt.decryptAES256Async(encryptedData, password, 1000);
@@ -322,9 +350,9 @@ export class VaultService {
       this.masterKey.set(password);
       this.error.set(null);
 
-      // Auto-Migration/Save
+      // Auto-Migration/Save (Simplified for V5 transition)
       if (isLegacy) {
-        await this.save(); 
+        return { success: true, requiresTotp: false, requiresMigration: true };
       }
 
       return { success: true, requiresTotp: false };
@@ -379,6 +407,34 @@ export class VaultService {
       this.save();
   }
 
+  async performV5Migration() {
+      if (!this.masterKey()) return;
+      await this.save(); 
+  }
+
+  private async derivePqcKeys(password: string): Promise<{ pkHex: string; skHex: string }> {
+    const enc = new TextEncoder();
+    const pBytes = enc.encode(password);
+    const salt = enc.encode('darkstar-pqc-seed-v1'); 
+    
+    const keyMaterial = await window.crypto.subtle.importKey(
+      'raw', pBytes, { name: 'PBKDF2' }, false, ['deriveBits']
+    );
+    
+    const seed = await window.crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt, iterations: 600000, hash: 'SHA-256' },
+      keyMaterial,
+      512 
+    );
+    
+    const { publicKey, secretKey } = ml_kem1024.keygen(new Uint8Array(seed));
+    
+    return {
+      pkHex: Array.from(publicKey).map(b => b.toString(16).padStart(2, '0')).join(''),
+      skHex: Array.from(secretKey).map(b => b.toString(16).padStart(2, '0')).join('')
+    };
+  }
+
   disableTotp() {
       if (!this.masterKey()) throw new Error('Vault must be unlocked to modify 2FA settings.');
       this.totpSecret.set(null);
@@ -408,24 +464,16 @@ export class VaultService {
     }
 
     const notesData = JSON.stringify(content);
-    let encrypted = await this.crypt.encryptAES256Async(notesData, key, this.crypt.ITERATIONS_V2);
-    let isSafeStorageUsed = false;
-    if (window.electronAPI?.safeStorageAvailable) {
-      try {
-        const available = await window.electronAPI.safeStorageAvailable();
-        if (available) {
-          encrypted = await window.electronAPI.safeStorageEncrypt(encrypted);
-          isSafeStorageUsed = true;
-        }
-      } catch (e) {
-        console.warn('System-level storage protection unavailable.', e);
-      }
-    }
+    
+    // Choose Protocol V8 by default for all new saves (Sovereign SPNA Standard)
+    const { pkHex } = await this.derivePqcKeys(key);
+    const { encryptedData, reverseKey } = await this.crypt.encrypt(notesData, pkHex, 8);
 
     const envelope: VaultStorage = {
-      v: 2,
-      data: encrypted,
-      s: isSafeStorageUsed,
+      v: 8,
+      data: encryptedData,
+      rk: reverseKey || undefined, // RK is not used in V8
+      s: false, // SafeStorage not directly compatible with D-KASP binaries yet
     };
 
     localStorage.setItem(this.storageKey, JSON.stringify(envelope));
@@ -548,6 +596,11 @@ export class VaultService {
     return new Uint8Array(hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))).buffer;
   }
 
+
+  setBiometricForce(enabled: boolean) {
+    this.isBiometricForced.set(enabled);
+    localStorage.setItem('darkstar_force_biometrics', enabled.toString());
+  }
 
   addNote(title: string, content: string, timeLock?: TimeLockMetadata) {
     const newNote: VaultNote = {

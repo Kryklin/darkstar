@@ -15,30 +15,54 @@
 
     @if (!requiresTotp) {
       @if (!hardwareLoading && !biometricsLoading) {
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Master Password</mat-label>
-          <input matInput [type]="hidePassword ? 'password' : 'text'" [(ngModel)]="password" (keyup.enter)="submit()" />
-          <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword">
-            <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
-          </button>
-        </mat-form-field>
-      }
+        @if (hasVault()) {
+          @if (!vaultService.isBiometricForced() || showPasswordFallback) {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Master Password</mat-label>
+              <input matInput [type]="hidePassword ? 'password' : 'text'" [(ngModel)]="password" (keyup.enter)="submit()" [disabled]="loading" />
+              <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword" [attr.aria-label]="'Hide password'" [attr.aria-pressed]="hidePassword" type="button">
+                <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+            </mat-form-field>
 
-      @if (!hasVault()) {
-        <app-entropy-meter [value]="password"></app-entropy-meter>
-      }
+            <button mat-flat-button color="primary" class="full-width login-button" (click)="submit()" [disabled]="loading || !password">
+              @if (!passwordLoading) { <span>Unlock Vault</span> }
+              @if (passwordLoading) { <mat-spinner diameter="20"></mat-spinner> }
+            </button>
+          } @else {
+            <div class="biometric-force-view">
+                <mat-icon class="shield-lock">fingerprint</mat-icon>
+                <h3>Security Enforced</h3>
+                <p>Hardware authentication is required to access this vault.</p>
+                <button mat-flat-button color="primary" (click)="submitBiometrics()" [disabled]="loading">
+                    @if (!biometricsLoading) { <span>Authenticate with {{ authName }}</span> }
+                    @if (biometricsLoading) { <mat-spinner diameter="20"></mat-spinner> }
+                </button>
+                <button mat-button class="emergency-path" (click)="togglePasswordFallback()">Use Master Password Instead</button>
+            </div>
+          }
+        } @else {
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Master Password</mat-label>
+            <input matInput [type]="hidePassword ? 'password' : 'text'" [(ngModel)]="password" (keyup.enter)="submit()" />
+            <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword">
+              <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+          </mat-form-field>
 
-      @if (!hardwareLoading && !biometricsLoading) {
+          <app-entropy-meter [value]="password"></app-entropy-meter>
+
           <div class="actions">
             <button mat-flat-button color="primary" [disabled]="loading || !password" (click)="submit()">
               @if (!passwordLoading) {
-                <span>{{ hasVault() ? 'Unlock' : 'Create Vault' }}</span>
+                <span>Create Vault</span>
               }
               @if (passwordLoading) {
                 <mat-spinner diameter="20"></mat-spinner>
               }
             </button>
           </div>
+        }
       }
 
       @if (hasVault() && (isHardwareKeyEnabled || isBiometricEnabled)) {

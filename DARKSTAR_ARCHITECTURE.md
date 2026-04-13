@@ -1,7 +1,5 @@
 <p align="center">
   <picture>
-<p align="center">
-  <picture>
     <source media="(prefers-color-scheme: dark)" srcset="public/assets/img/logo-white.png">
     <img src="public/assets/img/logo-black.png" alt="Darkstar Logo" width="220">
   </picture>
@@ -23,9 +21,9 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License"/>
 </p>
 
-# Darkstar V5 (D-KASP-512) Security Architecture
+# Darkstar D-KASP V8 (SPNA-Hardened) Security Architecture
 
-This document illustrates the internal workings of the Darkstar V5 Security System. It combines **D-KASP-512 High-Depth Obfuscation**, **ML-KEM-1024 Post-Quantum Key Encapsulation**, and **AES-256-GCM Authenticated Encryption**.
+This document illustrates the internal workings of the Darkstar V8 Security System. It combines **D-KASP V8 SPNA Obfuscation**, **ML-KEM-1024 Post-Quantum Key Encapsulation**, and **AES-256-GCM Authenticated Encryption**.
 
 ## 1. High-Level Workflow
 
@@ -36,7 +34,7 @@ graph TD
     User([User Input]) -->|Data + Password| Layers[Multi-Layer Protection]
 
     subgraph Layers [Security Gauntlet]
-        Obf[V5 D-KASP-512 Obfuscation Pipeline]
+        Obf[D-KASP V8 SPNA Obfuscation Pipeline]
         KEM[ML-KEM-1024 / NIST FIPS 203 Root of Trust]
         AES[AES-256-GCM Authenticated Encryption]
         Identity[Vault Identity Binding: Signature Key]
@@ -47,15 +45,21 @@ graph TD
 
 ---
 
-## 2. D-KASP-512: Mnemonic Engine
+## 2. D-KASP V8: The SPNA Engine
 
-The Mnemonic Engine applies a unique, chaotic sequence of transformations to every word, driven by index-salted entropy.
+The D-KASP (Darkstar Key-Agnostic Structural Permutation) engine applies a deterministic gauntlet of transformations to every word, driven by index-salted entropy.
 
-### 2.1 The "Positional Salt" (V5 Hardened)
-In the D-KASP-512 standard, the obfuscation gauntlet is driven by a seed derived from `password + word + index`. This ensures that identical words at different positions generate entirely unique cryptographic paths.
+### 2.1 The SPNA Gauntlet
+The V8 standard implements a **16-round, 64-layer balanced transformation pipeline**. Each round consists of four distinct cryptographic layers:
 
-- **Depth**: Up to 512 non-linear layers (SPN/ARX).
-- **Reverse Key**: A 16-bit Big-Endian packed binary string (Base64) that encodes the exact deobfuscation path tailored to the payload.
+1.  **S (Substitution)**: Bit-level confusion using S-Boxes and modular multiplication to destroy linear frequency.
+2.  **P (Permutation)**: Byte-level shuffling and positional movement within the word-space.
+3.  **N (Network)**: High-diffusion mixing using MatrixHill and GF(2^8) arithmetic to spread local entropy.
+4.  **A (Algebraic)**: Additive complexity using keyed XOR-summation and modular addition.
+
+### 2.2 Reverse Key & Interop
+- **Reverse Key**: A 16-bit Big-Endian packed binary string (Base64) that encodes the exact deobfuscation path.
+- **Interop Parity**: Use of deterministic schedules ensures that Rust, Go, Python, and Node.js cores produce bit-perfect identical ciphertexts.
 
 ---
 
@@ -63,7 +67,7 @@ In the D-KASP-512 standard, the obfuscation gauntlet is driven by a seed derived
 
 - **ML-KEM-1024 (Kyber)**: NIST Level 5 post-quantum asymmetric key encapsulation for identity and root-of-trust.
 - **AES-256-GCM**: AEAD encryption providing built-in integrity and authenticity for the high-depth blobs.
-- **ChaCha20-Based PRNG**: High-performance deterministic generator for gauntlet randomization.
+- **HMAC-Linked Fusion**: Payloads are authenticated using an HMAC-SHA256 tag linked to the ML-KEM shared secret.
 
 ---
 
@@ -84,30 +88,16 @@ graph TD
 
 - **Anti-Tamper Integrity**: The application hashes its own JS bundle on startup to detect malicious modifications.
 - **Anti-Forensic Memory**: Strict `Uint8Array` usage with explicit zeroing. All P2P services shutdown immediately upon vault locking.
-- **Time-Lock Encryption (VDF)**: Mathematically binds data to "Time" using Verifiable Delay Functions, requiring high-constraint single-threaded computation to unlock.
+- **Verifiable Interop**: The `verify_interop.py` suite ensures engine stability through a 32-test gauntlet across all language targets.
 
 ---
 
-## 6. Multi-Factor Identity
-Darkstar identities are bound by:
-1. **Something You Know**: Master Password.
-2. **Something You Have**: Machine Hardware (OS Entropy).
-3. **Something You Are**: Biometric Signature (WebAuthn).
-
----
-
-## 7. Dashboard V3 Architecture (Modernized UX)
+## 6. Dashboard V3 Architecture
 
 The V3 update introduces a flattened navigation and a stateful toolbar to improve split-second decision-making and data visibility.
 
-### 7.1 Unified Workspace
-All cryptographic tools (BIP39, SLIP39, Secure Notes) have been consolidated into a single workspace view, reducing route-traversal overhead and ensuring the security enclave remains focused.
+### 6.1 Unified Workspace
+All cryptographic tools (BIP39, SLIP39, Secure Notes) have been consolidated into a single workspace view, ensuring the security enclave remains focused and the user experience feels premimum and responsive.
 
-### 7.2 Stateful Taskbar
-The navigation bar now includes a reactive security status indicator:
-- **Locked/Unlocked State**: Direct visual feedback from the `VaultService`.
-- **System Clock**: Real-time display for time-sensitive cryptographic operations.
-- **Global Settings**: Rapid access to environmental configurations.
-
-### 7.3 Persistent Vault View
-The Vault interface has been redesigned to be "Sticky." The note list is non-dismissible, ensuring the user always has a clear context of their stored secrets, while the editor provides a high-focus Markdown environment.
+### 6.2 Persistent Vault View
+The Vault interface has been redesigned to be "Sticky." The note list is non-dismissible, ensuring the user always has a clear context of their stored secrets.

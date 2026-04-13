@@ -25,7 +25,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
-`darkstar` is a defense-grade client-side security tool designed to safeguard sensitive recovery phrases, data, and notes. It combines the **V5 (D-KASP-512) Obfuscation Engine** with **ML-KEM-1024** (Kyber) and **AES-256-GCM** for industry-leading Quantum Resistance.
+`darkstar` is a defense-grade client-side security tool designed to safeguard sensitive recovery phrases, data, and notes. It combines the **D-KASP V8 (SPNA-Hardened) Engine** with **ML-KEM-1024** (Kyber) and **AES-256-GCM** for industry-leading Quantum Resistance.
 
 ---
 
@@ -33,7 +33,7 @@
 
 | Category             | Key Capabilities                                                                 |
 | :------------------- | :------------------------------------------------------------------------------- |
-| **PQC Encryption**   | V5 D-KASP-512 engine with ML-KEM-1024, AES-256-GCM, and Positional Salting.      |
+| **PQC Encryption**   | D-KASP V8 engine with ML-KEM-1024, AES-256-GCM, and Positional Salting.             |
 | **Advanced Privacy** | Air-Gapped QR Transfer, Audio Steganography (WAV), and Anti-Forensic Memory.     |
 | **Vault Management** | Zero-knowledge Secure Vault, Identity Binding, and Automated Scheduled Backups.  |
 | **Access Control**   | Biometric Unlock (FaceID/TouchID), YubiKey Support (WebAuthn), and TOTP 2FA.     |
@@ -55,7 +55,7 @@ npm start # Start interactive UI
 ## 🏗️ Technical Architecture
 
 1.  **Identity Generation**: Unique Master Key and Cryptographic Identity generated upon vault creation.
-2.  **Obfuscation Pipeline**: Shuffled 512-layer transformation gauntlet driven by index-salted entropy.
+2.  **Obfuscation Pipeline**: Hardened 16-round, 64-layer SPNA gauntlet driven by index-salted entropy.
 3.  **Layered Encryption**: ML-KEM-1024 (Kyber) and AES-256-GCM encapsulation.
 4.  **Hardware Binding**: OS-level protection via Electron SafeStorage and Signature Key binding.
 5.  **V3 Workflow**: Stateful navigation with real-time vault status and non-dismissible note management.

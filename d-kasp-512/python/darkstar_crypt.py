@@ -3,11 +3,17 @@ import os
 import base64
 import json
 import struct
+import hashlib
+import hmac
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
+try:
+    import pqcrypto.kem.ml_kem_1024 as kem
+except ImportError:
+    kem = None
 
 class DarkstarCrypt:
     ITERATIONS_V2 = 600000
@@ -703,98 +709,215 @@ class DarkstarCrypt:
             raise e
 
     # --- Public API ---
-    def encrypt(self, mnemonic, key_material):
-        words = mnemonic.split(' ')
-        obfuscated_words = []
-        reverse_key = []
-
-        is_v5 = True
-        is_v4 = False
-        is_modern = True
+    def encrypt(self, mnemonic, key_material, version=7):
+        is_v5 = version >= 5
+        is_v6 = version >= 6
+        is_v4 = version == 4
+        is_modern = version >= 3
         
         active_password_str = key_material
-        import pqcrypto.kem.ml_kem_1024 as kem
-        pk_bytes = bytes.fromhex(key_material)
-        ct_bytes, ss_bytes_tup = kem.encrypt(pk_bytes)
-        # ML-KEM outputs tuple, need mutable copy if we want to wipe it.
-        ss_bytes = bytearray(ss_bytes_tup)
-        ct_hex = ct_bytes.hex()
-        ss_hex = ss_bytes.hex()
-        active_password_str = ss_hex
-        for i in range(len(ss_bytes)): ss_bytes[i] = 0 # Zeroized        
+        v7_hmac_key = None
+        ct_hex = ''
+        
+        import hashlib
+        if is_v5:
+            try:
+                pk_bytes = bytes.fromhex(key_material)
+            except ValueError:
+                # Key material might be a raw password if we are in a fallback mode
+                pk_bytes = key_material.encode('utf-8') if isinstance(key_material, str) else key_material
+
+            import pqcrypto.kem.ml_kem_1024 as kem
+            ct_bytes, ss_bytes_tup = kem.encrypt(pk_bytes)
+            ss_bytes = bytearray(ss_bytes_tup)
+            ct_hex = ct_bytes.hex()
+            
+            if version >= 7:
+                cipher_key = hashlib.sha256(b"dkasp-v7-cipher-key" + ss_bytes).digest()
+                hmac_key = hashlib.sha256(b"dkasp-v7-hmac-key" + ss_bytes).digest()
+                active_password_str = cipher_key.hex()
+                v7_hmac_key = hmac_key
+            else:
+                active_password_str = ss_bytes.hex()
+            
+            for i in range(len(ss_bytes)): ss_bytes[i] = 0 # Zeroized
+        
+        # V6+: Treat as one binary stream
+        words = [mnemonic] if is_v6 else mnemonic.split(' ')
+        
         def prng_factory(s_str):
             if is_modern:
                 return self.DarkstarChaChaPRNG(s_str)
             return self.Mulberry32(s_str)
         
+        obfuscated_words = []
+        reverse_key = []
+        
         for index, word in enumerate(words):
             current_word_bytes = self._to_bytes(word)
             
-            selected_functions = list(range(len(self.obfuscation_functions_v2)))
-            
-            seed_for_selection = active_password_str + word + (str(index) if is_v5 else "")
-            rng_sel = prng_factory(seed_for_selection)
-            
-            for i in range(len(selected_functions) - 1, 0, -1):
-                rand = rng_sel.next()
-                j = (rand * (i + 1)) // 0x100000000
-                selected_functions[i], selected_functions[j] = selected_functions[j], selected_functions[i]
+            if is_v6:
+                # V6+: HMAC-SHA256 key schedule — derive per-word subkey
+                import hmac
+                word_key = hmac.new(active_password_str.encode('utf-8'), f"dkasp-v6-word-{index}".encode('utf-8'), hashlib.sha256).digest()
+                word_key_hex = word_key.hex()
 
-            word_reverse_key = []
-            
-            cycle_depth = len(selected_functions)
-            if is_modern:
-                import hashlib
+                # V6+: Initialise chain state (on first word)
+                if index == 0:
+                    chain_state = hashlib.sha256(f"dkasp-chain-v6{active_password_str}".encode('utf-8')).digest()
+
+                # V6+: XOR word bytes with chain state before gauntlet
+                temp_word_bytes = bytearray(current_word_bytes)
+                for i in range(len(temp_word_bytes)):
+                    temp_word_bytes[i] ^= chain_state[i % 32]
+                current_word_bytes = bytes(temp_word_bytes)
+
+                # Fix 4: Generate checksum and combined seed via HMAC (matching Rust/Node)
+                base_indices = list(range(12))
+                checksum = self._generate_checksum(base_indices)
+                func_key = hmac.new(word_key, f"keyed-{checksum}".encode('utf-8'), hashlib.sha256).digest()
+                combined_seed = func_key
+
+                if version >= 8:
+                    # V8: SPNA Structured Gauntlet (16 Rounds = 64 Layers)
+                    rng_path = prng_factory(word_key_hex)
+                    group_s = [0, 1, 5]
+                    group_p = [2, 3, 10]
+                    group_n = [7, 8, 11]
+                    group_a = [4, 6, 9]
+
+                    for i in range(16):
+                        # S: Substitution (Forced S-Box or ModMult every 4 rounds)
+                        if i % 4 == 0:
+                            s_idx = 0 
+                        elif i % 4 == 2:
+                            s_idx = 1
+                        else:
+                            s_idx = group_s[rng_path.next() % len(group_s)]
+                        current_word_bytes = self.obfuscation_functions_v4[s_idx](current_word_bytes, seed=combined_seed, prng_factory=prng_factory)
+
+                        # P: Permutation (Always randomized)
+                        p_idx = group_p[rng_path.next() % len(group_p)]
+                        current_word_bytes = self.obfuscation_functions_v4[p_idx](current_word_bytes, seed=combined_seed, prng_factory=prng_factory)
+
+                        # N: Network (Forced GFMult or MatrixHill every 4 rounds)
+                        if i % 4 == 1:
+                            n_idx = 8
+                        elif i % 4 == 3:
+                            n_idx = 7
+                        else:
+                            n_idx = group_n[rng_path.next() % len(group_n)]
+                        current_word_bytes = self.obfuscation_functions_v4[n_idx](current_word_bytes, seed=combined_seed, prng_factory=prng_factory)
+
+                        # A: Algebraic/AddKey (Always randomized)
+                        a_idx = group_a[rng_path.next() % len(group_a)]
+                        current_word_bytes = self.obfuscation_functions_v4[a_idx](current_word_bytes, seed=combined_seed, prng_factory=prng_factory)
+                else:
+                    # V6/V7: Deterministic randomized path
+                    depth_hash = hashlib.sha256(word_key_hex.encode('utf-8')).hexdigest()
+                    depth_val = int(depth_hash[:4], 16)
+                    cycle_depth = 12 + (depth_val % 501)
+
+                    rng_path = prng_factory(word_key_hex)
+                    path = []
+                    last_three = [99, 99, 99]
+                    for _ in range(cycle_depth):
+                        fi = rng_path.next() % 12
+                        if last_three[0] == fi and last_three[1] == fi and last_three[2] == fi:
+                            fi = (fi + 1 + (rng_path.next() % 11)) % 12
+                        last_three[0], last_three[1], last_three[2] = last_three[1], last_three[2], fi
+                        path.append(fi)
+
+                    # Fix 4b: Ensure min 6 distinct in first 12
+                    first12 = path[:12]
+                    distinct = set(first12)
+                    if len(distinct) < 6:
+                        missing = [x for x in range(12) if x not in distinct]
+                        mi = 0
+                        for i in range(min(12, len(path))):
+                            if first12.count(path[i]) > 2 and mi < len(missing):
+                                path[i] = missing[mi]
+                                mi += 1
+
+                    for func_index in path:
+                        is_seeded = func_index in [4, 5, 6, 9]
+                        func = self.obfuscation_functions_v4[func_index]
+                        seed = combined_seed if is_seeded else None
+                        if is_seeded:
+                            current_word_bytes = func(current_word_bytes, seed=seed, prng_factory=prng_factory)
+                        else:
+                            current_word_bytes = func(current_word_bytes)
+
+                # V6+: Update chain state
+                chain_state = hashlib.sha256(chain_state + current_word_bytes).digest()
+            else:
+                # Legacy V2-V5 path (index-based shuffle)
+                selected_functions = list(range(12))
+                seed_for_selection = active_password_str + word + (str(index) if is_v5 else "")
+                rng_sel = prng_factory(seed_for_selection)
+                for i in range(11, 0, -1):
+                    rand = rng_sel.next()
+                    j = (rand * (i + 1)) // 0x100000000
+                    selected_functions[i], selected_functions[j] = selected_functions[j], selected_functions[i]
+
+                word_reverse_key = []
                 depth_hash = hashlib.sha256(seed_for_selection.encode('utf-8')).hexdigest()
                 depth_val = int(depth_hash[:4], 16)
                 cycle_depth = 12 + (depth_val % 501) if is_v5 else 12 + (depth_val % 53)
-            
-            checksum = self._generate_checksum(selected_functions)
-            combined_seed = (active_password_str + str(checksum) + (str(index) if is_v5 else "")).encode('utf-8')
-            
-            for i in range(cycle_depth):
-                func_index = selected_functions[i % len(selected_functions)]
                 
-                if i >= 12 and not is_v4 and not is_v5 and func_index in [2, 3, 8, 9]:
-                    func_index = (func_index + 2) % 12
+                checksum = self._generate_checksum(selected_functions)
+                combined_seed = (active_password_str + str(checksum) + (str(index) if is_v5 else "")).encode('utf-8')
+                
+                for i in range(cycle_depth):
+                    func_index = selected_functions[i % 12]
+                    if i >= 12 and not is_v4 and not is_v5 and func_index in [2, 3, 8, 9]:
+                        func_index = (func_index + 2) % 12
                     
-                if is_v4 or is_v5:
-                    func = self.obfuscation_functions_v4[func_index]
-                    is_seeded = func_index in [4, 5, 6, 9]
-                else:
-                    func = self.obfuscation_functions_v2[func_index]
-                    is_seeded = func_index >= 6
+                    if is_v4 or is_v5:
+                        func = self.obfuscation_functions_v4[func_index]
+                        is_seeded = func_index in [4, 5, 6, 9]
+                    else:
+                        func = self.obfuscation_functions_v2[func_index]
+                        is_seeded = func_index >= 6
                     
-                seed = combined_seed if is_seeded else None
-                
-                if is_seeded:
-                    current_word_bytes = func(current_word_bytes, seed=seed, prng_factory=prng_factory)
-                else:
-                    current_word_bytes = func(current_word_bytes)
-                
-                word_reverse_key.append(func_index)
+                    seed = combined_seed if is_seeded else None
+                    if is_seeded:
+                        current_word_bytes = func(current_word_bytes, seed=seed, prng_factory=prng_factory)
+                    else:
+                        current_word_bytes = func(current_word_bytes)
+                    word_reverse_key.append(func_index)
+                reverse_key.append(word_reverse_key)
                 
             obfuscated_words.append(current_word_bytes)
-            reverse_key.append(word_reverse_key)
             
         import struct
         final_blob = b"".join([struct.pack(">H", len(wb)) + wb for wb in obfuscated_words])
         
         encoded_reverse_key = self._pack_reverse_key(reverse_key, is_v3=is_modern)
-        aad = encoded_reverse_key.encode('utf-8')
-
+        
         final_payload = final_blob
-        final_payload = final_payload.ljust(2048, b"\x00")
+        if version < 6:
+            final_payload = final_payload.ljust(16384, b"\x00")
 
         target_iterations = self.ITERATIONS_V2
         
-        payload_to_encrypt = final_payload
-        encrypted_content = self._encrypt_aes256_gcm(payload_to_encrypt, active_password_str, target_iterations, aad)
+        mac_tag = ""
+        if version >= 7:
+            # V7: Post-Quantum Purity (No AES)
+            import hmac
+            import hashlib
+            encrypted_content = final_payload.hex()
+            h = hmac.new(v7_hmac_key, struct.pack('B', version) + bytes.fromhex(ct_hex) + final_payload, hashlib.sha256)
+            mac_tag = h.hexdigest()
+        else:
+            aad = encoded_reverse_key.encode('utf-8') if version < 6 else None
+            encrypted_content = self._encrypt_aes256_gcm(final_payload, active_password_str, target_iterations, aad)
         
         res_obj = {
-            "v": 5,
+            "v": version,
             "data": encrypted_content,
-            "ct": ct_hex
+            "ct": ct_hex,
+            "mac": mac_tag
         }
         
         result_json = {
@@ -803,7 +926,6 @@ class DarkstarCrypt:
         }
         
         active_password_str = ""
-            
         return result_json
 
     def decrypt(self, encrypted_data_raw, reverse_key_b64, key_material):
@@ -829,68 +951,90 @@ class DarkstarCrypt:
              # Fallback
              reverse_key = self._unpack_reverse_key(reverse_key_b64, is_v3=False)
 
-        # 2. Check header
-        iterations = self.ITERATIONS_V2 
-        encrypted_content = encrypted_data_raw
         is_v3 = False
         is_v4 = False
         is_v5 = False
+        is_v6 = False
+        detected_version = 2
         ct_hex = ""
+        encrypted_content = ""
         
         try:
-            if encrypted_data_raw.strip().startswith('{'):
-                parsed = json.loads(encrypted_data_raw)
-                if parsed.get('v') == 2 and parsed.get('data'):
-                    encrypted_content = parsed['data']
-                elif parsed.get('v') == 3 and parsed.get('data'):
-                    encrypted_content = parsed['data']
-                    is_v3 = True
-                elif parsed.get('v') == 4 and parsed.get('data'):
-                    encrypted_content = parsed['data']
-                    is_v4 = True
-                elif parsed.get('v') == 5 and parsed.get('data'):
-                    encrypted_content = parsed['data']
-                    is_v5 = True
-                    ct_hex = parsed.get('ct', '')
-        except:
-            pass 
+            parsed = json.loads(encrypted_data_raw) if encrypted_data_raw.strip().startswith('{') else {}
+            detected_version = parsed.get('v', 1)
+            
+            # Robust version flag setting
+            if detected_version == 3: is_v3 = True
+            elif detected_version == 4: is_v4 = True
+            elif detected_version >= 5: 
+                is_v5 = True
+                is_v6 = (detected_version >= 6)
+                ct_hex = parsed.get('ct', "")
+            
+            encrypted_content = parsed.get('data', encrypted_data_raw)
+        except Exception:
+            pass
 
         is_modern = is_v3 or is_v4 or is_v5
-
-        active_password_str = key_material
-        if is_v5:
-            import pqcrypto.kem.ml_kem_1024 as kem
-            sk_bytes = bytes.fromhex(key_material)
-            ct_bytes = bytes.fromhex(ct_hex)
-            ss_bytes = bytearray(kem.decrypt(sk_bytes, ct_bytes))
-            active_password_str = ss_bytes.hex()
-            # Interop cleanup
-            ss_bytes[:] = b'\x00' * len(ss_bytes)
-            
-        iterations = self.ITERATIONS_V2
-        aad = reverse_key_b64.encode('utf-8') if is_v5 else None
-
-        # 3. Decrypt AES
-        try:
-            if is_modern:
-                decrypted_bytes = self._decrypt_aes256_gcm(encrypted_content, active_password_str, iterations, aad)
-            else:
-                decrypted_bytes = self._decrypt_aes256(encrypted_content, active_password_str, iterations)
-        finally:
-            pass
         
-        if not decrypted_bytes:
-            raise ValueError("Decryption failed")
-
-        # 4. Extract Binary Blob
+        # ML-KEM-1024 decapsulation for V5+
+        active_password_str = key_material
+        v7_hmac_key = None
         if is_v5:
-            full_blob = decrypted_bytes
-        else:
-            # Legacy V1-V4: payload was base64 encoded BEFORE encryption
+            sk_bytes = bytes.fromhex(key_material.strip())
+            ct_bytes = bytes.fromhex(ct_hex.strip())
             try:
-                full_blob = base64.b64decode(decrypted_bytes)
-            except:
-                raise ValueError("Failed to decode inner base64 blob")
+                # Standardize to bytes to avoid pqcrypto type-length errors
+                ct_bytes_final = bytes(ct_bytes)
+                sk_bytes_final = bytes(sk_bytes)
+                if len(sk_bytes_final) < 3168: raise ValueError(f"SK Length Mismatch: {len(sk_bytes_final)} (Expected >= 3168)")
+                if len(ct_bytes_final) < 1568: raise ValueError(f"CT Length Mismatch: {len(ct_bytes_final)} (Expected >= 1568)")
+                # pqcrypto might be picky about exact lengths
+                sk_bytes_final = sk_bytes_final[:3168]
+                ct_bytes_final = ct_bytes_final[:1568]
+                
+                # pqcrypto.kem.ml_kem_1024.decrypt signature is (secret_key, ciphertext)
+                ss_bytes_tup = kem.decrypt(sk_bytes_final, ct_bytes_final)
+            except Exception as e:
+                raise ValueError(f"ML-KEM Decapsulation Failed: {e}")
+            
+            ss_bytes = bytearray(ss_bytes_tup)
+            
+            if detected_version >= 7:
+                cipher_key = hashlib.sha256(b"dkasp-v7-cipher-key" + ss_bytes).digest()
+                hmac_key = hashlib.sha256(b"dkasp-v7-hmac-key" + ss_bytes).digest()
+                active_password_str = cipher_key.hex()
+                v7_hmac_key = hmac_key
+            else:
+                active_password_str = ss_bytes.hex()
+            
+            for i in range(len(ss_bytes)): ss_bytes[i] = 0 # Zeroized
+            
+        # Decrypt Primary layer (AES or HMAC-V7)
+        full_blob = None
+        if detected_version >= 7:
+            # V7: Integrity verify and bypass AES
+            payload_bytes = bytes.fromhex(encrypted_content)
+            h = hmac.new(v7_hmac_key, struct.pack('B', detected_version) + bytes.fromhex(ct_hex) + payload_bytes, hashlib.sha256)
+            mac_tag = h.hexdigest()
+            
+            parsed = json.loads(encrypted_data_raw)
+            expected_mac = parsed.get('mac', "")
+            
+            if not hmac.compare_digest(mac_tag, expected_mac):
+                raise ValueError("D-KASP V7: Integrity Check Failed (MAC mismatch)")
+            full_blob = payload_bytes
+        else:
+            iterations = self.ITERATIONS_V2
+            aad = reverse_key_b64.encode('utf-8') if (is_v5 and detected_version < 6) else None
+            if is_modern:
+                full_blob = self._decrypt_aes256_gcm(encrypted_content, active_password_str, iterations, aad)
+            else:
+                full_blob = self._decrypt_aes256(encrypted_content, active_password_str, iterations)
+            
+            if not is_v5:
+                # Legacy V1-V4: payload was base64 encoded BEFORE encryption
+                full_blob = base64.b64decode(full_blob)
         
         deobfuscated_words = []
 
@@ -903,41 +1047,141 @@ class DarkstarCrypt:
         word_index = 0
         
         while offset < len(full_blob):
-            if word_index >= len(reverse_key): break
+            if not is_v6 and word_index >= len(reverse_key): break
             
+            if offset + 2 > len(full_blob): break
             length = (full_blob[offset] << 8) | full_blob[offset + 1]
-            if length == 0:
-                break
             offset += 2
+            if offset + length > len(full_blob): break
             
-            current_word_bytes = full_blob[offset : offset + length]
+            cipher_word_bytes = full_blob[offset : offset + length]
+            current_word_bytes = bytearray(cipher_word_bytes)
             offset += length
             
-            word_reverse_list = reverse_key[word_index]
-            
-            # Setup Seed (only core first 12 cycles determine checksum)
-            unique_set = list(dict.fromkeys(word_reverse_list[:12]))
-            checksum = self._generate_checksum(unique_set)
-            combined_seed = (active_password_str + str(checksum) + (str(word_index) if is_v5 else "")).encode('utf-8')
-            
-            # Apply Deobfuscation (Reverse Order)
-            for j in range(len(word_reverse_list) - 1, -1, -1):
-                func_index = word_reverse_list[j]
-                
-                if is_v4 or is_v5:
-                    func = self.deobfuscation_functions_v4[func_index]
-                    is_seeded = func_index in [4, 5, 6, 9]
+            if is_v6:
+                # V6+: HMAC-SHA256 key schedule — derive per-word subkey
+                word_key = hmac.new(active_password_str.encode('utf-8'), f"dkasp-v6-word-{word_index}".encode('utf-8'), hashlib.sha256).digest()
+                word_key_hex = word_key.hex()
+
+                # V6+: Initialise chain state (on first word)
+                if word_index == 0:
+                    v6_chain_state = hashlib.sha256(f"dkasp-chain-v6{active_password_str}".encode('utf-8')).digest()
+
+                # Fix 4: Generate checksum and combined seed via HMAC
+                base_indices = list(range(12))
+                checksum = self._generate_checksum(base_indices)
+                func_key = hmac.new(word_key, f"keyed-{checksum}".encode('utf-8'), hashlib.sha256).digest()
+                combined_seed = func_key
+
+                if detected_version >= 8:
+                    # V8: Inverse SPNA Structured Gauntlet
+                    rng_path = prng_factory(word_key_hex)
+                    group_s = [0, 1, 5]
+                    group_p = [2, 3, 10]
+                    group_n = [7, 8, 11]
+                    group_a = [4, 6, 9]
+
+                    round_paths = []
+                    for i in range(16):
+                        # S: Substitution (Forced S-Box or ModMult every 4 rounds)
+                        if i % 4 == 0:
+                            s_idx = 0 
+                        elif i % 4 == 2:
+                            s_idx = 1
+                        else:
+                            s_idx = group_s[rng_path.next() % len(group_s)]
+
+                        # P: Permutation (Always randomized)
+                        p_idx = group_p[rng_path.next() % len(group_p)]
+
+                        # N: Network (Forced GFMult or MatrixHill every 4 rounds)
+                        if i % 4 == 1:
+                            n_idx = 8
+                        elif i % 4 == 3:
+                            n_idx = 7
+                        else:
+                            n_idx = group_n[rng_path.next() % len(group_n)]
+
+                        # A: Algebraic/AddKey (Always randomized)
+                        a_idx = group_a[rng_path.next() % len(group_a)]
+
+                        round_paths.append({
+                            's': s_idx,
+                            'p': p_idx,
+                            'n': n_idx,
+                            'a': a_idx
+                        })
+
+                    for j in range(15, -1, -1):
+                        r = round_paths[j]
+                        # Inverse Order: A -> N -> P -> S
+                        current_word_bytes = self.deobfuscation_functions_v4[r['a']](current_word_bytes, seed=combined_seed, prng_factory=prng_factory)
+                        current_word_bytes = self.deobfuscation_functions_v4[r['n']](current_word_bytes, seed=combined_seed, prng_factory=prng_factory)
+                        current_word_bytes = self.deobfuscation_functions_v4[r['p']](current_word_bytes, seed=combined_seed, prng_factory=prng_factory)
+                        current_word_bytes = self.deobfuscation_functions_v4[r['s']](current_word_bytes, seed=combined_seed, prng_factory=prng_factory)
                 else:
-                    func = self.deobfuscation_functions_v2[func_index]
-                    is_seeded = func_index >= 6
-                    
-                seed = combined_seed if is_seeded else None
+                    # V6/V7: Deterministic randomized path
+                    depth_hash = hashlib.sha256(word_key_hex.encode('utf-8')).hexdigest()
+                    depth_val = int(depth_hash[:4], 16)
+                    cycle_depth = 12 + (depth_val % 501)
+
+                    rng_path = prng_factory(word_key_hex)
+                    path = []
+                    last_three = [99, 99, 99]
+                    for _ in range(cycle_depth):
+                        fi = rng_path.next() % 12
+                        if last_three[0] == fi and last_three[1] == fi and last_three[2] == fi:
+                            fi = (fi + 1 + (rng_path.next() % 11)) % 12
+                        last_three[0], last_three[1], last_three[2] = last_three[1], last_three[2], fi
+                        path.append(fi)
+
+                    # Fix 4b: Ensure min 6 distinct in first 12
+                    first12 = path[:12]
+                    distinct = set(first12)
+                    if len(distinct) < 6:
+                        missing = [x for x in range(12) if x not in distinct]
+                        mi = 0
+                        for i in range(min(12, len(path))):
+                            if first12.count(path[i]) > 2 and mi < len(missing):
+                                path[i] = missing[mi]
+                                mi += 1
+
+                    for j in range(len(path) - 1, -1, -1):
+                        func_index = path[j]
+                        func = self.deobfuscation_functions_v4[func_index]
+                        is_seeded = func_index in [4, 5, 6, 9]
+                        seed = combined_seed if is_seeded else None
+                        if is_seeded:
+                            current_word_bytes = func(current_word_bytes, seed=seed, prng_factory=prng_factory)
+                        else:
+                            current_word_bytes = func(current_word_bytes)
+
+                # V6+: Undo chain XOR, then update chain from cipher bytes
+                current_word_bytes = bytearray(current_word_bytes)
+                for i in range(len(current_word_bytes)):
+                    current_word_bytes[i] ^= v6_chain_state[i % 32]
+                v6_chain_state = hashlib.sha256(v6_chain_state + cipher_word_bytes).digest()
+            else:
+                # Legacy V2-V5
+                word_reverse_list = reverse_key[word_index]
+                unique_set = list(dict.fromkeys(word_reverse_list[:12]))
+                checksum = self._generate_checksum(unique_set)
+                combined_seed = (active_password_str + str(checksum) + (str(word_index) if is_v5 else "")).encode('utf-8')
                 
-                if is_seeded:
-                    current_word_bytes = func(current_word_bytes, seed=seed, prng_factory=prng_factory)
-                else:
-                    current_word_bytes = func(current_word_bytes)
-                    
+                for j in range(len(word_reverse_list) - 1, -1, -1):
+                    func_index = word_reverse_list[j]
+                    if detected_version >= 4:
+                        func = self.deobfuscation_functions_v4[func_index]
+                        is_seeded = func_index in [4, 5, 6, 9]
+                    else:
+                        func = self.deobfuscation_functions_v2[func_index]
+                        is_seeded = func_index >= 6
+                    seed = combined_seed if is_seeded else None
+                    if is_seeded:
+                        current_word_bytes = func(current_word_bytes, seed=seed, prng_factory=prng_factory)
+                    else:
+                        current_word_bytes = func(current_word_bytes)
+
             deobfuscated_words.append(current_word_bytes.decode('utf-8'))
             word_index += 1
         
@@ -996,7 +1240,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Darkstar D-KASP-512 (V5) Cryptographic Suite")
     
     # Global Flags
-    parser.add_argument("-v", "--v", type=int, choices=[1, 2, 3, 4, 5], default=5, help="D-KASP Protocol Version (default: 5)")
+    parser.add_argument("-v", "--v", type=int, choices=range(1, 9), default=8, help="D-KASP Protocol Version (default: 8)")
     parser.add_argument("-c", "--core", choices=["aes", "arx"], default="aes", help="Encryption Core (default: aes)")
     parser.add_argument("-f", "--format", choices=["json", "csv", "text"], default=None, help="Output format (default: json for encrypt/keygen, text for decrypt)")
     
@@ -1021,6 +1265,17 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
+    def load_arg(val):
+        if val and val.startswith("@"):
+            path = val[1:]
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return f.read().strip()
+            except Exception as e:
+                print(f"Error reading argument file {path}: {e}", file=sys.stderr)
+                sys.exit(1)
+        return val
+
     if not args.command:
         parser.print_help()
         sys.exit(0)
@@ -1030,7 +1285,9 @@ if __name__ == "__main__":
     format_opt = args.format
     
     if args.command == "encrypt":
-        res = crypt.encrypt(args.mnemonic, args.password)
+        mnemonic = load_arg(args.mnemonic)
+        password = load_arg(args.password)
+        res = crypt.encrypt(mnemonic, password, version=v)
         
         output_format = format_opt or 'json'
         if output_format == "json":
@@ -1044,8 +1301,11 @@ if __name__ == "__main__":
             
     elif args.command == 'decrypt':
         output_format = args.format or "text"
+        data = load_arg(args.data)
+        rk = load_arg(args.reverse_key)
+        psw = load_arg(args.password)
         try:
-            res = crypt.decrypt(args.data, args.reverse_key, args.password)
+            res = crypt.decrypt(data, rk, psw)
             if output_format == "json":
                 print(json.dumps({"decrypted": res}))
             elif output_format == "csv":
@@ -1072,7 +1332,7 @@ if __name__ == "__main__":
         password = "MySecre!Password123"
         dec_psw = password
         
-        if v == 5:
+        if v >= 5:
             import pqcrypto.kem.ml_kem_1024 as kem
             pk, sk = kem.generate_keypair()
             password = pk.hex()
@@ -1093,5 +1353,5 @@ if __name__ == "__main__":
             print(f"Result: FAILED with error {e}")
             sys.exit(1)
     else:
-        print(f"Unknown command: {command}")
+        print(f"Unknown command: {args.command}")
 

@@ -9,6 +9,7 @@ use pbkdf2::pbkdf2;
 use rand::Rng;
 use zeroize::Zeroize;
 use sha2::Sha256;
+use std::fs;
 
 /// d-kasp-512 Encryption Suite
 /// 
@@ -631,7 +632,8 @@ impl DarkstarCrypt {
     }
 
     fn unpack_reverse_key(b64: &str, is_modern: bool) -> Result<Vec<Vec<usize>>, Box<dyn std::error::Error>> {
-        let bytes = general_purpose::STANDARD.decode(b64)?;
+        let filtered_rk = clean_b64(b64);
+        let bytes = general_purpose::STANDARD.decode(&filtered_rk)?;
         let mut reverse_key = Vec::new();
         
         let mut offset = 0;
@@ -665,97 +667,217 @@ impl DarkstarCrypt {
         Ok(reverse_key)
     }
 
-    fn encrypt(&self, mnemonic: &str, key_material: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let words: Vec<&str> = mnemonic.split(' ').collect();
+    fn encrypt(&self, mnemonic: &str, key_material: &str, v: u32) -> Result<String, Box<dyn std::error::Error>> {
+        let is_v5 = v >= 5;
+        let is_v4 = v == 4;
+        let is_modern = v >= 3;
+        
+        let mut active_password_str = key_material.to_string();
+        let mut ct_hex = String::new();
+        let mut ct_bytes_v7 = Vec::new();
+        let mut v7_hmac_key = None;
+
+        if v >= 5 {
+            let pk_hex = clean_hex(key_material);
+            let pk_bytes: [u8; 1568] = hex::decode(&pk_hex)?
+                .try_into()
+                .map_err(|_| "Invalid public key length for ML-KEM-1024")?;
+            
+            let ek = EncapsulationKey::<MlKem1024Params>::from_bytes(&pk_bytes.into());
+            let (ct, mut ss) = ek.encapsulate(&mut rand::thread_rng())
+                .map_err(|e| format!("ML-KEM Encapsulation failed: {:?}", e))?;
+            
+            ct_hex = hex::encode(ct.as_slice());
+            ct_bytes_v7 = ct.as_slice().to_vec();
+            let ss_bytes = ss.as_slice();
+            
+            if v >= 7 {
+                use sha2::Digest;
+                let mut hasher = sha2::Sha256::new();
+                hasher.update(b"dkasp-v7-cipher-key");
+                hasher.update(ss_bytes);
+                active_password_str = hex::encode(hasher.finalize());
+                
+                let mut hasher = sha2::Sha256::new();
+                hasher.update(b"dkasp-v7-hmac-key");
+                hasher.update(ss_bytes);
+                v7_hmac_key = Some(hasher.finalize().to_vec());
+            } else {
+                active_password_str = hex::encode(ss_bytes);
+            }
+            ss.zeroize();
+        }
+
+        let words: Vec<&str> = if v >= 6 { vec![mnemonic] } else { mnemonic.split(' ').collect() };
+        let prng_factory = |s: &str| ActivePRNG::new(s, is_modern);
+
         let mut obfuscated_words = Vec::new();
         let mut reverse_key = Vec::new();
 
-        let is_v5 = true;
-        let is_v4 = false;
-        let is_modern = true;
-        
-        let mut active_password_str = key_material.to_string();
-
-        let pk_bytes: [u8; 1568] = hex::decode(key_material)?
-            .try_into()
-            .map_err(|_| "Invalid public key length for ML-KEM-1024")?;
-        
-        let ek = EncapsulationKey::<MlKem1024Params>::from_bytes(&pk_bytes.into());
-        let (ct, mut ss) = ek.encapsulate(&mut rand::thread_rng())
-            .map_err(|e| format!("ML-KEM Encapsulation failed: {:?}", e))?;
-        
-        let ct_hex = hex::encode(ct.as_slice());
-        let ss_hex = hex::encode(ss.as_slice());
-        active_password_str = ss_hex;
-        ss.zeroize();
-
-        let prng_factory = |s: &str| ActivePRNG::new(s, is_modern);
+        // Fix 2: Chain state init — cross-word diffusion (V6 only)
+        let mut chain_state: Vec<u8> = if v >= 6 {
+            use sha2::Digest;
+            sha2::Sha256::digest(format!("dkasp-chain-v6{}", active_password_str).as_bytes()).to_vec()
+        } else { Vec::new() };
 
         for (index, word) in words.iter().enumerate() {
             let mut current_word_bytes = word.as_bytes().to_vec();
 
-            let mut selected_functions: Vec<usize> = (0..12).collect();
-            let seed_for_selection = if is_v5 {
-                format!("{}{}{}", active_password_str, word, index)
-            } else {
-                format!("{}{}", active_password_str, word)
-            };
-            let mut rng_sel = prng_factory(&seed_for_selection);
-            
-            for i in (1..12).rev() {
-                let j = ((rng_sel.next() as u64 * (i + 1) as u64) >> 32) as usize;
-                selected_functions.swap(i, j);
-            }
+            if v >= 6 {
+                // Fix 1: HMAC-SHA256 key schedule — derive per-word subkey
+                use hmac::Mac;
+                type HmacSha256 = hmac::Hmac<sha2::Sha256>;
+                let word_key: Vec<u8> = {
+                    let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(active_password_str.as_bytes())
+                        .map_err(|e| format!("HMAC init error: {:?}", e))?;
+                    mac.update(format!("dkasp-v6-word-{}", index).as_bytes());
+                    mac.finalize().into_bytes().to_vec()
+                };
+                let word_key_hex = hex::encode(&word_key);
 
-            let mut cycle_depth = selected_functions.len();
-            if is_modern {
+                // Fix 2: XOR word bytes with chain state before gauntlet
+                for (i, b) in current_word_bytes.iter_mut().enumerate() {
+                    *b ^= chain_state[i % 32];
+                }
+
+                // Fix 4: Generate path with degeneration prevention (max 3 consecutive identical)
+                let seed_for_selection = &word_key_hex;
+                let mut rng_path = prng_factory(seed_for_selection);
                 use sha2::Digest;
                 let hash = sha2::Sha256::digest(seed_for_selection.as_bytes());
-                let hash_hex = hex::encode(hash);
-                if let Ok(depth_val) = usize::from_str_radix(&hash_hex[..4], 16) {
-                    cycle_depth = if is_v5 { 12 + (depth_val % 501) } else { 12 + (depth_val % 53) };
-                }
-            }
+                let cycle_depth = 12 + (usize::from_str_radix(&hex::encode(hash)[..4], 16).unwrap_or(0) % 501);
 
-            let checksum = Self::generate_checksum(&selected_functions);
-            let combined_seed = if is_v5 {
-                format!("{}{}{}", active_password_str, checksum, index).into_bytes()
+                let mut path: Vec<usize> = Vec::with_capacity(cycle_depth);
+                let mut last_three = [99usize; 3];
+                for _ in 0..cycle_depth {
+                    let mut fi = (rng_path.next() as usize) % 12;
+                    // Prevent run of >3 identical consecutive
+                    if last_three[0] == fi && last_three[1] == fi && last_three[2] == fi {
+                        fi = (fi + 1 + (rng_path.next() as usize % 11)) % 12;
+                    }
+                    last_three[0] = last_three[1];
+                    last_three[1] = last_three[2];
+                    last_three[2] = fi;
+                    path.push(fi);
+                }
+
+                // Ensure min 6 distinct functions in first 12 slots (fix 4b)
+                {
+                    let path_clone = path[..12.min(path.len())].to_vec();
+                    let distinct: std::collections::HashSet<usize> = path_clone.iter().cloned().collect();
+                    if distinct.len() < 6 {
+                        let missing: Vec<usize> = (0..12).filter(|x| !distinct.contains(x)).collect();
+                        let mut mi = 0;
+                        for i in 0..12.min(path.len()) {
+                            let count = path_clone.iter().filter(|&&x| x == path[i]).count();
+                            if count > 2 && mi < missing.len() {
+                                path[i] = missing[mi]; mi += 1;
+                            }
+                        }
+                    }
+                }
+
+                // Fix 1: Derive combined seed for keyed functions via HMAC
+                let checksum = Self::generate_checksum(&(0..12).collect::<Vec<_>>());
+                let func_key: Vec<u8> = {
+                    let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&word_key)
+                        .map_err(|e| format!("HMAC init error: {:?}", e))?;
+                    mac.update(format!("keyed-{}", checksum).as_bytes());
+                    mac.finalize().into_bytes().to_vec()
+                };
+
+                if v >= 8 {
+                    // V8: SPNA Structured Gauntlet (16 Rounds = 64 Layers)
+                    let mut rng_path = prng_factory(&word_key_hex);
+                    let group_s = [0usize, 1, 5];
+                    let group_p = [2usize, 3, 10];
+                    let group_n = [7usize, 8, 11];
+                    let group_a = [4usize, 6, 9];
+
+                    for i in 0..16 {
+                        // S: Substitution (Forced S-Box or ModMult every 4 rounds)
+                        let s_idx = if i % 4 == 0 {
+                            0
+                        } else if i % 4 == 2 {
+                            1
+                        } else {
+                            group_s[(rng_path.next() as usize) % group_s.len()]
+                        };
+                        current_word_bytes = (self.obfuscation_functions_v4[s_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
+
+                        // P: Permutation (Always randomized)
+                        let p_idx = group_p[(rng_path.next() as usize) % group_p.len()];
+                        current_word_bytes = (self.obfuscation_functions_v4[p_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
+
+                        // N: Network (Forced GFMult or MatrixHill every 4 rounds)
+                        let n_idx = if i % 4 == 1 {
+                            8
+                        } else if i % 4 == 3 {
+                            7
+                        } else {
+                            group_n[(rng_path.next() as usize) % group_n.len()]
+                        };
+                        current_word_bytes = (self.obfuscation_functions_v4[n_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
+
+                        // A: Algebraic/AddKey (Always randomized)
+                        let a_idx = group_a[(rng_path.next() as usize) % group_a.len()];
+                        current_word_bytes = (self.obfuscation_functions_v4[a_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
+                    }
+                } else {
+                    for &func_index in &path {
+                        let is_seeded = [4usize, 5, 6, 9].contains(&func_index);
+                        let seed = if is_seeded { Some(func_key.as_slice()) } else { None };
+                        let func = self.obfuscation_functions_v4[func_index];
+                        current_word_bytes = func(&current_word_bytes, seed, &prng_factory)?;
+                    }
+                }
+
+                let mut chain_input = chain_state.clone();
+                chain_input.extend_from_slice(&current_word_bytes);
+                chain_state = sha2::Sha256::digest(&chain_input).to_vec();
+
             } else {
-                format!("{}{}", active_password_str, checksum).into_bytes()
-            };
-
-            let mut word_reverse_key = Vec::new();
-
-            for i in 0..cycle_depth {
-                let mut func_index = selected_functions[i % selected_functions.len()];
-
-                if i >= 12 && !is_v4 && !is_v5 && (func_index == 2 || func_index == 3 || func_index == 8 || func_index == 9) {
-                    func_index = (func_index + 2) % 12;
+                // Legacy V2-V5 path (unchanged)
+                let mut selected_functions: Vec<usize> = (0..12).collect();
+                let seed_for_selection = format!("{}{}{}", active_password_str, word, if v >= 5 { index.to_string() } else { "".to_string() });
+                let mut rng_sel = prng_factory(&seed_for_selection);
+                for i in (1..12).rev() {
+                    let j = ((rng_sel.next() as u64 * (i + 1) as u64) >> 32) as usize;
+                    selected_functions.swap(i, j);
                 }
-
-                let is_seeded = if is_v4 || is_v5 {
-                    func_index == 4 || func_index == 5 || func_index == 6 || func_index == 9
-                } else {
-                    func_index >= 6
-                };
-                let seed = if is_seeded { Some(combined_seed.as_slice()) } else { None };
-
-                let func = if is_v4 || is_v5 {
-                    self.obfuscation_functions_v4[func_index]
-                } else {
-                    self.obfuscation_functions_v2[func_index]
-                };
-                current_word_bytes = func(&current_word_bytes, seed, &prng_factory)?;
-                word_reverse_key.push(func_index);
+                let mut cycle_depth = selected_functions.len();
+                if is_modern {
+                    use sha2::Digest;
+                    let hash = sha2::Sha256::digest(seed_for_selection.as_bytes());
+                    let hash_hex = hex::encode(hash);
+                    if let Ok(depth_val) = usize::from_str_radix(&hash_hex[..4], 16) {
+                        cycle_depth = if v >= 5 { 12 + (depth_val % 501) } else { 12 + (depth_val % 53) };
+                    }
+                }
+                let checksum = Self::generate_checksum(&selected_functions);
+                let combined_seed = format!("{}{}{}", active_password_str, checksum, if v >= 5 { index.to_string() } else { "".to_string() }).into_bytes();
+                let mut word_reverse_key = Vec::new();
+                for i in 0..cycle_depth {
+                    let mut func_index = selected_functions[i % selected_functions.len()];
+                    if i >= 12 && !is_v4 && !is_v5 && (func_index == 2 || func_index == 3 || func_index == 8 || func_index == 9) {
+                        func_index = (func_index + 2) % 12;
+                    }
+                    let is_seeded = if is_v4 || is_v5 { [4usize,5,6,9].contains(&func_index) } else { func_index >= 6 };
+                    let seed = if is_seeded { Some(combined_seed.as_slice()) } else { None };
+                    let func = if is_v4 || is_v5 { self.obfuscation_functions_v4[func_index] } else { self.obfuscation_functions_v2[func_index] };
+                    current_word_bytes = func(&current_word_bytes, seed, &prng_factory)?;
+                    word_reverse_key.push(func_index);
+                }
+                obfuscated_words.push(current_word_bytes);
+                reverse_key.push(word_reverse_key);
+                continue;
             }
+
             obfuscated_words.push(current_word_bytes);
-            reverse_key.push(word_reverse_key);
         }
 
-        // Packed Binary Reverse Key
-        let encoded_reverse_key = Self::pack_reverse_key(&reverse_key, is_modern)?;
+        let encoded_reverse_key = if v >= 6 { "".to_string() } else { Self::pack_reverse_key(&reverse_key, is_modern)? };
 
-        // Final Blob Construction with Padding for V5
         let mut final_blob = Vec::new();
         for wb in &obfuscated_words {
             let l = wb.len();
@@ -764,25 +886,43 @@ impl DarkstarCrypt {
             final_blob.extend(wb);
         }
 
-        let mut final_payload = Vec::new();
-        if final_blob.len() > 2048 {
-            return Err(format!("Obfuscated payload exceeds 2048-byte limit ({} bytes)", final_blob.len()).into());
+        if final_blob.len() > 16384 {
+            return Err(format!("Obfuscated payload exceeds 16384-byte limit ({} bytes)", final_blob.len()).into());
         }
-        final_payload.extend_from_slice(&final_blob);
-        final_payload.resize(2048, 0);
+        // V6: encrypt exact blob (no fixed padding needed - no RK correlation attack surface)
+        // V1-V5: pad to fixed size to obscure word count from stored reverse key
+        let final_payload: Vec<u8> = if v >= 6 {
+            final_blob.clone()
+        } else {
+            let mut padded = vec![0u8; 16384];
+            padded[..final_blob.len()].copy_from_slice(&final_blob);
+            padded
+        };
 
         let target_iterations = ITERATIONS_V2;
-        let mut active_password_bytes = active_password_str.as_bytes().to_vec();
+        let aad = if v >= 6 { None } else { Some(encoded_reverse_key.as_bytes()) };
         
-        let aad = Some(encoded_reverse_key.as_bytes());
-        let encrypted_content = self.encrypt_aes256_gcm(&final_payload, &active_password_str, target_iterations, aad)?;
+        let mut mac_tag = String::new();
+        let encrypted_content = if v >= 7 {
+            // V7: Post-Quantum Purity (No AES)
+            use hmac::{Hmac, Mac};
+            type HmacSha256 = Hmac<sha2::Sha256>;
+            let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&v7_hmac_key.unwrap())
+                .map_err(|e| format!("HMAC error: {:?}", e))?;
+            mac.update(&[v as u8]);
+            mac.update(&ct_bytes_v7);
+            mac.update(&final_payload);
+            mac_tag = hex::encode(mac.finalize().into_bytes());
+            hex::encode(&final_payload)
+        } else {
+            self.encrypt_aes256_gcm(&final_payload, &active_password_str, target_iterations, aad)?
+        };
 
-        active_password_bytes.zeroize();
-
-        let mut res_obj = serde_json::json!({
-            "v": 5,
+        let res_obj = serde_json::json!({
+            "v": v,
             "data": encrypted_content,
-            "ct": ct_hex
+            "ct": ct_hex,
+            "mac": mac_tag
         });
         
         Ok(serde_json::json!({
@@ -793,177 +933,253 @@ impl DarkstarCrypt {
 
     /// Decrypts the encrypted data back to the original mnemonic.
     fn decrypt(&self, encrypted_data_raw: &str, reverse_key_b64: &str, key_material: &str) -> Result<String, Box<dyn std::error::Error>> {
-        // 1. Decode Reverse Key (Auto-detect Legacy JSON vs Packed Binary)
-        let mut is_header_modern = false;
-        if let Ok(value) = serde_json::from_str::<serde_json::Value>(encrypted_data_raw) {
-            if value["v"] == 3 || value["v"] == 4 || value["v"] == 5 {
-                is_header_modern = true;
-            }
-        }
-
-        let reverse_key: Vec<Vec<usize>> = if let Ok(bytes) = general_purpose::STANDARD.decode(reverse_key_b64) {
-            if let Ok(rk) = serde_json::from_slice::<Vec<Vec<usize>>>(&bytes) {
-                rk
-            } else {
-                Self::unpack_reverse_key(reverse_key_b64, is_header_modern)?
-            }
-        } else {
-             return Err("Invalid base64 in reverse key".into());
-        };
-
-        let mut encrypted_content = String::new();
-        let mut is_v3 = false;
-        let mut is_v4 = false;
-        let mut is_v5 = false;
+        // Parse version and payload fields
+        let mut v: u32 = 2;
         let mut ct_hex = String::new();
-        
-        if let Ok(value) = serde_json::from_str::<serde_json::Value>(encrypted_data_raw) {
-            if value["v"] == 2 {
-                if let Some(data) = value["data"].as_str() {
-                    encrypted_content = data.to_string();
-                }
-            } else if value["v"] == 3 {
-                if let Some(data) = value["data"].as_str() {
-                    encrypted_content = data.to_string();
-                    is_v3 = true;
-                }
-            } else if value["v"] == 4 {
-                if let Some(data) = value["data"].as_str() {
-                    encrypted_content = data.to_string();
-                    is_v4 = true;
-                }
-            } else if value["v"] == 5 {
-                if let Some(data) = value["data"].as_str() {
-                    encrypted_content = data.to_string();
-                    is_v5 = true;
-                }
-                if let Some(ct) = value["ct"].as_str() {
-                    ct_hex = ct.to_string();
-                }
-            }
-        }
-        if encrypted_content.is_empty() {
-            encrypted_content = encrypted_data_raw.to_string();
-        }
+        let mut encrypted_content = String::new();
 
-        let is_modern = is_v3 || is_v4 || is_v5;
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(encrypted_data_raw) {
+            if let Some(ver) = value["v"].as_u64() { v = ver as u32; }
+            if let Some(ct) = value["ct"].as_str() { ct_hex = ct.to_string(); }
+            if let Some(data) = value["data"].as_str() { encrypted_content = data.to_string(); }
+        }
+        if encrypted_content.is_empty() { encrypted_content = encrypted_data_raw.to_string(); }
+
+        let is_modern = v >= 3;
+        let is_v5 = v >= 5;
+        let is_v6 = v >= 6;
+
+        // Build reverse key (V1-V5 only; V6 is keyless/deterministic)
+        let reverse_key: Vec<Vec<usize>> = if !is_v6 {
+            let filtered_rk = clean_b64(reverse_key_b64);
+            if let Ok(bytes) = general_purpose::STANDARD.decode(&filtered_rk) {
+                if let Ok(rk) = serde_json::from_slice::<Vec<Vec<usize>>>(&bytes) { rk }
+                else { Self::unpack_reverse_key(&filtered_rk, is_modern)? }
+            } else {
+                return Err("Invalid base64 in reverse key".into());
+            }
+        } else { Vec::new() };
+
+        // ML-KEM-1024 decapsulation for V5+
         let mut active_password_str = key_material.to_string();
-        if is_v5 {
-            let sk_bytes: [u8; 3168] = hex::decode(key_material)?
-                .try_into()
-                .map_err(|_| "Invalid secret key length for ML-KEM-1024")?;
-            let ct_vec = hex::decode(&ct_hex)?;
-            let ct_bytes: [u8; 1568] = ct_vec
-                .try_into()
-                .map_err(|_| "Invalid ciphertext length for ML-KEM-1024")?;
+        let mut v7_hmac_key = None;
+        let mut ct_bytes_raw = Vec::new();
+        if v >= 5 {
+            let sk_hex = clean_hex(key_material);
+            let ct_hex_clean = clean_hex(&ct_hex);
             
+            let sk_bytes: [u8; 3168] = hex::decode(&sk_hex)?
+                .try_into().map_err(|_| "Invalid SK length")?;
+            let ct_bytes: [u8; 1568] = hex::decode(&ct_hex_clean)?
+                .try_into().map_err(|_| "Invalid CT length")?;
+            ct_bytes_raw = ct_bytes.to_vec();
             let dk = DecapsulationKey::<MlKem1024Params>::from_bytes(&sk_bytes.into());
             let mut ss = dk.decapsulate(&ct_bytes.into())
-                .map_err(|e| format!("ML-KEM Decapsulation failed: {:?}", e))?;
-            
-            active_password_str = hex::encode(ss.as_slice());
+                .map_err(|e| format!("ML-KEM failed: {:?}", e))?;
+            let ss_bytes = ss.as_slice();
+
+            if v >= 7 {
+                use sha2::Digest;
+                let mut hasher = sha2::Sha256::new();
+                hasher.update(b"dkasp-v7-cipher-key");
+                hasher.update(ss_bytes);
+                active_password_str = hex::encode(hasher.finalize());
+                
+                let mut hasher = sha2::Sha256::new();
+                hasher.update(b"dkasp-v7-hmac-key");
+                hasher.update(ss_bytes);
+                v7_hmac_key = Some(hasher.finalize().to_vec());
+            } else {
+                active_password_str = hex::encode(ss_bytes);
+            }
             ss.zeroize();
         }
 
-        let iterations = ITERATIONS_V2;
-        let aad = if is_v5 { Some(reverse_key_b64.as_bytes()) } else { None };
-
-        let full_blob = if is_modern {
-            let decrypted_bytes = self.decrypt_aes256_gcm(&encrypted_content, &active_password_str, iterations, aad)?;
-            if is_v5 {
-                decrypted_bytes
-            } else {
-                // Legacy V3/V4: decrypted data is a base64 string
-                let b64_str = String::from_utf8(decrypted_bytes)?;
-                general_purpose::STANDARD.decode(b64_str.trim())?
+        // Decrypt Primary layer (AES or HMAC-V7)
+        let aad = if v >= 6 { None } else { Some(reverse_key_b64.as_bytes()) };
+        let full_blob: Vec<u8> = if v >= 7 {
+            // V7: Integrity verify and bypass AES
+            let payload_bytes = hex::decode(&encrypted_content)?;
+            use hmac::Mac;
+            type HmacSha256 = hmac::Hmac<sha2::Sha256>;
+            let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&v7_hmac_key.unwrap())
+                .map_err(|e| format!("HMAC error: {:?}", e))?;
+            mac.update(&[v as u8]);
+            mac.update(&ct_bytes_raw);
+            mac.update(&payload_bytes);
+            
+            let expected_mac_hex = if let Ok(value) = serde_json::from_str::<serde_json::Value>(encrypted_data_raw) {
+                value["mac"].as_str().unwrap_or("").to_string()
+            } else { "".to_string() };
+            let expected_mac = hex::decode(expected_mac_hex)?;
+            
+            if mac.verify_slice(&expected_mac).is_err() {
+                return Err("D-KASP V7: Integrity Check Failed (MAC mismatch)".into());
+            }
+            payload_bytes
+        } else if is_modern {
+            let dec = self.decrypt_aes256_gcm(&encrypted_content, &active_password_str, ITERATIONS_V2, aad)?;
+            if v >= 5 { dec } else {
+                let s = std::str::from_utf8(&dec)?;
+                general_purpose::STANDARD.decode(s.trim())?
             }
         } else {
-            let decrypted_bytes = self.decrypt_aes256(&encrypted_content, &active_password_str, iterations)?;
-            // Legacy V1/V2: decrypted data is a base64 string
-            let b64_str = String::from_utf8(decrypted_bytes)?;
-            general_purpose::STANDARD.decode(b64_str.trim())?
+            let dec = self.decrypt_aes256(&encrypted_content, &active_password_str, ITERATIONS_V2)?;
+            let s = std::str::from_utf8(&dec)?;
+            general_purpose::STANDARD.decode(s.trim())?
         };
 
-        let mut deobfuscated_words = Vec::new();
+        // De-obfuscation loop
+        use sha2::Digest;
         let prng_factory = |s: &str| ActivePRNG::new(s, is_modern);
-
+        // Fix 2: Chain state for decrypt (V6 only) — must match encrypt init
+        let mut v6_chain_state: Vec<u8> = if is_v6 {
+            sha2::Sha256::digest(format!("dkasp-chain-v6{}", active_password_str).as_bytes()).to_vec()
+        } else { Vec::new() };
+        let mut deobfuscated_words = Vec::new();
         let mut offset = 0;
         let mut word_index = 0;
 
         while offset < full_blob.len() {
-            if word_index >= reverse_key.len() { break; }
+            if !is_v6 && word_index >= reverse_key.len() { break; }
             if offset + 2 > full_blob.len() { break; }
-
-            let length = ((full_blob[offset] as usize) << 8) | (full_blob[offset + 1] as usize);
+            let len = ((full_blob[offset] as usize) << 8) | (full_blob[offset + 1] as usize);
             offset += 2;
-            if offset + length > full_blob.len() { break; }
+            if offset + len > full_blob.len() { break; }
+            let mut current_word_bytes = full_blob[offset..offset + len].to_vec();
+            offset += len;
 
-            let mut current_word_bytes = full_blob[offset..offset+length].to_vec();
-            offset += length;
+            if is_v6 {
+                // Fix 1: HMAC key schedule — derive per-word subkey
+                use hmac::Mac;
+                type HmacSha256 = hmac::Hmac<sha2::Sha256>;
+                let word_key: Vec<u8> = {
+                    let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(active_password_str.as_bytes())
+                        .map_err(|e| format!("HMAC error: {:?}", e))?;
+                    mac.update(format!("dkasp-v6-word-{}", word_index).as_bytes());
+                    mac.finalize().into_bytes().to_vec()
+                };
+                let word_key_hex = hex::encode(&word_key);
 
-            let word_reverse_list = &reverse_key[word_index];
-            
-            let mut unique_set = Vec::new();
-            // Core checksum only depends on first 12 cycles
-            for &f in word_reverse_list.iter().take(12) {
-                if !unique_set.contains(&f) { unique_set.push(f); }
-            }
-            let checksum = Self::generate_checksum(&unique_set);
-            let combined_seed = if is_v5 {
-                format!("{}{}{}", active_password_str, checksum, word_index).into_bytes()
+                // Fix 4: Regenerate sanitised path (same logic as encrypt)
+                let mut rng_path = prng_factory(&word_key_hex);
+                let hash = sha2::Sha256::digest(word_key_hex.as_bytes());
+                let depth = 12 + (usize::from_str_radix(&hex::encode(hash)[..4], 16).unwrap_or(0) % 501);
+                let mut path: Vec<usize> = Vec::with_capacity(depth);
+                let mut last_three = [99usize; 3];
+                for _ in 0..depth {
+                    let mut fi = (rng_path.next() as usize) % 12;
+                    if last_three[0] == fi && last_three[1] == fi && last_three[2] == fi {
+                        fi = (fi + 1 + (rng_path.next() as usize % 11)) % 12;
+                    }
+                    last_three[0] = last_three[1]; last_three[1] = last_three[2]; last_three[2] = fi;
+                    path.push(fi);
+                }
+                // Ensure min 6 distinct in first 12 slots (fix 4b)
+                {
+                    let path_clone = path[..12.min(path.len())].to_vec();
+                    let distinct: std::collections::HashSet<usize> = path_clone.iter().cloned().collect();
+                    if distinct.len() < 6 {
+                        let missing: Vec<usize> = (0..12).filter(|x| !distinct.contains(x)).collect();
+                        let mut mi = 0;
+                        for i in 0..12.min(path.len()) {
+                            let count = path_clone.iter().filter(|&&x| x == path[i]).count();
+                            if count > 2 && mi < missing.len() {
+                                path[i] = missing[mi]; mi += 1;
+                            }
+                        }
+                    }
+                }
+
+                // Fix 1: Derive combined seed via HMAC
+                let checksum = Self::generate_checksum(&(0..12).collect::<Vec<_>>());
+                let func_key: Vec<u8> = {
+                    let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&word_key)
+                        .map_err(|e| format!("HMAC error: {:?}", e))?;
+                    mac.update(format!("keyed-{}", checksum).as_bytes());
+                    mac.finalize().into_bytes().to_vec()
+                };
+
+                if v >= 8 {
+                    // V8: Inverse SPNA Structured Gauntlet
+                    let mut rng_path = prng_factory(&word_key_hex);
+                    let group_s = [0usize, 1, 5];
+                    let group_p = [2usize, 3, 10];
+                    let group_n = [7usize, 8, 11];
+                    let group_a = [4usize, 6, 9];
+
+                    let mut round_paths = Vec::with_capacity(16);
+                    for i in 0..16 {
+                        let s = if i % 4 == 0 { 0 } else if i % 4 == 2 { 1 } else { group_s[(rng_path.next() as usize) % group_s.len()] };
+                        let p = group_p[(rng_path.next() as usize) % group_p.len()];
+                        let n = if i % 4 == 1 { 8 } else if i % 4 == 3 { 7 } else { group_n[(rng_path.next() as usize) % group_n.len()] };
+                        let a = group_a[(rng_path.next() as usize) % group_a.len()];
+                        round_paths.push((s, p, n, a));
+                    }
+
+                    for j in (0..16).rev() {
+                        let (s, p, n, a) = round_paths[j];
+                        // Inverse Order: A -> N -> P -> S
+                        current_word_bytes = (self.deobfuscation_functions_v4[a])(&current_word_bytes, Some(&func_key), &prng_factory)?;
+                        current_word_bytes = (self.deobfuscation_functions_v4[n])(&current_word_bytes, Some(&func_key), &prng_factory)?;
+                        current_word_bytes = (self.deobfuscation_functions_v4[p])(&current_word_bytes, Some(&func_key), &prng_factory)?;
+                        current_word_bytes = (self.deobfuscation_functions_v4[s])(&current_word_bytes, Some(&func_key), &prng_factory)?;
+                    }
+                } else {
+                    // Apply inverse transforms in reverse order
+                    for &func_index in path.iter().rev() {
+                        let is_seeded = [4usize, 5, 6, 9].contains(&func_index);
+                        let seed = if is_seeded { Some(func_key.as_slice()) } else { None };
+                        let func = self.deobfuscation_functions_v4[func_index];
+                        current_word_bytes = func(&current_word_bytes, seed, &prng_factory)?;
+                    }
+                }
+
+                // Fix 2: Capture cipher bytes for chain advance, then undo chain XOR
+                // cipher_bytes = bytes as read from full_blob (before deobfuscation)
+                let cipher_bytes = full_blob[offset - len..offset].to_vec();
+                // Undo the chain pre-XOR that was applied during encryption
+                for (i, b) in current_word_bytes.iter_mut().enumerate() {
+                    *b ^= v6_chain_state[i % 32];
+                }
+                // Advance chain from cipher bytes (same as encrypt path)
+                let mut chain_input = v6_chain_state.clone();
+                chain_input.extend_from_slice(&cipher_bytes);
+                v6_chain_state = sha2::Sha256::digest(&chain_input).to_vec();
+
+                if let Ok(word) = String::from_utf8(current_word_bytes) {
+                    deobfuscated_words.push(word);
+                }
             } else {
-                format!("{}{}", active_password_str, checksum).into_bytes()
-            };
-
-            for &func_index in word_reverse_list.iter().rev() {
-                let is_seeded = if is_v4 || is_v5 {
-                    func_index == 4 || func_index == 5 || func_index == 6 || func_index == 9
-                } else {
-                    func_index >= 6
-                };
-                let seed = if is_seeded { Some(combined_seed.as_slice()) } else { None };
-
-                let func = if is_v4 || is_v5 {
-                    self.deobfuscation_functions_v4[func_index]
-                } else {
-                    self.deobfuscation_functions_v2[func_index]
-                };
-                current_word_bytes = func(&current_word_bytes, seed, &prng_factory)?;
+                // Legacy V2-V5 path
+                let word_path = reverse_key[word_index].clone();
+                let mut unique = word_path.clone(); unique.sort(); unique.dedup();
+                let checksum = Self::generate_checksum(&unique);
+                let idx_str = if v >= 5 { word_index.to_string() } else { String::new() };
+                let combined_seed = format!("{}{}{}", active_password_str, checksum, idx_str).into_bytes();
+                for &func_index in word_path.iter().rev() {
+                    let is_seeded = if v >= 4 { [4usize, 5, 6, 9].contains(&func_index) } else { func_index >= 6 };
+                    let seed = if is_seeded { Some(combined_seed.as_slice()) } else { None };
+                    let func = if v >= 4 { self.deobfuscation_functions_v4[func_index] } else { self.deobfuscation_functions_v2[func_index] };
+                    current_word_bytes = func(&current_word_bytes, seed, &prng_factory)?;
+                }
+                if let Ok(word) = String::from_utf8(current_word_bytes) {
+                    deobfuscated_words.push(word);
+                }
             }
-
-            deobfuscated_words.push(String::from_utf8(current_word_bytes)?);
             word_index += 1;
         }
 
         Ok(deobfuscated_words.join(" "))
     }
 
+
+    /*
     fn encrypt_aes256(&self, data: &str, password: &str, iterations: u32) -> Result<String, Box<dyn std::error::Error>> {
-        let mut salt = [0u8; SALT_SIZE_BYTES];
-        rand::thread_rng().fill(&mut salt);
-        
-        let mut key = [0u8; KEY_SIZE];
-        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), &salt, iterations, &mut key)?;
-
-        let mut iv = [0u8; IV_SIZE_BYTES];
-        rand::thread_rng().fill(&mut iv);
-
-        type Aes256CbcEnc = cbc::Encryptor<Aes256>;
-        let cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
-        
-        let mut buf = data.as_bytes().to_vec();
-        buf.resize(data.len() + 16, 0); // Ensure space for padding
-        let ciphertext = cipher.encrypt_padded_mut::<Pkcs7>(&mut buf, data.len())
-            .map_err(|e| format!("Encryption error: {:?}", e))?;
-
-        key.zeroize();
-
-        let salt_hex = hex::encode(salt);
-        let iv_hex = hex::encode(iv);
-        let cipher_b64 = general_purpose::STANDARD.encode(ciphertext);
-
+...
         Ok(format!("{}{}{}", salt_hex, iv_hex, cipher_b64))
     }
+    */
 
     fn encrypt_aes256_gcm(&self, data: &[u8], password: &str, iterations: u32, aad: Option<&[u8]>) -> Result<String, Box<dyn std::error::Error>> {
         let mut salt = [0u8; SALT_SIZE_BYTES];
@@ -1062,6 +1278,29 @@ fn print_usage() {
     println!("  test                Run self-test");
 }
 
+fn resolve_arg(arg: &str) -> String {
+    if arg.starts_with('@') {
+        let path = &arg[1..];
+        match fs::read_to_string(path) {
+            Ok(content) => content, // Return raw, will be cleaned at call site if dense
+            Err(e) => {
+                eprintln!("Error reading argument file {}: {}", path, e);
+                std::process::exit(1);
+            }
+        }
+    } else {
+        arg.to_string()
+    }
+}
+
+fn clean_hex(s: &str) -> String {
+    s.chars().filter(|c| c.is_ascii_hexdigit()).collect()
+}
+
+fn clean_b64(s: &str) -> String {
+    s.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '+' || *c == '/' || *c == '=').collect()
+}
+
 fn main() {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
     let mut v = 5;
@@ -1091,10 +1330,12 @@ fn main() {
     match command.as_str() {
         "encrypt" => {
             if args.len() < 2 { print_usage(); return; }
-            let mnemonic = &args[0];
-            let password = &args[1];
+            let mnemonic_owned = resolve_arg(&args[0]);
+            let password_owned = resolve_arg(&args[1]);
+            let mnemonic = &mnemonic_owned;
+            let password = &password_owned;
 
-            match dc.encrypt(mnemonic, password) {
+            match dc.encrypt(mnemonic, password, v) {
                 Ok(res_json) => {
                     if output_format == "csv" {
                         let j: serde_json::Value = serde_json::from_str(&res_json).unwrap();
@@ -1108,21 +1349,24 @@ fn main() {
                     }
                 },
                 Err(e) => {
-                    eprintln!("Encryption Failed: {}", e);
+                    eprintln!("Encryption Failed: {} (Arg length: {}, pass snippet: {:?})", e, password.len(), &password[..20.min(password.len())]);
                     std::process::exit(1);
                 }
             }
         },
         "decrypt" => {
             if args.len() < 3 { print_usage(); return; }
-            let data = &args[0];
-            let rk = &args[1];
-            let password = &args[2];
+            let data_owned = resolve_arg(&args[0]);
+            let rk_owned = resolve_arg(&args[1]);
+            let password_owned = resolve_arg(&args[2]);
+            let data = &data_owned;
+            let rk = &rk_owned;
+            let password = &password_owned;
 
             match dc.decrypt(data, rk, password) {
                 Ok(decrypted) => println!("{}", decrypted),
                 Err(e) => {
-                    eprintln!("Decryption Failed: {}", e);
+                    eprintln!("Decryption Failed: {} (RK length: {}, Data length: {})", e, rk.len(), data.len());
                     std::process::exit(1);
                 }
             }
@@ -1137,14 +1381,14 @@ fn main() {
             let mut password = "password123".to_string();
             let mut dec_psw = password.clone();
 
-            if v == 5 {
+            if v >= 5 {
                 let (ek, dk) = MlKem1024::generate(&mut rand::thread_rng());
                 password = hex::encode(ek.as_bytes());
                 dec_psw = hex::encode(dk.as_bytes());
             }
 
             println!("--- Darkstar Rust Self-Test (V{}) ---", v);
-            match dc.encrypt(mnemonic, &password) {
+            match dc.encrypt(mnemonic, &password, v) {
                 Ok(res_json) => {
                     let res: serde_json::Value = serde_json::from_str(&res_json).unwrap();
                     let enc_owned = match res["encryptedData"].as_str() {

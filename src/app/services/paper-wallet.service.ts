@@ -21,7 +21,10 @@ export class PaperWalletService {
   async generate(encryptedData: string, reverseKey: string, metadata: PaperWalletMetadata): Promise<void> {
     const timestamp = Date.now();
     await this.generateDocument('Part 1: Encrypted Payload', encryptedData, metadata, `darkstar-passport-payload-${timestamp}.pdf`);
-    await this.generateDocument('Part 2: Reverse Key', reverseKey, metadata, `darkstar-passport-key-${timestamp}.pdf`);
+    
+    if (reverseKey) {
+        await this.generateDocument('Part 2: Reverse Key', reverseKey, metadata, `darkstar-passport-key-${timestamp}.pdf`);
+    }
   }
 
   private async generateDocument(title: string, content: string, metadata: PaperWalletMetadata, filename: string): Promise<void> {
@@ -150,8 +153,10 @@ export class PaperWalletService {
     const instructions = [
       'IMPORTANT RECOVERY INSTRUCTIONS:',
       `1. This document contains ${title}.`,
-      "2. To recover, you will need BOTH the 'Encrypted Payload' and the 'Reverse Key' documents.",
-      '3. You must also remember your Encryption Password. It is NOT printed here.',
+      title.includes('Key') 
+        ? "2. To recover, you will need BOTH the 'Encrypted Payload' and this 'Reverse Key' document."
+        : "2. To recover, you will need this 'Encrypted Payload' and your Encryption Password.",
+      '3. Your Entropy/Master Password is NOT printed here.',
       '4. Keep this document in a physically secure location (e.g., fireproof safe).',
       '5. Do not share this document.',
     ];

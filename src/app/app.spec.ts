@@ -6,6 +6,14 @@ import { RouterTestingModule } from '@angular/router/testing';
 
 describe('App', () => {
   beforeEach(async () => {
+    // Mock Electron API
+    (window as any).electronAPI = {
+      onUpdateStatus: jasmine.createSpy('onUpdateStatus'),
+      onInitiateUpdateCheck: jasmine.createSpy('onInitiateUpdateCheck'),
+      setVersionLock: jasmine.createSpy('setVersionLock'),
+      isUpdateAvailable: jasmine.createSpy('isUpdateAvailable').and.resolveTo(false)
+    };
+
     await TestBed.configureTestingModule({
       imports: [App, Nav, NoopAnimationsModule, RouterTestingModule],
     }).compileComponents();

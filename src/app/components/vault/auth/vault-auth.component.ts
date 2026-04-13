@@ -26,6 +26,7 @@ export class VaultAuthComponent implements OnInit {
   passwordLoading = false;
   hardwareLoading = false;
   biometricsLoading = false;
+  showPasswordFallback = false;
 
   isElectron = !!window.electronAPI;
   isWindows = this.isElectron && window.electronAPI.getPlatform() === 'win32';
@@ -62,6 +63,15 @@ export class VaultAuthComponent implements OnInit {
             width: '450px'
         });
     }
+
+    // Auto-trigger biometrics if forced and available
+    if (this.vaultService.isBiometricForced() && this.isBiometricEnabled && !this.vaultService.isUnlocked()) {
+        setTimeout(() => this.submitBiometrics(), 500);
+    }
+  }
+
+  togglePasswordFallback() {
+    this.showPasswordFallback = !this.showPasswordFallback;
   }
 
   async submitHardwareKey() {
@@ -71,6 +81,8 @@ export class VaultAuthComponent implements OnInit {
         const result = await this.vaultService.unlockWithHardwareKey();
         if (result && result.requiresTotp) {
             this.requiresTotp = true;
+        } else if (result && result.requiresMigration) {
+            await this.handleMigration();
         }
     } finally {
         this.loading = false;
@@ -85,6 +97,8 @@ export class VaultAuthComponent implements OnInit {
         const result = await this.vaultService.unlockWithBiometrics();
         if (result && result.requiresTotp) {
             this.requiresTotp = true;
+        } else if (result && result.requiresMigration) {
+            await this.handleMigration();
         }
     } finally {
         this.loading = false;
@@ -104,6 +118,8 @@ export class VaultAuthComponent implements OnInit {
           const result = await this.vaultService.unlock(this.password);
           if (result && result.requiresTotp) {
               this.requiresTotp = true;
+          } else if (result && result.requiresMigration) {
+              await this.handleMigration();
           }
         } else {
           await this.vaultService.createVault(this.password);
@@ -127,6 +143,31 @@ export class VaultAuthComponent implements OnInit {
           }
       } finally {
           this.loading = false;
+      }
+  }
+
+  private async handleMigration() {
+      const ref = this.dialog.open(GenericDialog, {
+          data: {
+              title: 'Quantum Security Upgrade',
+              message: 'A security upgrade is available for your vault. Would you like to migrate your data to the D-KASP-512 (V5) protocol for post-quantum protection?\n\nThis is a one-time process and is highly recommended.',
+              buttons: [
+                  { label: 'Later', value: false },
+                  { label: 'Migrate Now', value: true, color: 'primary' }
+              ]
+          },
+          width: '450px',
+          disableClose: true
+      });
+
+      const result = await ref.afterClosed().toPromise();
+      if (result) {
+          this.loading = true;
+          try {
+              await this.vaultService.performV5Migration();
+          } finally {
+              this.loading = false;
+          }
       }
   }
 }

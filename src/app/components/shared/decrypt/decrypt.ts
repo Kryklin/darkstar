@@ -30,7 +30,9 @@ export class SharedDecryptComponent {
   showResult = false;
   decryptedMnemonic = '';
   error = '';
-  isV5Payload = false;
+  isV5Payload = true;
+  isV8Payload = true;
+  showReverseKeyStep = false;
 
   inputType: 'text' | 'file' = 'text';
   fileName = '';
@@ -60,22 +62,44 @@ export class SharedDecryptComponent {
     });
 
     this.firstFormGroup.controls['encryptedData'].valueChanges.subscribe(val => {
-       try {
-           if (val && val.trim().startsWith('{')) {
-               const parsed = JSON.parse(val);
-               if (parsed.v === 5) {
-                   this.isV5Payload = true;
-                   this.thirdFormGroup.controls['password'].clearValidators();
-                   this.thirdFormGroup.controls['password'].updateValueAndValidity();
-                   return;
-               }
-           }
-       } catch {
-         // Ignore parse errors as it might be legacy text data
-       }
-       this.isV5Payload = false;
-       this.thirdFormGroup.controls['password'].setValidators([Validators.required]);
-       this.thirdFormGroup.controls['password'].updateValueAndValidity();
+      try {
+        if (val && val.trim().startsWith('{')) {
+          const parsed = JSON.parse(val);
+          const v = parsed.v || 0;
+
+          // ML-KEM Identity Decryption (V5+)
+          this.isV5Payload = v >= 5;
+
+          // Deterministic Gauntlet (V8+) - No Reverse Key required
+          this.isV8Payload = v >= 8;
+          this.showReverseKeyStep = v < 8;
+
+          if (this.isV5Payload) {
+            this.thirdFormGroup.controls['password'].clearValidators();
+          } else {
+            this.thirdFormGroup.controls['password'].setValidators([Validators.required]);
+          }
+
+          if (!this.showReverseKeyStep) {
+            this.secondFormGroup.controls['reverseKey'].clearValidators();
+          } else {
+            this.secondFormGroup.controls['reverseKey'].setValidators([Validators.required]);
+          }
+
+          this.thirdFormGroup.controls['password'].updateValueAndValidity();
+          this.secondFormGroup.controls['reverseKey'].updateValueAndValidity();
+          return;
+        }
+      } catch {
+        // Ignore parse errors as it might be legacy text data
+      }
+      this.isV5Payload = false;
+      this.isV8Payload = false;
+      this.showReverseKeyStep = true;
+      this.thirdFormGroup.controls['password'].setValidators([Validators.required]);
+      this.secondFormGroup.controls['reverseKey'].setValidators([Validators.required]);
+      this.thirdFormGroup.controls['password'].updateValueAndValidity();
+      this.secondFormGroup.controls['reverseKey'].updateValueAndValidity();
     });
   }
 
@@ -160,9 +184,9 @@ export class SharedDecryptComponent {
   }
 
   async onSubmit() {
-    if (this.firstFormGroup.valid && this.secondFormGroup.valid && (this.thirdFormGroup.valid || this.isV5Payload)) {
+    if (this.firstFormGroup.valid && (this.secondFormGroup.valid || !this.showReverseKeyStep) && (this.thirdFormGroup.valid || this.isV5Payload)) {
       const { encryptedData } = this.firstFormGroup.value;
-      const { reverseKey } = this.secondFormGroup.value;
+      const reverseKey = this.showReverseKeyStep ? this.secondFormGroup.value.reverseKey : '';
       let passwordOrSk = this.thirdFormGroup.controls['password'].value;
 
       if (this.isV5Payload) {

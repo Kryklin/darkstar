@@ -61,7 +61,7 @@ export class BackupService {
       if (!window.electronAPI) return false;
       
       // Grab the encrypted vault blob directly
-      const vaultData = localStorage.getItem('secure_vault_v2');
+      const vaultData = localStorage.getItem('darkstar_vault');
       if (!vaultData) return false;
 
       let dir = this.backupPath();
@@ -109,17 +109,16 @@ export class BackupService {
           // 3. Very basic structural validation
           // We expect a base64 encoded JSON string representing the Vault envelope
           try {
-             const decodedStr = atob(backupData);
-             const parsed = JSON.parse(decodedStr);
-             if (!parsed || parsed.v === undefined || !parsed.ct) {
+             const parsed = JSON.parse(backupData);
+             if (!parsed || parsed.v === undefined || !parsed.data) {
                  return { success: false, message: 'Invalid backup file format or corrupted payload.' };
              }
           } catch(_e) {
-              return { success: false, message: 'Invalid backup file format. Expected base64 JSON envelope.' };
+              return { success: false, message: 'Invalid backup file format. Expected JSON storage envelope.' };
           }
 
           // 4. Inject
-          localStorage.setItem('secure_vault_v2', backupData);
+          localStorage.setItem('darkstar_vault', backupData);
 
           // 5. Force reload
           window.location.reload();

@@ -107,6 +107,33 @@ export class DarkstarCrypt {
       this.deobfuscateWithColumnarShuffleV4.bind(this),
       this.deobfuscateWithRecursiveXORV4.bind(this),
     ];
+
+    // V8 SPNA Groups
+    this.groupS = [0, 1, 5]; // S-Box, ModMult, Feistel
+    this.groupP = [2, 3, 10]; // P-Box, Cyclic, Columnar
+    this.groupN = [7, 8, 11]; // Hill, Galois, Recursive
+    this.groupA = [4, 6, 9]; // KeyedXOR, ModAdd, Masking
+  }
+
+  // --- Cryptographic Helpers ---
+
+  /** HMAC-SHA256: returns 32-byte Uint8Array */
+  async hmacSha256Bytes(keyBytes, dataStr) {
+    const keyObj = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', keyObj, new TextEncoder().encode(dataStr));
+    return new Uint8Array(sig);
+  }
+
+  /** SHA-256: returns 32-byte Uint8Array */
+  async sha256Bytes(data) {
+    const buf = (typeof data === 'string') ? new TextEncoder().encode(data) : data;
+    return new Uint8Array(await crypto.subtle.digest('SHA-256', buf));
+  }
+
+  /** SHA-256: returns hex string */
+  async sha256Hex(data) {
+    const bytes = await this.sha256Bytes(data);
+    return this.buf2hex(bytes);
   }
 
   // --- V2 Encrypt/Decrypt High Level ---
@@ -118,85 +145,178 @@ export class DarkstarCrypt {
    * @param {string} keyMaterial - The password (V1-V4) OR Kyber-1024 Public Key Hex (V5).
    * @returns {Promise<{encryptedData: string, reverseKey: string}>} The encrypted result object.
    */
-  async encrypt(mnemonic, keyMaterial) {
-    const words = mnemonic.split(' ');
+  async encrypt(mnemonic, keyMaterial, v = 6) {
+    const isV5 = v >= 5;
+    const isV4 = v === 4;
+    const isModern = v >= 3;
+
+    let activePasswordStr = keyMaterial;
+    let ctHex = '';
+
     const obfuscatedWords = [];
     const reverseKey = [];
 
-    // Protocol strictly enforces V5 for encryption
-    const isV5 = true;
-    const isV4 = false;
-    const isModern = true;
+    let v7HmacKey = null;
 
-    let ssHex = "";
-    let ctHex = "";
-    let activePasswordStr = keyMaterial;
+    if (isV5) {
+        const pkBytes = this.hex2buf(keyMaterial);
+        const encap = kyber.encapsulate(pkBytes);
+        ctHex = this.buf2hex(encap.cipherText);
+        const ss_bytes = encap.sharedSecret; // Uint8Array
+        
+        if (v >= 7) {
+            // V7 Key Derivation
+            const cipherKey = await this.sha256Bytes(Buffer.concat([Buffer.from("dkasp-v7-cipher-key"), ss_bytes]));
+            const hmacKey = await this.sha256Bytes(Buffer.concat([Buffer.from("dkasp-v7-hmac-key"), ss_bytes]));
+            activePasswordStr = this.buf2hex(cipherKey);
+            v7HmacKey = hmacKey;
+        } else {
+            activePasswordStr = this.buf2hex(ss_bytes);
+        }
+        ss_bytes.fill(0); // Zeroized
+    }
 
-    const pkBytes = this.hex2buf(keyMaterial);
-    const encap = kyber.encapsulate(pkBytes);
-    ctHex = this.buf2hex(encap.cipherText);
-    const ss_bytes = encap.sharedSecret; // Uint8Array
-    activePasswordStr = this.buf2hex(ss_bytes);
-    ss_bytes.fill(0); // Zeroized
-
-    // PRNG Selection
+    // V6+: Stop splitting by space. Treat as one binary stream.
+    const words = (v >= 6) ? [mnemonic] : mnemonic.split(' ');
+    
     // PRNG Selection
     const prngFactory = isModern ? this.darkstar_chacha_prng.bind(this) : this.mulberry32.bind(this);
+
+    // Fix 2: Chain state init (V6 only)
+    let chainState = v >= 6 ? await this.sha256Bytes("dkasp-chain-v6" + activePasswordStr) : null;
 
     for (let index = 0; index < words.length; index++) {
       const word = words[index];
       let currentWordBytes = this.stringToBytes(word);
 
-      // Select functions
-      const selectedFunctions = Array.from({ length: 12 }, (_, i) => i);
-      const deterministicSeed = activePasswordStr + word + (isV5 ? index : "");
-      this.shuffleArray(selectedFunctions, deterministicSeed, prngFactory);
+      if (v >= 6) {
+        // Fix 1: HMAC-SHA256 key schedule — derive per-word subkey
+        const wordKey = await this.hmacSha256Bytes(
+          new TextEncoder().encode(activePasswordStr),
+          `dkasp-v6-word-${index}`
+        );
+        const wordKeyHex = this.buf2hex(wordKey);
 
-      // V3/V4: Dynamic Depth Engine
-      let cycleDepth = selectedFunctions.length; 
-      if (isModern) {
-          const depthHash = await this.sha256Hex(deterministicSeed);
-          const depthVal = parseInt(depthHash.substring(0, 4), 16); 
-          cycleDepth = isV5 ? 12 + (depthVal % 501) : 12 + (depthVal % 53); 
-      }
-
-      const wordReverseKey = [];
-      const checksum = this._generateChecksum(selectedFunctions);
-      const checksumStr = checksum.toString();
-      const indexStr = index.toString();
-      
-      const combinedSeed = this.stringToBytes(activePasswordStr + checksumStr + (isV5 ? indexStr : ""));
-
-      for (let i = 0; i < cycleDepth; i++) {
-        let funcIndex = selectedFunctions[i % selectedFunctions.length];
-
-        if (i >= 12 && !isV4 && !isV5 && [2, 3, 8, 9].includes(funcIndex)) {
-          funcIndex = (funcIndex + 2) % 12; // Legacy encoding boundary bypass
+        // Fix 2: XOR word bytes with chain state before gauntlet
+        for (let i = 0; i < currentWordBytes.length; i++) {
+          currentWordBytes[i] ^= chainState[i % 32];
         }
 
-        let func;
-        let isSeeded = false;
-        if (isV4 || isV5) {
-          func = this.obfuscationFunctionsV4[funcIndex];
-          isSeeded = [4, 5, 6, 9].includes(funcIndex); // Indices of seeded V4 functions
+        // Fix 4: Generate path with degeneration prevention
+        const depthHashBytes = await this.sha256Bytes(wordKeyHex);
+        const depthVal = (depthHashBytes[0] << 8) | depthHashBytes[1];
+        const cycleDepth = 12 + (depthVal % 501);
+
+        const rngPath = prngFactory(wordKeyHex);
+        const path = [];
+        const lastThree = [99, 99, 99];
+        for (let i = 0; i < cycleDepth; i++) {
+          let fi = rngPath() % 12;
+          if (lastThree[0] === fi && lastThree[1] === fi && lastThree[2] === fi) {
+            fi = (fi + 1 + (rngPath() % 11)) % 12;
+          }
+          lastThree[0] = lastThree[1]; lastThree[1] = lastThree[2]; lastThree[2] = fi;
+          path.push(fi);
+        }
+
+        // Fix 4b: Ensure min 6 distinct in first 12 slots
+        {
+          const first12 = path.slice(0, 12);
+          const distinct = new Set(first12);
+          if (distinct.size < 6) {
+            const missing = Array.from({ length: 12 }, (_, i) => i).filter(x => !distinct.has(x));
+            let mi = 0;
+            for (let i = 0; i < 12 && mi < missing.length; i++) {
+              const count = first12.filter(x => x === path[i]).length;
+              if (count > 2) { path[i] = missing[mi++]; }
+            }
+          }
+        }
+
+        // Fix 1: Derive func key via HMAC
+        const checksum = this._generateChecksum(Array.from({ length: 12 }, (_, i) => i));
+        const funcKey = await this.hmacSha256Bytes(wordKey, `keyed-${checksum}`);
+        const combinedSeed = funcKey;
+
+        if (v >= 8) {
+          // V8: SPNA Structured Gauntlet (16 Rounds = 64 Layers)
+          const rngPath = prngFactory(wordKeyHex);
+          for (let i = 0; i < 16; i++) {
+            // S: Substitution (Forced S-Box or ModMult every 4 rounds)
+            let sIdx;
+            if (i % 4 === 0) {
+              sIdx = 0;
+            } else if (i % 4 === 2) {
+              sIdx = 1;
+            } else {
+              sIdx = this.groupS[rngPath() % this.groupS.length];
+            }
+            currentWordBytes = this.obfuscationFunctionsV4[sIdx](currentWordBytes, combinedSeed, prngFactory);
+            
+            // P: Permutation (Always randomized)
+            const pIdx = this.groupP[rngPath() % this.groupP.length];
+            currentWordBytes = this.obfuscationFunctionsV4[pIdx](currentWordBytes, combinedSeed, prngFactory);
+            
+            // N: Network (Forced GFMult or MatrixHill every 4 rounds)
+            let nIdx;
+            if (i % 4 === 1) {
+              nIdx = 8;
+            } else if (i % 4 === 3) {
+              nIdx = 7;
+            } else {
+              nIdx = this.groupN[rngPath() % this.groupN.length];
+            }
+            currentWordBytes = this.obfuscationFunctionsV4[nIdx](currentWordBytes, combinedSeed, prngFactory);
+            
+            // A: Algebraic/AddKey (Always randomized)
+            const aIdx = this.groupA[rngPath() % this.groupA.length];
+            currentWordBytes = this.obfuscationFunctionsV4[aIdx](currentWordBytes, combinedSeed, prngFactory);
+          }
         } else {
-          func = this.obfuscationFunctionsV2[funcIndex];
-          isSeeded = funcIndex >= 6;
+          for (const funcIndex of path) {
+            const isSeeded = [4, 5, 6, 9].includes(funcIndex);
+            const func = this.obfuscationFunctionsV4[funcIndex];
+            const seed = isSeeded ? combinedSeed : undefined;
+            currentWordBytes = func(currentWordBytes, seed, prngFactory);
+          }
         }
-        
-        const seed = isSeeded ? combinedSeed : undefined;
 
-        const nextWordBytes = func(currentWordBytes, seed, prngFactory);
+        // Fix 2: Update chain state from obfuscated bytes
+        const chainInput = new Uint8Array(32 + currentWordBytes.length);
+        chainInput.set(chainState, 0);
+        chainInput.set(currentWordBytes, 32);
+        chainState = await this.sha256Bytes(chainInput);
 
-        if (currentWordBytes !== nextWordBytes) {
-          currentWordBytes.fill(0);
+      } else {
+        // Legacy V2-V5 path (unchanged)
+        const selectedFunctions = Array.from({ length: 12 }, (_, i) => i);
+        const deterministicSeed = activePasswordStr + word + (v >= 5 ? index : "");
+        this.shuffleArray(selectedFunctions, deterministicSeed, prngFactory);
+        let cycleDepth = selectedFunctions.length;
+        if (isModern) {
+          const depthHash = await this.sha256Hex(deterministicSeed);
+          const depthVal = parseInt(depthHash.substring(0, 4), 16);
+          cycleDepth = v >= 5 ? 12 + (depthVal % 501) : 12 + (depthVal % 53);
         }
-        currentWordBytes = nextWordBytes;
-        wordReverseKey.push(funcIndex);
+        const wordReverseKey = [];
+        const checksum = this._generateChecksum(selectedFunctions);
+        const combinedSeed = this.stringToBytes(activePasswordStr + checksum.toString() + (v >= 5 ? index.toString() : ""));
+        const rngPath = prngFactory(activePasswordStr + word + (v >= 5 ? index : ""));
+        for (let i = 0; i < cycleDepth; i++) {
+          let funcIndex = selectedFunctions[i % selectedFunctions.length];
+          if (i >= 12 && !isV4 && !isV5 && [2, 3, 8, 9].includes(funcIndex)) funcIndex = (funcIndex + 2) % 12;
+          const isSeeded = (isV4 || isV5) ? [4, 5, 6, 9].includes(funcIndex) : funcIndex >= 6;
+          const func = (isV4 || isV5) ? this.obfuscationFunctionsV4[funcIndex] : this.obfuscationFunctionsV2[funcIndex];
+          const seed = isSeeded ? combinedSeed : undefined;
+          currentWordBytes = func(currentWordBytes, seed, prngFactory);
+          wordReverseKey.push(funcIndex);
+        }
+        obfuscatedWords.push(currentWordBytes);
+        reverseKey.push(wordReverseKey);
+        continue;
       }
 
       obfuscatedWords.push(currentWordBytes);
-      reverseKey.push(wordReverseKey);
     }
 
     // Blob Construction
@@ -213,30 +333,50 @@ export class DarkstarCrypt {
       offset += 2 + wb.length;
     }
 
-    const encodedReverseKey = this.packReverseKey(reverseKey, isModern);
-    const aad = this.stringToBytes(encodedReverseKey);
+    const encodedReverseKey = (v >= 6) ? "" : this.packReverseKey(reverseKey, isModern);
+    const aad = (v >= 6) ? null : this.stringToBytes(encodedReverseKey);
 
     let finalPayload;
-    if (finalBlob.length > 2048) {
-      throw new Error(`Obfuscated payload exceeds 2048-byte limit (${finalBlob.length} bytes). Increase V5_PADDING_SIZE or reduce gauntlet depth.`);
+    if (finalBlob.length > 16384) {
+      throw new Error(`Obfuscated payload exceeds 16384-byte limit (${finalBlob.length} bytes).`);
     }
-    const paddedData = new Uint8Array(2048);
-    paddedData.set(finalBlob);
-    finalPayload = paddedData; // raw bytes
-
-    const iterations = this.ITERATIONS_V2;
+    if (v >= 6) {
+      // V6: encrypt exact blob — no fixed padding needed
+      finalPayload = finalBlob.slice(0, offset);
+    } else {
+      // V1-V5: pad to fixed size to obscure word count from stored reverse key
+      const paddedData = new Uint8Array(16384);
+      paddedData.set(finalBlob.slice(0, offset));
+      finalPayload = paddedData;
+    }
 
     let encryptedContent;
-    try {
-      encryptedContent = await this.encryptAES256GCMAsync(finalPayload, activePasswordStr, iterations, aad);
-    } catch (e) {
-      throw e;
+    let macTag = "";
+
+    if (v >= 7) {
+      // V7: Post-Quantum Purity (No AES)
+      encryptedContent = this.buf2hex(finalPayload);
+      const macData = Buffer.concat([
+        Buffer.from([v]),
+        this.hex2buf(ctHex),
+        finalPayload
+      ]);
+      const mac = require('node:crypto').createHmac('sha256', v7HmacKey).update(macData).digest();
+      macTag = this.buf2hex(mac);
+    } else {
+      const iterations = this.ITERATIONS_V2;
+      try {
+        encryptedContent = await this.encryptAES256GCMAsync(finalPayload, activePasswordStr, iterations, aad);
+      } catch (e) {
+        throw e;
+      }
     }
 
     const resObj = {
-      v: 5,
+      v: v,
       data: encryptedContent,
-      ct: ctHex
+      ct: ctHex,
+      mac: macTag
     };
 
     return {
@@ -248,7 +388,7 @@ export class DarkstarCrypt {
   /**
    * Decrypts the encrypted data back to the original mnemonic.
    *
-   * @param {string} encryptedDataRaw - The JSON string containing the encrypted data object.
+   * @param {string|object} encryptedDataRaw - The JSON string or object containing the encrypted data.
    * @param {string} reverseKeyB64 - The Base64 encoded reverse key.
    * @param {string} keyMaterial - The password (V1-V4) OR Kyber-1024 Private Key Hex (V5).
    * @returns {Promise<string>} The decrypted mnemonic phrase.
@@ -259,63 +399,93 @@ export class DarkstarCrypt {
 
     let isV4 = false;
     let isV5 = false;
+    let detectedVersion = 1;
     let ctHex = "";
 
-    // Check V2 or V3 or V4
+    let parsed = null;
     try {
-      if (encryptedDataRaw.trim().startsWith('{')) {
-        const parsed = JSON.parse(encryptedDataRaw);
-        if (parsed.v === 2 && parsed.data) {
+      parsed = (typeof encryptedDataRaw === 'string') ? JSON.parse(encryptedDataRaw) : encryptedDataRaw;
+      if (parsed && typeof parsed === 'object') {
+        detectedVersion = parsed.v || 1;
+        if (detectedVersion === 2 && parsed.data) {
           encryptedContent = parsed.data;
-        } else if (parsed.v === 3 && parsed.data) {
+        } else if (detectedVersion === 3 && parsed.data) {
           encryptedContent = parsed.data;
           isV3 = true;
-        } else if (parsed.v === 4 && parsed.data) {
+        } else if (detectedVersion === 4 && parsed.data) {
           encryptedContent = parsed.data;
           isV4 = true;
-        } else if (parsed.v === 5 && parsed.data) {
+        } else if (detectedVersion >= 5 && parsed.data) {
           encryptedContent = parsed.data;
           isV5 = true;
           ctHex = parsed.ct;
+          detectedVersion = parsed.v;
         }
       }
     } catch (e) {}
 
-    const isModern = isV3 || isV4 || isV5;
+    const isModern = isV3 || isV4 || isV5 || detectedVersion >= 6;
 
     let activePasswordStr = keyMaterial;
+    let v7HmacKey = null;
     if (isV5) {
       const skBytes = this.hex2buf(keyMaterial);
       const ctBytes = this.hex2buf(ctHex);
       const ss_bytes = kyber.decapsulate(ctBytes, skBytes);
-      activePasswordStr = this.buf2hex(ss_bytes);
+      
+      if (detectedVersion >= 7) {
+          const cipherKey = await this.sha256Bytes(Buffer.concat([Buffer.from("dkasp-v7-cipher-key"), ss_bytes]));
+          const hmacKey = await this.sha256Bytes(Buffer.concat([Buffer.from("dkasp-v7-hmac-key"), ss_bytes]));
+          activePasswordStr = this.buf2hex(cipherKey);
+          v7HmacKey = hmacKey;
+      } else {
+          activePasswordStr = this.buf2hex(ss_bytes);
+      }
       ss_bytes.fill(0); // Zeroized
     }
 
 
     let iterations = this.ITERATIONS_V2;
-    const aad = isV5 ? this.stringToBytes(reverseKeyB64) : null;
+    const aad = (isV5 && detectedVersion < 6) ? this.stringToBytes(reverseKeyB64) : null;
 
-    // Decrypt AES
+    // Decrypt Primary layer (AES or HMAC-V7)
     let fullBlob;
-    try {
-      if (isModern) {
-        const decrypted = await this.decryptAES256GCMAsync(encryptedContent, activePasswordStr, iterations, aad);
-        if (isV5) {
-            fullBlob = decrypted; // Uint8Array
-        } else {
-            // Legacy V3/V4: decrypted data is a base64 string
-            const b64 = new TextDecoder().decode(decrypted);
-            fullBlob = this.base64ToBuf(b64);
-        }
-      } else {
-        const decryptedString = await this.decryptAES256Async(encryptedContent, activePasswordStr, iterations);
-        if (!decryptedString) throw new Error('Decryption failed');
-        // Legacy V1/V2: decrypted data is a base64 string
-        fullBlob = this.base64ToBuf(decryptedString);
+    if (detectedVersion >= 7) {
+      // V7: Verify HMAC and bypass AES
+      const payloadBytes = this.hex2buf(encryptedContent);
+      const macData = Buffer.concat([
+        Buffer.from([detectedVersion]),
+        this.hex2buf(ctHex),
+        payloadBytes
+      ]);
+      const mac = require('node:crypto').createHmac('sha256', v7HmacKey).update(macData).digest();
+      const expectedMac = this.hex2buf(parsed.mac || "");
+      
+      // Constant-time comparison
+      if (mac.length !== expectedMac.length || !require('node:crypto').timingSafeEqual(mac, expectedMac)) {
+          throw new Error("D-KASP V7: Integrity Check Failed (MAC mismatch)");
       }
-    } catch (e) {
-      throw e;
+      fullBlob = payloadBytes;
+    } else {
+      try {
+        if (isModern) {
+          const decrypted = await this.decryptAES256GCMAsync(encryptedContent, activePasswordStr, iterations, aad);
+          if (isV5) {
+              fullBlob = decrypted; // Uint8Array
+          } else {
+              // Legacy V3/V4: decrypted data is a base64 string
+              const b64 = new TextDecoder().decode(decrypted);
+              fullBlob = this.base64ToBuf(b64);
+          }
+        } else {
+          const decryptedString = await this.decryptAES256Async(encryptedContent, activePasswordStr, iterations);
+          if (!decryptedString) throw new Error('Decryption failed');
+          // Legacy V1/V2: decrypted data is a base64 string
+          fullBlob = this.base64ToBuf(decryptedString);
+        }
+      } catch (e) {
+        throw e;
+      }
     }
 
 
@@ -324,64 +494,150 @@ export class DarkstarCrypt {
     const isActuallyModern = isModern;
     try {
       // Try to detect Legacy/V2 JSON key format
-      const reversedKeyString = atob(reverseKeyB64);
+      const reversedKeyString = atob(reverseKeyB64 || "");
       if (reversedKeyString.trim().startsWith('[')) {
         reverseKeyJson = JSON.parse(reversedKeyString);
       } else {
-        reverseKeyJson = this.unpackReverseKey(reverseKeyB64, isActuallyModern);
+        reverseKeyJson = this.unpackReverseKey(reverseKeyB64 || "", isActuallyModern);
       }
     } catch (e) {
       // Fallback
-      reverseKeyJson = this.unpackReverseKey(reverseKeyB64, isActuallyModern);
+      reverseKeyJson = this.unpackReverseKey(reverseKeyB64 || "", isActuallyModern);
     }
 
     const deobfuscatedWords = [];
     const prngFactory = isModern ? this.darkstar_chacha_prng.bind(this) : this.mulberry32.bind(this);
 
+    // Fix 2: Init chain state for V6 decrypt (must match encrypt)
+    let v6ChainState = (detectedVersion >= 6) ? await this.sha256Bytes("dkasp-chain-v6" + activePasswordStr) : null;
+
     let offset = 0;
     let wordIndex = 0;
 
     while (offset < fullBlob.length) {
-      if (wordIndex >= reverseKeyJson.length) break;
+      // V6+: No reverseKeyJson required. Path is regenerated.
+      if (detectedVersion < 6 && wordIndex >= reverseKeyJson.length) break;
 
+      if (offset + 2 > fullBlob.length) break;
       const len = (fullBlob[offset] << 8) | fullBlob[offset + 1];
       offset += 2;
+      if (offset + len > fullBlob.length) break;
 
-      let currentWordBytes = fullBlob.slice(offset, offset + len);
+      const cipherWordBytes = fullBlob.slice(offset, offset + len);
+      let currentWordBytes = new Uint8Array(cipherWordBytes);
       offset += len;
 
-      const wordReverseKey = reverseKeyJson[wordIndex];
+      if (detectedVersion >= 6) {
+        // Fix 1: HMAC key schedule
+        const wordKey = await this.hmacSha256Bytes(
+          new TextEncoder().encode(activePasswordStr),
+          `dkasp-v6-word-${wordIndex}`
+        );
+        const wordKeyHex = this.buf2hex(wordKey);
 
-      const uniqueSet = Array.from(new Set(wordReverseKey));
-      const checksum = this._generateChecksum(uniqueSet);
+        // Fix 4: Regenerate sanitised path (identical to encrypt)
+        const depthHashBytes = await this.sha256Bytes(wordKeyHex);
+        const depthVal = (depthHashBytes[0] << 8) | depthHashBytes[1];
+        const cycleDepth = 12 + (depthVal % 501);
 
-      const checksumStr = checksum.toString();
-      const indexStr = wordIndex.toString();
-      
-      const combinedSeed = this.stringToBytes(activePasswordStr + checksumStr + (isV5 ? indexStr : ""));
-
-      for (let j = wordReverseKey.length - 1; j >= 0; j--) {
-        const funcIndex = wordReverseKey[j];
-        
-        let func;
-        let isSeeded = false;
-        
-        if (isV4 || isV5) {
-            func = this.deobfuscationFunctionsV4[funcIndex];
-            isSeeded = [4, 5, 6, 9].includes(funcIndex); // Indices of seeded V4 functions
-        } else {
-            func = this.deobfuscationFunctionsV2[funcIndex];
-            isSeeded = funcIndex >= 6;
+        const rngPath = prngFactory(wordKeyHex);
+        const path = [];
+        const lastThree = [99, 99, 99];
+        for (let i = 0; i < cycleDepth; i++) {
+          let fi = rngPath() % 12;
+          if (lastThree[0] === fi && lastThree[1] === fi && lastThree[2] === fi) {
+            fi = (fi + 1 + (rngPath() % 11)) % 12;
+          }
+          lastThree[0] = lastThree[1]; lastThree[1] = lastThree[2]; lastThree[2] = fi;
+          path.push(fi);
         }
-        
-        const seed = isSeeded ? combinedSeed : undefined;
+        // Fix 4b: Enforce min 6 distinct in first 12
+        {
+          const first12 = path.slice(0, 12);
+          const distinct = new Set(first12);
+          if (distinct.size < 6) {
+            const missing = Array.from({ length: 12 }, (_, i) => i).filter(x => !distinct.has(x));
+            let mi = 0;
+            for (let i = 0; i < 12 && mi < missing.length; i++) {
+              if (first12.filter(x => x === path[i]).length > 2) { path[i] = missing[mi++]; }
+            }
+          }
+        }
 
-        currentWordBytes = func(currentWordBytes, seed, prngFactory);
+        // Fix 1: Derive func key via HMAC
+        const checksum = this._generateChecksum(Array.from({ length: 12 }, (_, i) => i));
+        const funcKey = await this.hmacSha256Bytes(wordKey, `keyed-${checksum}`);
+        const combinedSeed = funcKey;
+
+        if (detectedVersion >= 8) {
+          // V8: Inverse SPNA Structured Gauntlet
+          const rngPath = prngFactory(wordKeyHex);
+          const roundPaths = [];
+          for (let i = 0; i < 16; i++) {
+            let s, p, n, a;
+            // S
+            if (i % 4 === 0) s = 0;
+            else if (i % 4 === 2) s = 1;
+            else s = this.groupS[rngPath() % this.groupS.length];
+            // P
+            p = this.groupP[rngPath() % this.groupP.length];
+            // N
+            if (i % 4 === 1) n = 8;
+            else if (i % 4 === 3) n = 7;
+            else n = this.groupN[rngPath() % this.groupN.length];
+            // A
+            a = this.groupA[rngPath() % this.groupA.length];
+
+            roundPaths.push({ s, p, n, a });
+          }
+          
+          for (let j = 15; j >= 0; j--) {
+            const r = roundPaths[j];
+            // Inverse Order: A -> N -> P -> S
+            currentWordBytes = this.deobfuscationFunctionsV4[r.a](currentWordBytes, combinedSeed, prngFactory);
+            currentWordBytes = this.deobfuscationFunctionsV4[r.n](currentWordBytes, combinedSeed, prngFactory);
+            currentWordBytes = this.deobfuscationFunctionsV4[r.p](currentWordBytes, combinedSeed, prngFactory);
+            currentWordBytes = this.deobfuscationFunctionsV4[r.s](currentWordBytes, combinedSeed, prngFactory);
+          }
+        } else {
+          // Apply inverse transforms in reverse
+          for (let j = path.length - 1; j >= 0; j--) {
+            const funcIndex = path[j];
+            const isSeeded = [4, 5, 6, 9].includes(funcIndex);
+            const func = this.deobfuscationFunctionsV4[funcIndex];
+            const seed = isSeeded ? combinedSeed : undefined;
+            currentWordBytes = func(currentWordBytes, seed, prngFactory);
+          }
+        }
+
+        // Fix 2: Undo chain XOR (advance chain from cipher bytes, same as encrypt)
+        for (let i = 0; i < currentWordBytes.length; i++) {
+          currentWordBytes[i] ^= v6ChainState[i % 32];
+        }
+        const chainInput = new Uint8Array(32 + cipherWordBytes.length);
+        chainInput.set(v6ChainState, 0);
+        chainInput.set(cipherWordBytes, 32);
+        v6ChainState = await this.sha256Bytes(chainInput);
+
+      } else {
+        // Legacy V2-V5
+        const wordReverseKey = reverseKeyJson[wordIndex];
+        const uniqueSet = [...new Set(wordReverseKey)];
+        const checksum = this._generateChecksum(uniqueSet.length === 0 ? Array.from({length:12},(_,i)=>i) : uniqueSet);
+        const combinedSeed = this.stringToBytes(activePasswordStr + checksum.toString() + (detectedVersion >= 5 ? wordIndex.toString() : ""));
+        for (let j = wordReverseKey.length - 1; j >= 0; j--) {
+          const funcIndex = wordReverseKey[j];
+          const isSeeded = (isV4 || isV5) ? [4,5,6,9].includes(funcIndex) : funcIndex >= 6;
+          const func = (isV4 || isV5) ? this.deobfuscationFunctionsV4[funcIndex] : this.deobfuscationFunctionsV2[funcIndex];
+          const seed = isSeeded ? combinedSeed : undefined;
+          currentWordBytes = func(currentWordBytes, seed, prngFactory);
+        }
       }
 
       deobfuscatedWords.push(this.bytesToString(currentWordBytes));
       wordIndex++;
     }
+
 
     const deobfuscatedRes = deobfuscatedWords.join(' ');
     if (isV5) activePasswordStr = "";
@@ -1131,9 +1387,23 @@ export class DarkstarCrypt {
 
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
+import fs from 'node:fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(__filename);
+
+function resolveArg(arg) {
+  if (arg && arg.startsWith('@')) {
+    const filePath = arg.slice(1);
+    try {
+      return fs.readFileSync(filePath, 'utf8').trim();
+    } catch (err) {
+      console.error(`Error reading argument file ${filePath}: ${err.message}`);
+      process.exit(1);
+    }
+  }
+  return arg;
+}
 
 if (isMain) {
   let args = process.argv.slice(2);
@@ -1179,8 +1449,8 @@ if (isMain) {
   const crypt = new DarkstarCrypt();
   const command = args.shift();
   if (command === 'encrypt') {
-    const mnemonic = args[0];
-    const password = args[1];
+    const mnemonic = resolveArg(args[0]);
+    const password = resolveArg(args[1]);
     if (!mnemonic || !password) {
       console.error('Usage: encrypt <mnemonic> <password>');
       process.exit(1);
@@ -1204,10 +1474,10 @@ if (isMain) {
         process.exit(1);
       });
   } else if (command === 'decrypt') {
-    const data = args[0];
-    const rk = args[1];
-    const password = args[2];
-    if (!data || !rk || !password) {
+    const data = resolveArg(args[0]);
+    const rk = resolveArg(args[1]);
+    const password = resolveArg(args[2]);
+    if (!data || rk === undefined || !password) {
       console.error('Usage: decrypt <data> <rk> <password>');
       process.exit(1);
     }
@@ -1215,7 +1485,7 @@ if (isMain) {
       .decrypt(data, rk, password)
       .then((res) => {
         if (format === 'json') {
-          console.log(JSON.stringify({ decrypted: res }));
+          process.stdout.write(JSON.stringify({ decrypted: res }));
         } else {
           process.stdout.write(res);
         }
@@ -1260,11 +1530,11 @@ if (isMain) {
     
     const f = format || 'text';
     if (f === 'json') {
-      console.log(JSON.stringify({ pk: pkHex, sk: skHex }));
+      process.stdout.write(JSON.stringify({ pk: pkHex, sk: skHex }));
     } else if (f === 'csv') {
-      console.log(`${pkHex},${skHex}`);
+      process.stdout.write(`${pkHex},${skHex}`);
     } else {
-      console.log(`PK: ${pkHex}\nSK: ${skHex}`);
+      process.stdout.write(`PK: ${pkHex}\nSK: ${skHex}\n`);
     }
   } else {
     console.error('Error: Unknown command');

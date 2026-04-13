@@ -5,6 +5,8 @@ import os
 import shutil
 import time
 import platform
+import tempfile
+import re
 try:
     import psutil
 except ImportError:
@@ -28,7 +30,7 @@ NODE_BIN = shutil.which("node") or "node"
 
 CLI_COMMANDS = {
     "go": [GO_BIN, "run", "."],
-    "rust": [os.path.join(PROJECT_ROOT, "rust", "target", "release", "d-kasp-512.exe")],
+    "rust": [CARGO_BIN, "run", "--quiet", "--release", "--"],
     "python": [PYTHON_BIN, "-u", os.path.join(PROJECT_ROOT, "python", "darkstar_crypt.py")],
     "python_old": [PYTHON_BIN, "-u", os.path.join(PROJECT_ROOT, "python", "darkstar_crypt_old.py")],
     "node": [NODE_BIN, os.path.join(PROJECT_ROOT, "node", "darkstar_crypt.js")]
@@ -36,7 +38,7 @@ CLI_COMMANDS = {
 
 CLI_CWD = {
     "go": os.path.join(PROJECT_ROOT, "go"),
-    "rust": PROJECT_ROOT,
+    "rust": os.path.join(PROJECT_ROOT, "rust"),
     "python": PROJECT_ROOT,
     "python_old": PROJECT_ROOT,
     "node": PROJECT_ROOT
@@ -44,7 +46,7 @@ CLI_CWD = {
 
 TEST_MNEMONIC = "apple banana cherry date elderberry fig grape honeydew"
 TEST_PASSWORD = "Strong!Password#2026"
-TOTAL_EXPECTED_TESTS = 16 # 1 version * 4 langs * 4 langs
+TOTAL_EXPECTED_TESTS = 32 # 2 versions (7, 8) * 4 langs * 4 langs
 
 def get_sys_info():
     uname = platform.uname()
@@ -70,22 +72,39 @@ def get_sys_info():
 
 def run_cli(lang, args):
     str_args = []
-    for a in args:
-        if isinstance(a, (dict, list)):
-            str_args.append(json.dumps(a))
-        else:
-            str_args.append(str(a))
+    temp_files = []
+    
+    try:
+        for a in args:
+            val = json.dumps(a) if isinstance(a, (dict, list)) else str(a)
             
-    cmd = CLI_COMMANDS[lang] + str_args
-    cwd = CLI_CWD.get(lang, PROJECT_ROOT)
-    
-    start_time = time.perf_counter()
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, encoding="utf-8", errors="replace")
-    elapsed = time.perf_counter() - start_time
-    
-    if result.returncode != 0:
-        return f"ERROR: {result.stderr.strip()}", elapsed
-    return result.stdout.strip(), elapsed
+            # Windows command line limit is 8191 chars. 
+            # If argument is > 1024 chars, use @file convention.
+            if len(val) > 1024:
+                fd, path = tempfile.mkstemp(suffix=".darkstar_arg")
+                with os.fdopen(fd, 'wb') as f:
+                    f.write(val.encode('utf-8'))
+                temp_files.append(path)
+                str_args.append(f"@{path}")
+            else:
+                str_args.append(val)
+                
+        cmd = CLI_COMMANDS[lang] + str_args
+        cwd = CLI_CWD.get(lang, PROJECT_ROOT)
+        
+        start_time = time.perf_counter()
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, encoding="utf-8", errors="replace")
+        elapsed = time.perf_counter() - start_time
+        
+        if result.returncode != 0:
+            return f"ERROR: {result.stderr.strip()}", elapsed
+        return result.stdout.strip(), elapsed
+    finally:
+        for path in temp_files:
+            try:
+                os.remove(path)
+            except:
+                pass
 
 
 console = Console()
@@ -136,9 +155,9 @@ def main():
         else:
             pass_str = f"[#87d787]{passed_tests}[/#87d787]"
         
-        # Protocol bar: cyan pips
-        filled = "|" * current_version_int
-        empty = "." * (5 - current_version_int)
+        # Protocol bar: standard ASCII
+        filled = "=" * current_version_int
+        empty = "-" * (8 - current_version_int)
         version_bar = f"[#5fafaf]{filled}[/#5fafaf][#444444]{empty}[/#444444] [#5fafaf]V{current_version_int}[/#5fafaf]"
         
         # Reactive uptime: warm shift over time
@@ -156,29 +175,30 @@ def main():
     layout["header"].update(get_sys_info())
     layout["dashboard"].update(generate_dashboard())
 
-    versions = ["5"]
+    versions = ["7", "8"]
 
     with Live(layout, console=console, refresh_per_second=10) as live:
         for version in versions:
             current_version_int = int(version)
             v5_pk = ""
             v5_sk = ""
-            if version == "5":
-                current_action = "V5 >> KEYGEN ML-KEM-1024"
+            if version in ["5", "7", "8"]:
+                current_action = f"V{version} >> KEYGEN ML-KEM-1024"
                 action_start_time = time.perf_counter()
                 layout["dashboard"].update(generate_dashboard())
                 live.update(layout, refresh=True)
                 
-                keygen_out, elapsed = run_cli("python", ["-v", "5", "keygen"])
+                keygen_out, elapsed = run_cli("python", ["-v", version, "keygen"])
                 if keygen_out and not keygen_out.startswith("ERROR"):
-                    lines = [l for l in keygen_out.split('\n') if ':' in l]
-                    if len(lines) >= 2:
-                        v5_pk = lines[0].split(': ')[1].strip()
-                        v5_sk = lines[1].split(': ')[1].strip()
+                    pk_match = re.search(r"PK: ([0-9a-fA-F]+)", keygen_out)
+                    sk_match = re.search(r"SK: ([0-9a-fA-F]+)", keygen_out)
+                    if pk_match and sk_match:
+                        v5_pk = pk_match.group(1).strip()
+                        v5_sk = sk_match.group(1).strip()
 
             for src_lang in LANGS:
-                encrypt_pass = v5_pk if version == "5" else TEST_PASSWORD
-                decrypt_pass = v5_sk if version == "5" else TEST_PASSWORD
+                encrypt_pass = v5_pk if version in ["5", "7", "8"] else TEST_PASSWORD
+                decrypt_pass = v5_sk if version in ["5", "7", "8"] else TEST_PASSWORD
                 
                 current_action = f"V{version} >> {src_lang.upper()} ENCRYPT"
                 action_start_time = time.perf_counter()

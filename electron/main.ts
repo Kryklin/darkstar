@@ -385,13 +385,15 @@ ipcMain.handle('save-backup', async (_event, dir: string, filename: string, data
   } catch { return false; }
 });
 
-ipcMain.handle('show-directory-picker', async () => {
-  const { canceled, filePaths } = await dialog.showOpenDialog({ properties: ['openDirectory'] });
+ipcMain.handle('show-directory-picker', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const { canceled, filePaths } = await dialog.showOpenDialog(win!, { properties: ['openDirectory'] });
   return canceled ? null : filePaths[0];
 });
 
-ipcMain.handle('show-file-picker', async () => {
-  const { canceled, filePaths } = await dialog.showOpenDialog({
+ipcMain.handle('show-file-picker', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
     properties: ['openFile'],
     filters: [{ name: 'Darkstar Backup', extensions: ['backup'] }]
   });
@@ -430,19 +432,23 @@ async function runDKaspCommand(engine: string, args: string[]): Promise<unknown>
 
     try {
         const { stdout } = await execFileAsync(cmd, execArgs);
-        return JSON.parse(stdout);
+        try {
+            return JSON.parse(stdout);
+        } catch {
+            return stdout.trim();
+        }
     } catch (e: unknown) {
         const err = e as Error & { stderr?: string };
         throw new Error(`D-KASP Engine (${engine}) failed: ${err.stderr || err.message}`);
     }
 }
 
-ipcMain.handle('dkasp-encrypt', async (_event, mnemonic: string, pkHex: string, engine: string) => {
-    return await runDKaspCommand(engine, ['encrypt', mnemonic, pkHex]);
+ipcMain.handle('dkasp-encrypt', async (_event, mnemonic: string, pkHex: string, engine: string, version = 8) => {
+    return await runDKaspCommand(engine, ['-v', version.toString(), 'encrypt', mnemonic, pkHex]);
 });
 
-ipcMain.handle('dkasp-decrypt', async (_event, data: string, rk: string, password_or_sk: string, engine: string) => {
-    return await runDKaspCommand(engine, ['decrypt', data, rk, password_or_sk]);
+ipcMain.handle('dkasp-decrypt', async (_event, data: string, rk: string, skHex: string, engine: string, version = 8) => {
+    return await runDKaspCommand(engine, ['-v', version.toString(), 'decrypt', data, rk, skHex]);
 });
 
 

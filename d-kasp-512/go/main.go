@@ -10,10 +10,10 @@
 package main
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -728,38 +728,55 @@ func (dc *DarkstarCrypt) deobfuscateWithSeededSubstitutionV2(input []byte, seed 
 // --- Encrypt/Decrypt ---
 
 // Encrypt transforms a plaintext mnemonic into an obfuscated and encrypted payload.
-// Minified to strictly support V5 encryption.
-func (dc *DarkstarCrypt) Encrypt(mnemonic string, keyMaterial string) (map[string]interface{}, error) {
+func (dc *DarkstarCrypt) Encrypt(mnemonic string, keyMaterial string, v int) (map[string]interface{}, error) {
 	words := strings.Split(mnemonic, " ")
 	var obfuscatedWords [][]byte
 	var reverseKey [][]int
 
-	isV5 := true
-	isV4 := false
-	isModern := true
+	isV5 := v >= 5
+	isV4 := v == 4
+	isModern := v >= 3
 
-	ctHex := ""
-	ssHex := ""
+	var ctHex string
+	var v7HmacKey []byte
 	activePasswordStr := keyMaterial
 
 	sch := mlkem1024.Scheme()
-	pkBytes, err := hex.DecodeString(keyMaterial)
-	if err != nil {
-		return nil, fmt.Errorf("invalid kyber hex: %v", err)
+	if isV5 {
+		pkBytes, err := hex.DecodeString(keyMaterial)
+		if err != nil { return nil, fmt.Errorf("invalid kyber hex: %v", err) }
+		pk, err := sch.UnmarshalBinaryPublicKey(pkBytes)
+		if err != nil { return nil, fmt.Errorf("invalid public key: %v", err) }
+		
+		ct, ss, err := sch.Encapsulate(pk)
+		if err != nil { return nil, err }
+		
+		ctHex = hex.EncodeToString(ct)
+		ssBytes := ss
+		
+		if v >= 7 {
+			// V7 Key Derivation
+			cHasher := sha256.New()
+			cHasher.Write([]byte("dkasp-v7-cipher-key"))
+			cHasher.Write(ssBytes)
+			cipherKeyHex := hex.EncodeToString(cHasher.Sum(nil))
+			
+			hHasher := sha256.New()
+			hHasher.Write([]byte("dkasp-v7-hmac-key"))
+			hHasher.Write(ssBytes)
+			v7HmacKey = hHasher.Sum(nil)
+			
+			activePasswordStr = cipherKeyHex
+		} else {
+			activePasswordStr = hex.EncodeToString(ssBytes)
+		}
+		for i := range ssBytes { ssBytes[i] = 0 }
 	}
-	pk, err := sch.UnmarshalBinaryPublicKey(pkBytes)
-	if err != nil {
-		return nil, fmt.Errorf("invalid public key: %v", err)
-	}
-	ctBytes, ssBytes, err := sch.Encapsulate(pk)
-	if err != nil {
-		return nil, err
-	}
-	ctHex = hex.EncodeToString(ctBytes)
-	ssHex = hex.EncodeToString(ssBytes)
-	activePasswordStr = ssHex
-	for i := range ssBytes {
-		ssBytes[i] = 0
+
+	// V6+: Stop splitting by space. Treat as one binary stream.
+	words = []string{mnemonic}
+	if v < 6 {
+		words = strings.Split(mnemonic, " ")
 	}
 
 	prngFactory := func(s string) PRNG {
@@ -769,250 +786,370 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic string, keyMaterial string) (map[strin
 		return NewMulberry32(s)
 	}
 
+	// Fix 2: Chain state init (V6 only)
+	var v6ChainState []byte
+	if v >= 6 {
+		init := sha256.Sum256([]byte("dkasp-chain-v6" + activePasswordStr))
+		v6ChainState = init[:]
+	}
+
 	for index, word := range words {
 		currentWordBytes := []byte(word)
 
-		selectedFunctions := make([]int, 12)
-		for i := 0; i < 12; i++ {
-			selectedFunctions[i] = i
-		}
+		if v >= 6 {
+			// V6+: Modern HMAC-based key schedule and path generation
+			mac := hmac.New(sha256.New, []byte(activePasswordStr))
+			mac.Write([]byte(fmt.Sprintf("dkasp-v6-word-%d", index)))
+			wordKey := mac.Sum(nil)
+			wordKeyHex := hex.EncodeToString(wordKey)
 
-		seedForSelection := activePasswordStr + word
-		if isV5 {
-			seedForSelection += strconv.Itoa(index)
-		}
-		rngSel := prngFactory(seedForSelection)
-		for i := 11; i > 0; i-- {
-			j := int((uint64(rngSel.Next()) * uint64(i+1)) >> 32)
-			selectedFunctions[i], selectedFunctions[j] = selectedFunctions[j], selectedFunctions[i]
-		}
+			// Fix 2: XOR word bytes with chain state before gauntlet
+			for i := range currentWordBytes {
+				currentWordBytes[i] ^= v6ChainState[i%32]
+			}
 
-		cycleDepth := len(selectedFunctions)
-		if isModern {
-			hash := sha256.Sum256([]byte(seedForSelection))
-			hashHex := hex.EncodeToString(hash[:])
-			depthVal, _ := strconv.ParseInt(hashHex[:4], 16, 32)
-			if isV5 {
-				cycleDepth = 12 + (int(depthVal) % 501)
+			// Derive func key via HMAC
+			baseSlice := make([]int, 12)
+			for i := range baseSlice { baseSlice[i] = i }
+			chk := generateChecksum(baseSlice)
+			mac2 := hmac.New(sha256.New, wordKey)
+			mac2.Write([]byte(fmt.Sprintf("keyed-%d", chk)))
+			funcKey := mac2.Sum(nil)
+
+			if v >= 8 {
+				// V8: SPNA Structured Gauntlet (16 Rounds = 64 Layers) with Balanced Path
+				rngPath := prngFactory(wordKeyHex)
+				groupS := []int{0, 1, 5}
+				groupP := []int{2, 3, 10}
+				groupN := []int{7, 8, 11}
+				groupA := []int{4, 6, 9}
+
+				for i := 0; i < 16; i++ {
+					// S: Substitution
+					sIdx := 0
+					if i % 4 == 0 {
+						sIdx = 0 // Forced S-Box
+					} else if i % 4 == 2 {
+						sIdx = 1 // Forced ModMult
+					} else {
+						sIdx = groupS[int(rngPath.Next()%uint32(len(groupS)))]
+					}
+					currentWordBytes = dc.obfuscationFunctionsV4[sIdx](currentWordBytes, funcKey, prngFactory)
+
+					// P: Permutation
+					pIdx := groupP[int(rngPath.Next()%uint32(len(groupP)))]
+					currentWordBytes = dc.obfuscationFunctionsV4[pIdx](currentWordBytes, funcKey, prngFactory)
+
+					// N: Network
+					nIdx := 0
+					if i % 4 == 1 {
+						nIdx = 8 // Forced GFMult
+					} else if i % 4 == 3 {
+						nIdx = 7 // Forced MatrixHill
+					} else {
+						nIdx = groupN[int(rngPath.Next()%uint32(len(groupN)))]
+					}
+					currentWordBytes = dc.obfuscationFunctionsV4[nIdx](currentWordBytes, funcKey, prngFactory)
+
+					// A: Algebraic
+					aIdx := groupA[int(rngPath.Next()%uint32(len(groupA)))]
+					currentWordBytes = dc.obfuscationFunctionsV4[aIdx](currentWordBytes, funcKey, prngFactory)
+				}
 			} else {
-				cycleDepth = 12 + (int(depthVal) % 53)
+				// V6-V7: Determinized randomized path
+				hash := sha256.Sum256([]byte(wordKeyHex))
+				depthVal := (int(hash[0]) << 8) | int(hash[1])
+				cycleDepth := 12 + (depthVal % 501)
+				rngPath := prngFactory(wordKeyHex)
+				
+				path := make([]int, 0, cycleDepth)
+				lastThree := [3]int{99, 99, 99}
+				for i := 0; i < cycleDepth; i++ {
+					fi := int(rngPath.Next() % 12)
+					if lastThree[0] == fi && lastThree[1] == fi && lastThree[2] == fi {
+						fi = (fi + 1 + int(rngPath.Next()%11)) % 12
+					}
+					lastThree[0] = lastThree[1]; lastThree[1] = lastThree[2]; lastThree[2] = fi
+					path = append(path, fi)
+				}
+				// Enforce min 6 distinct in first 12
+				{
+					first12 := path[:12]
+					distinct := make(map[int]bool)
+					for _, x := range first12 { distinct[x] = true }
+					if len(distinct) < 6 {
+						var missing []int
+						for i := 0; i < 12; i++ { if !distinct[i] { missing = append(missing, i) } }
+						mi := 0
+						for i := 0; i < 12 && mi < len(missing); i++ {
+							count := 0
+							for _, x := range first12 { if x == path[i] { count++ } }
+							if count > 2 { path[i] = missing[mi]; mi++ }
+						}
+					}
+				}
+
+				for _, funcIndex := range path {
+					isSeeded := funcIndex == 4 || funcIndex == 5 || funcIndex == 6 || funcIndex == 9
+					var seed []byte
+					if isSeeded { seed = funcKey }
+					currentWordBytes = dc.obfuscationFunctionsV4[funcIndex](currentWordBytes, seed, prngFactory)
+				}
 			}
+
+			// Fix 2: Update chain state from obfuscated bytes
+			chainInput := append(v6ChainState, currentWordBytes...)
+			newState := sha256.Sum256(chainInput)
+			v6ChainState = newState[:]
+			obfuscatedWords = append(obfuscatedWords, currentWordBytes)
+			continue
+
+		} else {
+			// Legacy V2-V5 path (unchanged)
+			selectedFunctions := make([]int, 12)
+			for i := 0; i < 12; i++ { selectedFunctions[i] = i }
+
+			seedForSelection := activePasswordStr
+			if v < 6 { seedForSelection += word }
+			if v >= 5 { seedForSelection += strconv.Itoa(index) }
+			rngSel := prngFactory(seedForSelection)
+			for i := 11; i > 0; i-- {
+				randVal := rngSel.Next()
+				j := int((uint64(randVal) * uint64(i+1)) >> 32)
+				selectedFunctions[i], selectedFunctions[j] = selectedFunctions[j], selectedFunctions[i]
+			}
+
+			cycleDepth := len(selectedFunctions)
+			if isModern {
+				hash := sha256.Sum256([]byte(seedForSelection))
+				hashHex := hex.EncodeToString(hash[:])
+				val, _ := strconv.ParseUint(hashHex[:4], 16, 32)
+				depthVal := int(val)
+				if v >= 5 { cycleDepth = 12 + (depthVal % 501) } else { cycleDepth = 12 + (depthVal % 53) }
+			}
+
+			checksum := generateChecksum(selectedFunctions)
+			checksumStr := strconv.Itoa(checksum)
+			indexStr := strconv.Itoa(index)
+			combinedSeed := []byte(activePasswordStr + checksumStr)
+			if v >= 5 { combinedSeed = append(combinedSeed, []byte(indexStr)...) }
+
+			wordReverseKey := []int{}
+
+			for i := 0; i < cycleDepth; i++ {
+				funcIndex := selectedFunctions[i%len(selectedFunctions)]
+				if i >= 12 && !isV4 && !isV5 && (funcIndex == 2 || funcIndex == 3 || funcIndex == 8 || funcIndex == 9) {
+					funcIndex = (funcIndex + 2) % 12
+				}
+
+				var f func([]byte, []byte, func(string) PRNG) []byte
+				var isSeeded bool
+				if isV4 || isV5 {
+					f = dc.obfuscationFunctionsV4[funcIndex]
+					isSeeded = funcIndex == 4 || funcIndex == 5 || funcIndex == 6 || funcIndex == 9
+				} else {
+					f = dc.obfuscationFunctionsV2[funcIndex]
+					isSeeded = funcIndex >= 6
+				}
+				var seed []byte
+				if isSeeded { seed = combinedSeed }
+
+				currentWordBytes = f(currentWordBytes, seed, prngFactory)
+				wordReverseKey = append(wordReverseKey, funcIndex)
+			}
+			obfuscatedWords = append(obfuscatedWords, currentWordBytes)
+			reverseKey = append(reverseKey, wordReverseKey)
+			continue
 		}
 
-		checksum := generateChecksum(selectedFunctions)
-		combinedSeedStr := activePasswordStr + strconv.Itoa(checksum)
-		if isV5 {
-			combinedSeedStr += strconv.Itoa(index)
-		}
-		combinedSeed := []byte(combinedSeedStr)
-
-		var wordReverseKey []int
-
-		for i := 0; i < cycleDepth; i++ {
-			funcIndex := selectedFunctions[i%len(selectedFunctions)]
-
-			if i >= 12 && !isV4 && !isV5 && (funcIndex == 2 || funcIndex == 3 || funcIndex == 8 || funcIndex == 9) {
-				funcIndex = (funcIndex + 2) % 12
-			}
-
-			var f func([]byte, []byte, func(string) PRNG) []byte
-			var isSeeded bool
-			if isV4 || isV5 {
-				f = dc.obfuscationFunctionsV4[funcIndex]
-				isSeeded = funcIndex == 4 || funcIndex == 5 || funcIndex == 6 || funcIndex == 9
-			} else {
-				f = dc.obfuscationFunctionsV2[funcIndex]
-				isSeeded = funcIndex >= 6
-			}
-			var seed []byte
-			if isSeeded {
-				seed = combinedSeed
-			}
-
-			// Apply correct function
-			currentWordBytes = f(currentWordBytes, seed, prngFactory)
-			wordReverseKey = append(wordReverseKey, funcIndex)
-		}
 		obfuscatedWords = append(obfuscatedWords, currentWordBytes)
-		reverseKey = append(reverseKey, wordReverseKey)
 	}
 
-	encodedReverseKey, _ := dc.packReverseKey(reverseKey, isModern)
-	var aad = []byte(encodedReverseKey)
+	// Packed Binary Reverse Key
+	encodedReverseKey := ""
+	if v < 6 {
+		encodedReverseKey, _ = dc.packReverseKey(reverseKey, isModern)
+	}
 
-	// Construct final blob
-	totalLen := 0
+	// Final Blob Construction
+	totalLength := 0
 	for _, wb := range obfuscatedWords {
-		totalLen += 2 + len(wb)
+		totalLength += 2 + len(wb)
 	}
-	finalBlob := make([]byte, 0, totalLen)
+	finalBlob := make([]byte, totalLength)
+	offset := 0
 	for _, wb := range obfuscatedWords {
-		l := len(wb)
-		finalBlob = append(finalBlob, byte((l>>8)&0xff), byte(l&0xff))
-		finalBlob = append(finalBlob, wb...)
+		finalBlob[offset] = byte((len(wb) >> 8) & 0xff)
+		finalBlob[offset+1] = byte(len(wb) & 0xff)
+		copy(finalBlob[offset+2:], wb)
+		offset += 2 + len(wb)
 	}
 
+	if len(finalBlob) > 16384 {
+		return nil, fmt.Errorf("obfuscated payload exceeds 16384-byte limit (%d bytes)", len(finalBlob))
+	}
 	var finalPayload []byte
-	if len(finalBlob) > 2048 {
-		return nil, fmt.Errorf("obfuscated payload exceeds 2048-byte limit (%d bytes)", len(finalBlob))
+	if v >= 6 {
+		// V6: encrypt exact blob — no fixed padding needed
+		finalPayload = finalBlob
+	} else {
+		// V1-V5: pad to fixed size to obscure word count from stored reverse key
+		paddedData := make([]byte, 16384)
+		copy(paddedData, finalBlob)
+		finalPayload = paddedData
 	}
-	padded := make([]byte, 2048)
-	copy(padded, finalBlob)
-	finalPayload = padded
 
-	targetIterations := ITERATIONS_V2
-	res, err := dc.encryptAES256GCM(finalPayload, activePasswordStr, targetIterations, aad)
-	if err != nil {
-		return nil, err
+	var aad []byte
+	if v < 6 {
+		aad = []byte(encodedReverseKey)
 	}
-	encryptedContent := res
 
-	// Construct result structure
-	resultObj := map[string]interface{}{
-		"v":    5,
+	var encryptedContent string
+	var macTag string
+	if v >= 7 {
+		encryptedContent = hex.EncodeToString(finalPayload)
+		ctBytes, _ := hex.DecodeString(ctHex)
+		h := hmac.New(sha256.New, v7HmacKey)
+		h.Write([]byte{byte(v)})
+		h.Write(ctBytes)
+		h.Write(finalPayload)
+		macTag = hex.EncodeToString(h.Sum(nil))
+	} else {
+		var err error
+		encryptedContent, err = dc.encryptAES256GCM(finalPayload, activePasswordStr, ITERATIONS_V2, aad)
+		if err != nil { return nil, err }
+	}
+
+	inner := map[string]interface{}{
+		"v":    v,
 		"data": encryptedContent,
 		"ct":   ctHex,
+		"mac":  macTag,
 	}
+	innerJson, _ := json.Marshal(inner)
 
 	return map[string]interface{}{
-		"encryptedData": resultObj,
+		"encryptedData": string(innerJson),
 		"reverseKey":    encodedReverseKey,
 	}, nil
 }
 
 func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, keyMaterial string) (string, error) {
-	// 1. Decode Reverse Key
-	rkBytes, err := base64.StdEncoding.DecodeString(reverseKeyB64)
-	if err != nil {
-		return "", errors.New("invalid reverse key base64")
-	}
-
-	var reverseKey [][]int
-	// Try JSON first (Legacy V1)
-	if err := json.Unmarshal(rkBytes, &reverseKey); err == nil {
-		// PASSED JSON
-	} else {
-		// Not JSON, try Packed (V2/V3/V4 Compressed)
-		// Detect protocol version from the data header first if possible
-		isHeaderModern := false
-		var parsed map[string]interface{}
-		if json.Unmarshal([]byte(encryptedDataRaw), &parsed) == nil {
-			if v, ok := parsed["v"].(float64); ok && (v == 3 || v == 4 || v == 5) {
-				isHeaderModern = true
-			}
-		}
-
-		reverseKey, err = dc.unpackReverseKey(reverseKeyB64, isHeaderModern)
-		if err != nil {
-			return "", errors.New("invalid reverse key format (json or packed)")
-		}
-	}
-
-	// 2. Parse encrypted data
-	var encryptedContent string
-	var parsedDec map[string]interface{}
 	isV3 := false
 	isV4 := false
 	isV5 := false
+	isV6 := false
 	ctHex := ""
+	detectedVersion := 2
+	encryptedContent := ""
 
-	// Check if JSON
-	if err := json.Unmarshal([]byte(encryptedDataRaw), &parsedDec); err == nil {
-		if v, ok := parsedDec["v"].(float64); ok && v == 2 {
-			if data, ok := parsedDec["data"].(string); ok {
-				encryptedContent = data
-			}
-		} else if v, ok := parsedDec["v"].(float64); ok && v == 3 {
-			if data, ok := parsedDec["data"].(string); ok {
-				encryptedContent = data
+	// Check Version
+	if strings.HasPrefix(strings.TrimSpace(encryptedDataRaw), "{") {
+		var parsed map[string]interface{}
+		json.Unmarshal([]byte(encryptedDataRaw), &parsed)
+		if ver, ok := parsed["v"].(float64); ok {
+			detectedVersion = int(ver)
+			if detectedVersion == 3 {
 				isV3 = true
-			}
-		} else if v, ok := parsedDec["v"].(float64); ok && v == 4 {
-			if data, ok := parsedDec["data"].(string); ok {
-				encryptedContent = data
+			} else if detectedVersion == 4 {
 				isV4 = true
-			}
-		} else if v, ok := parsedDec["v"].(float64); ok && v == 5 {
-			if data, ok := parsedDec["data"].(string); ok {
-				encryptedContent = data
+			} else if detectedVersion >= 5 {
 				isV5 = true
-				if ctStr, ok := parsedDec["ct"].(string); ok {
-					ctHex = ctStr
+				if detectedVersion >= 6 {
+					isV6 = true
 				}
+				ctHex, _ = parsed["ct"].(string)
 			}
 		}
+		if data, ok := parsed["data"].(string); ok {
+			encryptedContent = data
+		}
 	}
-	
-	isModern := isV3 || isV4 || isV5
 
+	isModern := isV3 || isV4 || isV5 || isV6
 	activePasswordStr := keyMaterial
+	var v7HmacKey []byte
 	if isV5 {
 		sch := mlkem1024.Scheme()
 		skBytes, err := hex.DecodeString(keyMaterial)
-		if err != nil {
-			return "", fmt.Errorf("invalid sk format: %v", err)
-		}
-		sk, err := sch.UnmarshalBinaryPrivateKey(skBytes)
-		if err != nil {
-			return "", fmt.Errorf("invalid sk unmarshal: %v", err)
-		}
+		if err != nil { return "", err }
 		ctBytes, err := hex.DecodeString(ctHex)
-		if err != nil {
-			return "", fmt.Errorf("invalid ct format: %v", err)
-		}
+		if err != nil { return "", err }
+		
+		sk, err := sch.UnmarshalBinaryPrivateKey(skBytes)
+		if err != nil { return "", err }
+		
 		ssBytes, err := sch.Decapsulate(sk, ctBytes)
-		if err != nil {
-			return "", err
+		if err != nil { return "", err }
+		
+		if detectedVersion >= 7 {
+			// V7 Key Derivation
+			cHasher := sha256.New()
+			cHasher.Write([]byte("dkasp-v7-cipher-key"))
+			cHasher.Write(ssBytes)
+			cipherKeyHex := hex.EncodeToString(cHasher.Sum(nil))
+			
+			hHasher := sha256.New()
+			hHasher.Write([]byte("dkasp-v7-hmac-key"))
+			hHasher.Write(ssBytes)
+			v7HmacKey = hHasher.Sum(nil)
+			
+			activePasswordStr = cipherKeyHex
+		} else {
+			activePasswordStr = hex.EncodeToString(ssBytes)
 		}
-		defer func() {
-			// Zeroize shared secret
-			for i := range ssBytes {
-				ssBytes[i] = 0
-			}
-		}()
-		activePasswordStr = hex.EncodeToString(ssBytes)
+		for i := range ssBytes { ssBytes[i] = 0 }
 	}
 
+
 	var aad []byte
-	if isV5 {
+	if isModern && !isV6 && reverseKeyB64 != "" {
 		aad = []byte(reverseKeyB64)
 	}
 
-	targetIterations := ITERATIONS_V2
-
-	if encryptedContent == "" {
-		encryptedContent = encryptedDataRaw
-	}
-
-	// 3. AES Decrypt
+	// Decrypt Primary layer (AES or HMAC-V7)
 	var fullBlob []byte
-	if isModern {
-		decryptedBytes, err := dc.decryptAES256GCM(encryptedContent, activePasswordStr, targetIterations, aad)
-		if err != nil {
-			return "", err
+	if detectedVersion >= 7 {
+		payloadBytes, err := hex.DecodeString(encryptedContent)
+		if err != nil { return "", err }
+		
+		ctBytes, _ := hex.DecodeString(ctHex)
+		h := hmac.New(sha256.New, v7HmacKey)
+		h.Write([]byte{byte(detectedVersion)})
+		h.Write(ctBytes)
+		h.Write(payloadBytes)
+		macTag := h.Sum(nil)
+		
+		var parsed map[string]interface{}
+		json.Unmarshal([]byte(encryptedDataRaw), &parsed)
+		expectedMacHex, _ := parsed["mac"].(string)
+		expectedMac, _ := hex.DecodeString(expectedMacHex)
+		
+		if !hmac.Equal(macTag, expectedMac) {
+			return "", errors.New("D-KASP V7: Integrity Check Failed (MAC mismatch)")
 		}
-
-		if isV5 {
-			fullBlob = decryptedBytes
+		fullBlob = payloadBytes
+	} else if isModern {
+		dec, err := dc.decryptAES256GCM(encryptedContent, activePasswordStr, ITERATIONS_V2, aad)
+		if err != nil { return "", err }
+		if detectedVersion >= 5 {
+			fullBlob = dec
 		} else {
-			// Legacy V3/V4: decrypted data is a base64 string
-			decoded, err := base64.StdEncoding.DecodeString(string(decryptedBytes))
-			if err != nil {
-				return "", err
-			}
-			fullBlob = decoded
+			s, err := base64.StdEncoding.DecodeString(string(dec))
+			if err != nil { return "", err }
+			fullBlob = s
 		}
 	} else {
-		decryptedBytes, err := dc.decryptAES256(encryptedContent, activePasswordStr, targetIterations)
-		if err != nil {
-			return "", err
-		}
-		// Legacy V1/V2: decrypted data is a base64 string
-		decoded, err := base64.StdEncoding.DecodeString(string(decryptedBytes))
-		if err != nil {
-			return "", err
-		}
-		fullBlob = decoded
+		dec, err := dc.decryptAES256(encryptedContent, activePasswordStr, ITERATIONS_V2)
+		if err != nil { return "", err }
+		s, err := base64.StdEncoding.DecodeString(string(dec))
+		if err != nil { return "", err }
+		fullBlob = s
+	}
+
+	var reverseKeyJson [][]int
+	if !isV6 {
+		reverseKeyJson, _ = dc.unpackReverseKey(reverseKeyB64, isModern)
 	}
 
 	var deobfuscatedWords []string
@@ -1026,64 +1163,177 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, keyMaterial st
 	offset := 0
 	wordIndex := 0
 
+	// Fix 2: Init chain state for V6 decrypt
+	var v6ChainDecryptState []byte
+	if isV6 {
+		init := sha256.Sum256([]byte("dkasp-chain-v6" + activePasswordStr))
+		v6ChainDecryptState = init[:]
+	}
+
 	for offset < len(fullBlob) {
-		if wordIndex >= len(reverseKey) {
+		if !isV6 && wordIndex >= len(reverseKeyJson) {
 			break
 		}
-		if offset+2 > len(fullBlob) {
-			break
-		}
-		// Length
-		length := (int(fullBlob[offset]) << 8) | int(fullBlob[offset+1])
+
+		if offset+2 > len(fullBlob) { break }
+		lenVal := (int(fullBlob[offset]) << 8) | int(fullBlob[offset+1])
 		offset += 2
-		if offset+length > len(fullBlob) {
-			break
-		}
-		currentWordBytes := fullBlob[offset : offset+length]
-		offset += length
+		if offset+lenVal > len(fullBlob) { break }
+		cipherWordBytes := make([]byte, lenVal)
+		copy(cipherWordBytes, fullBlob[offset:offset+lenVal])
+		currentWordBytes := make([]byte, lenVal)
+		copy(currentWordBytes, cipherWordBytes)
+		offset += lenVal
 
-		// Deobfuscate
-		wordReverseList := reverseKey[wordIndex]
+		if isV6 {
+			// Fix 1: HMAC key schedule
+			mac := hmac.New(sha256.New, []byte(activePasswordStr))
+			mac.Write([]byte(fmt.Sprintf("dkasp-v6-word-%d", wordIndex)))
+			wordKey := mac.Sum(nil)
+			wordKeyHex := hex.EncodeToString(wordKey)
 
-		uniqueSetMap := make(map[int]bool)
-		var uniqueSet []int
-		limit := len(wordReverseList)
-		if limit > 12 {
-			limit = 12
-		}
-		for _, v := range wordReverseList[:limit] {
-			if !uniqueSetMap[v] {
-				uniqueSetMap[v] = true
-				uniqueSet = append(uniqueSet, v)
+			// Fix 4: Regenerate sanitised path (identical to encrypt)
+			hashArr := sha256.Sum256([]byte(wordKeyHex))
+			depthVal := (int(hashArr[0]) << 8) | int(hashArr[1])
+			cycleDepth := 12 + (depthVal % 501)
+
+			rngPath := prngFactory(wordKeyHex)
+			path := make([]int, 0, cycleDepth)
+			lastThree := [3]int{99, 99, 99}
+			for i := 0; i < cycleDepth; i++ {
+				fi := int(rngPath.Next() % 12)
+				if lastThree[0] == fi && lastThree[1] == fi && lastThree[2] == fi {
+					fi = (fi + 1 + int(rngPath.Next()%11)) % 12
+				}
+				lastThree[0] = lastThree[1]; lastThree[1] = lastThree[2]; lastThree[2] = fi
+				path = append(path, fi)
 			}
-		}
+			// Fix 4b: Ensure min 6 distinct in first 12
+			{
+				first12 := path[:12]
+				distinct := make(map[int]bool)
+				for _, x := range first12 { distinct[x] = true }
+				if len(distinct) < 6 {
+					var missing []int
+					for i := 0; i < 12; i++ { if !distinct[i] { missing = append(missing, i) } }
+					mi := 0
+					for i := 0; i < 12 && mi < len(missing); i++ {
+						count := 0
+						for _, x := range first12 { if x == path[i] { count++ } }
+						if count > 2 { path[i] = missing[mi]; mi++ }
+					}
+				}
+			}
 
-		checksum := generateChecksum(uniqueSet)
-		combinedSeedStr := activePasswordStr + strconv.Itoa(checksum)
-		if isV5 {
-			combinedSeedStr += strconv.Itoa(wordIndex)
-		}
-		combinedSeed := []byte(combinedSeedStr)
+			// Fix 1: Derive func key via HMAC
+			baseSlice := make([]int, 12)
+			for i := range baseSlice { baseSlice[i] = i }
+			checksum := generateChecksum(baseSlice)
+			mac2 := hmac.New(sha256.New, wordKey)
+			mac2.Write([]byte(fmt.Sprintf("keyed-%d", checksum)))
+			funcKey := mac2.Sum(nil)
 
-		for j := len(wordReverseList) - 1; j >= 0; j-- {
-			funcIndex := wordReverseList[j]
-			
-			var f func([]byte, []byte, func(string) PRNG) []byte
-			var isSeeded bool
+			if detectedVersion >= 8 {
+				// V8: Inverse SPNA Structured Gauntlet
+				rngPath := prngFactory(wordKeyHex)
+				groupS := []int{0, 1, 5}
+				groupP := []int{2, 3, 10}
+				groupN := []int{7, 8, 11}
+				groupA := []int{4, 6, 9}
 
-			if isV4 || isV5 {
-				f = dc.deobfuscationFunctionsV4[funcIndex]
-				isSeeded = funcIndex == 4 || funcIndex == 5 || funcIndex == 6 || funcIndex == 9
+				type step struct{ s, p, n, a int }
+				roundPaths := make([]step, 16)
+				for i := 0; i < 16; i++ {
+					// S: Substitution
+					sIdx := 0
+					if i % 4 == 0 {
+						sIdx = 0 
+					} else if i % 4 == 2 {
+						sIdx = 1
+					} else {
+						sIdx = groupS[int(rngPath.Next()%uint32(len(groupS)))]
+					}
+
+					// P: Permutation
+					pIdx := groupP[int(rngPath.Next()%uint32(len(groupP)))]
+
+					// N: Network
+					nIdx := 0
+					if i % 4 == 1 {
+						nIdx = 8
+					} else if i % 4 == 3 {
+						nIdx = 7
+					} else {
+						nIdx = groupN[int(rngPath.Next()%uint32(len(groupN)))]
+					}
+
+					// A: Algebraic
+					aIdx := groupA[int(rngPath.Next()%uint32(len(groupA)))]
+
+					roundPaths[i] = step{s: sIdx, p: pIdx, n: nIdx, a: aIdx}
+				}
+
+				for j := 15; j >= 0; j-- {
+					r := roundPaths[j]
+					// Inverse Order: A -> N -> P -> S
+					currentWordBytes = dc.deobfuscationFunctionsV4[r.a](currentWordBytes, funcKey, prngFactory)
+					currentWordBytes = dc.deobfuscationFunctionsV4[r.n](currentWordBytes, funcKey, prngFactory)
+					currentWordBytes = dc.deobfuscationFunctionsV4[r.p](currentWordBytes, funcKey, prngFactory)
+					currentWordBytes = dc.deobfuscationFunctionsV4[r.s](currentWordBytes, funcKey, prngFactory)
+				}
 			} else {
-				f = dc.deobfuscationFunctionsV2[funcIndex]
-				isSeeded = funcIndex >= 6
+				// Apply inverse transforms in reverse order
+				for j := len(path) - 1; j >= 0; j-- {
+					funcIndex := path[j]
+					isSeeded := funcIndex == 4 || funcIndex == 5 || funcIndex == 6 || funcIndex == 9
+					var seed []byte
+					if isSeeded {
+						seed = funcKey
+					}
+					currentWordBytes = dc.deobfuscationFunctionsV4[funcIndex](currentWordBytes, seed, prngFactory)
+				}
 			}
-			
-			var seed []byte
-			if isSeeded {
-				seed = combinedSeed
+
+			// Fix 2: Undo chain XOR, then advance chain from cipher bytes
+			for i := range currentWordBytes {
+				currentWordBytes[i] ^= v6ChainDecryptState[i%32]
 			}
-			currentWordBytes = f(currentWordBytes, seed, prngFactory)
+			chainInput := append(v6ChainDecryptState, cipherWordBytes...)
+			newState := sha256.Sum256(chainInput)
+			v6ChainDecryptState = newState[:]
+
+		} else {
+			wordReverseKey := reverseKeyJson[wordIndex]
+
+			uniqueFuncs := make(map[int]bool)
+			for _, f := range wordReverseKey { uniqueFuncs[f] = true }
+			var uniqueSet []int
+			for f := range uniqueFuncs { uniqueSet = append(uniqueSet, f) }
+			finalChecksum := generateChecksum(uniqueSet)
+
+			checksumStr := strconv.Itoa(finalChecksum)
+			indexStr := strconv.Itoa(wordIndex)
+			combinedSeed := []byte(activePasswordStr + checksumStr)
+			if detectedVersion >= 5 { combinedSeed = append(combinedSeed, []byte(indexStr)...) }
+
+			for j := len(wordReverseKey) - 1; j >= 0; j-- {
+				funcIndex := wordReverseKey[j]
+				var f func([]byte, []byte, func(string) PRNG) []byte
+				var isSeeded bool
+				if isV6 {
+					f = dc.deobfuscationFunctionsV4[funcIndex]
+					isSeeded = funcIndex >= 6
+				} else if isV4 || isV5 {
+					f = dc.deobfuscationFunctionsV4[funcIndex]
+					isSeeded = funcIndex == 4 || funcIndex == 5 || funcIndex == 6 || funcIndex == 9
+				} else {
+					f = dc.deobfuscationFunctionsV2[funcIndex]
+					isSeeded = funcIndex >= 6
+				}
+				var seed []byte
+				if isSeeded { seed = combinedSeed }
+				currentWordBytes = f(currentWordBytes, seed, prngFactory)
+			}
 		}
 
 		deobfuscatedWords = append(deobfuscatedWords, string(currentWordBytes))
@@ -1156,46 +1406,6 @@ func (dc *DarkstarCrypt) unpackReverseKey(b64 string, isV3 bool) ([][]int, error
 
 // --- AES Helpers ---
 
-func (dc *DarkstarCrypt) encryptAES256(data, password string, iterations int) (string, error) {
-	salt := make([]byte, SALT_SIZE_BYTES)
-	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
-		return "", err
-	}
-
-	key := pbkdf2.Key([]byte(password), salt, iterations, KEY_SIZE, sha256.New)
-
-	iv := make([]byte, IV_SIZE_BYTES)
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return "", err
-	}
-
-	// Padding
-	dataBytes := []byte(data)
-	paddingSize := aes.BlockSize - (len(dataBytes) % aes.BlockSize)
-	padding := bytes.Repeat([]byte{byte(paddingSize)}, paddingSize)
-	paddedData := append(dataBytes, padding...)
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
-	ciphertext := make([]byte, len(paddedData))
-	mode := cipher.NewCBCEncrypter(block, iv)
-	mode.CryptBlocks(ciphertext, paddedData)
-
-	// Zeroize sensitive materials
-	for i := range key {
-		key[i] = 0
-	}
-
-	// salt(hex) + iv(hex) + content(base64)
-	saltHex := hex.EncodeToString(salt)
-	ivHex := hex.EncodeToString(iv)
-	contentBase64 := base64.StdEncoding.EncodeToString(ciphertext)
-
-	return saltHex + ivHex + contentBase64, nil
-}
 
 func (dc *DarkstarCrypt) decryptAES256(transitMessage, password string, iterations int) ([]byte, error) {
 	if len(transitMessage) < 64 {
@@ -1358,6 +1568,19 @@ func printUsage() {
 	fmt.Println("  test                            Run internal self-test")
 }
 
+func resolveArg(arg string) string {
+	if strings.HasPrefix(arg, "@") {
+		path := arg[1:]
+		content, err := os.ReadFile(path)
+		if err != nil {
+			fmt.Printf("Error reading argument file %s: %v\n", path, err)
+			os.Exit(1)
+		}
+		return strings.TrimSpace(string(content))
+	}
+	return arg
+}
+
 func main() {
 	var v int = 5
 	var format string = ""
@@ -1404,7 +1627,9 @@ func main() {
 			fmt.Println("Error: encrypt requires mnemonic and password")
 			os.Exit(1)
 		}
-		res, err := dc.Encrypt(args[1], args[2])
+		mnemonic := resolveArg(args[1])
+		password := resolveArg(args[2])
+		res, err := dc.Encrypt(mnemonic, password, v)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -1413,12 +1638,13 @@ func main() {
 		f := format
 		if f == "" { f = "json" }
 		
-		if f == "json" {
+		switch f {
+		case "json":
 			j, _ := json.Marshal(res)
 			fmt.Println(string(j))
-		} else if f == "csv" {
+		case "csv":
 			fmt.Printf("%s,%s\n", res["encryptedData"], res["reverseKey"])
-		} else {
+		default:
 			fmt.Printf("Data: %s\nReverseKey: %s\n", res["encryptedData"], res["reverseKey"])
 		}
 
@@ -1427,7 +1653,10 @@ func main() {
 			fmt.Println("Error: decrypt requires data, rk and password")
 			os.Exit(1)
 		}
-		res, err := dc.Decrypt(args[1], args[2], args[3])
+		data := resolveArg(args[1])
+		rk := resolveArg(args[2])
+		password := resolveArg(args[3])
+		res, err := dc.Decrypt(data, rk, password)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -1450,11 +1679,12 @@ func main() {
 		f := format
 		if f == "" { f = "text" }
 		
-		if f == "json" {
+		switch f {
+		case "json":
 			fmt.Printf("{\"pk\":\"%s\",\"sk\":\"%s\"}\n", pkHex, skHex)
-		} else if f == "csv" {
+		case "csv":
 			fmt.Printf("%s,%s\n", pkHex, skHex)
-		} else {
+		default:
 			fmt.Printf("PK: %s\nSK: %s\n", pkHex, skHex)
 		}
 
@@ -1463,7 +1693,7 @@ func main() {
 		password := "MySecre!Password123"
 		decPsw := password
 		
-		if v == 5 {
+		if v >= 5 {
 			sch := mlkem1024.Scheme()
 			pk, sk, _ := sch.GenerateKeyPair()
 			pkBytes, _ := pk.MarshalBinary()
@@ -1473,7 +1703,7 @@ func main() {
 		}
 		
 		fmt.Printf("--- Darkstar Go Self-Test (V%d) ---\n", v)
-		res, err := dc.Encrypt(mnemonic, password)
+		res, err := dc.Encrypt(mnemonic, password, v)
 		if err != nil {
 			fmt.Printf("Test Encryption Failed: %v\n", err)
 			os.Exit(1)
