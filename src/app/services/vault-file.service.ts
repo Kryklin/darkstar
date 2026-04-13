@@ -18,8 +18,8 @@ export class VaultFileService {
     const buffer = await file.arrayBuffer();
     const data = new Uint8Array(buffer);
 
-    // Encrypt
-    const encryptedData = await this.crypt.encryptBinary(data, password);
+    // Encrypt using D-KASP hardened methodology
+    const encryptedData = await this.crypt.encryptBinaryDKasp(data, password);
 
     // Generate unique filename
     const ref = `${crypto.randomUUID()}.enc`;
@@ -48,6 +48,7 @@ export class VaultFileService {
       size: file.size,
       type: file.type,
       ref: ref,
+      uploadedAt: Date.now(),
     };
   }
 
@@ -72,8 +73,8 @@ export class VaultFileService {
       throw new Error('No compatible storage layer available.');
     }
 
-    // Decrypt
-    const decryptedData = await this.crypt.decryptBinary(encryptedData, password);
+    // Decrypt (Auto-detects D-KASP vs Legacy)
+    const decryptedData = await this.crypt.decryptBinaryAuto(encryptedData, password);
 
     // Create Blob and trigger download
     const blob = new Blob([decryptedData as unknown as BlobPart], { type: attachment.type });

@@ -4,20 +4,52 @@ import { FormsModule } from '@angular/forms';
 import { VaultService, VaultNote, VaultAttachment } from '../../../services/vault';
 import { VaultFileService } from '../../../services/vault-file.service';
 import { TimeLockService } from '../../../services/timelock.service';
-import { MaterialModule } from '../../../modules/material/material';
+// import { MaterialModule } from '../../../modules/material/material'; // Removed for granular imports
 import { MarkdownModule } from 'ngx-markdown';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { GenericDialog } from '../../dialogs/generic-dialog/generic-dialog';
 import { MatChipInputEvent } from '@angular/material/chips';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { Clipboard } from '@angular/cdk/clipboard';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatCardModule } from '@angular/material/card';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatListModule } from '@angular/material/list';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { VaultFilesComponent } from './vault-files.component';
+
+export type VaultTab = 'notes' | 'files' | 'settings';
 
 @Component({
   selector: 'app-vault-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, MaterialModule, MarkdownModule],
+  imports: [
+    CommonModule, 
+    FormsModule, 
+    MarkdownModule, 
+    VaultFilesComponent,
+    MatSidenavModule,
+    MatListModule,
+    MatDividerModule,
+    MatIconModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatChipsModule,
+    MatTooltipModule,
+    MatTabsModule,
+    MatSnackBarModule,
+    MatDialogModule,
+    MatCardModule
+  ],
   templateUrl: './vault-dashboard.component.html',
   styleUrls: ['./vault-dashboard.component.scss'],
 })
@@ -31,6 +63,8 @@ export class VaultDashboardComponent {
   snackBar = inject(MatSnackBar);
   notes = this.vaultService.notes;
   selectedNote = signal<VaultNote | null>(null);
+  selectedFolderId = signal<string | null>(null);
+  activeTab = signal<VaultTab>('notes');
   isHandset = signal(false);
   sidenavOpened = signal<boolean>(true);
 
@@ -38,13 +72,22 @@ export class VaultDashboardComponent {
   searchTerm = signal('');
   isQuantumSafe = computed(() => !!this.vaultService.identity()?.pqcPublicKey);
 
-  // Computed signal for search filter
+  // Computed signal for search filter and folder filter
   filteredNotes = computed(() => {
     const term = this.searchTerm().toLowerCase();
-    const allNotes = this.notes();
-    if (!term) return allNotes;
-    return allNotes.filter((n) => n.title.toLowerCase().includes(term) || n.content.toLowerCase().includes(term) || n.tags?.some((t) => t.toLowerCase().includes(term)));
+    const folderId = this.selectedFolderId();
+    let n = this.notes();
+
+    // Strict Folder Filter
+    if (folderId) {
+      n = n.filter((note) => note.folderId === folderId);
+    }
+
+    if (!term) return n;
+    return n.filter((note) => note.title.toLowerCase().includes(term) || note.content.toLowerCase().includes(term) || note.tags?.some((t) => t.toLowerCase().includes(term)));
   });
+
+  folders = this.vaultService.folders;
 
   @ViewChild('editorArea') editorArea?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('imageInput') imageInput?: ElementRef<HTMLInputElement>;
@@ -155,9 +198,28 @@ export class VaultDashboardComponent {
     this.currentTags = [...(note.tags || [])];
     this.currentAttachments = [...(note.attachments || [])];
     this.showPreview = true;
+    this.activeTab.set('notes');
+  }
 
-    if (this.isHandset()) {
-      // No longer auto-hiding
+  selectFolder(folderId: string | null) {
+    this.selectedFolderId.set(folderId);
+    this.selectedNote.set(null);
+  }
+
+  addFolder() {
+    const name = prompt('Folder Name:');
+    if (name) {
+      this.vaultService.addFolder(name);
+    }
+  }
+
+  deleteFolder(folderId: string, event: Event) {
+    event.stopPropagation();
+    if (confirm('Delete folder and move notes to General?')) {
+      this.vaultService.deleteFolder(folderId);
+      if (this.selectedFolderId() === folderId) {
+        this.selectedFolderId.set(null);
+      }
     }
   }
 
@@ -167,7 +229,8 @@ export class VaultDashboardComponent {
   }
 
   createNote() {
-    this.vaultService.addNote('', '');
+    this.activeTab.set('notes');
+    this.vaultService.addNote('', '', this.selectedFolderId() || undefined);
     const newNote = this.notes()[0]; // Assumes added at top
     if (newNote) {
       this.selectNote(newNote);
@@ -179,7 +242,14 @@ export class VaultDashboardComponent {
     const note = this.selectedNote();
     if (note) {
       if (note.timeLock?.isLocked) return;
-      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, note.timeLock);
+      this.vaultService.updateNote(
+        note.id,
+        this.currentTitle,
+        this.currentContent,
+        this.currentTags,
+        note.folderId,
+        note.timeLock,
+      );
     }
   }
 
@@ -191,7 +261,7 @@ export class VaultDashboardComponent {
     try {
       const result = await this.timeLockService.lockNoteContent(this.currentContent, seconds, (p) => this.lockProgress.set(p));
       this.currentContent = result.encryptedData;
-      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, result.metadata);
+      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, note.folderId, result.metadata);
       this.showPreview = true;
       this.selectNote(this.vaultService.notes().find((n) => n.id === note.id)!);
     } catch (e) {
@@ -211,7 +281,14 @@ export class VaultDashboardComponent {
       const decrypted = await this.timeLockService.unlockNoteContent(this.currentContent, note.timeLock, (p) => this.lockProgress.set(p));
       this.currentContent = decrypted;
       note.timeLock.isLocked = false;
-      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, note.timeLock);
+      this.vaultService.updateNote(
+        note.id,
+        this.currentTitle,
+        this.currentContent,
+        this.currentTags,
+        note.folderId,
+        note.timeLock,
+      );
     } catch (e) {
       console.error(e);
       alert('Failed to unlock. Ensure computation completes.');
@@ -225,7 +302,7 @@ export class VaultDashboardComponent {
     const note = this.selectedNote();
     if (note) {
       delete note.timeLock;
-      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags);
+      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, note.folderId);
     }
   }
 

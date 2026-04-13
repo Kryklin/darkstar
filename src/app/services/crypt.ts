@@ -85,7 +85,75 @@ export class CryptService {
   }
 
   /**
-   * Encrypts binary data (Uint8Array) directly using AES-256-CBC.
+   * Encrypts binary data (Uint8Array) using D-KASP hardened key derivation and AES-256-GCM.
+   */
+  async encryptBinaryDKasp(data: Uint8Array, password: string, label = 'dkasp-file-v1'): Promise<Uint8Array> {
+    const salt = window.crypto.getRandomValues(new Uint8Array(this.SALT_SIZE_BYTES));
+    const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
+
+    const keyBytes = await this.deriveDKaspFileKey(password, salt, label);
+    const key = await window.crypto.subtle.importKey('raw', keyBytes as BufferSource, { name: 'AES-GCM' }, false, ['encrypt']);
+
+    const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, data as BufferSource);
+    const encryptedBytes = new Uint8Array(encrypted);
+
+    const result = new Uint8Array(1 + salt.length + iv.length + encryptedBytes.length);
+    result[0] = 0xd1; // D-KASP Binary Version 1 Marker
+    result.set(salt, 1);
+    result.set(iv, 1 + salt.length);
+    result.set(encryptedBytes, 1 + salt.length + iv.length);
+
+    return result;
+  }
+
+  /**
+   * Decrypts a D-KASP hardened binary payload.
+   * Detects version (Legacy vs D-KASP) automatically.
+   */
+  async decryptBinaryAuto(payload: Uint8Array, password: string): Promise<Uint8Array> {
+    if (payload[0] === 0xd1) {
+      // D-KASP Binary V1
+      const salt = payload.slice(1, 1 + this.SALT_SIZE_BYTES);
+      const iv = payload.slice(1 + this.SALT_SIZE_BYTES, 1 + this.SALT_SIZE_BYTES + 12);
+      const ciphertext = payload.slice(1 + this.SALT_SIZE_BYTES + 12);
+
+      const keyBytes = await this.deriveDKaspFileKey(password, salt, 'dkasp-file-v1');
+      const key = await window.crypto.subtle.importKey('raw', keyBytes as BufferSource, { name: 'AES-GCM' }, false, ['decrypt']);
+
+      const decrypted = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, ciphertext as BufferSource);
+      return new Uint8Array(decrypted);
+    } else {
+      // Legacy AES-CBC
+      return this.decryptBinary(payload, password);
+    }
+  }
+
+  /**
+   * Derives a post-quantum hardened symmetric key using the D-KASP SPNA engine.
+   * This binds the file security to the hardware-bound root of trust.
+   */
+  async deriveDKaspFileKey(password: string, salt: Uint8Array, label: string): Promise<Uint8Array> {
+    // 1. Initial PBKDF2 to get a stable seed for D-KASP engine
+    const enc = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']);
+    const seed = await window.crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: salt as BufferSource, iterations: this.PBKDF2_ITERATIONS / 10, hash: 'SHA-256' },
+      keyMaterial,
+      256,
+    );
+    const seedHex = this.buf2hex(seed);
+
+    // 2. Pass the label through the D-KASP Engine (16-round SPNA gauntlet)
+    // We use the derived seed as the D-KASP key material.
+    const { encryptedData } = await this.encrypt(label, seedHex);
+
+    // 3. Hash the hardened output to get the final 256-bit symmetric key
+    const finalHash = await window.crypto.subtle.digest('SHA-256', enc.encode(encryptedData));
+    return new Uint8Array(finalHash);
+  }
+
+  /**
+   * Encrypts binary data (Uint8Array) directly using AES-256-CBC (Legacy).
    */
   async encryptBinary(data: Uint8Array, password: string): Promise<Uint8Array> {
     const salt = window.crypto.getRandomValues(new Uint8Array(this.SALT_SIZE_BYTES));
@@ -94,20 +162,20 @@ export class CryptService {
     const enc = new TextEncoder();
     const keyMaterial = await window.crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
 
-    const key = await window.crypto.subtle.deriveKey(
-      {
-        name: 'PBKDF2',
-        salt: salt,
-        iterations: this.PBKDF2_ITERATIONS,
-        hash: 'SHA-256',
-      },
-      keyMaterial,
-      { name: 'AES-CBC', length: 256 },
-      false,
-      ['encrypt'],
-    );
+      const key = await window.crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: salt as BufferSource,
+          iterations: this.PBKDF2_ITERATIONS,
+          hash: 'SHA-256',
+        },
+        keyMaterial,
+        { name: 'AES-CBC', length: 256 },
+        false,
+        ['encrypt'],
+      );
 
-    const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv }, key, data as unknown as BufferSource);
+    const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv as BufferSource }, key, data as BufferSource);
     const encryptedBytes = new Uint8Array(encrypted);
 
     const result = new Uint8Array(salt.length + iv.length + encryptedBytes.length);
@@ -119,7 +187,7 @@ export class CryptService {
   }
 
   /**
-   * Decrypts a binary payload (Salt+IV+Ciphertext).
+   * Decrypts a binary payload (Salt+IV+Ciphertext) using Legacy AES-CBC.
    */
   async decryptBinary(payload: Uint8Array, password: string): Promise<Uint8Array> {
     const salt = payload.slice(0, this.SALT_SIZE_BYTES);
@@ -132,7 +200,7 @@ export class CryptService {
     const key = await window.crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: salt,
+        salt: salt as BufferSource,
         iterations: this.PBKDF2_ITERATIONS,
         hash: 'SHA-256',
       },
@@ -142,7 +210,7 @@ export class CryptService {
       ['decrypt'],
     );
 
-    const decrypted = await window.crypto.subtle.decrypt({ name: 'AES-CBC', iv: iv }, key, ciphertext);
+    const decrypted = await window.crypto.subtle.decrypt({ name: 'AES-CBC', iv: iv as BufferSource }, key, ciphertext as BufferSource);
     return new Uint8Array(decrypted);
   }
 
@@ -184,14 +252,23 @@ export class CryptService {
    */
   async decrypt(encryptedDataRaw: string, reverseKey: string, passwordOrSk: string, hwid?: string): Promise<DecryptionResult> {
     const engine = localStorage.getItem('dkasp_engine') || 'rust';
-    let decrypted = await window.electronAPI.dKaspDecrypt(encryptedDataRaw, reverseKey, passwordOrSk, engine, hwid);
+    const result = await window.electronAPI.dKaspDecrypt(encryptedDataRaw, reverseKey, passwordOrSk, engine, hwid);
 
-    if (typeof decrypted !== 'string') {
-      decrypted = JSON.stringify(decrypted);
+    // If it's already a string, return it wrapped.
+    if (typeof result === 'string') {
+      return { decrypted: result };
     }
 
-    return {
-      decrypted: decrypted as string,
-    };
+    // If it's an object, it might be the parsed vault content or have a .decrypted field.
+    if (result && typeof result === 'object') {
+      if ('decrypted' in result) {
+        return { decrypted: (result as any).decrypted as string };
+      }
+      // If it's the raw parsed vault content, we return it stringified so VaultService can parse it uniformly,
+      // OR we change the interface. Returning stringified for backward parity.
+      return { decrypted: JSON.stringify(result) };
+    }
+
+    return { decrypted: String(result) };
   }
 }

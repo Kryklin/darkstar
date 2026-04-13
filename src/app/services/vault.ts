@@ -13,6 +13,14 @@ export interface VaultAttachment {
   size: number;
   type: string;
   ref: string;
+  uploadedAt: number;
+}
+
+export interface VaultFolder {
+  id: string;
+  name: string;
+  icon?: string;
+  order: number;
 }
 
 export interface VaultIdentity {
@@ -27,6 +35,7 @@ export interface VaultNote {
   title: string;
   content: string;
   tags: string[];
+  folderId: string;
   attachments: VaultAttachment[];
   timeLock?: TimeLockMetadata;
   updatedAt: number;
@@ -38,8 +47,11 @@ interface VaultStorage {
 
 interface VaultContent {
   notes: VaultNote[];
+  folders?: VaultFolder[];
+  standaloneFiles?: VaultAttachment[];
   identity?: VaultIdentity;
   totpSecret?: string;
+  updatedAt: number;
 }
 
 @Injectable({
@@ -59,6 +71,8 @@ export class VaultService {
   private masterKey = signal<string | null>(null);
   public isUnlocked = computed(() => !!this.masterKey());
   public notes = signal<VaultNote[]>([]);
+  public folders = signal<VaultFolder[]>([]);
+  public standaloneFiles = signal<VaultAttachment[]>([]);
   public identity = signal<VaultIdentity | null>(null);
   public totpSecret = signal<string | null>(null);
   public hardwareId = signal<string | null>(null);
@@ -76,6 +90,14 @@ export class VaultService {
   constructor() {
     window.addEventListener('beforeunload', () => this.lock());
     this.exists.set(this.hasVault());
+    this.initHardwareId();
+  }
+
+  private async initHardwareId() {
+    if (window.electronAPI) {
+      const id = await window.electronAPI.getMachineId();
+      this.hardwareId.set(id);
+    }
   }
 
   hasVault(): boolean {
@@ -150,7 +172,7 @@ export class VaultService {
       }
 
       const { skHex } = await this.derivePqcKeys(password);
-      const res = await this.crypt.decrypt(encryptedData, '', skHex);
+      const res = await this.crypt.decrypt(encryptedData, '', skHex, this.hardwareId() || undefined);
 
       const jsonStr = res.decrypted;
       if (!jsonStr) throw new Error('Authentication failed.');
@@ -165,11 +187,18 @@ export class VaultService {
           throw new Error('Vault Data Corruption: Unable to parse decrypted content.');
         }
       }
+      const defaultFolderId = 'default-general';
+      const migratedFolders: VaultFolder[] = parsed.folders || [{ id: defaultFolderId, name: 'General', icon: 'folder', order: 0 }];
       const migratedNotes = (parsed.notes || []).map((n) => ({
         ...n,
         tags: n.tags || [],
+        folderId: n.folderId || defaultFolderId,
         attachments: n.attachments || [],
         updatedAt: n.updatedAt || Date.now(),
+      }));
+      const migratedFiles = (parsed.standaloneFiles || []).map((f) => ({
+        ...f,
+        uploadedAt: f.uploadedAt || Date.now(),
       }));
 
       let identity = parsed.identity || null;
@@ -192,6 +221,8 @@ export class VaultService {
       }
 
       this.notes.set(migratedNotes);
+      this.folders.set(migratedFolders);
+      this.standaloneFiles.set(migratedFiles);
       this.identity.set(identity);
       this.totpSecret.set(parsed.totpSecret || null);
       this.masterKey.set(password);
@@ -262,12 +293,15 @@ export class VaultService {
 
     const content: VaultContent = {
       notes: this.notes(),
+      folders: this.folders(),
+      standaloneFiles: this.standaloneFiles(),
       identity: this.identity()!,
       totpSecret: this.totpSecret() || undefined,
+      updatedAt: Date.now(),
     };
 
     const { pkHex } = await this.derivePqcKeys(key);
-    const { encryptedData } = await this.crypt.encrypt(JSON.stringify(content), pkHex);
+    const { encryptedData } = await this.crypt.encrypt(JSON.stringify(content), pkHex, this.hardwareId() || undefined);
 
     const envelope: VaultStorage = {
       data: encryptedData,
@@ -279,23 +313,69 @@ export class VaultService {
 
   // --- Note Management ---
 
-  addNote(title: string, content: string, timeLock?: TimeLockMetadata) {
+  addNote(title: string, content: string, folderId?: string, timeLock?: TimeLockMetadata) {
+    const fId = folderId || (this.folders().length > 0 ? this.folders()[0].id : 'default-general');
     const newNote: VaultNote = {
       id: crypto.randomUUID(),
       title,
       content,
       tags: [],
+      folderId: fId,
       attachments: [],
       timeLock,
       updatedAt: Date.now(),
     };
     this.notes.update((n) => [newNote, ...n]);
     this.save();
+    return newNote;
   }
 
-  updateNote(id: string, title: string, content: string, tags: string[], timeLock?: TimeLockMetadata) {
-    this.notes.update((n) => n.map((note) => (note.id === id ? { ...note, title, content, tags, timeLock, updatedAt: Date.now() } : note)));
+  updateNote(id: string, title: string, content: string, tags: string[], folderId?: string, timeLock?: TimeLockMetadata) {
+    this.notes.update((n) => n.map((note) => (note.id === id ? { ...note, title, content, tags, folderId: folderId || note.folderId, timeLock, updatedAt: Date.now() } : note)));
     this.save();
+  }
+
+  // --- Folder Management ---
+
+  addFolder(name: string, icon = 'folder') {
+    const newFolder: VaultFolder = {
+      id: crypto.randomUUID(),
+      name,
+      icon,
+      order: this.folders().length,
+    };
+    this.folders.update((f) => [...f, newFolder]);
+    this.save();
+    return newFolder;
+  }
+
+  renameFolder(id: string, name: string) {
+    this.folders.update((f) => f.map((folder) => (folder.id === id ? { ...folder, name } : folder)));
+    this.save();
+  }
+
+  async deleteFolder(id: string) {
+    // Move notes to 'General' or first folder if deleting a folder
+    const targetFolder = this.folders().find((f) => f.id !== id) || { id: 'default-general' };
+    this.notes.update((n) => n.map((note) => (note.folderId === id ? { ...note, folderId: targetFolder.id } : note)));
+    this.folders.update((f) => f.filter((folder) => folder.id !== id));
+    this.save();
+  }
+
+  // --- Standalone File Management ---
+
+  addStandaloneFile(attachment: VaultAttachment) {
+    this.standaloneFiles.update((f) => [attachment, ...f]);
+    this.save();
+  }
+
+  async deleteStandaloneFile(id: string) {
+    const file = this.standaloneFiles().find((f) => f.id === id);
+    if (file) {
+      await this.fileService.deleteFile(file);
+      this.standaloneFiles.update((f) => f.filter((item) => item.id !== id));
+      this.save();
+    }
   }
 
   addAttachment(noteId: string, attachment: VaultAttachment) {
@@ -344,7 +424,7 @@ export class VaultService {
 
     const keyMaterial = await window.crypto.subtle.importKey('raw', pBytes, { name: 'PBKDF2' }, false, ['deriveBits']);
 
-    const seed = await window.crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: this.crypt.PBKDF2_ITERATIONS, hash: 'SHA-256' }, keyMaterial, 512);
+    const seed = await window.crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, 512);
 
     const { publicKey, secretKey } = ml_kem1024.keygen(new Uint8Array(seed));
 
