@@ -32,7 +32,7 @@ To neutralize timing side-channels, D-ASP implementations MUST NOT use condition
 For an element $a \in GF(2^8)$, multiplication by the generator $x$ (0x02) is defined as:
 
 $$
-f(a) = (a \ll 1) \oplus (0x1B \ \& \ \text{mask})
+f(a) = (a \ll 1) \oplus (0x1B \ \\& \ \text{mask})
 $$
 
 where the mask is derived via branchless arithmetic:
