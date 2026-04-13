@@ -8,15 +8,18 @@ const pkg = require('../package.json');
   const { default: chalk } = await import('chalk');
   const { default: inquirer } = await import('inquirer');
   const { execa } = await import('execa');
-  
+
   // Basic .env loader to support GitHub tokens without terminal restarts
   const envPath = path.join(__dirname, '../.env');
   if (fs.existsSync(envPath)) {
     const envContent = fs.readFileSync(envPath, 'utf8');
-    envContent.split('\n').forEach(line => {
+    envContent.split('\n').forEach((line) => {
       const [key, ...valueParts] = line.split('=');
       if (key && valueParts.length > 0) {
-        const value = valueParts.join('=').trim().replace(/^["']|["']$/g, '');
+        const value = valueParts
+          .join('=')
+          .trim()
+          .replace(/^["']|["']$/g, '');
         process.env[key.trim()] = value;
       }
     });

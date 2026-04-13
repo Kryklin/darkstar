@@ -3,7 +3,7 @@
     <mat-card class="decrypt-card glass-card">
       <mat-card-header>
         <mat-card-title>Decrypt {{ protocolTitle }}</mat-card-title>
-      <mat-card-subtitle>Enter the encrypted data, reverse key, and password to decrypt your mnemonic phrase.</mat-card-subtitle>
+        <mat-card-subtitle>Enter the encrypted data, reverse key, and password to decrypt your mnemonic phrase.</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
         <mat-stepper linear #stepper>
@@ -47,36 +47,32 @@
                 }
               </mat-form-field>
 
-              <div class="security-options" style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px;">
-                <mat-slide-toggle [(ngModel)]="useHardwareId" [ngModelOptions]="{ standalone: true }" color="warn">
-                  Require Machine Hardware ID
-                </mat-slide-toggle>
-                <p class="hint-text" style="font-size: 0.85em; margin: 0; opacity: 0.7;">
-                  Enable this if the data was bound to a specific device.
-                </p>
+              <div class="security-options" style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px">
+                <mat-slide-toggle [(ngModel)]="useHardwareId" [ngModelOptions]="{ standalone: true }" color="warn"> Require Machine Hardware ID </mat-slide-toggle>
+                <p class="hint-text" style="font-size: 0.85em; margin: 0; opacity: 0.7">Enable this if the data was bound to a specific device.</p>
               </div>
-              
+
               @if (inputType === 'text') {
-                  <div class="qr-receive-section" style="margin: 16px 0; padding: 16px; background: rgba(0, 145, 234, 0.05); border-radius: 8px; border: 1px solid rgba(0, 145, 234, 0.2);">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <div>
-                            <h3 style="margin: 0; display: flex; align-items: center; color: var(--mat-sys-primary);">
-                                <mat-icon style="margin-right: 8px;">qr_code_scanner</mat-icon> Air-Gapped Optical Transfer
-                            </h3>
-                            <p class="hint-text" style="margin: 4px 0 0 0;">Scan an animated payload from another device's screen.</p>
-                        </div>
-                        <button mat-stroked-button color="primary" (click)="showQrReceiver = !showQrReceiver; $event.preventDefault()">
-                            <mat-icon>{{ showQrReceiver ? 'close' : 'qr_code' }}</mat-icon>
-                            {{ showQrReceiver ? 'Close Scanner' : 'Open Camera' }}
-                        </button>
+                <div class="qr-receive-section" style="margin: 16px 0; padding: 16px; background: rgba(0, 145, 234, 0.05); border-radius: 8px; border: 1px solid rgba(0, 145, 234, 0.2)">
+                  <div style="display: flex; align-items: center; justify-content: space-between">
+                    <div>
+                      <h3 style="margin: 0; display: flex; align-items: center; color: var(--mat-sys-primary)">
+                        <mat-icon style="margin-right: 8px">qr_code_scanner</mat-icon> Air-Gapped Optical Transfer
+                      </h3>
+                      <p class="hint-text" style="margin: 4px 0 0 0">Scan an animated payload from another device's screen.</p>
                     </div>
-                    
-                    @if (showQrReceiver) {
-                        <div style="margin-top: 16px;">
-                            <app-qr-receiver (payloadReceived)="onQrScanned($event)"></app-qr-receiver>
-                        </div>
-                    }
+                    <button mat-stroked-button color="primary" (click)="showQrReceiver = !showQrReceiver; $event.preventDefault()">
+                      <mat-icon>{{ showQrReceiver ? 'close' : 'qr_code' }}</mat-icon>
+                      {{ showQrReceiver ? 'Close Scanner' : 'Open Camera' }}
+                    </button>
                   </div>
+
+                  @if (showQrReceiver) {
+                    <div style="margin-top: 16px">
+                      <app-qr-receiver (payloadReceived)="onQrScanned($event)"></app-qr-receiver>
+                    </div>
+                  }
+                </div>
               }
 
               <div class="stepper-buttons">
@@ -115,30 +111,30 @@
           }
           @if (!isV5Payload) {
             <mat-step [stepControl]="thirdFormGroup">
-            <form [formGroup]="thirdFormGroup">
-              <ng-template matStepLabel>Enter Password</ng-template>
+              <form [formGroup]="thirdFormGroup">
+                <ng-template matStepLabel>Enter Password</ng-template>
 
-              <div class="security-controls" style="margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
-                <mat-slide-toggle [(ngModel)]="virtualKeyboardEnabled" [ngModelOptions]="{ standalone: true }" color="primary"> Enable Anti-Keylogger Mode </mat-slide-toggle>
-                @if (vaultService.isUnlocked()) {
+                <div class="security-controls" style="margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px">
+                  <mat-slide-toggle [(ngModel)]="virtualKeyboardEnabled" [ngModelOptions]="{ standalone: true }" color="primary"> Enable Anti-Keylogger Mode </mat-slide-toggle>
+                  @if (vaultService.isUnlocked()) {
                     <mat-slide-toggle [(ngModel)]="useVaultSignature" [ngModelOptions]="{ standalone: true }" color="accent"> Require Vault Signature </mat-slide-toggle>
-                }
-              </div>
+                  }
+                </div>
 
-              <mat-form-field appearance="fill" class="full-width">
-                <mat-label>Password</mat-label>
-                <input matInput formControlName="password" type="password" placeholder="Enter your password" [readonly]="virtualKeyboardEnabled" />
+                <mat-form-field appearance="fill" class="full-width">
+                  <mat-label>Password</mat-label>
+                  <input matInput formControlName="password" type="password" placeholder="Enter your password" [readonly]="virtualKeyboardEnabled" />
+                  @if (virtualKeyboardEnabled) {
+                    <mat-hint>Physical keyboard disabled for security</mat-hint>
+                  }
+                  @if (thirdFormGroup.controls['password'].hasError('required')) {
+                    <mat-error>Password is required.</mat-error>
+                  }
+                </mat-form-field>
+
                 @if (virtualKeyboardEnabled) {
-                  <mat-hint>Physical keyboard disabled for security</mat-hint>
+                  <app-virtual-keyboard (keyPress)="onVirtualKeyPress($event)" (backspace)="onVirtualBackspace()"></app-virtual-keyboard>
                 }
-                @if (thirdFormGroup.controls['password'].hasError('required')) {
-                  <mat-error>Password is required.</mat-error>
-                }
-              </mat-form-field>
-
-              @if (virtualKeyboardEnabled) {
-                <app-virtual-keyboard (keyPress)="onVirtualKeyPress($event)" (backspace)="onVirtualBackspace()"></app-virtual-keyboard>
-              }
 
                 <div class="stepper-buttons">
                   <button mat-button matStepperPrevious>Back</button>
@@ -148,8 +144,8 @@
                     <button mat-button matStepperNext>Next</button>
                   }
                 </div>
-            </form>
-          </mat-step>
+              </form>
+            </mat-step>
           }
         </mat-stepper>
       </mat-card-content>

@@ -117,7 +117,7 @@ export class UpdateService {
 
       const data = await response.json();
       const validation = GitHubReleaseSchema.safeParse(data);
-      
+
       if (!validation.success) {
         throw new Error('Invalid response from GitHub API.');
       }

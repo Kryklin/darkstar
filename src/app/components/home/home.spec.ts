@@ -18,7 +18,7 @@ describe('Home', () => {
       onUpdateStatus: jasmine.createSpy('onUpdateStatus'),
       onInitiateUpdateCheck: jasmine.createSpy('onInitiateUpdateCheck'),
       setVersionLock: jasmine.createSpy('setVersionLock'),
-      checkIntegrity: jasmine.createSpy('checkIntegrity').and.returnValue(Promise.resolve(true))
+      checkIntegrity: jasmine.createSpy('checkIntegrity').and.returnValue(Promise.resolve(true)),
     };
 
     await TestBed.configureTestingModule({

@@ -38,8 +38,8 @@ export class Theme {
   selectedTheme = signal<ThemeDef>(this.getInitialTheme());
 
   private getInitialTheme(): ThemeDef {
-      const stored = localStorage.getItem('selectedTheme');
-      return this.availableThemes.find((t) => t.className === stored) || this.availableThemes[0];
+    const stored = localStorage.getItem('selectedTheme');
+    return this.availableThemes.find((t) => t.className === stored) || this.availableThemes[0];
   }
 
   constructor() {

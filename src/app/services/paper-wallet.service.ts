@@ -21,9 +21,9 @@ export class PaperWalletService {
   async generate(encryptedData: string, reverseKey: string, metadata: PaperWalletMetadata): Promise<void> {
     const timestamp = Date.now();
     await this.generateDocument('Part 1: Encrypted Payload', encryptedData, metadata, `darkstar-passport-payload-${timestamp}.pdf`);
-    
+
     if (reverseKey) {
-        await this.generateDocument('Part 2: Reverse Key', reverseKey, metadata, `darkstar-passport-key-${timestamp}.pdf`);
+      await this.generateDocument('Part 2: Reverse Key', reverseKey, metadata, `darkstar-passport-key-${timestamp}.pdf`);
     }
   }
 
@@ -49,7 +49,7 @@ export class PaperWalletService {
 
       doc.setFontSize(10);
       doc.text(new Date().toLocaleString(), pageWidth - margin, 20, { align: 'right' });
-      
+
       // Reset for content
       doc.setTextColor(0, 0, 0);
       y = 60;
@@ -71,54 +71,54 @@ export class PaperWalletService {
     const numChunks = Math.ceil(content.length / CHUNK_SIZE);
 
     for (let i = 0; i < numChunks; i++) {
-        const chunk = content.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-        try {
-            // Format for compatibility with the QrReceiver scanner component
-            const qrContent = `DS_QR|${i}|${numChunks}|${chunk}`;
+      const chunk = content.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      try {
+        // Format for compatibility with the QrReceiver scanner component
+        const qrContent = `DS_QR|${i}|${numChunks}|${chunk}`;
 
-            const qrDataUrl = await QRCode.toDataURL(qrContent, {
-                errorCorrectionLevel: 'M',
-                margin: 2,
-                width: 200
-            });
-            
-            const qrWidth = 40; // Rendered width on PDF in mm
-            
-            // Layout QR codes gracefully (maybe next to each other or wrapping)
-            // For simplicity, we'll draw them sequentially downwards, or in a grid
-            // Let's draw up to 3 side-by-side if there are multiple.
-            const codesPerRow = 4;
-            const xPos = margin + ((i % codesPerRow) * (qrWidth + 5));
-            
-            // Check if we need to move to a new line of QR codes
-            if (i > 0 && i % codesPerRow === 0) {
-                y += qrWidth + 5;
-            }
+        const qrDataUrl = await QRCode.toDataURL(qrContent, {
+          errorCorrectionLevel: 'M',
+          margin: 2,
+          width: 200,
+        });
 
-            // Check if we need a new page for QR codes
-            if (y + qrWidth > pageHeight - margin) {
-                doc.addPage();
-                addHeader();
-            }
+        const qrWidth = 40; // Rendered width on PDF in mm
 
-            doc.addImage(qrDataUrl, 'PNG', xPos, y, qrWidth, qrWidth);
-            
-            // If it's the last QR code in the loop, advance Y coordinate past the row
-            if (i === numChunks - 1) {
-                y += qrWidth + 10;
-            }
-        } catch (e) {
-            console.error('QR Gen Failed', e);
-            if (i === numChunks - 1) {
-              y += 10;
-            }
+        // Layout QR codes gracefully (maybe next to each other or wrapping)
+        // For simplicity, we'll draw them sequentially downwards, or in a grid
+        // Let's draw up to 3 side-by-side if there are multiple.
+        const codesPerRow = 4;
+        const xPos = margin + (i % codesPerRow) * (qrWidth + 5);
+
+        // Check if we need to move to a new line of QR codes
+        if (i > 0 && i % codesPerRow === 0) {
+          y += qrWidth + 5;
         }
+
+        // Check if we need a new page for QR codes
+        if (y + qrWidth > pageHeight - margin) {
+          doc.addPage();
+          addHeader();
+        }
+
+        doc.addImage(qrDataUrl, 'PNG', xPos, y, qrWidth, qrWidth);
+
+        // If it's the last QR code in the loop, advance Y coordinate past the row
+        if (i === numChunks - 1) {
+          y += qrWidth + 10;
+        }
+      } catch (e) {
+        console.error('QR Gen Failed', e);
+        if (i === numChunks - 1) {
+          y += 10;
+        }
+      }
     }
 
     // --- Write Raw Text Content ---
     doc.setFontSize(10);
     doc.setFont('courier', 'normal');
-    
+
     // Add secondary "Raw Text" header
     doc.setFont('helvetica', 'bold');
     doc.text('Raw Text Backup:', margin, y);
@@ -129,14 +129,15 @@ export class PaperWalletService {
     const lineHeight = 5;
 
     for (const line of splitText) {
-      if (y + lineHeight > pageHeight - margin - 50) { // Keep space for footer
+      if (y + lineHeight > pageHeight - margin - 50) {
+        // Keep space for footer
         doc.addPage();
         addHeader();
       }
       doc.text(line, margin, y);
       y += lineHeight;
     }
-    
+
     y += 10; // Spacing after section
 
     // --- Footer / Instructions ---
@@ -144,7 +145,7 @@ export class PaperWalletService {
       doc.addPage();
       addHeader();
     }
-    
+
     y += 10;
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(10);
@@ -153,7 +154,7 @@ export class PaperWalletService {
     const instructions = [
       'IMPORTANT RECOVERY INSTRUCTIONS:',
       `1. This document contains ${title}.`,
-      title.includes('Key') 
+      title.includes('Key')
         ? "2. To recover, you will need BOTH the 'Encrypted Payload' and this 'Reverse Key' document."
         : "2. To recover, you will need this 'Encrypted Payload' and your Encryption Password.",
       '3. Your Entropy/Master Password is NOT printed here.',
@@ -162,16 +163,15 @@ export class PaperWalletService {
     ];
 
     for (const line of instructions) {
-       if (y + 5 > pageHeight - margin) {
-          doc.addPage();
-          addHeader();
-       }
-       doc.text(line, margin, y);
-       y += 5;
+      if (y + 5 > pageHeight - margin) {
+        doc.addPage();
+        addHeader();
+      }
+      doc.text(line, margin, y);
+      y += 5;
     }
 
     // Save
     doc.save(filename);
   }
 }
-

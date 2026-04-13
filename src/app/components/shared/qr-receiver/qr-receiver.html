@@ -4,31 +4,27 @@
 
   <!-- Realtime Scan Overlay -->
   @if (isScanning()) {
-  <div class="scan-overlay">
-    <span>Data Transfer: {{ progress() | number:'1.0-0' }}%</span>
-    <div class="progress-bar">
-      <div class="progress-fill" [style.width.%]="progress()"></div>
+    <div class="scan-overlay">
+      <span>Data Transfer: {{ progress() | number: '1.0-0' }}%</span>
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="progress()"></div>
+      </div>
     </div>
-  </div>
   }
 
   <!-- Error State -->
   @if (scanError()) {
-  <div style="padding: 20px; color: #ff5252; text-align: center;">
-    <mat-icon style="margin-bottom: 8px;">error_outline</mat-icon>
-    <p>{{ scanError() }}</p>
-  </div>
+    <div style="padding: 20px; color: #ff5252; text-align: center">
+      <mat-icon style="margin-bottom: 8px">error_outline</mat-icon>
+      <p>{{ scanError() }}</p>
+    </div>
   }
 </div>
 
 <div class="cam-controls">
   @if (!isScanning()) {
-  <button mat-flat-button color="primary" (click)="startScanning()">
-    <mat-icon>videocam</mat-icon> Start Scanner
-  </button>
+    <button mat-flat-button color="primary" (click)="startScanning()"><mat-icon>videocam</mat-icon> Start Scanner</button>
   } @else {
-  <button mat-flat-button color="warn" (click)="stopScanning()">
-    <mat-icon>videocam_off</mat-icon> Cancel
-  </button>
+    <button mat-flat-button color="warn" (click)="stopScanning()"><mat-icon>videocam_off</mat-icon> Cancel</button>
   }
 </div>

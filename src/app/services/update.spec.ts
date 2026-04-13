@@ -12,7 +12,7 @@ describe('UpdateService', () => {
       setVersionLock: jasmine.createSpy('setVersionLock'),
       onUpdateStatus: jasmine.createSpy('onUpdateStatus'),
       onInitiateUpdateCheck: jasmine.createSpy('onInitiateUpdateCheck'),
-      restartAndInstall: jasmine.createSpy('restartAndInstall')
+      restartAndInstall: jasmine.createSpy('restartAndInstall'),
     };
 
     TestBed.configureTestingModule({

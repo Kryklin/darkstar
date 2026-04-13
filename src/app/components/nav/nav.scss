@@ -277,11 +277,11 @@ mat-nav-list {
 }
 
 .settings-cog {
-    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    &:hover {
-        transform: rotate(90deg);
-        color: var(--mat-sys-primary) !important;
-    }
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  &:hover {
+    transform: rotate(90deg);
+    color: var(--mat-sys-primary) !important;
+  }
 }
 
 .nav-divider {

@@ -1,103 +1,81 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="public/assets/img/logo-white.png">
-    <img src="public/assets/img/logo-black.png" alt="Darkstar Logo" width="220">
-  </picture>
-</p>
+# D-KASP: Mathematical & Systems Specification
 
-<p align="center">
-  <img src="https://img.shields.io/badge/version-3.0.0-blue" alt="Version"/>
-  <img src="https://img.shields.io/badge/Angular-v21.0.8-dd0031?logo=angular" alt="Angular"/>
-  <img src="https://img.shields.io/badge/Electron-v38.2.0-blue?logo=electron" alt="Electron"/>
-  <img src="https://img.shields.io/badge/TypeScript-v5.9.2-blue?logo=typescript" alt="TypeScript"/>
-  <img src="https://img.shields.io/badge/Go-v1.25.5-00ADD8?logo=go" alt="Go"/>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Rust-2021-000000?logo=rust" alt="Rust"/>
-  <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python" alt="Python"/>
-  <img src="https://img.shields.io/badge/Node.js-v19%2B-339933?logo=node.js" alt="Node.js"/>
-  <img src="https://img.shields.io/badge/docker-%230db7ed.svg?style=flat-square&logo=docker&logoColor=white" alt="Docker"/>
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="License"/>
-</p>
-
-# Darkstar D-KASP V8 (SPNA-Hardened) Security Architecture
-
-This document illustrates the internal workings of the Darkstar V8 Security System. It combines **D-KASP V8 SPNA Obfuscation**, **ML-KEM-1024 Post-Quantum Key Encapsulation**, and **AES-256-GCM Authenticated Encryption**.
-
-## 1. High-Level Workflow
-
-The system transforms sensitive data into secure, multi-layered opaque blobs bound to a cryptographic identity.
-
-```mermaid
-graph TD
-    User([User Input]) -->|Data + Password| Layers[Multi-Layer Protection]
-
-    subgraph Layers [Security Gauntlet]
-        Obf[D-KASP V8 SPNA Obfuscation Pipeline]
-        KEM[ML-KEM-1024 / NIST FIPS 203 Root of Trust]
-        AES[AES-256-GCM Authenticated Encryption]
-        Identity[Vault Identity Binding: Signature Key]
-    end
-
-    Layers -->|Encrypted Payload| Storage[(Device Storage)]
-```
+This document provides a formal technical breakdown of the **Deterministic-KASP (D-KASP)** cryptographic protocol. D-KASP is designed for high-diffusion data obfuscation and post-quantum identity binding.
 
 ---
 
-## 2. D-KASP V8: The SPNA Engine
+## 1. Post-Quantum Trust Anchor (ML-KEM-1024)
 
-The D-KASP (Darkstar Key-Agnostic Structural Permutation) engine applies a deterministic gauntlet of transformations to every word, driven by index-salted entropy.
+D-KASP utilizes **ML-KEM-1024** (Kyber-1024) as its primary root of trust. ML-KEM is a lattice-based key encapsulation mechanism standardized in NIST FIPS 203.
 
-### 2.1 The SPNA Gauntlet
-The V8 standard implements a **16-round, 64-layer balanced transformation pipeline**. Each round consists of four distinct cryptographic layers:
+- **Security Level**: NIST Level 5 (256-bit security parity).
+- **Core Mechanism**: Mod-LWE (Module Learning with Errors).
+- **Function**: Identity binding and shared-secret derivation for the symmetric gauntlet.
 
-1.  **S (Substitution)**: Bit-level confusion using S-Boxes and modular multiplication to destroy linear frequency.
-2.  **P (Permutation)**: Byte-level shuffling and positional movement within the word-space.
-3.  **N (Network)**: High-diffusion mixing using MatrixHill and GF(2^8) arithmetic to spread local entropy.
-4.  **A (Algebraic)**: Additive complexity using keyed XOR-summation and modular addition.
+### 1.1 Hardware-Unique Blending (HUB)
 
-### 2.2 Reverse Key & Interop
-- **Reverse Key**: A 16-bit Big-Endian packed binary string (Base64) that encodes the exact deobfuscation path.
-- **Interop Parity**: Use of deterministic schedules ensures that Rust, Go, Python, and Node.js cores produce bit-perfect identical ciphertexts.
+To ensure physical binding to the host machine, the ML-KEM Shared Secret ($SS$) is optionally blended with a machine-unique **Hardware ID** ($HWID$):
+
+$$Blended\_SS = SS \parallel HWID$$
 
 ---
 
-## 3. Cryptographic Primitives
+## 2. Key Derivation Function (KDF)
 
-- **ML-KEM-1024 (Kyber)**: NIST Level 5 post-quantum asymmetric key encapsulation for identity and root-of-trust.
-- **AES-256-GCM**: AEAD encryption providing built-in integrity and authenticity for the high-depth blobs.
-- **HMAC-Linked Fusion**: Payloads are authenticated using an HMAC-SHA256 tag linked to the ML-KEM shared secret.
+The system derives functional keys through a multi-stage SHA-256 and HMAC-SHA-256 chain to prevent key reuse.
 
----
-
-## 4. Hardware-Bound Protection
-
-Darkstar utilizes **Electron SafeStorage** to bind the Secure Vault to the host machine's OS-level security (DPAPI, Keychain, or KWallet).
-
-```mermaid
-graph TD
-    Data[Vault Records] --> AES[AES-256 Master Password]
-    AES --> Safe[Electron SafeStorage Layer]
-    Safe -->|Machine Locked| File[localStorage]
-```
+1.  **Cipher Key**: $K_c = \text{SHA256}(\text{"dkasp-cipher-key"} \parallel Blended\_SS)$
+2.  **HMAC Key**: $K_h = \text{SHA256}(\text{"dkasp-hmac-key"} \parallel Blended\_SS)$
+3.  **Chain State**: $S_{chain} = \text{SHA256}(\text{"dkasp-chain-"} \parallel \text{hex}(K_c))$
+4.  **Word Key**: $K_w = \text{HMAC-SHA256}(\text{hex}(K_c), \text{"dkasp-word-0"})$
 
 ---
 
-## 5. Security Hardening
+## 3. The SPNA Gauntlet (16 Rounds)
 
-- **Anti-Tamper Integrity**: The application hashes its own JS bundle on startup to detect malicious modifications.
-- **Anti-Forensic Memory**: Strict `Uint8Array` usage with explicit zeroing. All P2P services shutdown immediately upon vault locking.
-- **Verifiable Interop**: The `verify_interop.py` suite ensures engine stability through a 32-test gauntlet across all language targets.
+The SPNA (Substitution-Permutation-Network-Algebraic) gauntlet is a 16-round transformation engine designed for maximum diffusion and algebraic complexity.
+
+### 3.1 Round Structure
+
+Each round $i$ applies four layers sequentially:
+$$Round_i = Layer_A(Layer_N(Layer_P(Layer_S(\text{State}))))$$
+
+### 3.2 Transformation Catalog
+
+| Layer | Functional Group | Mathematical Operations                                                               |
+| :---- | :--------------- | :------------------------------------------------------------------------------------ |
+| **S** | **Substitution** | bit-level S-Boxes (4x4), Modular Multiplication ($\text{mod } 256$), Feistel network. |
+| **P** | **Permutation**  | Fisher-Yates P-Box shuffles, Cyclic Rotations, Columnar transformations.              |
+| **N** | **Network**      | MDS Matrix multiplication in $GF(2^8)$, Recursor XOR chains, Hill transformations.    |
+| **A** | **Algebraic**    | Keyed XOR-summation, Modular Addition, Bit-flipping.                                  |
+
+### 3.3 Deterministic Path Logic
+
+The selection of transformations within each group is governed by a **DarkstarChaChaPRNG** (seeded with $K_w$).
+
+- **Fixed Interval Substitution**: Rounds $i \equiv 0 \pmod 4$ and $i \equiv 2 \pmod 4$ use deterministic Substitution primitive selection to ensure baseline linear resistance.
+- **Random Path**: All other layers are selected pseudo-randomly from their respective groups in each implementation (Rust, Go, Node.js, Python), ensuring bit-perfect parity.
 
 ---
 
-## 6. Dashboard V3 Architecture
+## 4. Integrity & Enveloping
 
-The V3 update introduces a flattened navigation and a stateful toolbar to improve split-second decision-making and data visibility.
+D-KASP employs an AEAD-like integrity check using HMAC-SHA256.
 
-### 6.1 Unified Workspace
-All cryptographic tools (BIP39, SLIP39, Secure Notes) have been consolidated into a single workspace view, ensuring the security enclave remains focused and the user experience feels premimum and responsive.
+- **Payload**: $P = \text{Gauntlet}(Data)$
+- **Ciphertext**: $CT = \text{ML-KEM.Encapsulate}(pk)$
+- **Tag**: $T = \text{HMAC-SHA256}(K_h, CT \parallel P)$
 
-### 6.2 Persistent Vault View
-The Vault interface has been redesigned to be "Sticky." The note list is non-dismissible, ensuring the user always has a clear context of their stored secrets.
+The final versionless envelope is a flattened JSON object containing `data`, `ct`, and `mac`.
+
+---
+
+## 5. Security Properties
+
+### 5.1 Resistance to Linear Cryptanalysis
+
+The inclusion of fixed S-Box and MDS Network layers ensures that local input variations diffuse across the entire word-space within 3 rounds ($\text{Diffusion Rate} > 1.0$).
+
+### 5.2 Algebraic Complexity
+
+The combination of modular arithmetic and bitwise XORs ($ARX$ structure) creates high algebraic growth, preventing effective interpolation attacks using small rounds.

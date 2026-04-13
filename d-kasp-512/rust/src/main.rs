@@ -5,14 +5,14 @@ use ml_kem::{MlKem1024, MlKem1024Params, KemCore, EncodedSizeUser};
 use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
 
 /// D-KASP Cryptographic Suite
-/// 
-/// The definitive Darkstar Key-Agnostic Structural Permutation (D-KASP) implementation.
-/// - D: Darkstar ecosystem origin
-/// - K: ML-KEM-1024 (Kyber-1024) NIST Level 5 Root of Trust
-/// - A: Augmented 64-layer SPN/ARX transformation gauntlet
-/// - S: Sequential word-based path-logic
-/// - P: Permutation-based non-linear core
-/// - 1024: 256-bit Post-Quantum security parity
+///
+/// Definitive implementation of the Darkstar Key-Agnostic Structural Permutation (D-KASP) protocol.
+///
+/// - **D**: Darkstar ecosystem origin
+/// - **K**: ML-KEM-1024 (Kyber-1024) NIST Level 5 Root of Trust
+/// - **A**: Augmented 16-round SPNA/ARX transformation gauntlet
+/// - **S**: Sequential path-logic
+/// - **P**: Permutation-based non-linear core
 use serde_json;
 
 const SBOX: [u8; 256] = [
@@ -52,7 +52,9 @@ fn get_inv_sbox() -> [u8; 256] {
     inv
 }
 
-// --- PRNG ---
+/// Deterministic PRNG Implementation
+///
+/// Custom ChaCha20-based PRNG for cross-language bit-perfect path selection.
 
 struct DarkstarChaChaPRNG {
     state: [u32; 16],
@@ -122,7 +124,7 @@ impl ActivePRNG {
     fn next(&mut self) -> u32 { self.inner.next() }
 }
 
-// --- DarkstarCrypt ---
+/// Core D-KASP Cryptographic Controller
 
 type TransformationResult = Result<Vec<u8>, Box<dyn std::error::Error>>;
 type TransformationFn = fn(&[u8], Option<&[u8]>, &dyn Fn(&str) -> ActivePRNG) -> TransformationResult;
@@ -174,7 +176,7 @@ impl DarkstarCrypt {
         sum % 997
     }
 
-    // --- Transformations ---
+    /// Functional Transformation Primitives
     fn trans_sbox(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
         Ok(input.iter().map(|&b| SBOX[b as usize]).collect())
     }

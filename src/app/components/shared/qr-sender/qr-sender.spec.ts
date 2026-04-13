@@ -8,9 +8,8 @@ describe('QrSender', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [QrSender]
-    })
-    .compileComponents();
+      imports: [QrSender],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(QrSender);
     component = fixture.componentInstance;

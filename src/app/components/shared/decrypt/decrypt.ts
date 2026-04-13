@@ -61,7 +61,7 @@ export class SharedDecryptComponent {
       password: ['', Validators.required],
     });
 
-    this.firstFormGroup.controls['encryptedData'].valueChanges.subscribe(val => {
+    this.firstFormGroup.controls['encryptedData'].valueChanges.subscribe((val) => {
       try {
         if (val && val.trim().startsWith('{')) {
           const parsed = JSON.parse(val);
@@ -162,13 +162,13 @@ export class SharedDecryptComponent {
       reader.readAsText(file);
     }
   }
-  
+
   onQrScanned(payload: string) {
-      if (payload) {
-          this.firstFormGroup.controls['encryptedData'].setValue(payload);
-          this.showQrReceiver = false;
-          this.snackBar.open('Optical payload successfully received!', 'Close', { duration: 3000 });
-      }
+    if (payload) {
+      this.firstFormGroup.controls['encryptedData'].setValue(payload);
+      this.showQrReceiver = false;
+      this.snackBar.open('Optical payload successfully received!', 'Close', { duration: 3000 });
+    }
   }
 
   async copyFromClipboard(field: string) {
@@ -190,51 +190,51 @@ export class SharedDecryptComponent {
       let passwordOrSk = this.thirdFormGroup.controls['password'].value;
 
       if (this.isV5Payload) {
-          if (!this.vaultService.isUnlocked()) {
-              this.error = "Decryption failed: Vault is locked. ML-KEM-1024 Private Key is unavailable.";
-              this.showResult = true;
-              return;
-          }
-          const id = this.vaultService.identity();
-          if (!id || !id.pqcPrivateKey) {
-              this.error = "Decryption failed: Vault Identity does not contain a valid ML-KEM-1024 Private Key.";
-              this.showResult = true;
-              return;
-          }
-          // Convert Base64 PQC Private Key to Hex
-          const rawBody = atob(id.pqcPrivateKey);
-          let skHex = '';
-          for (let i = 0; i < rawBody.length; i++) {
-              const hex = rawBody.charCodeAt(i).toString(16);
-              skHex += (hex.length === 2 ? hex : '0' + hex);
-          }
-          passwordOrSk = skHex;
+        if (!this.vaultService.isUnlocked()) {
+          this.error = 'Decryption failed: Vault is locked. ML-KEM-1024 Private Key is unavailable.';
+          this.showResult = true;
+          return;
+        }
+        const id = this.vaultService.identity();
+        if (!id || !id.pqcPrivateKey) {
+          this.error = 'Decryption failed: Vault Identity does not contain a valid ML-KEM-1024 Private Key.';
+          this.showResult = true;
+          return;
+        }
+        // Convert Base64 PQC Private Key to Hex
+        const rawBody = atob(id.pqcPrivateKey);
+        let skHex = '';
+        for (let i = 0; i < rawBody.length; i++) {
+          const hex = rawBody.charCodeAt(i).toString(16);
+          skHex += hex.length === 2 ? hex : '0' + hex;
+        }
+        passwordOrSk = skHex;
       }
 
       if (this.useVaultSignature && this.vaultService.isUnlocked()) {
-          const id = this.vaultService.identity();
-          if (id && id.privateKey && id.privateKey.d) {
-              passwordOrSk = passwordOrSk + id.privateKey.d;
-          } else if (!this.isV5Payload) {
-              console.error("Failed to retrieve vault identity private key");
-              this.error = "Decryption failed: Unable to compute vault signature (Identity missing).";
-              this.showResult = true;
-              return;
-          }
+        const id = this.vaultService.identity();
+        if (id && id.privateKey && id.privateKey.d) {
+          passwordOrSk = passwordOrSk + id.privateKey.d;
+        } else if (!this.isV5Payload) {
+          console.error('Failed to retrieve vault identity private key');
+          this.error = 'Decryption failed: Unable to compute vault signature (Identity missing).';
+          this.showResult = true;
+          return;
+        }
       }
 
       let hwid: string | undefined = undefined;
 
       if (this.useHardwareId) {
-          const hwId = await this.vaultService.getHardwareId();
-          if (hwId) {
-              hwid = hwId;
-          } else {
-              console.error("Failed to retrieve Machine Hardware ID");
-              this.error = "Decryption failed: Unable to retrieve Machine Hardware ID from system.";
-              this.showResult = true;
-              return;
-          }
+        const hwId = await this.vaultService.getHardwareId();
+        if (hwId) {
+          hwid = hwId;
+        } else {
+          console.error('Failed to retrieve Machine Hardware ID');
+          this.error = 'Decryption failed: Unable to retrieve Machine Hardware ID from system.';
+          this.showResult = true;
+          return;
+        }
       }
 
       try {
@@ -243,7 +243,6 @@ export class SharedDecryptComponent {
 
         this.error = '';
         this.showResult = true;
-
       } catch (e: unknown) {
         let errorMessage = 'An error occurred';
         if (e instanceof Error) {

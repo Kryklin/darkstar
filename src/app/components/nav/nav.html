@@ -1,8 +1,5 @@
 <mat-sidenav-container class="sidenav-container" [hasBackdrop]="isMobile()">
-  <mat-sidenav #drawer class="sidenav" fixedInViewport 
-               [mode]="isMobile() ? 'over' : 'side'" 
-               [opened]="layoutService.sidenavOpen()" 
-               (openedChange)="layoutService.sidenavOpen.set($event)">
+  <mat-sidenav #drawer class="sidenav" fixedInViewport [mode]="isMobile() ? 'over' : 'side'" [opened]="layoutService.sidenavOpen()" (openedChange)="layoutService.sidenavOpen.set($event)">
     <div class="sidebar-content">
       <div class="sidebar-header-box">
         <img [src]="theme.logoSrc()" alt="DARKSTAR" class="sidebar-logo" />
@@ -61,7 +58,6 @@
 
         <div class="nav-divider"></div>
 
-
         <!-- About -->
         <a mat-list-item routerLink="/about" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
           <div class="nav-link-center">
@@ -80,20 +76,20 @@
 
       <!-- Vault Status Indicator (Moved to left) -->
       <div class="vault-status-badge" [class.unlocked]="vaultService.isUnlocked()" [class.missing]="!vaultService.exists()" routerLink="/vault">
-          <mat-icon>{{ !vaultService.exists() ? 'warning' : (vaultService.isUnlocked() ? 'lock_open' : 'lock') }}</mat-icon>
-          <span class="status-label">
-            {{ !vaultService.exists() ? 'No Vault Created' : (vaultService.isUnlocked() ? 'Vault Unlocked' : 'Vault Locked') }}
-          </span>
+        <mat-icon>{{ !vaultService.exists() ? 'warning' : vaultService.isUnlocked() ? 'lock_open' : 'lock' }}</mat-icon>
+        <span class="status-label">
+          {{ !vaultService.exists() ? 'No Vault Created' : vaultService.isUnlocked() ? 'Vault Unlocked' : 'Vault Locked' }}
+        </span>
       </div>
-      
+
       <span class="spacer"></span>
 
       <!-- Realtime Clock (Muted & Centeredish) -->
       <div class="toolbar-center-wrapper">
-          <div class="toolbar-clock">
-            <span class="time">{{ currentTime() | date:'HH:mm:ss' }}</span>
-            <span class="date">{{ currentTime() | date:'EEE, MMM d' }}</span>
-          </div>
+        <div class="toolbar-clock">
+          <span class="time">{{ currentTime() | date: 'HH:mm:ss' }}</span>
+          <span class="date">{{ currentTime() | date: 'EEE, MMM d' }}</span>
+        </div>
       </div>
 
       <span class="spacer"></span>

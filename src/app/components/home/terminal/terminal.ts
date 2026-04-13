@@ -21,7 +21,7 @@ interface TerminalLine {
   standalone: true,
   imports: [CommonModule, FormsModule, MatIconModule, DragDropModule],
   templateUrl: './terminal.html',
-  styleUrls: ['./terminal.scss']
+  styleUrls: ['./terminal.scss'],
 })
 export class TerminalComponent implements OnInit, AfterViewChecked {
   @Output() terminalClosed = new EventEmitter<void>();
@@ -38,7 +38,6 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
   history: TerminalLine[] = [];
   commandHistory: string[] = [];
   historyIndex = -1;
-
 
   isGameActive = false;
   zorkEngine: ZorkEngine | null = null;
@@ -94,16 +93,16 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
     if (event.key === 'Enter') {
       const command = this.currentInput.trim();
       this.currentInput = '';
-      
+
       if (command) {
         this.history.push({ text: command, isCommand: true });
-        
+
         if (this.isGameActive) {
-            await this.handleGameCommand(command);
+          await this.handleGameCommand(command);
         } else {
-            this.commandHistory.push(command);
-            this.historyIndex = this.commandHistory.length;
-            await this.processCommand(command);
+          this.commandHistory.push(command);
+          this.historyIndex = this.commandHistory.length;
+          await this.processCommand(command);
         }
       }
     } else if (event.key === 'ArrowUp') {
@@ -128,23 +127,23 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
       this.history.push({ text: this.currentInput + '^C', isCommand: true });
       this.currentInput = '';
       if (this.isGameActive) {
-          this.isGameActive = false;
-          this.history.push({ text: 'Exiting ZORK session...', isCommand: false });
+        this.isGameActive = false;
+        this.history.push({ text: 'Exiting ZORK session...', isCommand: false });
       }
     }
   }
 
   private async handleGameCommand(input: string) {
-      if (input.toLowerCase() === 'quit' || input.toLowerCase() === 'exit') {
-          this.isGameActive = false;
-          this.history.push({ text: 'You step out of the shadows. Exiting ZORK...', isCommand: false });
-          return;
-      }
+    if (input.toLowerCase() === 'quit' || input.toLowerCase() === 'exit') {
+      this.isGameActive = false;
+      this.history.push({ text: 'You step out of the shadows. Exiting ZORK...', isCommand: false });
+      return;
+    }
 
-      const results = this.zorkEngine!.processInput(input);
-      results.forEach(line => {
-          this.history.push({ text: line, isCommand: false });
-      });
+    const results = this.zorkEngine!.processInput(input);
+    results.forEach((line) => {
+      this.history.push({ text: line, isCommand: false });
+    });
   }
 
   private async processCommand(commandLine: string) {
@@ -188,7 +187,7 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
             const vaultId = this.vaultService.identity();
             let fingerprint = 'unknown';
             if (vaultId && vaultId.publicKey && vaultId.publicKey.x) {
-                fingerprint = vaultId.publicKey.x.substring(0, 32);
+              fingerprint = vaultId.publicKey.x.substring(0, 32);
             }
             this.history.push({ text: 'Status: IDENTITY_LOADED', isCommand: false, isSuccess: true });
             this.history.push({ text: `Vault Fingerprint: ${fingerprint}...`, isCommand: false });
@@ -233,43 +232,43 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
 
     // Look for hardware ID flags (remove them from the message body)
     const hwFlags = ['--hardware-id', '-hw'];
-    messageArgs = messageArgs.filter(arg => {
-        if (hwFlags.includes(arg.toLowerCase())) {
-            useHardwareId = true;
-            return false;
-        }
-        return true;
+    messageArgs = messageArgs.filter((arg) => {
+      if (hwFlags.includes(arg.toLowerCase())) {
+        useHardwareId = true;
+        return false;
+      }
+      return true;
     });
 
     if (messageArgs.length === 0) {
-        this.history.push({ text: 'Usage: encrypt <message> [--hardware-id | -hw]', isCommand: false });
-        return;
+      this.history.push({ text: 'Usage: encrypt <message> [--hardware-id | -hw]', isCommand: false });
+      return;
     }
 
     const message = messageArgs.join(' ');
     try {
       this.history.push({ text: 'Encrypting payload with Master Identity Obfuscation Engine...', isCommand: false });
-      
+
       let password = this.vaultService.getMasterKey()!;
       const id = this.vaultService.identity();
       if (id && id.privateKey && id.privateKey.d) {
-          password += id.privateKey.d;
+        password += id.privateKey.d;
       } else {
-          throw new Error('Vault identity missing. Cannot generate bound signature.');
+        throw new Error('Vault identity missing. Cannot generate bound signature.');
       }
-      
+
       if (useHardwareId) {
-          this.history.push({ text: 'Applying Machine Hardware ID binding...', isCommand: false });
-          const hwId = await this.vaultService.getHardwareId();
-          if (hwId) {
-              password += hwId;
-          } else {
-              throw new Error('Failed to retrieve Machine Hardware ID');
-          }
+        this.history.push({ text: 'Applying Machine Hardware ID binding...', isCommand: false });
+        const hwId = await this.vaultService.getHardwareId();
+        if (hwId) {
+          password += hwId;
+        } else {
+          throw new Error('Failed to retrieve Machine Hardware ID');
+        }
       }
-      
+
       const { encryptedData, reverseKey } = await this.cryptService.encrypt(message, password);
-      
+
       this.history.push({ text: '--- OBFUSCATED PAYLOAD ---', isCommand: false, isSuccess: true });
       this.history.push({ text: encryptedData, isCommand: false });
       this.history.push({ text: '--- REVERSE KEY (REQUIRED FOR DECRYPTION) ---', isCommand: false, isSuccess: true });
@@ -297,17 +296,17 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
 
     // Look for hardware ID flags (remove them from the arg array)
     const hwFlags = ['--hardware-id', '-hw'];
-    cmdArgs = cmdArgs.filter(arg => {
-        if (hwFlags.includes(arg.toLowerCase())) {
-            useHardwareId = true;
-            return false;
-        }
-        return true;
+    cmdArgs = cmdArgs.filter((arg) => {
+      if (hwFlags.includes(arg.toLowerCase())) {
+        useHardwareId = true;
+        return false;
+      }
+      return true;
     });
 
     if (cmdArgs.length < 2) {
-        this.history.push({ text: 'Usage: decrypt <payload> <reverseKey> [--hardware-id | -hw]', isCommand: false });
-        return;
+      this.history.push({ text: 'Usage: decrypt <payload> <reverseKey> [--hardware-id | -hw]', isCommand: false });
+      return;
     }
 
     const reverseKey = cmdArgs.pop()!;
@@ -315,27 +314,27 @@ export class TerminalComponent implements OnInit, AfterViewChecked {
 
     try {
       this.history.push({ text: 'Attempting de-obfuscation with loaded identities...', isCommand: false });
-      
+
       let password = this.vaultService.getMasterKey()!;
       const id = this.vaultService.identity();
       if (id && id.privateKey && id.privateKey.d) {
-          password += id.privateKey.d;
+        password += id.privateKey.d;
       } else {
-          throw new Error('Vault identity missing. Cannot generate bound signature.');
+        throw new Error('Vault identity missing. Cannot generate bound signature.');
       }
-      
+
       if (useHardwareId) {
-          this.history.push({ text: 'Verifying Machine Hardware ID binding...', isCommand: false });
-          const hwId = await this.vaultService.getHardwareId();
-          if (hwId) {
-              password += hwId;
-          } else {
-              throw new Error('Failed to retrieve Machine Hardware ID');
-          }
+        this.history.push({ text: 'Verifying Machine Hardware ID binding...', isCommand: false });
+        const hwId = await this.vaultService.getHardwareId();
+        if (hwId) {
+          password += hwId;
+        } else {
+          throw new Error('Failed to retrieve Machine Hardware ID');
+        }
       }
-      
+
       const decryptedResult = await this.cryptService.decrypt(payload, reverseKey, password);
-      
+
       this.history.push({ text: '--- DECRYPTED MESSAGE ---', isCommand: false, isSuccess: true });
       this.history.push({ text: decryptedResult.decrypted, isCommand: false });
       this.history.push({ text: '-------------------------', isCommand: false, isSuccess: true });

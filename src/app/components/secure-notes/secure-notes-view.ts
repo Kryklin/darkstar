@@ -24,10 +24,12 @@ import { SecureNotesDecrypt } from './decrypt';
       </mat-tab-group>
     </div>
   `,
-  styles: [`
-    :host {
-      display: block;
-    }
-  `]
+  styles: [
+    `
+      :host {
+        display: block;
+      }
+    `,
+  ],
 })
 export class SecureNotesView {}

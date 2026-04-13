@@ -8,9 +8,8 @@ describe('QrReceiver', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [QrReceiver]
-    })
-    .compileComponents();
+      imports: [QrReceiver],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(QrReceiver);
     component = fixture.componentInstance;

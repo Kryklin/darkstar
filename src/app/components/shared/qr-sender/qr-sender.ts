@@ -18,7 +18,7 @@ import { Subscription, interval } from 'rxjs';
       padding: 20px;
       background: white;
       border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
       margin: 20px 0;
     }
     .main-qr {
@@ -41,58 +41,57 @@ import { Subscription, interval } from 'rxjs';
 })
 export class QrSender implements OnInit, OnDestroy {
   @Input() payload = '';
-  
+
   private qrService = inject(QrProtocolService);
   private timerSub?: Subscription;
-  
+
   public chunks: string[] = [];
   public currentFrame = signal(0);
   public isPlaying = signal(false);
   public fps = signal(10);
-  
+
   async ngOnInit() {
-      if (this.payload) {
-          try {
-              this.chunks = await this.qrService.generateQrChunks(this.payload);
-              // Start automatically if there is payload
-              if (this.chunks.length > 0) {
-                  this.togglePlayback();
-              }
-          } catch (e: unknown) {
-              console.error('Failed to init QR chunks', e);
-          }
+    if (this.payload) {
+      try {
+        this.chunks = await this.qrService.generateQrChunks(this.payload);
+        // Start automatically if there is payload
+        if (this.chunks.length > 0) {
+          this.togglePlayback();
+        }
+      } catch (e: unknown) {
+        console.error('Failed to init QR chunks', e);
       }
+    }
   }
-  
+
   ngOnDestroy() {
-      this.stop();
+    this.stop();
   }
-  
+
   togglePlayback() {
-      if (this.isPlaying()) {
-          this.stop();
-      } else {
-          this.play();
-      }
+    if (this.isPlaying()) {
+      this.stop();
+    } else {
+      this.play();
+    }
   }
-  
+
   play() {
-      if (this.chunks.length === 0) return;
-      
-      this.isPlaying.set(true);
-      const msPerFrame = Math.floor(1000 / this.fps());
-      
-      this.timerSub = interval(msPerFrame).subscribe(() => {
-          this.currentFrame.update(f => (f + 1) % this.chunks.length);
-      });
+    if (this.chunks.length === 0) return;
+
+    this.isPlaying.set(true);
+    const msPerFrame = Math.floor(1000 / this.fps());
+
+    this.timerSub = interval(msPerFrame).subscribe(() => {
+      this.currentFrame.update((f) => (f + 1) % this.chunks.length);
+    });
   }
-  
+
   stop() {
-      this.isPlaying.set(false);
-      if (this.timerSub) {
-          this.timerSub.unsubscribe();
-          this.timerSub = undefined;
-      }
+    this.isPlaying.set(false);
+    if (this.timerSub) {
+      this.timerSub.unsubscribe();
+      this.timerSub = undefined;
+    }
   }
 }
-

@@ -79,10 +79,16 @@
               <mat-select [(ngModel)]="dkaspEngine">
                 <mat-select-trigger>
                   <div class="engine-option-trigger">
-                    @if (dkaspEngine === 'rust') { <i class="devicon-rust-plain colored"></i> }
-                    @if (dkaspEngine === 'go') { <i class="devicon-go-plain colored"></i> }
-                    @if (dkaspEngine === 'node') { <i class="devicon-nodejs-plain colored"></i> }
-                    <span style="margin-left: 8px; text-transform: capitalize;">{{ dkaspEngine === 'node' ? 'Node.js' : dkaspEngine }}</span>
+                    @if (dkaspEngine === 'rust') {
+                      <i class="devicon-rust-plain colored"></i>
+                    }
+                    @if (dkaspEngine === 'go') {
+                      <i class="devicon-go-plain colored"></i>
+                    }
+                    @if (dkaspEngine === 'node') {
+                      <i class="devicon-nodejs-plain colored"></i>
+                    }
+                    <span style="margin-left: 8px; text-transform: capitalize">{{ dkaspEngine === 'node' ? 'Node.js' : dkaspEngine }}</span>
                   </div>
                 </mat-select-trigger>
                 <mat-option value="rust">
@@ -110,9 +116,7 @@
           <div class="setting-row">
             <div class="setting-label">
               <span class="title">Duress / Panic Mode</span>
-              <span class="description">
-                Set a specific password that will <strong>permanently destroy</strong> your vault if entered.
-              </span>
+              <span class="description"> Set a specific password that will <strong>permanently destroy</strong> your vault if entered. </span>
             </div>
             <div class="duress-controls">
               @if (duressService.isDuressConfigured()) {
@@ -121,7 +125,7 @@
               } @else {
                 <mat-form-field subscriptSizing="dynamic">
                   <mat-label>Panic Password</mat-label>
-                  <input matInput type="password" [(ngModel)]="duressPassword">
+                  <input matInput type="password" [(ngModel)]="duressPassword" />
                 </mat-form-field>
                 <button mat-flat-button color="warn" [disabled]="!duressPassword" (click)="setDuress()">Set</button>
               }
@@ -135,7 +139,7 @@
             <div class="setting-row">
               <div class="setting-label">
                 <span class="title">Enforce Biometric Unlock</span>
-                <span class="description" style="color: var(--mat-sys-error); font-weight: 500;">
+                <span class="description" style="color: var(--mat-sys-error); font-weight: 500">
                   CRITICAL: Disables the master password field entirely. Ensure your hardware is active to avoid lockout.
                 </span>
               </div>
@@ -149,12 +153,12 @@
               <span class="description">Require an authenticator app code to unlock your vault</span>
             </div>
             <div class="duress-controls">
-               @if (isTotpEnabled) {
-                   <span class="status-badge success">Enabled</span>
-                   <button mat-stroked-button color="warn" (click)="toggleTotp()">Disable</button>
-               } @else {
-                   <button mat-flat-button color="primary" (click)="toggleTotp()">Set Up 2FA</button>
-               }
+              @if (isTotpEnabled) {
+                <span class="status-badge success">Enabled</span>
+                <button mat-stroked-button color="warn" (click)="toggleTotp()">Disable</button>
+              } @else {
+                <button mat-flat-button color="primary" (click)="toggleTotp()">Set Up 2FA</button>
+              }
             </div>
           </div>
 
@@ -164,19 +168,19 @@
               <span class="description">Use {{ authName }} to unlock your vault on this device</span>
             </div>
             <div class="duress-controls">
-               @if (isBiometricEnabled) {
-                   <span class="status-badge success">Enabled</span>
-                   <button mat-stroked-button color="warn" (click)="toggleBiometrics()">Disable</button>
-               } @else {
-                   <button mat-flat-button color="primary" [disabled]="isRegisteringBiometrics" (click)="toggleBiometrics()">
-                      @if (!isRegisteringBiometrics) {
-                          <span>Enable {{ authName }}</span>
-                      }
-                      @if (isRegisteringBiometrics) {
-                          <mat-spinner diameter="20"></mat-spinner>
-                      }
-                   </button>
-               }
+              @if (isBiometricEnabled) {
+                <span class="status-badge success">Enabled</span>
+                <button mat-stroked-button color="warn" (click)="toggleBiometrics()">Disable</button>
+              } @else {
+                <button mat-flat-button color="primary" [disabled]="isRegisteringBiometrics" (click)="toggleBiometrics()">
+                  @if (!isRegisteringBiometrics) {
+                    <span>Enable {{ authName }}</span>
+                  }
+                  @if (isRegisteringBiometrics) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  }
+                </button>
+              }
             </div>
           </div>
 
@@ -186,19 +190,19 @@
               <span class="description">Use a YubiKey or FIDO2 device to unlock your vault</span>
             </div>
             <div class="duress-controls">
-               @if (isHardwareKeyEnabled) {
-                   <span class="status-badge success">Linked</span>
-                   <button mat-stroked-button color="warn" (click)="toggleHardwareKey()">Unlink</button>
-               } @else {
-                   <button mat-flat-button color="primary" [disabled]="isRegisteringHardwareKey" (click)="toggleHardwareKey()">
-                      @if (!isRegisteringHardwareKey) {
-                          <span>Register YubiKey</span>
-                      }
-                      @if (isRegisteringHardwareKey) {
-                          <mat-spinner diameter="20"></mat-spinner>
-                      }
-                   </button>
-               }
+              @if (isHardwareKeyEnabled) {
+                <span class="status-badge success">Linked</span>
+                <button mat-stroked-button color="warn" (click)="toggleHardwareKey()">Unlink</button>
+              } @else {
+                <button mat-flat-button color="primary" [disabled]="isRegisteringHardwareKey" (click)="toggleHardwareKey()">
+                  @if (!isRegisteringHardwareKey) {
+                    <span>Register YubiKey</span>
+                  }
+                  @if (isRegisteringHardwareKey) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  }
+                </button>
+              }
             </div>
           </div>
         </section>

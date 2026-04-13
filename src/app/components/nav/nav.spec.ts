@@ -15,7 +15,7 @@ describe('Nav', () => {
     (window as any).electronAPI = {
       onUpdateStatus: jasmine.createSpy('onUpdateStatus'),
       onInitiateUpdateCheck: jasmine.createSpy('onInitiateUpdateCheck'),
-      setVersionLock: jasmine.createSpy('setVersionLock')
+      setVersionLock: jasmine.createSpy('setVersionLock'),
     };
 
     await TestBed.configureTestingModule({

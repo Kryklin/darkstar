@@ -37,11 +37,7 @@ export class Nav {
     }, 1000);
   }
 
-  isMobile = toSignal(
-    this.breakpointObserver.observe([Breakpoints.Handset, Breakpoints.TabletPortrait, '(max-width: 768px)'])
-      .pipe(map(result => result.matches)),
-    { initialValue: false }
-  );
+  isMobile = toSignal(this.breakpointObserver.observe([Breakpoints.Handset, Breakpoints.TabletPortrait, '(max-width: 768px)']).pipe(map((result) => result.matches)), { initialValue: false });
 
   isElectron = !!window.electronAPI;
   sidenavMode: MatDrawerMode = 'over';

@@ -8,23 +8,18 @@ console.log('🚀 Starting Dev Environment directly...');
 // "concurrently -k --success first \"ng serve\" \"wait-on http://localhost:4200 && node scripts/dev-wrapper.js\""
 
 const cmd = 'concurrently';
-const args = [
-    '-k',
-    '--success', 'first',
-    '"ng serve"',
-    '"wait-on http://localhost:4200 && node scripts/dev-wrapper.js"'
-];
+const args = ['-k', '--success', 'first', '"ng serve"', '"wait-on http://localhost:4200 && node scripts/dev-wrapper.js"'];
 
 // We need to run this in a shell for the quoted args to work right with concurrently or just run it via npx/npm exec
 // Easiest is to run as a single shell command string if possible, or use npm exec.
 
 // Let's rely on npm to find concurrently.
 const child = spawn('npx', [cmd, ...args], {
-    stdio: 'inherit',
-    shell: true,
-    cwd: path.resolve(__dirname, '..')
+  stdio: 'inherit',
+  shell: true,
+  cwd: path.resolve(__dirname, '..'),
 });
 
 child.on('error', (err) => {
-    console.error('Failed to start:', err);
+  console.error('Failed to start:', err);
 });

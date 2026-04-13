@@ -52,14 +52,14 @@ def main():
     
     print(f"Decryption Output: '{decrypt_out.strip()}'")
     
-    print("\n--- Step 4: Node Decrypt ---")
-    with open(os.path.join(node_dir, "interop.json"), "w") as f:
+    print("\n--- Step 5: Python Decrypt ---")
+    with open(os.path.join(node_dir, "..", "python", "interop.json"), "w") as f:
         f.write(enc_payload)
-    node_out = run_cmd(f'node darkstar_crypt.js decrypt "@interop.json" {sk} --hwid {hwid}', node_dir)
-    if not node_out: return
-    print(f"Node Decryption Output: '{node_out.strip()}'")
+    python_out = run_cmd(f'python darkstar_crypt.py decrypt "@interop.json" {sk}', os.path.join(node_dir, "..", "python"))
+    if not python_out: return
+    print(f"Python Decryption Output: '{python_out.strip()}'")
 
-    if decrypt_out.strip() == mnemonic and node_out.strip() == mnemonic:
+    if decrypt_out.strip() == mnemonic and node_out.strip() == mnemonic and python_out.strip() == mnemonic:
         print("\nINTEROP RESULT: ALL PASSED (Bit-Perfect Cross-Engine Match)")
     else:
         print("\nINTEROP RESULT: FAILED (Mismatch)")

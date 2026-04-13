@@ -13,7 +13,6 @@ import { TotpSetup } from './totp-setup/totp-setup';
 import { BackupConfig } from './backup-config/backup-config';
 import { BiometricService } from '../../services/biometric.service';
 
-
 @Component({
   selector: 'app-settings',
   standalone: true,
@@ -35,31 +34,31 @@ export class Settings implements OnInit {
   isElectron = !!window.electronAPI;
   isWindows = this.isElectron && window.electronAPI.getPlatform() === 'win32';
   duressPassword = '';
-  
+
   isRegisteringBiometrics = false;
   isRegisteringHardwareKey = false;
-  
+
   // Computed or simple getter for biometric state
   get isBiometricEnabled(): boolean {
-      return !!localStorage.getItem('biometric_credential_id');
+    return !!localStorage.getItem('biometric_credential_id');
   }
 
   get isHardwareKeyEnabled(): boolean {
-      return !!localStorage.getItem('hardware_key_credential_id');
+    return !!localStorage.getItem('hardware_key_credential_id');
   }
 
   get authName(): string {
-      return this.biometricService.getDeviceAuthName();
+    return this.biometricService.getDeviceAuthName();
   }
 
   resolvedBackupPath = '';
 
   get isBiometricForced(): boolean {
-      return this.vaultService.isBiometricForced();
+    return this.vaultService.isBiometricForced();
   }
 
   set isBiometricForced(value: boolean) {
-      this.vaultService.setBiometricForce(value);
+    this.vaultService.setBiometricForce(value);
   }
 
   get dkaspEngine(): string {
@@ -71,69 +70,69 @@ export class Settings implements OnInit {
   }
 
   ngOnInit() {
-      if (this.isElectron) {
-          this.updateResolvedBackupPath();
-      }
+    if (this.isElectron) {
+      this.updateResolvedBackupPath();
+    }
   }
 
   async updateResolvedBackupPath() {
-      if (this.backupService.backupPath()) {
-          this.resolvedBackupPath = this.backupService.backupPath();
-      } else {
-          this.resolvedBackupPath = await window.electronAPI.getDefaultBackupPath();
-      }
+    if (this.backupService.backupPath()) {
+      this.resolvedBackupPath = this.backupService.backupPath();
+    } else {
+      this.resolvedBackupPath = await window.electronAPI.getDefaultBackupPath();
+    }
   }
 
   async toggleBiometrics() {
-      if (this.isBiometricEnabled) {
-          // Disable
-          localStorage.removeItem('biometric_credential_id');
-          localStorage.removeItem('biometric_enc_pass');
-          this.openDialog('Success', `${this.authName} unlock has been disabled.`, [{ label: 'OK', value: true }]);
-      } else {
-          // Enable
-          this.isRegisteringBiometrics = true;
-          try {
-              const key = this.vaultService.getMasterKey();
-              const result = await this.vaultService.registerBiometricsForSession(key);
-              if (result) {
-                  this.openDialog('Success', `${this.authName} enabled for this device.`, [{ label: 'OK', value: true }]);
-              } else {
-                 this.openDialog('Error', `Failed to register ${this.authName}. Please ensure it is set up on your device.`, [{ label: 'OK', value: true }]); 
-              }
-          } catch {
-              this.openDialog('Error', 'Vault is locked or internal error.', [{ label: 'OK', value: true }]);
-          } finally {
-              this.isRegisteringBiometrics = false;
-          }
+    if (this.isBiometricEnabled) {
+      // Disable
+      localStorage.removeItem('biometric_credential_id');
+      localStorage.removeItem('biometric_enc_pass');
+      this.openDialog('Success', `${this.authName} unlock has been disabled.`, [{ label: 'OK', value: true }]);
+    } else {
+      // Enable
+      this.isRegisteringBiometrics = true;
+      try {
+        const key = this.vaultService.getMasterKey();
+        const result = await this.vaultService.registerBiometricsForSession(key);
+        if (result) {
+          this.openDialog('Success', `${this.authName} enabled for this device.`, [{ label: 'OK', value: true }]);
+        } else {
+          this.openDialog('Error', `Failed to register ${this.authName}. Please ensure it is set up on your device.`, [{ label: 'OK', value: true }]);
+        }
+      } catch {
+        this.openDialog('Error', 'Vault is locked or internal error.', [{ label: 'OK', value: true }]);
+      } finally {
+        this.isRegisteringBiometrics = false;
       }
+    }
   }
 
   async toggleHardwareKey() {
-      if (this.isHardwareKeyEnabled) {
-          localStorage.removeItem('hardware_key_credential_id');
-          this.openDialog('Success', 'Hardware Key (YubiKey) has been unlinked.', [{ label: 'OK', value: true }]);
-      } else {
-          this.isRegisteringHardwareKey = true;
-          try {
-              const key = this.vaultService.getMasterKey();
-              const success = await this.vaultService.registerHardwareKey(key);
-               if (success) {
-                  this.openDialog('Success', 'Hardware Key (YubiKey) registered successfully.', [{ label: 'OK', value: true }]);
-              } else {
-                 this.openDialog('Error', 'Failed to register Hardware Key. Ensure it is plugged in.', [{ label: 'OK', value: true }]); 
-              }
-          } catch {
-               this.openDialog('Error', 'Vault is locked or internal error.', [{ label: 'OK', value: true }]);
-          } finally {
-               this.isRegisteringHardwareKey = false;
-          }
+    if (this.isHardwareKeyEnabled) {
+      localStorage.removeItem('hardware_key_credential_id');
+      this.openDialog('Success', 'Hardware Key (YubiKey) has been unlinked.', [{ label: 'OK', value: true }]);
+    } else {
+      this.isRegisteringHardwareKey = true;
+      try {
+        const key = this.vaultService.getMasterKey();
+        const success = await this.vaultService.registerHardwareKey(key);
+        if (success) {
+          this.openDialog('Success', 'Hardware Key (YubiKey) registered successfully.', [{ label: 'OK', value: true }]);
+        } else {
+          this.openDialog('Error', 'Failed to register Hardware Key. Ensure it is plugged in.', [{ label: 'OK', value: true }]);
+        }
+      } catch {
+        this.openDialog('Error', 'Vault is locked or internal error.', [{ label: 'OK', value: true }]);
+      } finally {
+        this.isRegisteringHardwareKey = false;
       }
+    }
   }
 
   setDuress() {
     if (!this.duressPassword) return;
-    
+
     // Warn user
     const ref = this.dialog.open(GenericDialog, {
       data: {
@@ -162,60 +161,60 @@ export class Settings implements OnInit {
   }
 
   get isTotpEnabled(): boolean {
-      return !!this.vaultService.totpSecret();
+    return !!this.vaultService.totpSecret();
   }
 
   openBackupConfig() {
-      const ref = this.dialog.open(BackupConfig, {
-          width: '500px'
-      });
-      ref.afterClosed().subscribe(() => {
-          this.updateResolvedBackupPath();
-      });
+    const ref = this.dialog.open(BackupConfig, {
+      width: '500px',
+    });
+    ref.afterClosed().subscribe(() => {
+      this.updateResolvedBackupPath();
+    });
   }
 
   restoreBackup() {
-      const ref = this.dialog.open(GenericDialog, {
-          data: {
-              title: 'Restore Secure Vault',
-              message: 'WARNING: Importing a backup will permanently overwrite your current live vault data. Any changes made since that backup will be lost. Are you sure you wish to proceed?',
-              buttons: [
-                  { label: 'Cancel', value: false },
-                  { label: 'Proceed & Restore', value: true, color: 'warn' },
-              ],
-          },
-          width: '450px',
-      });
+    const ref = this.dialog.open(GenericDialog, {
+      data: {
+        title: 'Restore Secure Vault',
+        message: 'WARNING: Importing a backup will permanently overwrite your current live vault data. Any changes made since that backup will be lost. Are you sure you wish to proceed?',
+        buttons: [
+          { label: 'Cancel', value: false },
+          { label: 'Proceed & Restore', value: true, color: 'warn' },
+        ],
+      },
+      width: '450px',
+    });
 
-      ref.afterClosed().subscribe(async (result: boolean | undefined) => {
-          if (result) {
-              const res = await this.backupService.validateAndRestoreBackup();
-              if (!res.success) {
-                  this.openDialog('Restoration Failed', res.message, [{ label: 'OK', value: true }]);
-              }
-          }
-      });
+    ref.afterClosed().subscribe(async (result: boolean | undefined) => {
+      if (result) {
+        const res = await this.backupService.validateAndRestoreBackup();
+        if (!res.success) {
+          this.openDialog('Restoration Failed', res.message, [{ label: 'OK', value: true }]);
+        }
+      }
+    });
   }
 
   toggleTotp() {
-      if (this.isTotpEnabled) {
-          // Disable
-          this.vaultService.disableTotp();
-          this.openDialog('Success', 'Two-Factor Authentication (TOTP) has been disabled.', [{ label: 'OK', value: true }]);
-      } else {
-          // Enable Dialog
-          const ref = this.dialog.open(TotpSetup, {
-              width: '400px',
-              disableClose: true
-          });
+    if (this.isTotpEnabled) {
+      // Disable
+      this.vaultService.disableTotp();
+      this.openDialog('Success', 'Two-Factor Authentication (TOTP) has been disabled.', [{ label: 'OK', value: true }]);
+    } else {
+      // Enable Dialog
+      const ref = this.dialog.open(TotpSetup, {
+        width: '400px',
+        disableClose: true,
+      });
 
-          ref.afterClosed().subscribe((secret: string | null) => {
-              if (secret) {
-                  this.vaultService.enableTotp(secret);
-                  this.openDialog('Success', 'Two-Factor Authentication enabled.', [{ label: 'OK', value: true }]);
-              }
-          });
-      }
+      ref.afterClosed().subscribe((secret: string | null) => {
+        if (secret) {
+          this.vaultService.enableTotp(secret);
+          this.openDialog('Success', 'Two-Factor Authentication enabled.', [{ label: 'OK', value: true }]);
+        }
+      });
+    }
   }
 
   compareThemes(t1: ThemeDef, t2: ThemeDef): boolean {

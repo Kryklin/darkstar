@@ -30,7 +30,7 @@ export class VaultAuthComponent implements OnInit {
 
   isElectron = !!window.electronAPI;
   isWindows = this.isElectron && window.electronAPI.getPlatform() === 'win32';
-  
+
   // TOTP State
   requiresTotp = false;
   totpCode = '';
@@ -49,20 +49,21 @@ export class VaultAuthComponent implements OnInit {
 
   ngOnInit() {
     if (localStorage.getItem('vault_recovered_notice') === 'true') {
-        localStorage.removeItem('vault_recovered_notice');
-        this.dialog.open(GenericDialog, {
-            data: {
-                title: 'Vault Data Recovered',
-                message: 'We apologize for the inconvenience—due to a secure origin update, your vault data may have appeared missing. We have successfully located and recovered your data. \n\nIf you still find data is missing, please use the "Restore from Backup" utility found in Settings.',
-                buttons: [{ label: 'I Understand', value: true }]
-            },
-            width: '450px'
-        });
+      localStorage.removeItem('vault_recovered_notice');
+      this.dialog.open(GenericDialog, {
+        data: {
+          title: 'Vault Data Recovered',
+          message:
+            'We apologize for the inconvenience—due to a secure origin update, your vault data may have appeared missing. We have successfully located and recovered your data. \n\nIf you still find data is missing, please use the "Restore from Backup" utility found in Settings.',
+          buttons: [{ label: 'I Understand', value: true }],
+        },
+        width: '450px',
+      });
     }
 
     // Auto-trigger biometrics if forced and available
     if (this.vaultService.isBiometricForced() && this.isBiometricEnabled && !this.vaultService.isUnlocked()) {
-        setTimeout(() => this.submitBiometrics(), 500);
+      setTimeout(() => this.submitBiometrics(), 500);
     }
   }
 
@@ -74,13 +75,13 @@ export class VaultAuthComponent implements OnInit {
     this.loading = true;
     this.hardwareLoading = true;
     try {
-        const result = await this.vaultService.unlockWithHardwareKey();
-        if (result && result.requiresTotp) {
-            this.requiresTotp = true;
-        }
+      const result = await this.vaultService.unlockWithHardwareKey();
+      if (result && result.requiresTotp) {
+        this.requiresTotp = true;
+      }
     } finally {
-        this.loading = false;
-        this.hardwareLoading = false;
+      this.loading = false;
+      this.hardwareLoading = false;
     }
   }
 
@@ -88,13 +89,13 @@ export class VaultAuthComponent implements OnInit {
     this.loading = true;
     this.biometricsLoading = true;
     try {
-        const result = await this.vaultService.unlockWithBiometrics();
-        if (result && result.requiresTotp) {
-            this.requiresTotp = true;
-        }
+      const result = await this.vaultService.unlockWithBiometrics();
+      if (result && result.requiresTotp) {
+        this.requiresTotp = true;
+      }
     } finally {
-        this.loading = false;
-        this.biometricsLoading = false;
+      this.loading = false;
+      this.biometricsLoading = false;
     }
   }
 
@@ -109,7 +110,7 @@ export class VaultAuthComponent implements OnInit {
         if (this.vaultService.exists()) {
           const result = await this.vaultService.unlock(this.password);
           if (result && result.requiresTotp) {
-              this.requiresTotp = true;
+            this.requiresTotp = true;
           }
         } else {
           await this.vaultService.createVault(this.password);
@@ -122,43 +123,43 @@ export class VaultAuthComponent implements OnInit {
   }
 
   async submitTotp() {
-      if (!this.totpCode || this.totpCode.length < 6) return;
-      
-      this.loading = true;
-      try {
-          const success = await this.vaultService.verifyTotp(this.totpCode);
-          if (!success) {
-              // Error is set in VaultService
-              this.totpCode = '';
-          }
-      } finally {
-          this.loading = false;
+    if (!this.totpCode || this.totpCode.length < 6) return;
+
+    this.loading = true;
+    try {
+      const success = await this.vaultService.verifyTotp(this.totpCode);
+      if (!success) {
+        // Error is set in VaultService
+        this.totpCode = '';
       }
+    } finally {
+      this.loading = false;
+    }
   }
 
   private async handleMigration() {
-      const ref = this.dialog.open(GenericDialog, {
-          data: {
-              title: 'Quantum Security Upgrade',
-              message: 'A security upgrade is available for your vault. Would you like to migrate your data to the D-KASP protocol for post-quantum protection?\n\nThis is a one-time process and is highly recommended.',
-              buttons: [
-                  { label: 'Later', value: false },
-                  { label: 'Migrate Now', value: true, color: 'primary' }
-              ]
-          },
-          width: '450px',
-          disableClose: true
-      });
+    const ref = this.dialog.open(GenericDialog, {
+      data: {
+        title: 'Quantum Security Upgrade',
+        message:
+          'A security upgrade is available for your vault. Would you like to migrate your data to the D-KASP protocol for post-quantum protection?\n\nThis is a one-time process and is highly recommended.',
+        buttons: [
+          { label: 'Later', value: false },
+          { label: 'Migrate Now', value: true, color: 'primary' },
+        ],
+      },
+      width: '450px',
+      disableClose: true,
+    });
 
-      const result = await ref.afterClosed().toPromise();
-      if (result) {
-          this.loading = true;
-          try {
-              await this.vaultService.performMigration();
-          } finally {
-              this.loading = false;
-          }
+    const result = await ref.afterClosed().toPromise();
+    if (result) {
+      this.loading = true;
+      try {
+        await this.vaultService.performMigration();
+      } finally {
+        this.loading = false;
       }
-
+    }
   }
 }

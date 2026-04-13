@@ -13,7 +13,7 @@
 .about-hero {
   text-align: center;
   @include glass.animate-entrance;
-  
+
   .glitch-text {
     font-size: 5rem;
     font-weight: 100;
@@ -52,7 +52,7 @@
 
 .deep-dive-section {
   width: 100%;
-  
+
   .section-title {
     text-align: center;
     font-weight: 200;
@@ -108,7 +108,7 @@
       font-size: 0.75rem;
       color: #00e676;
       letter-spacing: 2px;
-      
+
       .dot {
         width: 8px;
         height: 8px;
@@ -150,7 +150,8 @@
     }
 
     .node {
-      circle, rect {
+      circle,
+      rect {
         fill: var(--glass-input-bg);
         stroke: var(--glass-border);
         stroke-width: 1;
@@ -165,9 +166,18 @@
         pointer-events: none;
       }
 
-      &.n1 circle { animation: node-glow 6s infinite; animation-delay: 0s; }
-      &.n2 rect { animation: node-glow 6s infinite; animation-delay: 1.2s; }
-      &.n4 circle { animation: node-glow 6s infinite; animation-delay: 5.2s; }
+      &.n1 circle {
+        animation: node-glow 6s infinite;
+        animation-delay: 0s;
+      }
+      &.n2 rect {
+        animation: node-glow 6s infinite;
+        animation-delay: 1.2s;
+      }
+      &.n4 circle {
+        animation: node-glow 6s infinite;
+        animation-delay: 5.2s;
+      }
     }
 
     .gauntlet-system {
@@ -206,10 +216,22 @@
           font-family: 'Roboto Mono', monospace;
         }
 
-        &.s1 circle { animation: node-glow-sub 6s infinite; animation-delay: 2.1s; }
-        &.p1 circle { animation: node-glow-sub 6s infinite; animation-delay: 2.5s; }
-        &.n1 circle { animation: node-glow-sub 6s infinite; animation-delay: 3.2s; }
-        &.a1 circle { animation: node-glow-sub 6s infinite; animation-delay: 3.8s; }
+        &.s1 circle {
+          animation: node-glow-sub 6s infinite;
+          animation-delay: 2.1s;
+        }
+        &.p1 circle {
+          animation: node-glow-sub 6s infinite;
+          animation-delay: 2.5s;
+        }
+        &.n1 circle {
+          animation: node-glow-sub 6s infinite;
+          animation-delay: 3.2s;
+        }
+        &.a1 circle {
+          animation: node-glow-sub 6s infinite;
+          animation-delay: 3.8s;
+        }
       }
 
       .sub-trace {
@@ -224,7 +246,7 @@
   .example-data {
     display: flex;
     gap: 40px;
-    
+
     @media (max-width: 500px) {
       flex-direction: column;
       gap: 15px;
@@ -249,31 +271,50 @@
         color: var(--mat-sys-primary);
         word-break: break-all;
       }
-      
-      &.in .val { color: var(--glass-text); }
-      &.out .val { text-shadow: 0 0 10px var(--glass-glow); }
+
+      &.in .val {
+        color: var(--glass-text);
+      }
+      &.out .val {
+        text-shadow: 0 0 10px var(--glass-glow);
+      }
     }
   }
 }
 
 @keyframes pulse-dot {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.5); opacity: 0.5; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes pulse-line {
-  0% { stroke-dashoffset: 0; }
-  100% { stroke-dashoffset: -2100; } // Adjusted for gap + pulse length
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -2100;
+  } // Adjusted for gap + pulse length
 }
 
 @keyframes node-glow {
-  0%, 10%, 100% { 
+  0%,
+  10%,
+  100% {
     fill: var(--glass-input-bg);
     stroke: var(--glass-border);
     transform: scale(1);
   }
-  5% { 
+  5% {
     fill: rgba(var(--mat-sys-primary-rgb), 0.1);
     stroke: var(--mat-sys-primary);
     transform: scale(1.05);
@@ -282,11 +323,13 @@
 }
 
 @keyframes node-glow-sub {
-  0%, 10%, 100% { 
+  0%,
+  10%,
+  100% {
     fill: var(--glass-input-bg);
     stroke: var(--glass-border);
   }
-  5% { 
+  5% {
     fill: var(--mat-sys-primary);
     stroke: var(--mat-sys-primary);
     filter: drop-shadow(0 0 8px var(--glass-glow));
@@ -294,13 +337,27 @@
 }
 
 @keyframes frame-rotate {
-  from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: 40; }
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 40;
+  }
 }
 
 @keyframes complexity-pulse {
-  0%, 20%, 80%, 100% { opacity: 0.4; }
-  35%, 65% { opacity: 1; color: var(--mat-sys-primary); text-shadow: 0 0 10px var(--glass-glow); }
+  0%,
+  20%,
+  80%,
+  100% {
+    opacity: 0.4;
+  }
+  35%,
+  65% {
+    opacity: 1;
+    color: var(--mat-sys-primary);
+    text-shadow: 0 0 10px var(--glass-glow);
+  }
 }
 
 .phase-pipeline {
@@ -319,7 +376,7 @@
     border: 1px solid var(--glass-border);
 
     @include glass.animate-entrance;
-    
+
     @for $i from 1 through 4 {
       &:nth-child(#{$i}) {
         animation-delay: #{$i * 0.1s + 0.3s};
@@ -361,9 +418,9 @@
       margin-bottom: 20px;
       transition: all 0.4s ease;
       display: inline-block;
-      
+
       .material-icons {
-          font-size: 48px;
+        font-size: 48px;
       }
     }
 
@@ -460,7 +517,7 @@
   .meta-links {
     display: flex;
     gap: 20px;
-    
+
     @media (max-width: 600px) {
       flex-direction: column;
     }
@@ -470,7 +527,7 @@
       height: 50px;
       border-radius: 8px;
       letter-spacing: 1px;
-      
+
       .material-icons {
         margin-right: 8px;
         vertical-align: middle;
@@ -483,7 +540,7 @@
     color: var(--glass-text-muted);
     font-size: 0.9rem;
 
-.disclaimer {
+    .disclaimer {
       max-width: 600px;
       font-size: 0.7rem;
       margin-top: 15px;
@@ -511,30 +568,30 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 
+  box-shadow:
     0 15px 35px rgba(0, 0, 0, 0.4),
     0 0 50px rgba(var(--mat-sys-primary-rgb), 0.1),
     inset 0 0 20px rgba(var(--mat-sys-primary-rgb), 0.05);
-  
+
   overflow: hidden;
   transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  
+
   &:hover {
     transform: translateY(-8px) scale(1.02);
     border-color: rgba(var(--mat-sys-primary-rgb), 0.6);
-    box-shadow: 
+    box-shadow:
       0 30px 60px rgba(0, 0, 0, 0.6),
       0 0 80px rgba(var(--mat-sys-primary-rgb), 0.2);
-    
+
     .badge-glow {
       opacity: 0.8;
       transform: translate(-50%, -50%) scale(1.5);
     }
 
     .badge-icon {
-        transform: rotate(10deg) scale(1.2);
-        color: #ffd700;
-        filter: drop-shadow(0 0 15px gold);
+      transform: rotate(10deg) scale(1.2);
+      color: #ffd700;
+      filter: drop-shadow(0 0 15px gold);
     }
   }
 }
@@ -597,7 +654,7 @@
   display: flex;
   gap: 15px;
   opacity: 0.4;
-  
+
   span {
     font-size: 20px;
   }
@@ -619,19 +676,19 @@
 }
 
 @media (max-width: 600px) {
-    .mega-badge {
-        flex-direction: column;
-        text-align: center;
-        gap: 20px;
-        
-        .badge-content {
-            flex-direction: column;
-        }
+  .mega-badge {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
 
-        .badge-decoration {
-            display: none;
-        }
+    .badge-content {
+      flex-direction: column;
     }
+
+    .badge-decoration {
+      display: none;
+    }
+  }
 }
 
 .about-footer {

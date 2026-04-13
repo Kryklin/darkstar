@@ -9,14 +9,7 @@ import { ElectrumLegacyDecrypt } from '../electrum-legacy/decrypt';
 @Component({
   selector: 'app-electrum-tools',
   standalone: true,
-  imports: [
-    CommonModule, 
-    MatTabsModule, 
-    ElectrumV2Encrypt, 
-    ElectrumV2Decrypt, 
-    ElectrumLegacyEncrypt, 
-    ElectrumLegacyDecrypt
-  ],
+  imports: [CommonModule, MatTabsModule, ElectrumV2Encrypt, ElectrumV2Decrypt, ElectrumLegacyEncrypt, ElectrumLegacyDecrypt],
   template: `
     <div class="page-layout-wrapper">
       <mat-tab-group dynamicHeight animationDuration="300ms">
@@ -43,10 +36,12 @@ import { ElectrumLegacyDecrypt } from '../electrum-legacy/decrypt';
       </mat-tab-group>
     </div>
   `,
-  styles: [`
-    :host {
-      display: block;
-    }
-  `]
+  styles: [
+    `
+      :host {
+        display: block;
+      }
+    `,
+  ],
 })
 export class ElectrumTools {}

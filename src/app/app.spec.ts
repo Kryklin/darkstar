@@ -11,7 +11,7 @@ describe('App', () => {
       onUpdateStatus: jasmine.createSpy('onUpdateStatus'),
       onInitiateUpdateCheck: jasmine.createSpy('onInitiateUpdateCheck'),
       setVersionLock: jasmine.createSpy('setVersionLock'),
-      isUpdateAvailable: jasmine.createSpy('isUpdateAvailable').and.resolveTo(false)
+      isUpdateAvailable: jasmine.createSpy('isUpdateAvailable').and.resolveTo(false),
     };
 
     await TestBed.configureTestingModule({

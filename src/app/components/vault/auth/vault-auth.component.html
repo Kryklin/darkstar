@@ -4,12 +4,18 @@
       <mat-icon>{{ requiresTotp ? 'dialpad' : 'lock' }}</mat-icon>
     </div>
 
-    <h2>{{ requiresTotp ? 'Two-Factor Authentication' : (vaultService.exists() ? 'Unlock Vault' : 'Create Vault') }}</h2>
+    <h2>{{ requiresTotp ? 'Two-Factor Authentication' : vaultService.exists() ? 'Unlock Vault' : 'Create Vault' }}</h2>
     <p class="subtitle">
       @if (hardwareLoading || biometricsLoading) {
         Please complete the authentication on your device...
       } @else {
-        {{ requiresTotp ? 'Enter the code from your Authenticator app.' : (vaultService.exists() ? 'Enter your master password to decrypt your notes.' : 'Set a strong master password. This cannot be recovered if lost.') }}
+        {{
+          requiresTotp
+            ? 'Enter the code from your Authenticator app.'
+            : vaultService.exists()
+              ? 'Enter your master password to decrypt your notes.'
+              : 'Set a strong master password. This cannot be recovered if lost.'
+        }}
       }
     </p>
 
@@ -26,14 +32,18 @@
             </mat-form-field>
 
             <button mat-flat-button color="primary" class="full-width login-button" (click)="submit()" [disabled]="loading || !password">
-              @if (!passwordLoading) { <span>Unlock Vault</span> }
-              @if (passwordLoading) { <mat-spinner diameter="20"></mat-spinner> }
+              @if (!passwordLoading) {
+                <span>Unlock Vault</span>
+              }
+              @if (passwordLoading) {
+                <mat-spinner diameter="20"></mat-spinner>
+              }
             </button>
           } @else {
-            <div class="biometric-force-view" style="padding: 20px 0; text-align: center;">
-                <mat-icon class="shield-lock" style="font-size: 48px; width: 48px; height: 48px; color: var(--mat-sys-primary); opacity: 0.8;">fingerprint</mat-icon>
-                <h3 style="margin-top: 16px;">Security Enforced</h3>
-                <p style="opacity: 0.7; font-size: 0.9em;">Hardware authentication is mandated for this vault.</p>
+            <div class="biometric-force-view" style="padding: 20px 0; text-align: center">
+              <mat-icon class="shield-lock" style="font-size: 48px; width: 48px; height: 48px; color: var(--mat-sys-primary); opacity: 0.8">fingerprint</mat-icon>
+              <h3 style="margin-top: 16px">Security Enforced</h3>
+              <p style="opacity: 0.7; font-size: 0.9em">Hardware authentication is mandated for this vault.</p>
             </div>
           }
         } @else {
@@ -61,34 +71,34 @@
       }
 
       @if (vaultService.exists() && (isHardwareKeyEnabled || isBiometricEnabled)) {
-          <div class="actions alt-auth-actions" style="margin-top: 10px; justify-content: center; gap: 10px;">
-             @if (isHardwareKeyEnabled) {
-                 <button mat-stroked-button (click)="submitHardwareKey()" [disabled]="loading">
-                     @if (!hardwareLoading) {
-                         <mat-icon>usb</mat-icon>
-                     }
-                     @if (!hardwareLoading) {
-                         <span>Use Hardware Key</span>
-                     }
-                     @if (hardwareLoading) {
-                         <mat-spinner diameter="20"></mat-spinner>
-                     }
-                 </button>
-             }
-             @if (isBiometricEnabled) {
-                 <button mat-stroked-button (click)="submitBiometrics()" [disabled]="loading">
-                     @if (!biometricsLoading) {
-                         <mat-icon>fingerprint</mat-icon>
-                     }
-                     @if (!biometricsLoading) {
-                         <span>{{ authName }}</span>
-                     }
-                     @if (biometricsLoading) {
-                         <mat-spinner diameter="20"></mat-spinner>
-                     }
-                 </button>
-             }
-          </div>
+        <div class="actions alt-auth-actions" style="margin-top: 10px; justify-content: center; gap: 10px">
+          @if (isHardwareKeyEnabled) {
+            <button mat-stroked-button (click)="submitHardwareKey()" [disabled]="loading">
+              @if (!hardwareLoading) {
+                <mat-icon>usb</mat-icon>
+              }
+              @if (!hardwareLoading) {
+                <span>Use Hardware Key</span>
+              }
+              @if (hardwareLoading) {
+                <mat-spinner diameter="20"></mat-spinner>
+              }
+            </button>
+          }
+          @if (isBiometricEnabled) {
+            <button mat-stroked-button (click)="submitBiometrics()" [disabled]="loading">
+              @if (!biometricsLoading) {
+                <mat-icon>fingerprint</mat-icon>
+              }
+              @if (!biometricsLoading) {
+                <span>{{ authName }}</span>
+              }
+              @if (biometricsLoading) {
+                <mat-spinner diameter="20"></mat-spinner>
+              }
+            </button>
+          }
+        </div>
       }
     } @else {
       <!-- TOTP Entry -->
@@ -96,17 +106,17 @@
         <mat-label>Authenticator Code</mat-label>
         <input matInput type="text" [(ngModel)]="totpCode" placeholder="123456" maxlength="6" (keyup.enter)="submitTotp()" />
       </mat-form-field>
-      
+
       <div class="actions">
-          <button mat-button (click)="requiresTotp = false; vaultService.lock();">Cancel</button>
-          <button mat-flat-button color="primary" [disabled]="loading || totpCode.length < 6" (click)="submitTotp()">
-            @if (!loading) {
-              <span>Verify</span>
-            }
-            @if (loading) {
-              <mat-spinner diameter="20"></mat-spinner>
-            }
-          </button>
+        <button mat-button (click)="requiresTotp = false; vaultService.lock()">Cancel</button>
+        <button mat-flat-button color="primary" [disabled]="loading || totpCode.length < 6" (click)="submitTotp()">
+          @if (!loading) {
+            <span>Verify</span>
+          }
+          @if (loading) {
+            <mat-spinner diameter="20"></mat-spinner>
+          }
+        </button>
       </div>
     }
 

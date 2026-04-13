@@ -12,12 +12,6 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Capacitor-v8.1-119EFF?logo=capacitor&logoColor=white" alt="Capacitor">
-  <img src="https://img.shields.io/badge/Android-Native-3DDC84?logo=android&logoColor=white" alt="Android">
-  <img src="https://img.shields.io/badge/iOS-Native-000000?logo=apple&logoColor=white" alt="iOS">
-</p>
-
-<p align="center">
   <img src="https://img.shields.io/badge/Go-v1.25.5-00ADD8?logo=go&logoColor=white" alt="Go">
   <img src="https://img.shields.io/badge/Rust-2021-000000?logo=rust&logoColor=white" alt="Rust">
   <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white" alt="Python">
@@ -25,44 +19,54 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
-`darkstar` is a defense-grade client-side security tool designed to safeguard sensitive recovery phrases, data, and notes. It combines the **D-KASP V8 (SPNA-Hardened) Engine** with **ML-KEM-1024** (Kyber) and **AES-256-GCM** for industry-leading Quantum Resistance.
+## Overview
+
+`darkstar` is a defense-grade client-side security enclave designed to safeguard recovery phrases, identities, and sensitive records using post-quantum cryptographic primitives.
+
+At its core, Darkstar utilizes the **D-KASP (Deterministic-KASP)** protocol—a sovereign 16-round structural permutation gauntlet paired with **ML-KEM-1024 (Kyber)** for NIST Level 5 security parity.
 
 ---
 
-## 🛡️ Core Security Features
+## 🛡️ Core Security Pillars
 
-| Category             | Key Capabilities                                                                 |
-| :------------------- | :------------------------------------------------------------------------------- |
-| **PQC Encryption**   | D-KASP V8 engine with ML-KEM-1024, AES-256-GCM, and Positional Salting.             |
-| **Advanced Privacy** | Air-Gapped QR Transfer, Audio Steganography (WAV), and Anti-Forensic Memory.     |
-| **Vault Management** | Zero-knowledge Secure Vault, Identity Binding, and Automated Scheduled Backups.  |
-| **Access Control**   | Biometric Unlock (FaceID/TouchID), YubiKey Support (WebAuthn), and TOTP 2FA.     |
-| **Integrity**        | Application Anti-Tamper Checks and mathematical Time-Lock Encryption (VDF).      |
-| **Modern UX**        | Premium V3 Dashboard with flat navigation, stateful taskbar, and persistent vault view. |
+- **Quantum Resistance**: Powered by ML-KEM-1024 lattice-based key encapsulation.
+- **Hardware Binding**: Cryptographic payloads are bound to host-machine silicon via Electron SafeStorage and machine-unique identifiers.
+- **High-Diffusion Obfuscation**: The D-KASP gauntlet ensures bit-perfect interoperability across Rust, Go, Python, and Node.js while providing maximum algebraic complexity.
+- **Zero-Knowledge Architecture**: Your master password never leaves the isolated security enclave; data is encrypted/decrypted via a high-performance IPC bridge.
 
 ---
 
 ## 🚀 Getting Started
 
+### Prerequisites
+
+- Node.js v19+
+- Rust (Cargo)
+- Go v1.25+
+
 ### Installation & Development
+
 ```bash
 git clone https://github.com/Kryklin/darkstar.git
 cd darkstar
 npm install
-npm start # Start interactive UI
+npm run build:rust  # Compile the Rust engine
+npm run build:go    # Compile the Go engine
+npm start           # Launch the Electron Dashboard
 ```
 
-## 🏗️ Technical Architecture
+---
 
-1.  **Identity Generation**: Unique Master Key and Cryptographic Identity generated upon vault creation.
-2.  **Obfuscation Pipeline**: Hardened 16-round, 64-layer SPNA gauntlet driven by index-salted entropy.
-3.  **Layered Encryption**: ML-KEM-1024 (Kyber) and AES-256-GCM encapsulation.
-4.  **Hardware Binding**: OS-level protection via Electron SafeStorage and Signature Key binding.
-5.  **V3 Workflow**: Stateful navigation with real-time vault status and non-dismissible note management.
+## 🏗️ Technical Resources
 
-> [!NOTE]
-> View the [Visual Architecture Guide](DARKSTAR_ARCHITECTURE.md) or the [Multi-Language Suite](d-kasp-512/README.md) for more technical details.
+For a deep-dive into the mathematical and system-level specifications, please refer to:
 
-## Authors
-**Victor Kane** - [GitHub](https://github.com/Kryklin)
+- [**D-KASP Mathematical Specification**](DARKSTAR_ARCHITECTURE.md)
+- [**Security & Disclosure Policy**](SECURITY.md)
+- [**D-KASP Multi-Language Suite**](d-kasp-512/README.md)
 
+---
+
+## ⚖️ License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

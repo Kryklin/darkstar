@@ -1,28 +1,42 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="public/assets/img/logo-white.png">
-    <img src="public/assets/img/logo-black.png" alt="Darkstar Logo" width="400">
-  </picture>
-</p>
-
 # Security Policy
 
-</h1>
+Darkstar is a defense-grade security suite. We prioritize the security and integrity of our cryptographic implementations and the privacy of our users.
+
+## Post-Quantum Security Model
+
+The Darkstar ecosystem leverages the **D-KASP** protocol with **ML-KEM-1024** (Kyber) at its core. Our security model assumes:
+
+- **Zero-Knowledge**: No sensitive data (passwords, recovery phrases) is ever stored in plaintext or transmitted outside the local security enclave.
+- **Physical Binding**: Payloads are cryptographically bound to the host hardware, limiting the impact of physical data theft.
+- **Algorithm Agnosticism**: D-KASP provides a structural permutation layer that remains secure even if underlying symmetric primitives are weakened.
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 3.0.x   | :white_check_mark: |
-| 2.1.x   | :white_check_mark: |
-| < 2.1   | :x:                |
+| Version   | Supported      | Security Standard                  |
+| :-------- | :------------- | :--------------------------------- |
+| **3.0.x** | ✅ Active      | D-KASP (Versionless) / ML-KEM-1024 |
+| **2.1.x** | ✅ Maintenance | D-KASP V5 / Kyber-1024             |
+| **< 2.1** | ❌ End of Life | Legacy RSA/AES                     |
 
 ## Reporting a Vulnerability
 
-We take the security of our software seriously. If you believe you have found a security vulnerability in Darkstar, please report it to us as described below.
-
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-Instead, please send an email to mortalpain1@gmail.com.
+If you identify a security vulnerability in Darkstar, please report it via encrypted email to:
+**mortalpain1@gmail.com**
 
-You should receive a response within 48 hours. If for some reason you do not, please follow up via email to ensure we received your original message.
+What to include in your report:
+
+- A clear description of the vulnerability.
+- Steps to reproduce (PoC).
+- Impact analysis.
+
+### Response Timeline
+
+You should receive a response within **48 hours**. If no response is received, please follow up to ensure your message was not caught by spam filters.
+
+---
+
+### Security Guarantees
+
+Darkstar does not contain backdoors, and we do not collect telemetry or usage data. The source remains open and verifiable for independent security audits.

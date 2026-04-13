@@ -218,12 +218,12 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
       setTimeout(() => this.startGame(), 100);
     }
   }
-  
+
   openTerminal() {
     this.showTerminal = true;
     this.layoutService.sidenavOpen.set(false);
   }
-  
+
   closeTerminal() {
     this.showTerminal = false;
   }
@@ -469,7 +469,7 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
 
         if (Bullet.active && Enemy.active && Bullet.x < ex + ew && Bullet.x + Bullet.width > ex && Bullet.y < ey + eh && Bullet.y + Bullet.height > ey) {
           Bullet.active = false;
-          
+
           if (Enemy.isBig && Enemy.health) {
             Enemy.health--;
             this.spawnExplosion(Bullet.x, Bullet.y, '#ffffff'); // Impact spark
@@ -483,7 +483,7 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
           // Splitting logic
           if (Enemy.isBig) {
             for (let i = 0; i < 3; i++) {
-                this.spawnMiniAsteroid(Enemy.x + Enemy.width/2, Enemy.y + Enemy.height/2);
+              this.spawnMiniAsteroid(Enemy.x + Enemy.width / 2, Enemy.y + Enemy.height / 2);
             }
           }
 
@@ -564,7 +564,7 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
       vertices: vertices,
       isBig: isBig,
       health: isBig ? 3 : 1,
-      maxHealth: isBig ? 3 : 1
+      maxHealth: isBig ? 3 : 1,
     });
   }
 
@@ -573,22 +573,22 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
     const numPoints = 6;
     const vertices = [];
     for (let i = 0; i < numPoints; i++) {
-        const angle = (i / numPoints) * Math.PI * 2;
-        const rad = (size / 2) * (0.7 + Math.random() * 0.3);
-        vertices.push({ x: Math.cos(angle) * rad, y: Math.sin(angle) * rad });
+      const angle = (i / numPoints) * Math.PI * 2;
+      const rad = (size / 2) * (0.7 + Math.random() * 0.3);
+      vertices.push({ x: Math.cos(angle) * rad, y: Math.sin(angle) * rad });
     }
-    
+
     this.enemies.push({
-        x: x - size/2,
-        y: y - size/2,
-        width: size,
-        height: size,
-        speed: 3 + Math.random() * 2,
-        active: true,
-        rotation: 0,
-        rotationSpeed: (Math.random() - 0.5) * 0.2,
-        vertices: vertices,
-        isBig: false
+      x: x - size / 2,
+      y: y - size / 2,
+      width: size,
+      height: size,
+      speed: 3 + Math.random() * 2,
+      active: true,
+      rotation: 0,
+      rotationSpeed: (Math.random() - 0.5) * 0.2,
+      vertices: vertices,
+      isBig: false,
     });
   }
 
@@ -688,7 +688,7 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
       const bHeight = isHyperShot ? 14 : 10;
 
       for (let i = 0; i < count; i++) {
-        const yOff = i * (isHyperShot ? 8 : 15); 
+        const yOff = i * (isHyperShot ? 8 : 15);
 
         if (this.activeEffects['MULTISHOT']) {
           // Center
@@ -865,13 +865,13 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
       // Premium styling for asteroids
       const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, e.width / 2);
       if (e.isBig) {
-          gradient.addColorStop(0, '#455a64');
-          gradient.addColorStop(1, '#263238');
+        gradient.addColorStop(0, '#455a64');
+        gradient.addColorStop(1, '#263238');
       } else {
-          gradient.addColorStop(0, '#78909c');
-          gradient.addColorStop(1, '#455a64');
+        gradient.addColorStop(0, '#78909c');
+        gradient.addColorStop(1, '#455a64');
       }
-      
+
       ctx.fillStyle = gradient;
       ctx.fill();
       ctx.strokeStyle = e.isBig ? '#90a4ae' : '#546e7a';
@@ -882,29 +882,29 @@ export class Home implements OnInit, OnDestroy, AfterViewInit {
 
       // Health Bar for Big ones
       if (e.isBig && e.health !== undefined && e.maxHealth !== undefined) {
-          const barW = e.width;
-          const barH = 4;
-          const bx = e.x;
-          const by = e.y - 12;
+        const barW = e.width;
+        const barH = 4;
+        const bx = e.x;
+        const by = e.y - 12;
 
-          ctx.fillStyle = 'rgba(0,0,0,0.5)';
-          ctx.fillRect(bx, by, barW, barH);
-          
-          const healthPct = e.health / e.maxHealth;
-          ctx.fillStyle = healthPct > 0.5 ? '#00e676' : (healthPct > 0.25 ? '#ffeb3b' : '#ff1744');
-          ctx.fillRect(bx, by, barW * healthPct, barH);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(bx, by, barW, barH);
+
+        const healthPct = e.health / e.maxHealth;
+        ctx.fillStyle = healthPct > 0.5 ? '#00e676' : healthPct > 0.25 ? '#ffeb3b' : '#ff1744';
+        ctx.fillRect(bx, by, barW * healthPct, barH);
       }
     });
 
     // Hyper-Shot Indicator
     if (this.score >= 10000) {
-        ctx.save();
-        ctx.fillStyle = '#ff1744';
-        ctx.font = 'bold 14px "Roboto Mono", monospace';
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#ff1744';
-        ctx.fillText('>>> HYPER-SHOT ACTIVE <<<', 20, canvas.height - 30);
-        ctx.restore();
+      ctx.save();
+      ctx.fillStyle = '#ff1744';
+      ctx.font = 'bold 14px "Roboto Mono", monospace';
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ff1744';
+      ctx.fillText('>>> HYPER-SHOT ACTIVE <<<', 20, canvas.height - 30);
+      ctx.restore();
     }
   }
 }

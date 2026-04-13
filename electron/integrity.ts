@@ -31,10 +31,7 @@ export async function verifyIntegrity(): Promise<void> {
     console.log('Integrity verification passed.');
   } catch (error: unknown) {
     console.error('Anti-Tamper: Integrity check failed!', error);
-    dialog.showErrorBox(
-      'Security Alert: Integrity Verification Failed',
-      'The application executable appears to have been modified or corrupted. To protect your data, the application will now exit.'
-    );
+    dialog.showErrorBox('Security Alert: Integrity Verification Failed', 'The application executable appears to have been modified or corrupted. To protect your data, the application will now exit.');
     app.exit(1);
     throw error;
   }

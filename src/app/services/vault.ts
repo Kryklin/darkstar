@@ -7,7 +7,6 @@ import { DuressService } from './duress.service';
 import { BiometricService } from './biometric.service';
 import { TimeLockMetadata } from './timelock.service';
 
-
 export interface VaultAttachment {
   id: string;
   name: string;
@@ -32,7 +31,6 @@ export interface VaultNote {
   timeLock?: TimeLockMetadata;
   updatedAt: number;
 }
-
 interface VaultStorage {
   data: string;
   s?: boolean;
@@ -69,10 +67,10 @@ export class VaultService {
   public exists = signal<boolean>(false);
 
   private totpPendingState: {
-      notes: VaultNote[];
-      identity: VaultIdentity | null;
-      totpSecret: string;
-      password: string;
+    notes: VaultNote[];
+    identity: VaultIdentity | null;
+    totpSecret: string;
+    password: string;
   } | null = null;
 
   constructor() {
@@ -106,13 +104,13 @@ export class VaultService {
     if (!authenticated) return { success: false, requiresTotp: false };
 
     try {
-        const encryptedPass = localStorage.getItem('biometric_enc_pass');
-        if (encryptedPass && window.electronAPI) {
-            const password = await window.electronAPI.safeStorageDecrypt(encryptedPass);
-            return await this.unlock(password);
-        }
+      const encryptedPass = localStorage.getItem('biometric_enc_pass');
+      if (encryptedPass && window.electronAPI) {
+        const password = await window.electronAPI.safeStorageDecrypt(encryptedPass);
+        return await this.unlock(password);
+      }
     } catch (e) {
-        console.error('Biometric Unlock Failed:', e);
+      console.error('Biometric Unlock Failed:', e);
     }
     return { success: false, requiresTotp: false };
   }
@@ -123,13 +121,13 @@ export class VaultService {
     if (!authenticated) return { success: false, requiresTotp: false };
 
     try {
-        const encryptedPass = localStorage.getItem('biometric_enc_pass');
-        if (encryptedPass && window.electronAPI) {
-            const password = await window.electronAPI.safeStorageDecrypt(encryptedPass);
-            return await this.unlock(password);
-        }
+      const encryptedPass = localStorage.getItem('biometric_enc_pass');
+      if (encryptedPass && window.electronAPI) {
+        const password = await window.electronAPI.safeStorageDecrypt(encryptedPass);
+        return await this.unlock(password);
+      }
     } catch (e) {
-        console.error('Hardware Key Unlock Failed:', e);
+      console.error('Hardware Key Unlock Failed:', e);
     }
     return { success: false, requiresTotp: false };
   }
@@ -137,7 +135,7 @@ export class VaultService {
   async unlock(password: string): Promise<{ success: boolean; requiresTotp: boolean }> {
     if (this.duressService.checkDuress(password)) {
       this.duressService.triggerDuress();
-      return { success: false, requiresTotp: false }; 
+      return { success: false, requiresTotp: false };
     }
 
     try {
@@ -153,44 +151,44 @@ export class VaultService {
 
       const { skHex } = await this.derivePqcKeys(password);
       const res = await this.crypt.decrypt(encryptedData, '', skHex);
-      
+
       const jsonStr = res.decrypted;
       if (!jsonStr) throw new Error('Authentication failed.');
 
       let parsed: VaultContent;
       if (typeof jsonStr === 'object') {
-          parsed = jsonStr as unknown as VaultContent;
+        parsed = jsonStr as unknown as VaultContent;
       } else {
-          try {
-              parsed = JSON.parse(jsonStr);
-          } catch {
-              throw new Error('Vault Data Corruption: Unable to parse decrypted content.');
-          }
+        try {
+          parsed = JSON.parse(jsonStr);
+        } catch {
+          throw new Error('Vault Data Corruption: Unable to parse decrypted content.');
+        }
       }
-      const migratedNotes = (parsed.notes || []).map(n => ({
+      const migratedNotes = (parsed.notes || []).map((n) => ({
         ...n,
         tags: n.tags || [],
         attachments: n.attachments || [],
-        updatedAt: n.updatedAt || Date.now()
+        updatedAt: n.updatedAt || Date.now(),
       }));
 
       let identity = parsed.identity || null;
       if (!identity) {
-          identity = await this.generateIdentity();
+        identity = await this.generateIdentity();
       } else if (!identity.pqcPublicKey) {
-          const pqc = ml_kem1024.keygen();
-          identity.pqcPublicKey = base64.encode(pqc.publicKey);
-          identity.pqcPrivateKey = base64.encode(pqc.secretKey);
+        const pqc = ml_kem1024.keygen();
+        identity.pqcPublicKey = base64.encode(pqc.publicKey);
+        identity.pqcPrivateKey = base64.encode(pqc.secretKey);
       }
 
       if (parsed.totpSecret) {
-          this.totpPendingState = {
-              notes: migratedNotes,
-              identity: identity,
-              totpSecret: parsed.totpSecret,
-              password: password
-          };
-          return { success: true, requiresTotp: true };
+        this.totpPendingState = {
+          notes: migratedNotes,
+          identity: identity,
+          totpSecret: parsed.totpSecret,
+          password: password,
+        };
+        return { success: true, requiresTotp: true };
       }
 
       this.notes.set(migratedNotes);
@@ -208,54 +206,54 @@ export class VaultService {
     }
   }
 
-  // --- Registration & Biometrics ---
+  // Biometric and Hardware Key Integration
 
   async registerBiometricsForSession(password: string): Promise<boolean> {
-      return this.registerCredential(password, 'platform');
+    return this.registerCredential(password, 'platform');
   }
 
   async registerHardwareKey(password: string): Promise<boolean> {
-      return this.registerCredential(password, 'cross-platform');
+    return this.registerCredential(password, 'cross-platform');
   }
 
   private async registerCredential(password: string, type: 'platform' | 'cross-platform'): Promise<boolean> {
-      const success = await this.biometricService.register(type);
-      if (!success) return false;
+    const success = await this.biometricService.register(type);
+    if (!success) return false;
 
-      if (window.electronAPI) {
-          const encPass = await window.electronAPI.safeStorageEncrypt(password);
-          localStorage.setItem('biometric_enc_pass', encPass);
-          return true;
-      }
-      return false;
+    if (window.electronAPI) {
+      const encPass = await window.electronAPI.safeStorageEncrypt(password);
+      localStorage.setItem('biometric_enc_pass', encPass);
+      return true;
+    }
+    return false;
   }
 
   async verifyTotp(token: string): Promise<boolean> {
-      if (!this.totpPendingState) return false;
-      const isValid = window.electronAPI ? await window.electronAPI.vaultVerifyTotp(token, this.totpPendingState.totpSecret) : false;
-      if (!isValid) {
-          this.error.set('Invalid 2FA token.');
-          return false;
-      }
-      this.notes.set(this.totpPendingState.notes);
-      this.identity.set(this.totpPendingState.identity);
-      this.totpSecret.set(this.totpPendingState.totpSecret);
-      this.masterKey.set(this.totpPendingState.password);
-      this.totpPendingState = null;
-      this.error.set(null);
-      return true;
+    if (!this.totpPendingState) return false;
+    const isValid = window.electronAPI ? await window.electronAPI.vaultVerifyTotp(token, this.totpPendingState.totpSecret) : false;
+    if (!isValid) {
+      this.error.set('Invalid 2FA token.');
+      return false;
+    }
+    this.notes.set(this.totpPendingState.notes);
+    this.identity.set(this.totpPendingState.identity);
+    this.totpSecret.set(this.totpPendingState.totpSecret);
+    this.masterKey.set(this.totpPendingState.password);
+    this.totpPendingState = null;
+    this.error.set(null);
+    return true;
   }
 
   enableTotp(secret: string) {
-      if (!this.masterKey()) throw new Error('Vault must be unlocked to modify 2FA settings.');
-      this.totpSecret.set(secret);
-      this.save();
+    if (!this.masterKey()) throw new Error('Vault must be unlocked to modify 2FA settings.');
+    this.totpSecret.set(secret);
+    this.save();
   }
 
   disableTotp() {
-      if (!this.masterKey()) throw new Error('Vault must be unlocked to modify 2FA settings.');
-      this.totpSecret.set(null);
-      this.save();
+    if (!this.masterKey()) throw new Error('Vault must be unlocked to modify 2FA settings.');
+    this.totpSecret.set(null);
+    this.save();
   }
 
   async save(): Promise<void> {
@@ -263,9 +261,9 @@ export class VaultService {
     if (!key) throw new Error('Vault locked');
 
     const content: VaultContent = {
-        notes: this.notes(),
-        identity: this.identity()!,
-        totpSecret: this.totpSecret() || undefined
+      notes: this.notes(),
+      identity: this.identity()!,
+      totpSecret: this.totpSecret() || undefined,
     };
 
     const { pkHex } = await this.derivePqcKeys(key);
@@ -273,7 +271,7 @@ export class VaultService {
 
     const envelope: VaultStorage = {
       data: encryptedData,
-      s: false, 
+      s: false,
     };
 
     localStorage.setItem(this.storageKey, JSON.stringify(envelope));
@@ -301,18 +299,12 @@ export class VaultService {
   }
 
   addAttachment(noteId: string, attachment: VaultAttachment) {
-    this.notes.update((n) =>
-      n.map((note) => (note.id === noteId ? { ...note, attachments: [...note.attachments, attachment], updatedAt: Date.now() } : note)),
-    );
+    this.notes.update((n) => n.map((note) => (note.id === noteId ? { ...note, attachments: [...note.attachments, attachment], updatedAt: Date.now() } : note)));
     this.save();
   }
 
   removeAttachment(noteId: string, attachmentId: string) {
-    this.notes.update((n) =>
-      n.map((note) =>
-        note.id === noteId ? { ...note, attachments: note.attachments.filter((a) => a.id !== attachmentId), updatedAt: Date.now() } : note,
-      ),
-    );
+    this.notes.update((n) => n.map((note) => (note.id === noteId ? { ...note, attachments: note.attachments.filter((a) => a.id !== attachmentId), updatedAt: Date.now() } : note)));
     this.save();
   }
 
@@ -341,30 +333,28 @@ export class VaultService {
   }
 
   async performMigration() {
-      if (!this.masterKey()) return;
-      await this.save(); 
+    if (!this.masterKey()) return;
+    await this.save();
   }
 
   private async derivePqcKeys(password: string): Promise<{ pkHex: string; skHex: string }> {
     const enc = new TextEncoder();
     const pBytes = enc.encode(password);
-    const salt = enc.encode('darkstar-pqc-seed'); 
-    
-    const keyMaterial = await window.crypto.subtle.importKey(
-      'raw', pBytes, { name: 'PBKDF2' }, false, ['deriveBits']
-    );
-    
-    const seed = await window.crypto.subtle.deriveBits(
-      { name: 'PBKDF2', salt, iterations: this.crypt.PBKDF2_ITERATIONS, hash: 'SHA-256' },
-      keyMaterial,
-      512 
-    );
-    
+    const salt = enc.encode('darkstar-pqc-seed');
+
+    const keyMaterial = await window.crypto.subtle.importKey('raw', pBytes, { name: 'PBKDF2' }, false, ['deriveBits']);
+
+    const seed = await window.crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: this.crypt.PBKDF2_ITERATIONS, hash: 'SHA-256' }, keyMaterial, 512);
+
     const { publicKey, secretKey } = ml_kem1024.keygen(new Uint8Array(seed));
-    
+
     return {
-      pkHex: Array.from(publicKey).map(b => b.toString(16).padStart(2, '0')).join(''),
-      skHex: Array.from(secretKey).map(b => b.toString(16).padStart(2, '0')).join('')
+      pkHex: Array.from(publicKey)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join(''),
+      skHex: Array.from(secretKey)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join(''),
     };
   }
 
@@ -378,92 +368,82 @@ export class VaultService {
 
   // --- Helpers ---
   private async generateIdentity(): Promise<VaultIdentity> {
-      const keyPair = await window.crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
-      const publicKey = await window.crypto.subtle.exportKey("jwk", keyPair.publicKey);
-      const privateKey = await window.crypto.subtle.exportKey("jwk", keyPair.privateKey);
-      const pqc = ml_kem1024.keygen();
-      return {  publicKey,  privateKey, pqcPublicKey: base64.encode(pqc.publicKey), pqcPrivateKey: base64.encode(pqc.secretKey) };
+    const keyPair = await window.crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+    const publicKey = await window.crypto.subtle.exportKey('jwk', keyPair.publicKey);
+    const privateKey = await window.crypto.subtle.exportKey('jwk', keyPair.privateKey);
+    const pqc = ml_kem1024.keygen();
+    return { publicKey, privateKey, pqcPublicKey: base64.encode(pqc.publicKey), pqcPrivateKey: base64.encode(pqc.secretKey) };
   }
 
   // --- Identity & Signatures ---
 
   public async getPublicKey(): Promise<JsonWebKey> {
-      const id = this.identity();
-      if (!id) throw new Error('Vault locked');
-      return id.publicKey;
+    const id = this.identity();
+    if (!id) throw new Error('Vault locked');
+    return id.publicKey;
   }
 
   public exportIdentity(): string {
-      const id = this.identity();
-      if (!id) throw new Error('Vault locked');
-      return JSON.stringify(id);
+    const id = this.identity();
+    if (!id) throw new Error('Vault locked');
+    return JSON.stringify(id);
   }
 
   public async importIdentity(identityJson: string): Promise<boolean> {
-      try {
-          const parsed: VaultIdentity = JSON.parse(identityJson);
-          if (parsed && parsed.publicKey && parsed.privateKey) {
-              this.identity.set(parsed);
-              await this.save();
-              return true;
-          }
-      } catch (e) {
-          console.error("Failed to parse identity JSON", e);
+    try {
+      const parsed: VaultIdentity = JSON.parse(identityJson);
+      if (parsed && parsed.publicKey && parsed.privateKey) {
+        this.identity.set(parsed);
+        await this.save();
+        return true;
       }
-      return false;
+    } catch (e) {
+      console.error('Failed to parse identity JSON', e);
+    }
+    return false;
   }
 
   public async signMessage(message: string): Promise<string> {
-      const id = this.identity();
-      if (!id) throw new Error('Vault locked');
-      
-      const privateKey = await window.crypto.subtle.importKey(
-          "jwk",
-          id.privateKey,
-          { name: "ECDSA", namedCurve: "P-256" },
-          false,
-          ["sign"]
-      );
+    const id = this.identity();
+    if (!id) throw new Error('Vault locked');
 
-      const enc = new TextEncoder();
-      const signature = await window.crypto.subtle.sign(
-          {
-              name: "ECDSA",
-              hash: { name: "SHA-256" },
-          },
-          privateKey,
-          enc.encode(message)
-      );
+    const privateKey = await window.crypto.subtle.importKey('jwk', id.privateKey, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
 
-      return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const enc = new TextEncoder();
+    const signature = await window.crypto.subtle.sign(
+      {
+        name: 'ECDSA',
+        hash: { name: 'SHA-256' },
+      },
+      privateKey,
+      enc.encode(message),
+    );
+
+    return Array.from(new Uint8Array(signature))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
   }
 
   public async verifyResult(message: string, signatureHex: string, publicKey: JsonWebKey): Promise<boolean> {
-      try {
-        const key = await window.crypto.subtle.importKey(
-            "jwk",
-            publicKey,
-            { name: "ECDSA", namedCurve: "P-256" },
-            false,
-            ["verify"]
-        );
+    try {
+      const key = await window.crypto.subtle.importKey('jwk', publicKey, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
 
-        const enc = new TextEncoder();
-        const sigBytes = new Uint8Array(signatureHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+      const enc = new TextEncoder();
+      const sigBytes = new Uint8Array(signatureHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
 
-        return await window.crypto.subtle.verify(
-            {
-                name: "ECDSA",
-                hash: { name: "SHA-256" },
-            },
-            key,
-            sigBytes,
-            enc.encode(message)
-        );
-      } catch (e) {
-          console.error('Signature Verification Failed:', e);
-          return false;
-      }
+      return await window.crypto.subtle.verify(
+        {
+          name: 'ECDSA',
+          hash: { name: 'SHA-256' },
+        },
+        key,
+        sigBytes,
+        enc.encode(message),
+      );
+    } catch (e) {
+      console.error('Signature Verification Failed:', e);
+      return false;
+    }
   }
 
   setBiometricForce(enabled: boolean) {
@@ -482,7 +462,10 @@ export class VaultService {
     if (cached) return cached;
     if (window.electronAPI?.getMachineId) {
       const id = await window.electronAPI.getMachineId();
-      if (id) { this.hardwareId.set(id); return id; }
+      if (id) {
+        this.hardwareId.set(id);
+        return id;
+      }
     }
     return null;
   }

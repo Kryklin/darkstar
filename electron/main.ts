@@ -13,9 +13,7 @@ if (squirrelStartup) {
 }
 
 // Register custom protocol as secure/standard
-protocol.registerSchemesAsPrivileged([
-  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } }
-]);
+protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } }]);
 
 let updaterInitialized = false;
 let isVersionLocked = false;
@@ -26,7 +24,6 @@ function sendStatusToWindow(status: string, error?: string) {
     win.webContents.send('update-status', { status, error });
   }
 }
-
 
 function initUpdater() {
   if (updaterInitialized) return;
@@ -110,8 +107,8 @@ function createWindow() {
     (async () => {
       try {
         const distPath = path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser');
-        
-        // 1. Read legacy origins
+
+        // Execution of legacy origin migration sequence
         await win.loadFile(path.join(distPath, 'index.html'));
         const fileData = await win.webContents.executeJavaScript('Object.assign({}, window.localStorage)');
 
@@ -124,35 +121,35 @@ function createWindow() {
         await win.loadURL('app://local/index.html');
         const appLocalData = await win.webContents.executeJavaScript('Object.assign({}, window.localStorage)');
 
-        // 2. Final Origin: app://localhost
+        // Final Protocol Origin: app://localhost
         await win.loadURL('app://localhost/index.html');
         const currentData = await win.webContents.executeJavaScript('Object.assign({}, window.localStorage)');
-        
+
         if (!currentData['darkstar_vault'] && !currentData['migration_complete']) {
-            const origins = [fileData, appData, darkstarData, appLocalData];
-            let bestData = null;
-            let maxVaultSize = 0;
-            for (const data of origins) {
-                if (data && data['darkstar_vault']) {
-                    const size = data['darkstar_vault'].length;
-                    if (size > maxVaultSize) {
-                        maxVaultSize = size;
-                        bestData = data;
-                    }
-                }
+          const origins = [fileData, appData, darkstarData, appLocalData];
+          let bestData = null;
+          let maxVaultSize = 0;
+          for (const data of origins) {
+            if (data && data['darkstar_vault']) {
+              const size = data['darkstar_vault'].length;
+              if (size > maxVaultSize) {
+                maxVaultSize = size;
+                bestData = data;
+              }
             }
-            if (bestData) {
-                for (const key of Object.keys(bestData)) {
-                    await win.webContents.executeJavaScript(`window.localStorage.setItem(${JSON.stringify(key)}, ${JSON.stringify(bestData[key])});`);
-                }
-                await win.webContents.executeJavaScript(`window.localStorage.setItem('vault_recovered_notice', 'true');`);
+          }
+          if (bestData) {
+            for (const key of Object.keys(bestData)) {
+              await win.webContents.executeJavaScript(`window.localStorage.setItem(${JSON.stringify(key)}, ${JSON.stringify(bestData[key])});`);
             }
-            // Mark migration as attempted/complete to avoid scanning origins on every boot
-            await win.webContents.executeJavaScript(`window.localStorage.setItem('migration_complete', 'true');`);
+            await win.webContents.executeJavaScript(`window.localStorage.setItem('vault_recovered_notice', 'true');`);
+          }
+          // Persistence of migration state to prevent redundant execution
+          await win.webContents.executeJavaScript(`window.localStorage.setItem('migration_complete', 'true');`);
         }
       } catch (_e) {
-          console.error("Migration Sequence Failed:", _e);
-          await win.loadURL('app://localhost/index.html');
+        console.error('Migration Sequence Failed:', _e);
+        await win.loadURL('app://localhost/index.html');
       } finally {
         win.show();
       }
@@ -164,11 +161,7 @@ function createTray() {
   const iconPath = path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser', 'favicon.ico');
   const icon = nativeImage.createFromPath(iconPath);
   tray = new Tray(icon);
-  const contextMenu = Menu.buildFromTemplate([
-    { label: `Version: ${app.getVersion()}`, enabled: false },
-    { type: 'separator' },
-    { label: 'Exit', click: () => app.quit() }
-  ]);
+  const contextMenu = Menu.buildFromTemplate([{ label: `Version: ${app.getVersion()}`, enabled: false }, { type: 'separator' }, { label: 'Exit', click: () => app.quit() }]);
   tray.setToolTip('Darkstar');
   tray.setContextMenu(contextMenu);
   tray.on('click', () => {
@@ -195,39 +188,48 @@ app.whenReady().then(async () => {
     const distPath = path.join(__dirname, '..', '..', 'dist', 'darkstar', 'browser');
     const fullPath = path.join(distPath, pathname);
     try {
-        if (!fullPath.startsWith(distPath)) return new Response('Forbidden', { status: 403 });
-        const fileContent = await fs.readFile(fullPath);
-        const extension = path.extname(fullPath).toLowerCase();
-        const mimeTypes: Record<string, string> = {
-            '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
-            '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon',
-            '.json': 'application/json', '.svg': 'image/svg+xml'
-        };
-        return new Response(new Uint8Array(fileContent), {
-            headers: { 
-              'content-type': mimeTypes[extension] || 'application/octet-stream',
-              'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net;",
-              'X-Content-Type-Options': 'nosniff',
-              'X-Frame-Options': 'DENY'
-            }
-        });
+      if (!fullPath.startsWith(distPath)) return new Response('Forbidden', { status: 403 });
+      const fileContent = await fs.readFile(fullPath);
+      const extension = path.extname(fullPath).toLowerCase();
+      const mimeTypes: Record<string, string> = {
+        '.html': 'text/html',
+        '.js': 'text/javascript',
+        '.css': 'text/css',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.ico': 'image/x-icon',
+        '.json': 'application/json',
+        '.svg': 'image/svg+xml',
+      };
+      return new Response(new Uint8Array(fileContent), {
+        headers: {
+          'content-type': mimeTypes[extension] || 'application/octet-stream',
+          'Content-Security-Policy':
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net;",
+          'X-Content-Type-Options': 'nosniff',
+          'X-Frame-Options': 'DENY',
+        },
+      });
     } catch (_e) {
-        try {
-            const indexContent = await fs.readFile(path.join(distPath, 'index.html'));
-            return new Response(new Uint8Array(indexContent), { 
-              headers: { 
-                'content-type': 'text/html',
-                'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net;",
-                'X-Content-Type-Options': 'nosniff',
-                'X-Frame-Options': 'DENY'
-              } 
-            });
-        } catch { return new Response('Not Found', { status: 404 }); }
+      try {
+        const indexContent = await fs.readFile(path.join(distPath, 'index.html'));
+        return new Response(new Uint8Array(indexContent), {
+          headers: {
+            'content-type': 'text/html',
+            'Content-Security-Policy':
+              "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net;",
+            'X-Content-Type-Options': 'nosniff',
+            'X-Frame-Options': 'DENY',
+          },
+        });
+      } catch {
+        return new Response('Not Found', { status: 404 });
+      }
     }
   });
 
   await verifyIntegrity();
-  
+
   // Hardened Permission Request Handler
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     // Allow camera access for Air-Gap QR features, deny everything else
@@ -243,7 +245,9 @@ app.whenReady().then(async () => {
 
   // One-time cleanup of diagnostic logs
   const logPath = path.join(app.getPath('userData'), 'debug.log');
-  fs.unlink(logPath).catch(() => { /* ignore */ });
+  fs.unlink(logPath).catch(() => {
+    /* ignore */
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -306,7 +310,11 @@ ipcMain.handle('safe-storage-decrypt', async (_event, encryptedBase64: string) =
 ipcMain.handle('safe-storage-available', () => safeStorage.isEncryptionAvailable());
 
 ipcMain.handle('get-machine-id', () => {
-  try { return machineIdSync(); } catch { return null; }
+  try {
+    return machineIdSync();
+  } catch {
+    return null;
+  }
 });
 
 ipcMain.handle('check-integrity', () => true);
@@ -320,13 +328,22 @@ ipcMain.handle('vault-generate-totp', () => {
 });
 
 ipcMain.handle('vault-verify-totp', (_event, token: string, secret: string) => {
-  try { return verifySync({ token, secret }); } catch { return false; }
+  try {
+    return verifySync({ token, secret });
+  } catch {
+    return false;
+  }
 });
 
 const getVaultPath = () => path.join(app.getPath('userData'), 'vault_storage');
 
 ipcMain.handle('vault-ensure-dir', async () => {
-  try { await fs.mkdir(getVaultPath(), { recursive: true }); return true; } catch { return false; }
+  try {
+    await fs.mkdir(getVaultPath(), { recursive: true });
+    return true;
+  } catch {
+    return false;
+  }
 });
 
 ipcMain.handle('vault-save-file', async (_event, filename: string, buffer: Buffer) => {
@@ -350,7 +367,11 @@ ipcMain.handle('vault-delete-file', async (_event, filename: string) => {
 });
 
 ipcMain.handle('vault-list-files', async () => {
-  try { return await fs.readdir(getVaultPath()); } catch { return []; }
+  try {
+    return await fs.readdir(getVaultPath());
+  } catch {
+    return [];
+  }
 });
 
 ipcMain.on('restart-and-install', () => autoUpdater.quitAndInstall());
@@ -382,7 +403,9 @@ ipcMain.handle('save-backup', async (_event, dir: string, filename: string, data
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, filename), data, 'utf-8');
     return true;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 });
 
 ipcMain.handle('show-directory-picker', async (event) => {
@@ -395,13 +418,17 @@ ipcMain.handle('show-file-picker', async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
     properties: ['openFile'],
-    filters: [{ name: 'Darkstar Backup', extensions: ['backup'] }]
+    filters: [{ name: 'Darkstar Backup', extensions: ['backup'] }],
   });
   return canceled ? null : filePaths[0];
 });
 
 ipcMain.handle('open-backup', async (_event, filePath: string) => {
-  try { return await fs.readFile(filePath, 'utf-8'); } catch { return null; }
+  try {
+    return await fs.readFile(filePath, 'utf-8');
+  } catch {
+    return null;
+  }
 });
 
 import { execFile } from 'child_process';
@@ -409,63 +436,59 @@ import { promisify } from 'util';
 const execFileAsync = promisify(execFile);
 
 async function runDKaspCommand(engine: string, args: string[]): Promise<unknown> {
-    const isWindows = process.platform === 'win32';
-    const ext = isWindows ? '.exe' : '';
-    let cmd = '';
-    let execArgs: string[] = [];
+  const isWindows = process.platform === 'win32';
+  const ext = isWindows ? '.exe' : '';
+  let cmd = '';
+  let execArgs: string[] = [];
 
-    const basePath = app.isPackaged 
-      ? path.join(process.resourcesPath, 'd-kasp-512') 
-      : path.join(__dirname, '..', '..', 'd-kasp-512');
+  const basePath = app.isPackaged ? path.join(process.resourcesPath, 'd-kasp-512') : path.join(__dirname, '..', '..', 'd-kasp-512');
 
-    if (engine === 'rust') {
-        cmd = path.join(basePath, 'rust', 'target', 'release', `d-kasp-512${ext}`);
-        execArgs = args;
-    } else if (engine === 'go') {
-        cmd = path.join(basePath, 'go', `d-kasp-512${ext}`);
-        execArgs = args;
-    } else {
-        // default Node
-        cmd = 'node';
-        execArgs = [path.join(basePath, 'node', 'darkstar_crypt.js'), ...args];
-    }
+  if (engine === 'rust') {
+    cmd = path.join(basePath, 'rust', 'target', 'release', `d-kasp-512${ext}`);
+    execArgs = args;
+  } else if (engine === 'go') {
+    cmd = path.join(basePath, 'go', `d-kasp-512${ext}`);
+    execArgs = args;
+  } else {
+    // default Node
+    cmd = 'node';
+    execArgs = [path.join(basePath, 'node', 'darkstar_crypt.js'), ...args];
+  }
 
+  try {
+    const { stdout } = await execFileAsync(cmd, execArgs);
     try {
-        const { stdout } = await execFileAsync(cmd, execArgs);
-        try {
-            return JSON.parse(stdout);
-        } catch {
-            return stdout.trim();
-        }
-    } catch (e: unknown) {
-        const err = e as Error & { stderr?: string };
-        throw new Error(`D-KASP Engine (${engine}) failed: ${err.stderr || err.message}`);
+      return JSON.parse(stdout);
+    } catch {
+      return stdout.trim();
     }
+  } catch (e: unknown) {
+    const err = e as Error & { stderr?: string };
+    throw new Error(`D-KASP Engine (${engine}) failed: ${err.stderr || err.message}`);
+  }
 }
 
 ipcMain.handle('dkasp-encrypt', async (_event, mnemonic: string, pkHex: string, engine: string, hwid?: string) => {
-    const args: string[] = [];
-    if (hwid) {
-        args.push('--hwid', hwid);
-    }
-    args.push('encrypt', mnemonic, pkHex);
-    return await runDKaspCommand(engine, args);
+  const args: string[] = [];
+  if (hwid) {
+    args.push('--hwid', hwid);
+  }
+  args.push('encrypt', mnemonic, pkHex);
+  return await runDKaspCommand(engine, args);
 });
 
 ipcMain.handle('dkasp-decrypt', async (_event, data: string, rk: string, skHex: string, engine: string, hwid?: string) => {
-    const args: string[] = [];
-    if (hwid) {
-        args.push('--hwid', hwid);
-    }
-    args.push('decrypt', data, skHex); // rk is legacy/unused
-    return await runDKaspCommand(engine, args);
+  const args: string[] = [];
+  if (hwid) {
+    args.push('--hwid', hwid);
+  }
+  args.push('decrypt', data, skHex); // rk parameter is legacy and maintained for signature parity
+  return await runDKaspCommand(engine, args);
 });
-
-
 
 // --- WebAuthn Native Proxy (Windows Hello Fix) ---
 
-ipcMain.handle('biometric-handshake', async (_event: unknown, options: { action: 'create' | 'get', publicKey: unknown }) => {
+ipcMain.handle('biometric-handshake', async (_event: unknown, options: { action: 'create' | 'get'; publicKey: unknown }) => {
   return new Promise((resolve) => {
     let server: http.Server | null = null;
     let handshakeWin: BrowserWindow | null = null;
@@ -482,7 +505,6 @@ ipcMain.handle('biometric-handshake', async (_event: unknown, options: { action:
     };
 
     server = http.createServer(async (_req, res) => {
-      
       // Helper to ensure all binary data is safely serialized to arrays
       const serializeBuffers = (obj: unknown): unknown => {
         if (Buffer.isBuffer(obj) || obj instanceof Uint8Array) return Array.from(obj);
@@ -490,7 +512,7 @@ ipcMain.handle('biometric-handshake', async (_event: unknown, options: { action:
         if (obj && typeof obj === 'object') {
           const result: Record<string, unknown> = {};
           for (const key in obj) {
-              result[key] = serializeBuffers((obj as Record<string, unknown>)[key]);
+            result[key] = serializeBuffers((obj as Record<string, unknown>)[key]);
           }
           return result;
         }
@@ -557,7 +579,7 @@ ipcMain.handle('biometric-handshake', async (_event: unknown, options: { action:
 
     server.listen(0, '127.0.0.1', async () => {
       const addr = server!.address();
-      const port = (addr && typeof addr === 'object') ? addr.port : 0;
+      const port = addr && typeof addr === 'object' ? addr.port : 0;
 
       handshakeWin = new BrowserWindow({
         width: 1,
@@ -566,11 +588,11 @@ ipcMain.handle('biometric-handshake', async (_event: unknown, options: { action:
         webPreferences: {
           nodeIntegration: false,
           contextIsolation: true,
-          preload: path.join(__dirname, 'preload_handshake.js')
-        }
+          preload: path.join(__dirname, 'preload_handshake.js'),
+        },
       });
 
-      const resultHandler = async (_: unknown, response: { success: boolean, data?: unknown, error?: string }) => {
+      const resultHandler = async (_: unknown, response: { success: boolean; data?: unknown; error?: string }) => {
         ipcMain.removeListener('handshake-result', resultHandler);
         cleanup();
         resolve(response);
@@ -581,9 +603,9 @@ ipcMain.handle('biometric-handshake', async (_event: unknown, options: { action:
 
       setTimeout(async () => {
         if (server) {
-           ipcMain.removeListener('handshake-result', resultHandler);
-           cleanup();
-           resolve({ success: false, error: 'Handshake timeout' });
+          ipcMain.removeListener('handshake-result', resultHandler);
+          cleanup();
+          resolve({ success: false, error: 'Handshake timeout' });
         }
       }, 60000);
     });

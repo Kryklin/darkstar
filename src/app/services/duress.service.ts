@@ -53,18 +53,18 @@ export class DuressService {
    */
   triggerDuress(): void {
     console.warn('DURESS MODE TRIGGERED. Wiping data...');
-    
+
     // 1. Wipe Vault
     localStorage.removeItem('darkstar_vault');
-    
+
     // 2. Clear Session Logic (if any) - Handled by VaultService.lock() usually, but be sure.
     // We expect VaultService to call this, but we can do a hard reload to be sure.
-    
-    // 3. Optional: Clear Duress Config so they can't even prove it was set? 
+
+    // 3. Optional: Clear Duress Config so they can't even prove it was set?
     // Let's keep it simple: Just wipe the vault.
-    
+
     // 4. Force Reload / Redirect
     // A hard reload is the safest way to clear all memory state (Signals, etc).
-    window.location.reload(); 
+    window.location.reload();
   }
 }

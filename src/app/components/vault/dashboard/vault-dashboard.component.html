@@ -8,17 +8,17 @@
           <mat-icon>add</mat-icon>
         </button>
       </div>
-      
+
       <div class="search-box">
-         <mat-form-field appearance="outline" class="dense-form-field">
-           <mat-icon matPrefix>search</mat-icon>
-           <input matInput placeholder="Search..." [(ngModel)]="searchTerm">
-           @if (searchTerm()) {
-             <button mat-icon-button matSuffix (click)="searchTerm.set('')">
-               <mat-icon>close</mat-icon>
-             </button>
-           }
-         </mat-form-field>
+        <mat-form-field appearance="outline" class="dense-form-field">
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput placeholder="Search..." [(ngModel)]="searchTerm" />
+          @if (searchTerm()) {
+            <button mat-icon-button matSuffix (click)="searchTerm.set('')">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
       </div>
 
       <mat-nav-list class="custom-scroll scroll-bounce">
@@ -28,9 +28,9 @@
             <p matListItemLine class="note-date">{{ note.updatedAt | date: 'short' }}</p>
             @if (note.tags.length) {
               <div matListItemLine class="note-tags">
-                 @for (t of note.tags | slice:0:3; track t) {
-                   <span class="mini-tag">#{{t}}</span>
-                 }
+                @for (t of note.tags | slice: 0 : 3; track t) {
+                  <span class="mini-tag">#{{ t }}</span>
+                }
               </div>
             }
           </a>
@@ -50,151 +50,152 @@
       @if (selectedNote()) {
         <div class="editor-wrapper">
           <div class="editor-header-group">
-              <div class="editor-header">
-                @if (isHandset()) {
-                  <button mat-icon-button (click)="showNoteList()" matTooltip="Back to Notes" class="back-btn">
-                     <mat-icon>arrow_back</mat-icon>
-                  </button>
+            <div class="editor-header">
+              @if (isHandset()) {
+                <button mat-icon-button (click)="showNoteList()" matTooltip="Back to Notes" class="back-btn">
+                  <mat-icon>arrow_back</mat-icon>
+                </button>
+              }
+              <input class="title-input" [(ngModel)]="currentTitle" (ngModelChange)="onContentChange()" placeholder="Note Title" />
+
+              <div class="header-actions">
+                <!-- Time-Lock menu or button -->
+                @if (selectedNote()?.timeLock) {
+                  @if (selectedNote()?.timeLock?.isLocked) {
+                    <mat-chip class="time-lock-chip" color="warn" highlighted><mat-icon>lock_clock</mat-icon> Locked</mat-chip>
+                  } @else {
+                    <button mat-icon-button (click)="removeTimeLock()" matTooltip="Remove Time-Lock"><mat-icon>timer_off</mat-icon></button>
+                  }
+                } @else {
+                  <button mat-icon-button [matMenuTriggerFor]="timeLockMenu" matTooltip="Time-Lock Note"><mat-icon>timer</mat-icon></button>
+                  <mat-menu #timeLockMenu="matMenu">
+                    <button mat-menu-item (click)="applyTimeLock(60)"><mat-icon>hourglass_empty</mat-icon> 1 Minute Lock</button>
+                    <button mat-menu-item (click)="applyTimeLock(300)"><mat-icon>hourglass_bottom</mat-icon> 5 Minute Lock</button>
+                    <button mat-menu-item (click)="applyTimeLock(3600)"><mat-icon>hourglass_full</mat-icon> 1 Hour Lock</button>
+                  </mat-menu>
                 }
-                <input class="title-input" [(ngModel)]="currentTitle" (ngModelChange)="onContentChange()" placeholder="Note Title" />
-                
-                <div class="header-actions">
-                    <!-- Time-Lock menu or button -->
-                    @if (selectedNote()?.timeLock) {
-                       @if (selectedNote()?.timeLock?.isLocked) {
-                          <mat-chip class="time-lock-chip" color="warn" highlighted><mat-icon>lock_clock</mat-icon> Locked</mat-chip>
-                       } @else {
-                          <button mat-icon-button (click)="removeTimeLock()" matTooltip="Remove Time-Lock"><mat-icon>timer_off</mat-icon></button>
-                       }
-                    } @else {
-                       <button mat-icon-button [matMenuTriggerFor]="timeLockMenu" matTooltip="Time-Lock Note"><mat-icon>timer</mat-icon></button>
-                       <mat-menu #timeLockMenu="matMenu">
-                          <button mat-menu-item (click)="applyTimeLock(60)"><mat-icon>hourglass_empty</mat-icon> 1 Minute Lock</button>
-                          <button mat-menu-item (click)="applyTimeLock(300)"><mat-icon>hourglass_bottom</mat-icon> 5 Minute Lock</button>
-                          <button mat-menu-item (click)="applyTimeLock(3600)"><mat-icon>hourglass_full</mat-icon> 1 Hour Lock</button>
-                       </mat-menu>
-                    }
-                    
-                    <button mat-icon-button class="action-btn" (click)="togglePreview()" [disabled]="selectedNote()?.timeLock?.isLocked" [matTooltip]="showPreview ? 'Edit' : 'Save'">
-                        <mat-icon>{{ showPreview ? 'edit' : 'save' }}</mat-icon>
-                    </button>
-                    <button mat-icon-button class="delete-btn" (click)="deleteCurrentNote()" matTooltip="Delete Note">
-                        <mat-icon>delete</mat-icon>
-                    </button>
-                </div>
+
+                <button mat-icon-button class="action-btn" (click)="togglePreview()" [disabled]="selectedNote()?.timeLock?.isLocked" [matTooltip]="showPreview ? 'Edit' : 'Save'">
+                  <mat-icon>{{ showPreview ? 'edit' : 'save' }}</mat-icon>
+                </button>
+                <button mat-icon-button class="delete-btn" (click)="deleteCurrentNote()" matTooltip="Delete Note">
+                  <mat-icon>delete</mat-icon>
+                </button>
               </div>
-              
-              <!-- TAGS INPUT -->
-              @if (!showPreview) {
-                <div class="tags-input-row">
-                    <mat-form-field appearance="outline" class="tags-field">
-                      <mat-label>Tags</mat-label>
-                      <mat-chip-grid #chipGrid aria-label="Enter tags">
-                        @for (tag of currentTags; track tag) {
-                          <mat-chip-row (removed)="removeTag(tag)">
-                            {{tag}}
-                            <button matChipRemove [attr.aria-label]="'remove ' + tag">
-                              <mat-icon>cancel</mat-icon>
-                            </button>
-                          </mat-chip-row>
-                        }
-                        <input placeholder="New tag..."
-                               [matChipInputFor]="chipGrid"
-                               [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
-                               [matChipInputAddOnBlur]="true"
-                               (matChipInputTokenEnd)="addTag($event)"/>
-                      </mat-chip-grid>
-                    </mat-form-field>
-                </div>
-              }
-              @if (showPreview && currentTags.length) {
-                 <div class="tags-display-row">
-                    <mat-chip-set>
-                        @for (tag of currentTags; track tag) {
-                          <mat-chip>#{{tag}}</mat-chip>
-                        }
-                    </mat-chip-set>
-                 </div>
-              }
+            </div>
+
+            <!-- TAGS INPUT -->
+            @if (!showPreview) {
+              <div class="tags-input-row">
+                <mat-form-field appearance="outline" class="tags-field">
+                  <mat-label>Tags</mat-label>
+                  <mat-chip-grid #chipGrid aria-label="Enter tags">
+                    @for (tag of currentTags; track tag) {
+                      <mat-chip-row (removed)="removeTag(tag)">
+                        {{ tag }}
+                        <button matChipRemove [attr.aria-label]="'remove ' + tag">
+                          <mat-icon>cancel</mat-icon>
+                        </button>
+                      </mat-chip-row>
+                    }
+                    <input
+                      placeholder="New tag..."
+                      [matChipInputFor]="chipGrid"
+                      [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
+                      [matChipInputAddOnBlur]="true"
+                      (matChipInputTokenEnd)="addTag($event)"
+                    />
+                  </mat-chip-grid>
+                </mat-form-field>
+              </div>
+            }
+            @if (showPreview && currentTags.length) {
+              <div class="tags-display-row">
+                <mat-chip-set>
+                  @for (tag of currentTags; track tag) {
+                    <mat-chip>#{{ tag }}</mat-chip>
+                  }
+                </mat-chip-set>
+              </div>
+            }
           </div>
 
           <!-- FORMATTING TOOLBAR (Only in Edit Mode) -->
           @if (!showPreview) {
             <div class="editor-toolbar">
-               <button mat-icon-button (click)="insertFormat('bold')" matTooltip="Bold (Ctrl+B)"><mat-icon>format_bold</mat-icon></button>
-               <button mat-icon-button (click)="insertFormat('italic')" matTooltip="Italic (Ctrl+I)"><mat-icon>format_italic</mat-icon></button>
-               <button mat-icon-button (click)="insertFormat('heading')" matTooltip="Heading"><mat-icon>title</mat-icon></button>
-               <div class="divider"></div>
-               <button mat-icon-button (click)="insertFormat('list')" matTooltip="Bullet List"><mat-icon>format_list_bulleted</mat-icon></button>
-               <button mat-icon-button (click)="insertFormat('checklist')" matTooltip="Checklist"><mat-icon>check_box</mat-icon></button>
-               <button mat-icon-button (click)="insertFormat('code')" matTooltip="Code Block"><mat-icon>code</mat-icon></button>
-               <div class="divider"></div>
-               <button mat-icon-button (click)="triggerImageUpload()" matTooltip="Insert Image"><mat-icon>image</mat-icon></button>
-               <button mat-icon-button (click)="fileInput.click()" matTooltip="Attach File"><mat-icon>attach_file</mat-icon></button>
-               <input type="file" #imageInput hidden (change)="handleImageUpload($event)" accept="image/*" />
-               <input type="file" #fileInput hidden (change)="handleFileUpload($event)" />
+              <button mat-icon-button (click)="insertFormat('bold')" matTooltip="Bold (Ctrl+B)"><mat-icon>format_bold</mat-icon></button>
+              <button mat-icon-button (click)="insertFormat('italic')" matTooltip="Italic (Ctrl+I)"><mat-icon>format_italic</mat-icon></button>
+              <button mat-icon-button (click)="insertFormat('heading')" matTooltip="Heading"><mat-icon>title</mat-icon></button>
+              <div class="divider"></div>
+              <button mat-icon-button (click)="insertFormat('list')" matTooltip="Bullet List"><mat-icon>format_list_bulleted</mat-icon></button>
+              <button mat-icon-button (click)="insertFormat('checklist')" matTooltip="Checklist"><mat-icon>check_box</mat-icon></button>
+              <button mat-icon-button (click)="insertFormat('code')" matTooltip="Code Block"><mat-icon>code</mat-icon></button>
+              <div class="divider"></div>
+              <button mat-icon-button (click)="triggerImageUpload()" matTooltip="Insert Image"><mat-icon>image</mat-icon></button>
+              <button mat-icon-button (click)="fileInput.click()" matTooltip="Attach File"><mat-icon>attach_file</mat-icon></button>
+              <input type="file" #imageInput hidden (change)="handleImageUpload($event)" accept="image/*" />
+              <input type="file" #fileInput hidden (change)="handleFileUpload($event)" />
             </div>
           }
 
           <div class="editor-body">
             @if (isLocking()) {
-               <div class="locking-overlay">
-                  <mat-progress-spinner mode="determinate" [value]="lockProgress()"></mat-progress-spinner>
-                  <h3>Computing Cryptographic Delay...</h3>
-                  <p>{{ lockProgress() }}% Complete</p>
-                  <span class="lock-warn">Please do not close this window.</span>
-               </div>
+              <div class="locking-overlay">
+                <mat-progress-spinner mode="determinate" [value]="lockProgress()"></mat-progress-spinner>
+                <h3>Computing Cryptographic Delay...</h3>
+                <p>{{ lockProgress() }}% Complete</p>
+                <span class="lock-warn">Please do not close this window.</span>
+              </div>
             } @else if (selectedNote()?.timeLock?.isLocked) {
-               <div class="locked-state">
-                  <mat-icon class="huge-icon">lock_clock</mat-icon>
-                  <h2>Note Time-Locked</h2>
-                  <p>This note is secured by a Verifiable Delay Function. It will take computational time to unlock.</p>
-                  <button mat-raised-button color="primary" (click)="unlockCurrentNote()">
-                    <mat-icon>vpn_key</mat-icon> Compute Unlock Key
-                  </button>
-               </div>
+              <div class="locked-state">
+                <mat-icon class="huge-icon">lock_clock</mat-icon>
+                <h2>Note Time-Locked</h2>
+                <p>This note is secured by a Verifiable Delay Function. It will take computational time to unlock.</p>
+                <button mat-raised-button color="primary" (click)="unlockCurrentNote()"><mat-icon>vpn_key</mat-icon> Compute Unlock Key</button>
+              </div>
             } @else if (showPreview) {
               <article class="markdown-preview custom-scroll scroll-bounce">
-                 <markdown [data]="currentContent"></markdown>
-                 
-                 <!-- ATTACHMENTS PREVIEW -->
-                 @if (currentAttachments.length > 0) {
-                    <div class="attachments-section">
-                        <h5>Attachments</h5>
-                        <mat-list>
-                            @for (file of currentAttachments; track file.id) {
-                              <mat-list-item>
-                                  <mat-icon matListItemIcon>description</mat-icon>
-                                  <span matListItemTitle>{{file.name}}</span>
-                                  <span matListItemLine>{{ file.size | number }} bytes</span>
-                                  <button mat-icon-button matListItemMeta (click)="downloadFile(file)"><mat-icon>download</mat-icon></button>
-                              </mat-list-item>
-                            }
-                        </mat-list>
-                    </div>
-                 }
+                <markdown [data]="currentContent"></markdown>
+
+                <!-- ATTACHMENTS PREVIEW -->
+                @if (currentAttachments.length > 0) {
+                  <div class="attachments-section">
+                    <h5>Attachments</h5>
+                    <mat-list>
+                      @for (file of currentAttachments; track file.id) {
+                        <mat-list-item>
+                          <mat-icon matListItemIcon>description</mat-icon>
+                          <span matListItemTitle>{{ file.name }}</span>
+                          <span matListItemLine>{{ file.size | number }} bytes</span>
+                          <button mat-icon-button matListItemMeta (click)="downloadFile(file)"><mat-icon>download</mat-icon></button>
+                        </mat-list-item>
+                      }
+                    </mat-list>
+                  </div>
+                }
               </article>
             } @else {
-              <textarea 
+              <textarea
                 #editorArea
-                class="content-input custom-scroll scroll-bounce" 
-                [(ngModel)]="currentContent" 
-                (ngModelChange)="onContentChange()" 
+                class="content-input custom-scroll scroll-bounce"
+                [(ngModel)]="currentContent"
+                (ngModelChange)="onContentChange()"
                 (keydown)="onKeyDown($event)"
-                placeholder="Start typing your secure note..."></textarea>
-                
-                 <!-- ATTACHMENTS EDIT -->
-                 @if (currentAttachments.length > 0) {
-                    <div class="attachments-section edit-mode">
-                        @for (file of currentAttachments; track file.id) {
-                          <div class="attachment-chip">
-                              <mat-icon class="file-icon">description</mat-icon>
-                              <span class="file-name">{{file.name}}</span>
-                              <button mat-icon-button class="remove-file" (click)="deleteFile(file)"><mat-icon>close</mat-icon></button>
-                          </div>
-                        }
+                placeholder="Start typing your secure note..."
+              ></textarea>
+
+              <!-- ATTACHMENTS EDIT -->
+              @if (currentAttachments.length > 0) {
+                <div class="attachments-section edit-mode">
+                  @for (file of currentAttachments; track file.id) {
+                    <div class="attachment-chip">
+                      <mat-icon class="file-icon">description</mat-icon>
+                      <span class="file-name">{{ file.name }}</span>
+                      <button mat-icon-button class="remove-file" (click)="deleteFile(file)"><mat-icon>close</mat-icon></button>
                     </div>
-                 }
+                  }
+                </div>
+              }
             }
           </div>
         </div>
@@ -203,48 +204,44 @@
           <mat-icon class="large-icon">verified_user</mat-icon>
           <h2>Vault Unlocked</h2>
           <p>Select a note to view or create a new one.</p>
-          
+
           @if (identityFingerprint()) {
             <div class="identity-card glass-card">
-                <div class="id-header">
-                    <mat-icon>fingerprint</mat-icon>
-                    <span>Cryptographic Identity</span>
-                </div>
-                <div class="id-value">
-                    <code>{{ identityFingerprint() }}</code>
-                    <button mat-icon-button (click)="copyIdentity()" matTooltip="Copy Public Key JSON">
-                        <mat-icon>content_copy</mat-icon>
-                    </button>
-                </div>
-                <div class="id-actions" style="margin-top: 16px; display: flex; gap: 8px; justify-content: center;">
-                    <button mat-stroked-button color="accent" (click)="backupIdentity()">
-                        <mat-icon>save_alt</mat-icon> Backup Full Identity
-                    </button>
-                    <button mat-stroked-button color="primary" (click)="recoverIdentity()">
-                        <mat-icon>settings_backup_restore</mat-icon> Recover from Clipboard
-                    </button>
-                </div>
-                <div class="id-footer">
-                    <span class="secure-badge"><mat-icon>lock</mat-icon> SECURE ENCLAVE</span>
-                    @if (isQuantumSafe()) {
-                      <span class="secure-badge quantum"><mat-icon>auto_awesome</mat-icon> QUANTUM-SAFE (ML-KEM-1024)</span>
-                    }
-                </div>
+              <div class="id-header">
+                <mat-icon>fingerprint</mat-icon>
+                <span>Cryptographic Identity</span>
+              </div>
+              <div class="id-value">
+                <code>{{ identityFingerprint() }}</code>
+                <button mat-icon-button (click)="copyIdentity()" matTooltip="Copy Public Key JSON">
+                  <mat-icon>content_copy</mat-icon>
+                </button>
+              </div>
+              <div class="id-actions" style="margin-top: 16px; display: flex; gap: 8px; justify-content: center">
+                <button mat-stroked-button color="accent" (click)="backupIdentity()"><mat-icon>save_alt</mat-icon> Backup Full Identity</button>
+                <button mat-stroked-button color="primary" (click)="recoverIdentity()"><mat-icon>settings_backup_restore</mat-icon> Recover from Clipboard</button>
+              </div>
+              <div class="id-footer">
+                <span class="secure-badge"><mat-icon>lock</mat-icon> SECURE ENCLAVE</span>
+                @if (isQuantumSafe()) {
+                  <span class="secure-badge quantum"><mat-icon>auto_awesome</mat-icon> QUANTUM-SAFE (ML-KEM-1024)</span>
+                }
+              </div>
             </div>
           }
 
           @if (hardwareId()) {
-            <div class="identity-card glass-card" style="margin-top: 16px;">
-                <div class="id-header">
-                    <mat-icon>memory</mat-icon>
-                    <span>Machine Hardware ID</span>
-                </div>
-                <div class="id-value">
-                    <code>{{ hardwareId() }}</code>
-                </div>
-                <div class="id-footer">
-                    <span class="secure-badge"><mat-icon>laptop_mac</mat-icon> DEVICE BOUND</span>
-                </div>
+            <div class="identity-card glass-card" style="margin-top: 16px">
+              <div class="id-header">
+                <mat-icon>memory</mat-icon>
+                <span>Machine Hardware ID</span>
+              </div>
+              <div class="id-value">
+                <code>{{ hardwareId() }}</code>
+              </div>
+              <div class="id-footer">
+                <span class="secure-badge"><mat-icon>laptop_mac</mat-icon> DEVICE BOUND</span>
+              </div>
             </div>
           }
         </div>

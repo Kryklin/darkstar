@@ -28,7 +28,6 @@ export class SharedEncryptComponent implements OnInit {
   @Input() mnemonicValidator: ValidatorFn | null = null;
   @Input() randomWordsGenerator: (() => string) | null = null;
 
-
   @Output() generateRandom = new EventEmitter<void>();
 
   firstFormGroup: FormGroup;
@@ -36,7 +35,6 @@ export class SharedEncryptComponent implements OnInit {
   showResult = false;
   encryptedData = '';
   reverseKey = '';
-
 
   stealthMode: StealthMode | 'standard' = 'standard';
   stealthModes = [
@@ -65,7 +63,6 @@ export class SharedEncryptComponent implements OnInit {
     this.firstFormGroup = this._formBuilder.group({
       firstCtrl: ['', [Validators.required]],
     });
-
   }
 
   ngOnInit() {
@@ -85,34 +82,34 @@ export class SharedEncryptComponent implements OnInit {
       const mnemonic = this.firstFormGroup.controls['firstCtrl'].value;
 
       if (!this.vaultService.isUnlocked()) {
-          this.snackBar.open('Vault is locked. Cannot retrieve ML-KEM key.', 'Close', { duration: 3000 });
-          return;
+        this.snackBar.open('Vault is locked. Cannot retrieve ML-KEM key.', 'Close', { duration: 3000 });
+        return;
       }
 
       const id = this.vaultService.identity();
       if (!id || !id.pqcPublicKey) {
-          this.snackBar.open('No Vault Identity or ML-KEM-1024 public key found.', 'Close', { duration: 3000 });
-          return;
+        this.snackBar.open('No Vault Identity or ML-KEM-1024 public key found.', 'Close', { duration: 3000 });
+        return;
       }
 
       // Convert Base64 PQC Public Key to Hex for the engine payload
       const rawBody = atob(id.pqcPublicKey);
       let pkHex = '';
       for (let i = 0; i < rawBody.length; i++) {
-          const hex = rawBody.charCodeAt(i).toString(16);
-          pkHex += (hex.length === 2 ? hex : '0' + hex);
+        const hex = rawBody.charCodeAt(i).toString(16);
+        pkHex += hex.length === 2 ? hex : '0' + hex;
       }
 
       let hwid: string | undefined = undefined;
 
       if (this.useHardwareId) {
-          const hwId = await this.vaultService.getHardwareId();
-          if (hwId) {
-              hwid = hwId;
-          } else {
-              this.snackBar.open('Failed to retrieve Machine Hardware ID from system.', 'Close', { duration: 3000 });
-              return;
-          }
+        const hwId = await this.vaultService.getHardwareId();
+        if (hwId) {
+          hwid = hwId;
+        } else {
+          this.snackBar.open('Failed to retrieve Machine Hardware ID from system.', 'Close', { duration: 3000 });
+          return;
+        }
       }
 
       const { encryptedData, reverseKey } = await this.cryptService.encrypt(mnemonic, pkHex, hwid);
@@ -167,53 +164,53 @@ export class SharedEncryptComponent implements OnInit {
         });
     } else {
       const options: StealthOptions = { noiseLevel: this.stealthNoiseLevel };
-      
+
       const processAndDownload = (buffer?: ArrayBuffer) => {
-          if (buffer) options.coverFile = buffer;
-          
-          const content = this.steganographyService.transmute(this.encryptedData, this.stealthMode as StealthMode, options);
+        if (buffer) options.coverFile = buffer;
 
-          let filename = 'system_debug.log';
-          let mime = 'text/plain';
+        const content = this.steganographyService.transmute(this.encryptedData, this.stealthMode as StealthMode, options);
 
-          if (this.stealthMode === StealthMode.CSV) {
-            filename = 'dataset.csv';
-            mime = 'text/csv';
-          } else if (this.stealthMode === StealthMode.JSON) {
-            filename = 'config.json';
-            mime = 'application/json';
-          } else if (this.stealthMode === 'audio' as StealthMode) {
-              filename = 'audio_track.wav';
-              // Decode base64 content returned by generator
-              // For downloadBlob we expect string context, but for binary we might need blob logic
-              // The generator returns Base64 string for audio. 
-              // downloadBlob creates Blob from content(string).
-              // We need to decode base64 to binary for the blob.
-              
-              // Helper to convert base64 to blob
-              const byteCharacters = atob(content);
-              const byteNumbers = new Array(byteCharacters.length);
-              for (let i = 0; i < byteCharacters.length; i++) {
-                  byteNumbers[i] = byteCharacters.charCodeAt(i);
-              }
-              const byteArray = new Uint8Array(byteNumbers);
-              this.downloadBlobObj(new Blob([byteArray], { type: 'audio/wav' }), filename);
-              return;
+        let filename = 'system_debug.log';
+        let mime = 'text/plain';
+
+        if (this.stealthMode === StealthMode.CSV) {
+          filename = 'dataset.csv';
+          mime = 'text/csv';
+        } else if (this.stealthMode === StealthMode.JSON) {
+          filename = 'config.json';
+          mime = 'application/json';
+        } else if (this.stealthMode === ('audio' as StealthMode)) {
+          filename = 'audio_track.wav';
+          // Decode base64 content returned by generator
+          // For downloadBlob we expect string context, but for binary we might need blob logic
+          // The generator returns Base64 string for audio.
+          // downloadBlob creates Blob from content(string).
+          // We need to decode base64 to binary for the blob.
+
+          // Helper to convert base64 to blob
+          const byteCharacters = atob(content);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
           }
+          const byteArray = new Uint8Array(byteNumbers);
+          this.downloadBlobObj(new Blob([byteArray], { type: 'audio/wav' }), filename);
+          return;
+        }
 
-          this.downloadBlob(content, filename, mime);
+        this.downloadBlob(content, filename, mime);
       };
 
       if (this.stealthMode === 'audio' && this.selectedCoverAudio) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-              if (e.target?.result) {
-                  processAndDownload(e.target.result as ArrayBuffer);
-              }
-          };
-          reader.readAsArrayBuffer(this.selectedCoverAudio);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            processAndDownload(e.target.result as ArrayBuffer);
+          }
+        };
+        reader.readAsArrayBuffer(this.selectedCoverAudio);
       } else {
-          processAndDownload();
+        processAndDownload();
       }
     }
   }

@@ -1,12 +1,15 @@
-// Package main implements the D-KASP cryptographic scheme.
+// Package main implements the D-KASP cryptographic suite.
 //
-// D-KASP Features:
+// D-KASP (Darkstar Key-Agnostic Structural Permutation) is a post-quantum
+// structural obfuscation protocol leveraging ML-KEM-1024 (Kyber-1024)
+// as its primary root of trust.
+//
+// Protocol Layers:
 // - D: Darkstar ecosystem origin
-// - K: ML-KEM-1024 (Kyber-1024) NIST Root of Trust
-// - A: Augmented 64-layer SPN/ARX gauntlet
-// - S: Sequential word-based path-logic
+// - K: ML-KEM-1024 NIST Level 5 security parity
+// - A: Augmented 16-round SPNA/ARX transformation gauntlet
+// - S: Sequential deterministic path-logic
 // - P: Permutation-based non-linear core
-// - 1024: 256-bit Post-Quantum security parity
 package main
 
 import (
@@ -22,7 +25,8 @@ import (
 	"github.com/cloudflare/circl/kem/mlkem/mlkem1024"
 )
 
-// --- PRNG ---
+// PRNG defines the interface for deterministic random number generation
+// used to drive the SPNA gauntlet's path selection logic.
 
 type PRNG interface {
 	Next() uint32
@@ -84,11 +88,11 @@ func (c *DarkstarChaChaPRNG) Next() uint32 {
 	return val
 }
 
-// --- DarkstarCrypt ---
+// DarkstarCrypt manages the 16-round SPNA transformation pipeline.
 
 type TransformationFn func([]byte, []byte, func(string) PRNG) []byte
 
-struct DarkstarCrypt struct {
+type DarkstarCrypt struct {
 	forwardPipeline []TransformationFn
 	reversePipeline []TransformationFn
 }

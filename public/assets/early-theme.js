@@ -1,8 +1,8 @@
-(function() {
+(function () {
   try {
     // 1. Enforce dark-first
     document.documentElement.classList.add('dark-theme');
-    
+
     // 2. Load saved theme
     const savedTheme = localStorage.getItem('selectedTheme');
     if (savedTheme) {

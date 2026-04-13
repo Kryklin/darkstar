@@ -60,7 +60,7 @@ body {
     --mdc-tab-indicator-active-indicator-color: var(--mat-sys-primary);
     --mat-tab-header-active-label-text-color: var(--mat-sys-primary);
     --mat-tab-header-inactive-label-text-color: var(--glass-text-muted);
-    
+
     .mat-mdc-tab-header {
       border-bottom: 1px solid var(--glass-border) !important;
       margin-bottom: 12px;
@@ -80,8 +80,10 @@ body {
 
   /* Form Field Overrides */
   .mat-mdc-form-field {
-    .mat-mdc-form-field-focus-indicator { display: none; }
-    
+    .mat-mdc-form-field-focus-indicator {
+      display: none;
+    }
+
     .mat-mdc-text-field-wrapper {
       background: var(--glass-input-bg) !important;
       border: 1px solid var(--glass-border) !important;
@@ -99,9 +101,15 @@ body {
       box-shadow: 0 0 15px rgba(var(--mat-sys-primary-rgb), 0.15);
     }
 
-    .mat-mdc-form-field-label { color: var(--glass-text-muted) !important; }
-    .mat-mdc-input-element { color: var(--glass-text) !important; }
-    .mat-mdc-select-value { color: var(--glass-text) !important; }
+    .mat-mdc-form-field-label {
+      color: var(--glass-text-muted) !important;
+    }
+    .mat-mdc-input-element {
+      color: var(--glass-text) !important;
+    }
+    .mat-mdc-select-value {
+      color: var(--glass-text) !important;
+    }
   }
 
   /* Button Enhancements */
@@ -115,15 +123,16 @@ body {
 
     &:not([disabled]):hover {
       transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(var(--mat-sys-primary-rgb), 0.3) !important;
+      box-shadow:
+        0 10px 20px rgba(0, 0, 0, 0.3),
+        0 0 15px rgba(var(--mat-sys-primary-rgb), 0.3) !important;
     }
-    
+
     &:not([disabled]):active {
       transform: translateY(0);
     }
   }
 }
-
 
 // Global Scrollbar Polish
 ::-webkit-scrollbar {
@@ -221,10 +230,10 @@ body.light-theme .app-title {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  
+
   // Subtle visual feedback when hitting scroll limits (active state)
   &:active {
-      cursor: grabbing;
+    cursor: grabbing;
   }
 }
 
@@ -283,7 +292,7 @@ body.light-theme .app-title {
       font-family: 'Roboto Mono', monospace;
       display: block;
       margin-top: 10px;
-      background: rgba(0,0,0,0.3);
+      background: rgba(0, 0, 0, 0.3);
       padding: 6px 10px;
       border-radius: 6px;
       border: 1px solid var(--glass-border);
@@ -324,26 +333,26 @@ body.light-theme .app-title {
 }
 
 .status-badge {
-    padding: 4px 12px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-right: 12px;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    border: 1px solid transparent;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-right: 12px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  border: 1px solid transparent;
 
-    &.warn {
-        color: #ff9d00;
-        background: rgba(255, 157, 0, 0.1);
-        border-color: rgba(255, 157, 0, 0.3);
-    }
+  &.warn {
+    color: #ff9d00;
+    background: rgba(255, 157, 0, 0.1);
+    border-color: rgba(255, 157, 0, 0.3);
+  }
 
-    &.success {
-        color: #00e676;
-        background: rgba(0, 230, 118, 0.1);
-        border-color: rgba(0, 230, 118, 0.3);
-    }
+  &.success {
+    color: #00e676;
+    background: rgba(0, 230, 118, 0.1);
+    border-color: rgba(0, 230, 118, 0.3);
+  }
 }
 
 .theme-option {
@@ -357,8 +366,8 @@ body.light-theme .app-title {
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.2);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -385,23 +394,30 @@ body.light-theme .app-title {
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   border-radius: 12px;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
   overflow: hidden;
 
   // Inner glow effect
   &::before {
     content: '';
     position: absolute;
-    top: 0; left: 0; right: 0;
+    top: 0;
+    left: 0;
+    right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
     z-index: 1;
   }
 
   // Interactive hover physics
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(64, 196, 255, 0.1);
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.5),
+      0 0 20px rgba(64, 196, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.2);
   }
 }

@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   safeStorageEncrypt: (text: string) => ipcRenderer.invoke('safe-storage-encrypt', text),
   safeStorageDecrypt: (base64: string) => ipcRenderer.invoke('safe-storage-decrypt', base64),
   safeStorageAvailable: () => ipcRenderer.invoke('safe-storage-available'),
-  // Vault V2 API
+  // Vault Storage API
   vaultEnsureDir: () => ipcRenderer.invoke('vault-ensure-dir'),
   vaultSaveFile: (filename: string, buffer: Uint8Array) => ipcRenderer.invoke('vault-save-file', filename, buffer),
   vaultReadFile: (filename: string) => ipcRenderer.invoke('vault-read-file', filename),
@@ -32,12 +32,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openBackup: (filePath: string) => ipcRenderer.invoke('open-backup', filePath),
   checkIntegrity: () => ipcRenderer.invoke('check-integrity'),
   getMachineId: (): Promise<string | null> => ipcRenderer.invoke('get-machine-id'),
-  biometricHandshake: (options: { action: 'create' | 'get', publicKey: unknown }): Promise<{ success: boolean, data?: unknown, error?: string }> => ipcRenderer.invoke('biometric-handshake', options),
+  biometricHandshake: (options: { action: 'create' | 'get'; publicKey: unknown }): Promise<{ success: boolean; data?: unknown; error?: string }> => ipcRenderer.invoke('biometric-handshake', options),
   getPlatform: () => process.platform,
 });
 
-// All of the Node.js APIs are available in the preload process.
-// It has the same sandbox as a Chrome extension.
 window.addEventListener('DOMContentLoaded', () => {
   const replaceText = (selector: string, text: string) => {
     const element = document.getElementById(selector);

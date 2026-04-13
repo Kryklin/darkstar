@@ -43,11 +43,7 @@ export class VaultDashboardComponent {
     const term = this.searchTerm().toLowerCase();
     const allNotes = this.notes();
     if (!term) return allNotes;
-    return allNotes.filter(n => 
-        n.title.toLowerCase().includes(term) || 
-        n.content.toLowerCase().includes(term) ||
-        n.tags?.some(t => t.toLowerCase().includes(term))
-    );
+    return allNotes.filter((n) => n.title.toLowerCase().includes(term) || n.content.toLowerCase().includes(term) || n.tags?.some((t) => t.toLowerCase().includes(term)));
   });
 
   @ViewChild('editorArea') editorArea?: ElementRef<HTMLTextAreaElement>;
@@ -66,92 +62,90 @@ export class VaultDashboardComponent {
   hardwareId = signal<string | null>(null);
 
   constructor() {
-     this.loadIdentity();
-     this.loadHardwareId();
-     
-     this.breakpointObserver.observe([Breakpoints.Handset])
-       .subscribe(result => {
-           this.isHandset.set(result.matches);
-       });
+    this.loadIdentity();
+    this.loadHardwareId();
+
+    this.breakpointObserver.observe([Breakpoints.Handset]).subscribe((result) => {
+      this.isHandset.set(result.matches);
+    });
   }
 
-
   async loadHardwareId() {
-      try {
-          const hwId = await this.vaultService.getHardwareId();
-          if (hwId) {
-              this.hardwareId.set(hwId);
-          }
-      } catch (e) {
-          console.error("Failed to load hardware ID", e);
+    try {
+      const hwId = await this.vaultService.getHardwareId();
+      if (hwId) {
+        this.hardwareId.set(hwId);
       }
+    } catch (e) {
+      console.error('Failed to load hardware ID', e);
+    }
   }
 
   async loadIdentity() {
-      try {
-          const key = await this.vaultService.getPublicKey();
-          const identity = this.vaultService.identity();
-          
-          // Create a visual fingerprint (short hash of X coord)
-          if (key.x) {
-             const prefix = 'h'; // 'h' for Hybrid/PQC if present
-             if (identity?.pqcPublicKey) {
-                 this.identityFingerprint.set(`${prefix}7d5r${key.x.substring(0, 16)}...`);
-             } else {
-                 this.identityFingerprint.set(`e9k2${key.x.substring(0, 16)}...`);
-             }
-          }
-      } catch {
-          this.identityFingerprint.set('Identity Hidden');
+    try {
+      const key = await this.vaultService.getPublicKey();
+      const identity = this.vaultService.identity();
+
+      // Create a visual fingerprint (short hash of X coord)
+      if (key.x) {
+        const prefix = 'h'; // 'h' for Hybrid/PQC if present
+        if (identity?.pqcPublicKey) {
+          this.identityFingerprint.set(`${prefix}7d5r${key.x.substring(0, 16)}...`);
+        } else {
+          this.identityFingerprint.set(`e9k2${key.x.substring(0, 16)}...`);
+        }
       }
+    } catch {
+      this.identityFingerprint.set('Identity Hidden');
+    }
   }
 
   async copyIdentity() {
-      try {
-          const key = await this.vaultService.getPublicKey();
-          navigator.clipboard.writeText(JSON.stringify(key, null, 2));
-      } catch (e) {
-          console.error(e);
-      }
+    try {
+      const key = await this.vaultService.getPublicKey();
+      navigator.clipboard.writeText(JSON.stringify(key, null, 2));
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   backupIdentity() {
-      try {
-          const identityJson = this.vaultService.exportIdentity();
-          const copySuccess = this.clipboard.copy(identityJson);
-          if (copySuccess) {
-              this.snackBar.open('Identity Backed Up to Clipboard! KEEP THIS SECURE. DO NOT SHARE.', 'OK', {
-                  duration: 8000,
-                  panelClass: ['legacy-warning-snackbar']
-              });
-          } else {
-              this.snackBar.open('Failed to copy to clipboard.', 'Close', { duration: 3000 });
-          }
-      } catch (e) {
-          console.error(e);
-          this.snackBar.open('Error backing up identity.', 'Close', { duration: 3000 });
+    try {
+      const identityJson = this.vaultService.exportIdentity();
+      const copySuccess = this.clipboard.copy(identityJson);
+      if (copySuccess) {
+        this.snackBar.open('Identity Backed Up to Clipboard! KEEP THIS SECURE. DO NOT SHARE.', 'OK', {
+          duration: 8000,
+          panelClass: ['legacy-warning-snackbar'],
+        });
+      } else {
+        this.snackBar.open('Failed to copy to clipboard.', 'Close', { duration: 3000 });
       }
+    } catch (e) {
+      console.error(e);
+      this.snackBar.open('Error backing up identity.', 'Close', { duration: 3000 });
+    }
   }
 
   async recoverIdentity() {
-      try {
-          const clipboardText = await navigator.clipboard.readText();
-          if (!clipboardText) {
-              this.snackBar.open('Clipboard is empty.', 'Close', { duration: 3000 });
-              return;
-          }
-
-          const success = await this.vaultService.importIdentity(clipboardText);
-          if (success) {
-              this.loadIdentity();
-              this.snackBar.open('Identity recovered successfully!', 'OK', { duration: 3000 });
-          } else {
-              this.snackBar.open('Invalid identity format in clipboard.', 'Close', { duration: 3000 });
-          }
-      } catch (e) {
-          console.error(e);
-          this.snackBar.open('Failed to attach clipboard content.', 'Close', { duration: 3000 });
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      if (!clipboardText) {
+        this.snackBar.open('Clipboard is empty.', 'Close', { duration: 3000 });
+        return;
       }
+
+      const success = await this.vaultService.importIdentity(clipboardText);
+      if (success) {
+        this.loadIdentity();
+        this.snackBar.open('Identity recovered successfully!', 'OK', { duration: 3000 });
+      } else {
+        this.snackBar.open('Invalid identity format in clipboard.', 'Close', { duration: 3000 });
+      }
+    } catch (e) {
+      console.error(e);
+      this.snackBar.open('Failed to attach clipboard content.', 'Close', { duration: 3000 });
+    }
   }
 
   selectNote(note: VaultNote) {
@@ -161,23 +155,23 @@ export class VaultDashboardComponent {
     this.currentTags = [...(note.tags || [])];
     this.currentAttachments = [...(note.attachments || [])];
     this.showPreview = true;
-    
+
     if (this.isHandset()) {
-        // No longer auto-hiding
+      // No longer auto-hiding
     }
   }
 
   showNoteList() {
-      this.selectedNote.set(null);
-      this.sidenavOpened.set(true);
+    this.selectedNote.set(null);
+    this.sidenavOpened.set(true);
   }
 
   createNote() {
     this.vaultService.addNote('', '');
     const newNote = this.notes()[0]; // Assumes added at top
     if (newNote) {
-        this.selectNote(newNote);
-        this.showPreview = false;
+      this.selectNote(newNote);
+      this.showPreview = false;
     }
   }
 
@@ -192,18 +186,14 @@ export class VaultDashboardComponent {
   async applyTimeLock(seconds: number) {
     const note = this.selectedNote();
     if (!note) return;
-    
+
     this.isLocking.set(true);
     try {
-      const result = await this.timeLockService.lockNoteContent(
-        this.currentContent,
-        seconds,
-        (p) => this.lockProgress.set(p)
-      );
+      const result = await this.timeLockService.lockNoteContent(this.currentContent, seconds, (p) => this.lockProgress.set(p));
       this.currentContent = result.encryptedData;
       this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, result.metadata);
       this.showPreview = true;
-      this.selectNote(this.vaultService.notes().find(n => n.id === note.id)!);
+      this.selectNote(this.vaultService.notes().find((n) => n.id === note.id)!);
     } catch (e) {
       console.error(e);
     } finally {
@@ -215,14 +205,10 @@ export class VaultDashboardComponent {
   async unlockCurrentNote() {
     const note = this.selectedNote();
     if (!note || !note.timeLock) return;
-    
+
     this.isLocking.set(true);
     try {
-      const decrypted = await this.timeLockService.unlockNoteContent(
-        this.currentContent,
-        note.timeLock,
-        (p) => this.lockProgress.set(p)
-      );
+      const decrypted = await this.timeLockService.unlockNoteContent(this.currentContent, note.timeLock, (p) => this.lockProgress.set(p));
       this.currentContent = decrypted;
       note.timeLock.isLocked = false;
       this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, note.timeLock);
@@ -267,65 +253,72 @@ export class VaultDashboardComponent {
   async handleFileUpload(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
-        const file = input.files[0];
-        const note = this.selectedNote();
-        // Access master key securely
-        const password = this.vaultService.getMasterKey();
-        if(!note || !password) return;
+      const file = input.files[0];
+      const note = this.selectedNote();
+      // Access master key securely
+      const password = this.vaultService.getMasterKey();
+      if (!note || !password) return;
 
-        try {
-            const attachment = await this.fileService.uploadFile(file, password);
-            this.vaultService.addAttachment(note.id, attachment);
-            this.currentAttachments.push(attachment);
-        } catch (err) {
-            console.error('Upload failed', err);
-        }
+      try {
+        const attachment = await this.fileService.uploadFile(file, password);
+        this.vaultService.addAttachment(note.id, attachment);
+        this.currentAttachments.push(attachment);
+      } catch (err) {
+        console.error('Upload failed', err);
+      }
     }
   }
 
   async downloadFile(file: VaultAttachment) {
-      const password = this.vaultService.getMasterKey();
-      if(!password) return;
-      await this.fileService.downloadFile(file, password);
+    const password = this.vaultService.getMasterKey();
+    if (!password) return;
+    await this.fileService.downloadFile(file, password);
   }
 
   async deleteFile(file: VaultAttachment) {
-      const note = this.selectedNote();
-      if(!note) return;
-      
-      try {
-          // Determine if we should also delete from disk? Yes.
-          await this.fileService.deleteFile(file);
-          this.vaultService.removeAttachment(note.id, file.id);
-          this.currentAttachments = this.currentAttachments.filter(a => a.id !== file.id);
-      } catch (err) {
-          console.error('Delete file failed', err);
-      }
+    const note = this.selectedNote();
+    if (!note) return;
+
+    try {
+      // Determine if we should also delete from disk? Yes.
+      await this.fileService.deleteFile(file);
+      this.vaultService.removeAttachment(note.id, file.id);
+      this.currentAttachments = this.currentAttachments.filter((a) => a.id !== file.id);
+    } catch (err) {
+      console.error('Delete file failed', err);
+    }
   }
 
   deleteCurrentNote() {
     const note = this.selectedNote();
     if (note) {
-      this.dialog.open(GenericDialog, {
-        data: {
-          title: 'Delete Note',
-          message: 'Are you sure you want to permanently delete this note?',
-          buttons: [
-            { label: 'Cancel', value: false },
-            { label: 'Delete', value: true, color: 'warn' }
-          ]
-        }
-      }).afterClosed().subscribe(confirmed => {
-        if (confirmed) {
-          this.vaultService.deleteNote(note.id);
-          this.selectedNote.set(null);
-        }
-      });
+      this.dialog
+        .open(GenericDialog, {
+          data: {
+            title: 'Delete Note',
+            message: 'Are you sure you want to permanently delete this note?',
+            buttons: [
+              { label: 'Cancel', value: false },
+              { label: 'Delete', value: true, color: 'warn' },
+            ],
+          },
+        })
+        .afterClosed()
+        .subscribe((confirmed) => {
+          if (confirmed) {
+            this.vaultService.deleteNote(note.id);
+            this.selectedNote.set(null);
+          }
+        });
     }
   }
 
-  lock() { this.vaultService.lock(); }
-  togglePreview() { this.showPreview = !this.showPreview; }
+  lock() {
+    this.vaultService.lock();
+  }
+  togglePreview() {
+    this.showPreview = !this.showPreview;
+  }
 
   // --- EDITOR TOOLBAR LOGIC ---
 
@@ -338,14 +331,14 @@ export class VaultDashboardComponent {
     if (input.files && input.files[0]) {
       const file = input.files[0];
       const reader = new FileReader();
-      
+
       reader.onload = (e) => {
         const base64 = e.target?.result as string;
         const imageMarkdown = `\n![${file.name}](${base64})\n`;
         this.insertAtCursor(imageMarkdown);
         this.onContentChange();
       };
-      
+
       reader.readAsDataURL(file);
     }
   }
@@ -364,46 +357,70 @@ export class VaultDashboardComponent {
     let defaultText = '';
 
     switch (type) {
-        case 'bold': prefix = '**'; suffix = '**'; defaultText = 'bold text'; break;
-        case 'italic': prefix = '*'; suffix = '*'; defaultText = 'italic text'; break;
-        case 'heading': prefix = '## '; suffix = ''; defaultText = 'Heading'; break;
-        case 'code': prefix = '```\n'; suffix = '\n```'; defaultText = 'code block'; break;
-        case 'list': prefix = '- '; suffix = ''; defaultText = 'list item'; break;
-        case 'checklist': prefix = '- [ ] '; suffix = ''; defaultText = 'task'; break;
+      case 'bold':
+        prefix = '**';
+        suffix = '**';
+        defaultText = 'bold text';
+        break;
+      case 'italic':
+        prefix = '*';
+        suffix = '*';
+        defaultText = 'italic text';
+        break;
+      case 'heading':
+        prefix = '## ';
+        suffix = '';
+        defaultText = 'Heading';
+        break;
+      case 'code':
+        prefix = '```\n';
+        suffix = '\n```';
+        defaultText = 'code block';
+        break;
+      case 'list':
+        prefix = '- ';
+        suffix = '';
+        defaultText = 'list item';
+        break;
+      case 'checklist':
+        prefix = '- [ ] ';
+        suffix = '';
+        defaultText = 'task';
+        break;
     }
 
     const replacement = prefix + (selectedText || defaultText) + suffix;
-    
+
     this.insertAtCursor(replacement);
     el.focus();
   }
 
   private insertAtCursor(textToInsert: string) {
-     const el = this.editorArea?.nativeElement;
-     if (!el) return;
+    const el = this.editorArea?.nativeElement;
+    if (!el) return;
 
-     const start = el.selectionStart;
-     const end = el.selectionEnd;
-     const text = el.value;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const text = el.value;
 
-     this.currentContent = text.substring(0, start) + textToInsert + text.substring(end);
-     
-     setTimeout(() => {
-         el.selectionStart = el.selectionEnd = start + textToInsert.length;
-     }, 0);
-     
-     this.onContentChange();
+    this.currentContent = text.substring(0, start) + textToInsert + text.substring(end);
+
+    setTimeout(() => {
+      el.selectionStart = el.selectionEnd = start + textToInsert.length;
+    }, 0);
+
+    this.onContentChange();
   }
 
   onKeyDown(event: KeyboardEvent) {
-      if (event.ctrlKey || event.metaKey) {
-          if (event.key === 'b') {
-              event.preventDefault();
-              this.insertFormat('bold');
-          } else if (event.key === 'i') {
-              event.preventDefault();
-              this.insertFormat('italic');
-          }
+    if (event.ctrlKey || event.metaKey) {
+      if (event.key === 'b') {
+        event.preventDefault();
+        this.insertFormat('bold');
+      } else if (event.key === 'i') {
+        event.preventDefault();
+        this.insertFormat('italic');
       }
+    }
   }
 }

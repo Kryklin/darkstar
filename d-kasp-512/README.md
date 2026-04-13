@@ -1,55 +1,65 @@
-# D-KASP V8 (SPNA-Hardened)
-The **D-KASP V8** suite is a sovereign post-quantum encryption engine designed for the Darkstar ecosystem, providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
+# D-KASP: Multi-Language Cryptographic Engine Suite
+
+The **D-KASP (Deterministic-KASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
+
+---
+
+## 🛠️ Core Capabilities
 
 - **ML-KEM-1024 (Kyber)**: NIST Level 5 Post-Quantum root of trust.
-- **16-Round, 64-Layer SPNA Gauntlet**: Hardened deterministic schedule (Substitution, Permutation, Network, Algebraic) every round.
+- **16-Round SPNA Gauntlet**: Hardened deterministic schedule (Substitution, Permutation, Network, Algebraic) every round.
 - **HMAC-Linked Fusion**: Authentication-first protocol providing ML-KEM-linked integrity.
-- **Positional Salting**: Index-based entropy injection ensures unique cipher paths for identical data.
+- **Hardware Binding**: Optional machine-unique entropy injection ($HWID$).
 
 ---
 
-## 🛠️ Cross-Language Integration
-All implementations are provided as **high-performance, single-file** sources for maximum portability.
+## 🏗️ Cross-Language Implementation Parity
 
-| Language  | Source File                | Quick Snippet                                                                 |
-| :-------- | :------------------------- | :---------------------------------------------------------------------------- |
-| **Node**  | `node/darkstar_crypt.js`   | `crypt.encrypt('phrase', 'pk_hex')`                                           |
-| **Go**    | `go/main.go`               | `dc.Encrypt("phrase", "pk_hex")`                                             |
-| **Rust**  | `rust/src/main.rs`         | `dc.encrypt("phrase", "pk_hex")`                                             |
-| **Python**| `python/darkstar_crypt.py` | `dc.encrypt("secret", "pk_hex")`                                              |
+All implementations are designed as **high-performance, standalone sources** to ensure maximum portability and zero external cryptographic dependencies (where possible).
+
+| Language    | Engine Path                | Core Implementation    |
+| :---------- | :------------------------- | :--------------------- |
+| **Rust**    | `rust/src/main.rs`         | ML-KEM / SPNA Gauntlet |
+| **Go**      | `go/main.go`               | ML-KEM / SPNA Gauntlet |
+| **Python**  | `python/darkstar_crypt.py` | SPNA Gauntlet          |
+| **Node.js** | `node/darkstar_crypt.js`   | SPNA Gauntlet / Bridge |
 
 ---
 
-## ⌨️ CLI Command Structure
+## ⌨️ CLI Usage Standard
+
+All CLI engines share a standardized argument structure for seamless integration.
 
 ```bash
 # General Syntax
 ./darkstar [flags] <command> [arguments...]
 
-# Common Operations
-./darkstar keygen                                     # Generate PQ keys
-./darkstar encrypt "my mnemonic" <public_key_hex>      # Encrypt (Forces V8)
-./darkstar decrypt <json_payload> <rk_b64> <sk_hex>    # Decrypt (Auto-detects V2-V8)
-./darkstar test                                       # Run engine self-test
+# Available Commands
+encrypt <mnemonic> <pk_hex> [--hwid <hex>]   # Encrypt using D-KASP
+decrypt <json_payload> <sk_hex> [--hwid <hex>] # Decrypt using D-KASP
+keygen                                       # Generate ML-KEM keypair
+test                                         # Run bit-perfect self-test
 ```
 
 ---
 
-## 📜 Standard Specification (V8)
+## 📜 Exchange Specification
 
-D-KASP V8 produces a JSON-encapsulated envelope with a 64-layer gauntlet:
+D-KASP utilizes a flattened JSON envelope for universal compatibility:
+
 ```json
 {
-  "v": 8,
-  "data": "HEX_ENCODED_OBFUSCATED_PAYLOAD",
-  "ct": "ML_KEM_ENCAPSULATED_KEY_HEX",
-  "mac": "HMAC_SHA256_TAG_HEX"
+  "data": "<HEX_ENCODED_PAYLOAD>",
+  "ct": "<HEX_ENCODED_KEM_CIPHERTEXT>",
+  "mac": "<HEX_ENCODED_HMAC_TAG>"
 }
 ```
-> [!IMPORTANT]
-> **V8 Gauntlet Schedule**: Every word undergoes 16 rounds of SPNA (Substitution, Permutation, Network, Algebraic) transformations. High-diffusion layers (S-Box, ModMult, GFMult, MatrixHill) are enforced at fixed intervals to ensure maximum statistical entropy and prevent linear cryptanalysis.
+
+> [!NOTE]
+> **Bit-Parity Guarantee**: For any given input and keys, every engine in this suite is mathematically guaranteed to output identical Hex/JSON byte-streams.
 
 ---
 
 ## ⚖️ License
+
 Released under the **MIT License**.

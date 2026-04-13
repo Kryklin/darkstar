@@ -13,7 +13,7 @@ describe('SharedEncryptComponent', () => {
   let component: SharedEncryptComponent;
   let fixture: ComponentFixture<SharedEncryptComponent>;
   let mockCryptService: jasmine.SpyObj<CryptService>;
-  let mockVaultService: { isUnlocked: WritableSignal<boolean>, identity: WritableSignal<any> };
+  let mockVaultService: { isUnlocked: WritableSignal<boolean>; identity: WritableSignal<any> };
 
   beforeEach(async () => {
     mockCryptService = jasmine.createSpyObj('CryptService', ['encrypt']);
@@ -21,17 +21,12 @@ describe('SharedEncryptComponent', () => {
 
     mockVaultService = {
       isUnlocked: signal(true),
-      identity: signal({ pqcPublicKey: btoa('test-key') })
+      identity: signal({ pqcPublicKey: btoa('test-key') }),
     };
 
     await TestBed.configureTestingModule({
       imports: [SharedEncryptComponent, BrowserAnimationsModule, MaterialModule, MatSnackBarModule],
-      providers: [
-        { provide: CryptService, useValue: mockCryptService },
-        { provide: VaultService, useValue: mockVaultService },
-        SteganographyService,
-        PaperWalletService,
-      ],
+      providers: [{ provide: CryptService, useValue: mockCryptService }, { provide: VaultService, useValue: mockVaultService }, SteganographyService, PaperWalletService],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SharedEncryptComponent);
@@ -63,19 +58,15 @@ describe('SharedEncryptComponent', () => {
 
       mockVaultService.isUnlocked.set(false);
       fixture.detectChanges();
-      
+
       component.firstFormGroup.controls['firstCtrl'].setValue('abandon abandon abandon');
       component.firstFormGroup.controls['firstCtrl'].updateValueAndValidity();
       fixture.detectChanges();
-      
+
       component.onSubmit();
       tick();
-      
-      expect(spy).toHaveBeenCalledWith(
-        jasmine.stringMatching(/Vault is locked/), 
-        'Close', 
-        jasmine.any(Object)
-      );
+
+      expect(spy).toHaveBeenCalledWith(jasmine.stringMatching(/Vault is locked/), 'Close', jasmine.any(Object));
       expect(mockCryptService.encrypt).not.toHaveBeenCalled();
     }));
 
@@ -85,10 +76,10 @@ describe('SharedEncryptComponent', () => {
       component.firstFormGroup.controls['firstCtrl'].setValue(mnemonic);
       component.firstFormGroup.controls['firstCtrl'].updateValueAndValidity();
       fixture.detectChanges();
-      
+
       component.onSubmit();
       tick();
-      
+
       expect(mockCryptService.encrypt).toHaveBeenCalled();
       expect(component.showResult).toBeTrue();
     }));
@@ -98,9 +89,9 @@ describe('SharedEncryptComponent', () => {
     component.showResult = true;
     component.encryptedData = 'data';
     component.reverseKey = 'key';
-    
+
     component.reset();
-    
+
     expect(component.showResult).toBeFalse();
     expect(component.encryptedData).toBe('');
     expect(component.reverseKey).toBe('');

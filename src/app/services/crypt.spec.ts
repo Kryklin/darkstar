@@ -16,9 +16,9 @@ describe('CryptService', () => {
     (window as any).electronAPI = {
       dKaspEncrypt: jasmine.createSpy('dKaspEncrypt').and.resolveTo({
         encryptedData: JSON.stringify({ v: 6, data: 'mock-encrypted-data' }),
-        reverseKey: ''
+        reverseKey: '',
       }),
-      dKaspDecrypt: jasmine.createSpy('dKaspDecrypt').and.resolveTo(testMnemonic)
+      dKaspDecrypt: jasmine.createSpy('dKaspDecrypt').and.resolveTo(testMnemonic),
     };
   });
 
@@ -29,27 +29,16 @@ describe('CryptService', () => {
   describe('Main Encryption/Decryption Logic (D-KASP V6)', () => {
     it('should call Electron IPC for encryption', async () => {
       const result = await service.encrypt(testMnemonic, testPassword);
-      
-      expect((window as any).electronAPI.dKaspEncrypt).toHaveBeenCalledWith(
-        testMnemonic, 
-        testPassword, 
-        jasmine.any(String), 
-        6
-      );
+
+      expect((window as any).electronAPI.dKaspEncrypt).toHaveBeenCalledWith(testMnemonic, testPassword, jasmine.any(String), 6);
       expect(JSON.parse(result.encryptedData).v).toBe(6);
     });
 
     it('should call Electron IPC for decryption', async () => {
       const encryptedData = JSON.stringify({ v: 6, data: 'mock-encrypted-data' });
       const result = await service.decrypt(encryptedData, '', testPassword);
-      
-      expect((window as any).electronAPI.dKaspDecrypt).toHaveBeenCalledWith(
-        encryptedData,
-        '',
-        testPassword,
-        jasmine.any(String),
-        6
-      );
+
+      expect((window as any).electronAPI.dKaspDecrypt).toHaveBeenCalledWith(encryptedData, '', testPassword, jasmine.any(String), 6);
       expect(result.decrypted).toBe(testMnemonic);
       expect(result.isLegacy).toBeFalse();
     });
@@ -57,7 +46,7 @@ describe('CryptService', () => {
     it('should identify legacy V3 volumes', async () => {
       const encryptedData = JSON.stringify({ v: 3, data: 'legacy-data' });
       const result = await service.decrypt(encryptedData, 'some-rk', testPassword);
-      
+
       expect(result.isLegacy).toBeTrue();
     });
   });
@@ -90,10 +79,10 @@ describe('CryptService', () => {
     it('should encrypt and decrypt Uint8Array data', async () => {
       const data = new Uint8Array([1, 2, 3, 4, 5]);
       const password = 'binary-pass';
-      
+
       const encrypted = await service.encryptBinary(data, password);
       const decrypted = await service.decryptBinary(encrypted, password);
-      
+
       expect(decrypted).toEqual(data);
     });
   });

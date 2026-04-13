@@ -172,7 +172,7 @@ export class CryptService {
    */
   async encrypt(mnemonic: string, keyMaterial: string, hwid?: string): Promise<{ encryptedData: string; reverseKey: string }> {
     const engine = localStorage.getItem('dkasp_engine') || 'rust';
-    const result = (await window.electronAPI.dKaspEncrypt(mnemonic, keyMaterial, engine, hwid)) as { encryptedData: string, reverseKey: string };
+    const result = (await window.electronAPI.dKaspEncrypt(mnemonic, keyMaterial, engine, hwid)) as { encryptedData: string; reverseKey: string };
     return {
       encryptedData: result.encryptedData,
       reverseKey: result.reverseKey,
@@ -185,13 +185,13 @@ export class CryptService {
   async decrypt(encryptedDataRaw: string, reverseKey: string, passwordOrSk: string, hwid?: string): Promise<DecryptionResult> {
     const engine = localStorage.getItem('dkasp_engine') || 'rust';
     let decrypted = await window.electronAPI.dKaspDecrypt(encryptedDataRaw, reverseKey, passwordOrSk, engine, hwid);
-    
+
     if (typeof decrypted !== 'string') {
-        decrypted = JSON.stringify(decrypted);
+      decrypted = JSON.stringify(decrypted);
     }
 
     return {
-      decrypted: decrypted as string
+      decrypted: decrypted as string,
     };
   }
 }

@@ -17,9 +17,9 @@ except ImportError:
 
 class DarkstarCrypt:
     """
-    D-KASP V9 Cryptographic Suite (Monoculture)
+    D-KASP Cryptographic Suite
     
-    This suite implements the definitive Darkstar protocol (V9):
+    This suite implements the definitive Darkstar protocol:
     - Root of Trust: ML-KEM-1024
     - Structure: 16-round SPNA (Substitution, Permutation, Network, Algebraic)
     - Integrity: HMAC-SHA256
@@ -624,8 +624,8 @@ class DarkstarCrypt:
         ss_bytes = bytearray(ss_bytes_tup)
         ct_hex = ct_bytes.hex()
         
-        cipher_key = hashlib.sha256(b"dkasp-v9-cipher-key" + ss_bytes).digest()
-        hmac_key = hashlib.sha256(b"dkasp-v9-hmac-key" + ss_bytes).digest()
+        cipher_key = hashlib.sha256(b"dkasp-cipher-key" + ss_bytes).digest()
+        hmac_key = hashlib.sha256(b"dkasp-hmac-key" + ss_bytes).digest()
         active_password_str = cipher_key.hex()
         
         for i in range(len(ss_bytes)): ss_bytes[i] = 0 
@@ -634,10 +634,10 @@ class DarkstarCrypt:
         def prng_factory(s_str):
             return self.DarkstarChaChaPRNG(s_str)
         
-        word_key = hmac.new(active_password_str.encode('utf-8'), b"dkasp-v9-word-0", hashlib.sha256).digest()
+        word_key = hmac.new(active_password_str.encode('utf-8'), b"dkasp-word-0", hashlib.sha256).digest()
         word_key_hex = word_key.hex()
         
-        chain_state = hashlib.sha256(f"dkasp-chain-v9{active_password_str}".encode('utf-8')).digest()
+        chain_state = hashlib.sha256(f"dkasp-chain-{active_password_str}".encode('utf-8')).digest()
         
         temp_word_bytes = bytearray(current_word_bytes)
         for i in range(len(temp_word_bytes)):
@@ -672,11 +672,10 @@ class DarkstarCrypt:
             current_word_bytes = self.obfuscation_functions_v4[a_idx](current_word_bytes, seed=func_key, prng_factory=prng_factory)
 
         final_payload = current_word_bytes
-        h = hmac.new(hmac_key, b"\x09" + ct_bytes + final_payload, hashlib.sha256)
+        h = hmac.new(hmac_key, ct_bytes + final_payload, hashlib.sha256)
         mac_tag = h.hexdigest()
         
         res_obj = {
-            "v": 9,
             "data": final_payload.hex(),
             "ct": ct_hex,
             "mac": mac_tag
@@ -685,8 +684,6 @@ class DarkstarCrypt:
 
     def decrypt(self, encrypted_data_raw, sk_hex):
         parsed = json.loads(encrypted_data_raw)
-        if parsed.get('v') != 9:
-            raise ValueError(f"Unsupported Version: V{parsed.get('v')}. Python engine is V9-exclusive.")
         
         ct_hex = parsed.get('ct', "")
         encrypted_content = parsed.get('data', "")
@@ -699,24 +696,24 @@ class DarkstarCrypt:
         ss_bytes_tup = kem.decrypt(sk_bytes, ct_bytes)
         ss_bytes = bytearray(ss_bytes_tup)
         
-        cipher_key = hashlib.sha256(b"dkasp-v9-cipher-key" + ss_bytes).digest()
-        hmac_key = hashlib.sha256(b"dkasp-v9-hmac-key" + ss_bytes).digest()
+        cipher_key = hashlib.sha256(b"dkasp-cipher-key" + ss_bytes).digest()
+        hmac_key = hashlib.sha256(b"dkasp-hmac-key" + ss_bytes).digest()
         active_password_str = cipher_key.hex()
         
         for i in range(len(ss_bytes)): ss_bytes[i] = 0 
         
         payload_bytes = bytes.fromhex(encrypted_content)
-        h = hmac.new(hmac_key, b"\x09" + ct_bytes + payload_bytes, hashlib.sha256)
+        h = hmac.new(hmac_key, ct_bytes + payload_bytes, hashlib.sha256)
         if not hmac.compare_digest(h.hexdigest(), mac_tag):
-            raise ValueError("D-KASP V9: Integrity Check Failed")
+            raise ValueError("Integrity Check Failed")
             
         def prng_factory(s_str):
             return self.DarkstarChaChaPRNG(s_str)
         
-        word_key = hmac.new(active_password_str.encode('utf-8'), b"dkasp-v9-word-0", hashlib.sha256).digest()
+        word_key = hmac.new(active_password_str.encode('utf-8'), b"dkasp-word-0", hashlib.sha256).digest()
         word_key_hex = word_key.hex()
         
-        chain_state = hashlib.sha256(f"dkasp-chain-v9{active_password_str}".encode('utf-8')).digest()
+        chain_state = hashlib.sha256(f"dkasp-chain-{active_password_str}".encode('utf-8')).digest()
         
         rng_path = prng_factory(word_key_hex)
         group_s = [0, 1, 5]

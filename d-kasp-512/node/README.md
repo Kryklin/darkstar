@@ -49,4 +49,5 @@ Standard output is a JSON-encapsulated envelope:
 ```
 
 ## ⚖️ License
+
 MIT © Victor Kane

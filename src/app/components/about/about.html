@@ -8,8 +8,8 @@
   <section class="deep-dive-section">
     <h2 class="section-title">The D-KASP Protocol</h2>
     <p class="section-intro">
-      D-KASP (Darkstar Key-Agnostic Structural Permutation) is a sovereign encryption engine designed to provide 
-      bit-perfect interoperability across host environments while neutralizing both classical analysis and quantum-state exploration.
+      D-KASP (Darkstar Key-Agnostic Structural Permutation) is a sovereign encryption engine designed to provide bit-perfect interoperability across host environments while neutralizing both classical
+      analysis and quantum-state exploration.
     </p>
 
     <div class="phase-pipeline">
@@ -20,8 +20,8 @@
         <h3>Quantum Root</h3>
         <p class="phase-tech">ML-KEM-1024 (Kyber)</p>
         <p class="phase-desc">
-          Architecture begins with a NIST Level 5 Key Encapsulation. This establishes a 32-byte shared secret entangled 
-          against the recipient's identity, providing absolute immunity to Shor's quantum search.
+          Architecture begins with a NIST Level 5 Key Encapsulation. This establishes a 32-byte shared secret entangled against the recipient's identity, providing absolute immunity to Shor's quantum
+          search.
         </p>
       </div>
 
@@ -32,8 +32,8 @@
         <h3>SPNA Gauntlet</h3>
         <p class="phase-tech">64-Layer Balanced transformation</p>
         <p class="phase-desc">
-          Every word undergoes 16 rounds of SPNA (Substitution, Permutation, Network, Algebraic) logic. Balanced schedules 
-          ensure S-Box confusion and MatrixHill diffusion are enforced at fixed intervals to destroy statistical patterns.
+          Every word undergoes 16 rounds of SPNA (Substitution, Permutation, Network, Algebraic) logic. Balanced schedules ensure S-Box confusion and MatrixHill diffusion are enforced at fixed
+          intervals to destroy statistical patterns.
         </p>
       </div>
 
@@ -44,8 +44,7 @@
         <h3>Cipher Fusion</h3>
         <p class="phase-tech">Inter-Word Chaining</p>
         <p class="phase-desc">
-          Words are not isolated. The output of each transformation is fused into the state of the next using a 
-          SHA-256 XOR-chain, creating a global avalanche effect across the entire recovery phrase.
+          Words are not isolated. The output of each transformation is fused into the state of the next using a SHA-256 XOR-chain, creating a global avalanche effect across the entire recovery phrase.
         </p>
       </div>
 
@@ -56,8 +55,7 @@
         <h3>Kernel Parity</h3>
         <p class="phase-tech">Multi-Language Interop</p>
         <p class="phase-desc">
-          Strict deterministic pathing ensures that Rust, Go, Python, and Node.js implementations produce 
-          bit-perfect identical ciphertexts, allowing seamless cross-platform vault recovery.
+          Strict deterministic pathing ensures that Rust, Go, Python, and Node.js implementations produce bit-perfect identical ciphertexts, allowing seamless cross-platform vault recovery.
         </p>
       </div>
     </div>
@@ -86,12 +84,12 @@
           <rect x="200" y="70" width="100" height="60" rx="8" />
           <text x="250" y="105" text-anchor="middle" class="node-label">ML-KEM</text>
         </g>
-        
+
         <!-- GAUNTLET SUB-SYSTEM -->
         <g class="gauntlet-system">
           <rect x="350" y="50" width="200" height="100" rx="12" class="gauntlet-frame" />
           <text x="450" y="65" text-anchor="middle" class="node-label-main">GAUNTLET (SPNA)</text>
-          
+
           <g class="sub-node s1">
             <circle cx="400" cy="80" r="15" />
             <text x="400" y="84" text-anchor="middle" class="sub-label">S</text>
@@ -108,7 +106,7 @@
             <circle cx="450" cy="120" r="15" />
             <text x="450" y="124" text-anchor="middle" class="sub-label">A</text>
           </g>
-          
+
           <text x="450" y="145" text-anchor="middle" class="complexity-label">[ 16 ROUNDS / 64 LAYERS ]</text>
           <path class="sub-trace" d="M375 80 H425 M450 100 L475 120 H525" />
         </g>
@@ -164,19 +162,15 @@
 
   <section class="meta-section">
     <div class="meta-links">
-      <button mat-stroked-button (click)="openLink(repoUrl)">
-        <span class="material-icons">code</span> SOURCE REPOSITORY
-      </button>
-      <button mat-stroked-button (click)="openLink(donationUrl)">
-        <span class="material-icons">favorite</span> SUPPORT DEVELOPMENT
-      </button>
+      <button mat-stroked-button (click)="openLink(repoUrl)"><span class="material-icons">code</span> SOURCE REPOSITORY</button>
+      <button mat-stroked-button (click)="openLink(donationUrl)"><span class="material-icons">favorite</span> SUPPORT DEVELOPMENT</button>
     </div>
-    
+
     <div class="meta-info">
-      <p>Licensed under <strong>{{ licenseType }}</strong></p>
-      <p class="disclaimer">
-        DARKSTAR IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. USERS ASSUME ALL RISK FOR RECOVERY PHRASE MANAGEMENT.
+      <p>
+        Licensed under <strong>{{ licenseType }}</strong>
       </p>
+      <p class="disclaimer">DARKSTAR IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. USERS ASSUME ALL RISK FOR RECOVERY PHRASE MANAGEMENT.</p>
     </div>
   </section>
 
