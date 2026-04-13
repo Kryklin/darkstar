@@ -14,12 +14,12 @@ export class VaultFileService {
    * Reads a File, encrypts it, and saves it to the Vault storage via IPC.
    * returns the attachment metadata.
    */
-  async uploadFile(file: File, password: string): Promise<VaultAttachment> {
+  async uploadFile(file: File, password: string, pqcPublicKey?: string): Promise<VaultAttachment> {
     const buffer = await file.arrayBuffer();
     const data = new Uint8Array(buffer);
 
     // Encrypt using D-KASP hardened methodology
-    const encryptedData = await this.crypt.encryptBinaryDKasp(data, password);
+    const encryptedData = await this.crypt.encryptBinaryDKasp(data, password, pqcPublicKey);
 
     // Generate unique filename
     const ref = `${crypto.randomUUID()}.enc`;

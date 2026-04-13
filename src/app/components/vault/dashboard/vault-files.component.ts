@@ -77,7 +77,8 @@ export class VaultFilesComponent {
 
     for (const file of fileList) {
       try {
-        const attachment = await this.fileService.uploadFile(file, password);
+        const pk = this.vaultService.identity()?.pqcPublicKey;
+        const attachment = await this.fileService.uploadFile(file, password, pk);
         this.vaultService.addStandaloneFile(attachment);
         this.snackBar.open(`Encrypted: ${file.name}`, 'OK', { duration: 2000 });
       } catch (err) {

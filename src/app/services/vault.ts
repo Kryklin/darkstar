@@ -16,12 +16,7 @@ export interface VaultAttachment {
   uploadedAt: number;
 }
 
-export interface VaultFolder {
-  id: string;
-  name: string;
-  icon?: string;
-  order: number;
-}
+// VaultFolder removed as per user request for flat structure
 
 export interface VaultIdentity {
   publicKey: JsonWebKey;
@@ -35,7 +30,6 @@ export interface VaultNote {
   title: string;
   content: string;
   tags: string[];
-  folderId: string;
   attachments: VaultAttachment[];
   timeLock?: TimeLockMetadata;
   updatedAt: number;
@@ -47,7 +41,6 @@ interface VaultStorage {
 
 interface VaultContent {
   notes: VaultNote[];
-  folders?: VaultFolder[];
   standaloneFiles?: VaultAttachment[];
   identity?: VaultIdentity;
   totpSecret?: string;
@@ -71,7 +64,6 @@ export class VaultService {
   private masterKey = signal<string | null>(null);
   public isUnlocked = computed(() => !!this.masterKey());
   public notes = signal<VaultNote[]>([]);
-  public folders = signal<VaultFolder[]>([]);
   public standaloneFiles = signal<VaultAttachment[]>([]);
   public identity = signal<VaultIdentity | null>(null);
   public totpSecret = signal<string | null>(null);
@@ -187,12 +179,9 @@ export class VaultService {
           throw new Error('Vault Data Corruption: Unable to parse decrypted content.');
         }
       }
-      const defaultFolderId = 'default-general';
-      const migratedFolders: VaultFolder[] = parsed.folders || [{ id: defaultFolderId, name: 'General', icon: 'folder', order: 0 }];
       const migratedNotes = (parsed.notes || []).map((n) => ({
         ...n,
         tags: n.tags || [],
-        folderId: n.folderId || defaultFolderId,
         attachments: n.attachments || [],
         updatedAt: n.updatedAt || Date.now(),
       }));
@@ -221,7 +210,6 @@ export class VaultService {
       }
 
       this.notes.set(migratedNotes);
-      this.folders.set(migratedFolders);
       this.standaloneFiles.set(migratedFiles);
       this.identity.set(identity);
       this.totpSecret.set(parsed.totpSecret || null);
@@ -293,7 +281,6 @@ export class VaultService {
 
     const content: VaultContent = {
       notes: this.notes(),
-      folders: this.folders(),
       standaloneFiles: this.standaloneFiles(),
       identity: this.identity()!,
       totpSecret: this.totpSecret() || undefined,
@@ -313,16 +300,13 @@ export class VaultService {
 
   // --- Note Management ---
 
-  addNote(title: string, content: string, folderId?: string, timeLock?: TimeLockMetadata) {
-    const fId = folderId || (this.folders().length > 0 ? this.folders()[0].id : 'default-general');
+  addNote(title = '', content = ''): VaultNote {
     const newNote: VaultNote = {
       id: crypto.randomUUID(),
       title,
       content,
       tags: [],
-      folderId: fId,
       attachments: [],
-      timeLock,
       updatedAt: Date.now(),
     };
     this.notes.update((n) => [newNote, ...n]);
@@ -330,35 +314,8 @@ export class VaultService {
     return newNote;
   }
 
-  updateNote(id: string, title: string, content: string, tags: string[], folderId?: string, timeLock?: TimeLockMetadata) {
-    this.notes.update((n) => n.map((note) => (note.id === id ? { ...note, title, content, tags, folderId: folderId || note.folderId, timeLock, updatedAt: Date.now() } : note)));
-    this.save();
-  }
-
-  // --- Folder Management ---
-
-  addFolder(name: string, icon = 'folder') {
-    const newFolder: VaultFolder = {
-      id: crypto.randomUUID(),
-      name,
-      icon,
-      order: this.folders().length,
-    };
-    this.folders.update((f) => [...f, newFolder]);
-    this.save();
-    return newFolder;
-  }
-
-  renameFolder(id: string, name: string) {
-    this.folders.update((f) => f.map((folder) => (folder.id === id ? { ...folder, name } : folder)));
-    this.save();
-  }
-
-  async deleteFolder(id: string) {
-    // Move notes to 'General' or first folder if deleting a folder
-    const targetFolder = this.folders().find((f) => f.id !== id) || { id: 'default-general' };
-    this.notes.update((n) => n.map((note) => (note.folderId === id ? { ...note, folderId: targetFolder.id } : note)));
-    this.folders.update((f) => f.filter((folder) => folder.id !== id));
+  updateNote(id: string, title: string, content: string, tags: string[], timeLock?: TimeLockMetadata) {
+    this.notes.update((n) => n.map((note) => (note.id === id ? { ...note, title, content, tags, timeLock, updatedAt: Date.now() } : note)));
     this.save();
   }
 

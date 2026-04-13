@@ -29,50 +29,13 @@
   <div class="vault-content-area">
     @if (activeTab() === 'notes') {
       <mat-sidenav-container class="sidenav-container">
-        <!-- SIDEBAR: Folders and Note List -->
+        <!-- SIDEBAR: Note List -->
         <mat-sidenav [mode]="isHandset() ? 'over' : 'side'" [opened]="sidenavOpened()" (openedChange)="sidenavOpened.set($event)" class="notes-sidebar">
           
-          <!-- FOLDERS SECTION -->
-          <div class="sidebar-section">
-            <div class="section-header">
-              <span>Folders</span>
-              <button mat-icon-button (click)="addFolder()" matTooltip="New Folder">
-                <mat-icon>create_new_folder</mat-icon>
-              </button>
-            </div>
-            <mat-nav-list class="folder-list">
-              <a mat-list-item 
-                 [class.active]="selectedFolderId() === null" 
-                 (click)="selectFolder(null)"
-                 (keydown.enter)="selectFolder(null)"
-                 tabindex="0">
-                <mat-icon matListItemIcon>all_inbox</mat-icon>
-                <div matListItemTitle>All Notes</div>
-              </a>
-              @for (folder of folders(); track folder.id) {
-                <a mat-list-item 
-                   [class.active]="selectedFolderId() === folder.id" 
-                   (click)="selectFolder(folder.id)"
-                   (keydown.enter)="selectFolder(folder.id)"
-                   tabindex="0">
-                  <mat-icon matListItemIcon>{{ folder.icon || 'folder' }}</mat-icon>
-                  <div matListItemTitle>{{ folder.name }}</div>
-                  @if (folder.id !== 'default-general') {
-                    <button mat-icon-button matListItemMeta (click)="deleteFolder(folder.id, $event)">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  }
-                </a>
-              }
-            </mat-nav-list>
-          </div>
-
-          <mat-divider></mat-divider>
-
           <!-- NOTES LIST SECTION -->
           <div class="sidebar-section">
             <div class="section-header">
-              <span>{{ selectedFolderId() ? 'Notes' : 'Recent' }}</span>
+              <span>Notes</span>
               <button mat-icon-button (click)="createNote()" matTooltip="New Note">
                 <mat-icon>add</mat-icon>
               </button>

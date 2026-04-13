@@ -87,11 +87,11 @@ export class CryptService {
   /**
    * Encrypts binary data (Uint8Array) using D-KASP hardened key derivation and AES-256-GCM.
    */
-  async encryptBinaryDKasp(data: Uint8Array, password: string, label = 'dkasp-file-v1'): Promise<Uint8Array> {
+  async encryptBinaryDKasp(data: Uint8Array, password: string, pqcPublicKey?: string, label = 'dkasp-file-v1'): Promise<Uint8Array> {
     const salt = window.crypto.getRandomValues(new Uint8Array(this.SALT_SIZE_BYTES));
     const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
 
-    const keyBytes = await this.deriveDKaspFileKey(password, salt, label);
+    const keyBytes = await this.deriveDKaspFileKey(password, salt, label, pqcPublicKey);
     const key = await window.crypto.subtle.importKey('raw', keyBytes as BufferSource, { name: 'AES-GCM' }, false, ['encrypt']);
 
     const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, data as BufferSource);
@@ -132,7 +132,7 @@ export class CryptService {
    * Derives a post-quantum hardened symmetric key using the D-KASP SPNA engine.
    * This binds the file security to the hardware-bound root of trust.
    */
-  async deriveDKaspFileKey(password: string, salt: Uint8Array, label: string): Promise<Uint8Array> {
+  async deriveDKaspFileKey(password: string, salt: Uint8Array, label: string, recipientPqcPublicKey?: string): Promise<Uint8Array> {
     // 1. Initial PBKDF2 to get a stable seed for D-KASP engine
     const enc = new TextEncoder();
     const keyMaterial = await window.crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']);
@@ -144,8 +144,11 @@ export class CryptService {
     const seedHex = this.buf2hex(seed);
 
     // 2. Pass the label through the D-KASP Engine (16-round SPNA gauntlet)
-    // We use the derived seed as the D-KASP key material.
-    const { encryptedData } = await this.encrypt(label, seedHex);
+    // If recipientPqcPublicKey is provided (v8 engine requirement for asymmetric encryption), 
+    // we use it. Otherwise, we fallback to our derived seed (historical symmetric hardening).
+    const keyToUse = recipientPqcPublicKey || seedHex;
+    
+    const { encryptedData } = await this.encrypt(label, keyToUse);
 
     // 3. Hash the hardened output to get the final 256-bit symmetric key
     const finalHash = await window.crypto.subtle.digest('SHA-256', enc.encode(encryptedData));

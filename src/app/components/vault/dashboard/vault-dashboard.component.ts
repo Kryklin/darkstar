@@ -63,7 +63,6 @@ export class VaultDashboardComponent {
   snackBar = inject(MatSnackBar);
   notes = this.vaultService.notes;
   selectedNote = signal<VaultNote | null>(null);
-  selectedFolderId = signal<string | null>(null);
   activeTab = signal<VaultTab>('notes');
   isHandset = signal(false);
   sidenavOpened = signal<boolean>(true);
@@ -72,22 +71,18 @@ export class VaultDashboardComponent {
   searchTerm = signal('');
   isQuantumSafe = computed(() => !!this.vaultService.identity()?.pqcPublicKey);
 
-  // Computed signal for search filter and folder filter
   filteredNotes = computed(() => {
     const term = this.searchTerm().toLowerCase();
-    const folderId = this.selectedFolderId();
     let n = this.notes();
 
-    // Strict Folder Filter
-    if (folderId) {
-      n = n.filter((note) => note.folderId === folderId);
-    }
-
     if (!term) return n;
-    return n.filter((note) => note.title.toLowerCase().includes(term) || note.content.toLowerCase().includes(term) || note.tags?.some((t) => t.toLowerCase().includes(term)));
+    return n.filter((note) => 
+      note.title.toLowerCase().includes(term) || 
+      note.content.toLowerCase().includes(term) || 
+      note.tags?.some((t) => t.toLowerCase().includes(term))
+    );
   });
 
-  folders = this.vaultService.folders;
 
   @ViewChild('editorArea') editorArea?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('imageInput') imageInput?: ElementRef<HTMLInputElement>;
@@ -201,27 +196,7 @@ export class VaultDashboardComponent {
     this.activeTab.set('notes');
   }
 
-  selectFolder(folderId: string | null) {
-    this.selectedFolderId.set(folderId);
-    this.selectedNote.set(null);
-  }
-
-  addFolder() {
-    const name = prompt('Folder Name:');
-    if (name) {
-      this.vaultService.addFolder(name);
-    }
-  }
-
-  deleteFolder(folderId: string, event: Event) {
-    event.stopPropagation();
-    if (confirm('Delete folder and move notes to General?')) {
-      this.vaultService.deleteFolder(folderId);
-      if (this.selectedFolderId() === folderId) {
-        this.selectedFolderId.set(null);
-      }
-    }
-  }
+  // --- Folder Logic Removed ---
 
   showNoteList() {
     this.selectedNote.set(null);
@@ -230,7 +205,7 @@ export class VaultDashboardComponent {
 
   createNote() {
     this.activeTab.set('notes');
-    this.vaultService.addNote('', '', this.selectedFolderId() || undefined);
+    this.vaultService.addNote('', '');
     const newNote = this.notes()[0]; // Assumes added at top
     if (newNote) {
       this.selectNote(newNote);
@@ -239,16 +214,12 @@ export class VaultDashboardComponent {
   }
 
   onContentChange() {
-    const note = this.selectedNote();
-    if (note) {
-      if (note.timeLock?.isLocked) return;
+    if (this.selectedNote()) {
       this.vaultService.updateNote(
-        note.id,
+        this.selectedNote()!.id,
         this.currentTitle,
         this.currentContent,
-        this.currentTags,
-        note.folderId,
-        note.timeLock,
+        this.currentTags
       );
     }
   }
@@ -261,7 +232,7 @@ export class VaultDashboardComponent {
     try {
       const result = await this.timeLockService.lockNoteContent(this.currentContent, seconds, (p) => this.lockProgress.set(p));
       this.currentContent = result.encryptedData;
-      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, note.folderId, result.metadata);
+      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, result.metadata);
       this.showPreview = true;
       this.selectNote(this.vaultService.notes().find((n) => n.id === note.id)!);
     } catch (e) {
@@ -286,8 +257,7 @@ export class VaultDashboardComponent {
         this.currentTitle,
         this.currentContent,
         this.currentTags,
-        note.folderId,
-        note.timeLock,
+        note.timeLock
       );
     } catch (e) {
       console.error(e);
@@ -302,7 +272,7 @@ export class VaultDashboardComponent {
     const note = this.selectedNote();
     if (note) {
       delete note.timeLock;
-      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, note.folderId);
+      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags);
     }
   }
 
@@ -329,19 +299,23 @@ export class VaultDashboardComponent {
   // --- ATTACHMENTS ---
   async handleFileUpload(event: Event) {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      const file = input.files[0];
-      const note = this.selectedNote();
-      // Access master key securely
+    const files = input.files;
+    if (files && files.length > 0) {
       const password = this.vaultService.getMasterKey();
-      if (!note || !password) return;
+      const pk = this.vaultService.identity()?.pqcPublicKey;
+      if (!password) return;
 
-      try {
-        const attachment = await this.fileService.uploadFile(file, password);
-        this.vaultService.addAttachment(note.id, attachment);
-        this.currentAttachments.push(attachment);
-      } catch (err) {
-        console.error('Upload failed', err);
+      for (const file of Array.from(files)) {
+        this.snackBar.open(`Encrypting: ${file.name}...`, 'Wait', { duration: 1000 });
+        try {
+          const attachment = await this.fileService.uploadFile(file, password, pk);
+          this.vaultService.addAttachment(this.selectedNote()!.id, attachment);
+          this.currentAttachments = [...this.currentAttachments, attachment];
+          this.snackBar.open(`Attached: ${file.name}`, 'OK', { duration: 2000 });
+        } catch (e) {
+          console.error('Attachment failed', e);
+          this.snackBar.open(`Failed to attach ${file.name}`, 'Error', { duration: 3000 });
+        }
       }
     }
   }
