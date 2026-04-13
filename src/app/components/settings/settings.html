@@ -131,6 +131,18 @@
 
         <section class="settings-section glass-card">
           <h2>Authenticators</h2>
+          @if (isBiometricEnabled) {
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="title">Enforce Biometric Unlock</span>
+                <span class="description" style="color: var(--mat-sys-error); font-weight: 500;">
+                  CRITICAL: Disables the master password field entirely. Ensure your hardware is active to avoid lockout.
+                </span>
+              </div>
+              <mat-slide-toggle [(ngModel)]="isBiometricForced" [disabled]="!vaultService.isUnlocked()" color="primary"></mat-slide-toggle>
+            </div>
+          }
+
           <div class="setting-row">
             <div class="setting-label">
               <span class="title">TOTP (2FA)</span>
@@ -167,16 +179,6 @@
                }
             </div>
           </div>
-
-          @if (isBiometricEnabled) {
-            <div class="setting-row">
-              <div class="setting-label">
-                <span class="title">Enforce Biometric Unlock</span>
-                <span class="description">Hide the master password box and require hardware authentication on load</span>
-              </div>
-              <mat-slide-toggle [(ngModel)]="isBiometricForced" [disabled]="!vaultService.isUnlocked()" color="primary"></mat-slide-toggle>
-            </div>
-          }
 
           <div class="setting-row">
             <div class="setting-label">

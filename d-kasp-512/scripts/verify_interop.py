@@ -46,7 +46,7 @@ CLI_CWD = {
 
 TEST_MNEMONIC = "apple banana cherry date elderberry fig grape honeydew"
 TEST_PASSWORD = "Strong!Password#2026"
-TOTAL_EXPECTED_TESTS = 32 # 2 versions (7, 8) * 4 langs * 4 langs
+TOTAL_EXPECTED_TESTS = 48 # 3 versions (7, 8, 9) * 4 langs * 4 langs
 
 def get_sys_info():
     uname = platform.uname()
@@ -175,14 +175,14 @@ def main():
     layout["header"].update(get_sys_info())
     layout["dashboard"].update(generate_dashboard())
 
-    versions = ["7", "8"]
+    versions = ["7", "8", "9"]
 
     with Live(layout, console=console, refresh_per_second=10) as live:
         for version in versions:
             current_version_int = int(version)
             v5_pk = ""
             v5_sk = ""
-            if version in ["5", "7", "8"]:
+            if version in ["5", "7", "8", "9"]:
                 current_action = f"V{version} >> KEYGEN ML-KEM-1024"
                 action_start_time = time.perf_counter()
                 layout["dashboard"].update(generate_dashboard())
@@ -197,8 +197,8 @@ def main():
                         v5_sk = sk_match.group(1).strip()
 
             for src_lang in LANGS:
-                encrypt_pass = v5_pk if version in ["5", "7", "8"] else TEST_PASSWORD
-                decrypt_pass = v5_sk if version in ["5", "7", "8"] else TEST_PASSWORD
+                encrypt_pass = v5_pk if version in ["5", "7", "8", "9"] else TEST_PASSWORD
+                decrypt_pass = v5_sk if version in ["5", "7", "8", "9"] else TEST_PASSWORD
                 
                 current_action = f"V{version} >> {src_lang.upper()} ENCRYPT"
                 action_start_time = time.perf_counter()
@@ -258,4 +258,10 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        print(f"FATAL ERROR: {e}")
+        traceback.print_exc()
+        sys.exit(1)

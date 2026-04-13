@@ -80,45 +80,59 @@ func (m *Mulberry32) Next() uint32 {
 }
 
 type DarkstarChaChaPRNG struct {
-	state   [8]uint32
-	counter uint32
+	state   [16]uint32
+	block   [16]uint32
+	blockIdx int
 }
 
 func NewDarkstarChaChaPRNG(seedStr string) *DarkstarChaChaPRNG {
 	c := &DarkstarChaChaPRNG{}
 	hash := sha256.Sum256([]byte(seedStr))
-	hashHex := hex.EncodeToString(hash[:])
+	
+	// RFC 8439 Constants
+	c.state[0] = 0x61707865; c.state[1] = 0x3320646e; c.state[2] = 0x79622d32; c.state[3] = 0x6b206574;
 	for i := 0; i < 8; i++ {
-		strChunk := hashHex[i*8 : (i+1)*8]
-		val, _ := strconv.ParseUint(strChunk, 16, 32)
-		c.state[i] = uint32(val)
+		chunk := hash[i*4 : (i+1)*4]
+		c.state[4+i] = uint32(chunk[0]) | uint32(chunk[1])<<8 | uint32(chunk[2])<<16 | uint32(chunk[3])<<24
 	}
+	c.state[12] = 0 // counter
+	c.state[13] = 0 // nonce
+	c.state[14] = 0 // nonce
+	c.state[15] = 0 // nonce
+
+	c.block = c.chachaBlock(c.state)
+	c.blockIdx = 0
 	return c
 }
 
+func (c *DarkstarChaChaPRNG) chachaBlock(st [16]uint32) [16]uint32 {
+	x := st
+	rotate := func(v, n uint32) uint32 { return (v << n) | (v >> (32 - n)) }
+	quarterRound := func(a, b, c, d int) {
+		x[a] += x[b]; x[d] ^= x[a]; x[d] = rotate(x[d], 16)
+		x[c] += x[d]; x[b] ^= x[c]; x[b] = rotate(x[b], 12)
+		x[a] += x[b]; x[d] ^= x[a]; x[d] = rotate(x[d], 8)
+		x[c] += x[d]; x[b] ^= x[c]; x[b] = rotate(x[b], 7)
+	}
+	for i := 0; i < 10; i++ {
+		quarterRound(0, 4, 8, 12); quarterRound(1, 5, 9, 13)
+		quarterRound(2, 6, 10, 14); quarterRound(3, 7, 11, 15)
+		quarterRound(0, 5, 10, 15); quarterRound(1, 6, 11, 12)
+		quarterRound(2, 7, 8, 13); quarterRound(3, 4, 9, 14)
+	}
+	for i := 0; i < 16; i++ { x[i] += st[i] }
+	return x
+}
+
 func (c *DarkstarChaChaPRNG) Next() uint32 {
-	c.counter++
-	x := c.state[(c.counter+0)%8]
-	y := c.state[(c.counter+3)%8]
-	z := c.state[(c.counter+5)%8]
-
-	x = x + y + c.counter
-	z = z ^ x
-	z = (z << 16) | (z >> 16)
-
-	y = y + z + (c.counter * 3)
-	x = x ^ y
-	x = (x << 12) | (x >> 20)
-
-	c.state[(c.counter+0)%8] = x
-	c.state[(c.counter+3)%8] = y
-	c.state[(c.counter+5)%8] = z
-
-	t := x + y + z
-	t = (t ^ (t >> 15)) * (1 | t)
-	t = (t + ((t ^ (t >> 7)) * (61 | t))) ^ t
-
-	return t ^ (t >> 14)
+	if c.blockIdx >= 16 {
+		c.state[12]++
+		c.block = c.chachaBlock(c.state)
+		c.blockIdx = 0
+	}
+	val := c.block[c.blockIdx]
+	c.blockIdx++
+	return val
 }
 
 // --- DarkstarCrypt ---
@@ -174,6 +188,7 @@ func NewDarkstarCrypt() *DarkstarCrypt {
 		dc.obfuscateBitFlipV4,
 		dc.obfuscateColumnarV4,
 		dc.obfuscateRecXORV4,
+		dc.obfuscateMDSNetworkV9,
 	}
 	dc.deobfuscationFunctionsV4 = []func([]byte, []byte, func(string) PRNG) []byte{
 		dc.deobfuscateSBoxV4,
@@ -188,6 +203,7 @@ func NewDarkstarCrypt() *DarkstarCrypt {
 		dc.deobfuscateBitFlipV4,
 		dc.deobfuscateColumnarV4,
 		dc.deobfuscateRecXORV4,
+		dc.deobfuscateMDSNetworkV9,
 	}
 	return dc
 }
@@ -437,6 +453,66 @@ func (dc *DarkstarCrypt) deobfuscateRecXORV4(input []byte, seed []byte, prngFact
 	out[0] = input[0]
 	for i := len(input) - 1; i > 0; i-- {
 		out[i] = input[i] ^ input[i-1]
+	}
+	return out
+}
+
+var MDS_MATRIX = [4][4]byte{
+	{0x02, 0x03, 0x01, 0x01},
+	{0x01, 0x02, 0x03, 0x01},
+	{0x01, 0x01, 0x02, 0x03},
+	{0x03, 0x01, 0x01, 0x02},
+}
+
+var INV_MDS_MATRIX = [4][4]byte{
+	{0x0E, 0x0B, 0x0D, 0x09},
+	{0x09, 0x0E, 0x0B, 0x0D},
+	{0x0D, 0x09, 0x0E, 0x0B},
+	{0x0B, 0x0D, 0x09, 0x0E},
+}
+
+func (dc *DarkstarCrypt) obfuscateMDSNetworkV9(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	if len(input) < 4 {
+		return dc.obfuscateMatrixHillV4(input, seed, prngFactory)
+	}
+	out := make([]byte, len(input))
+	for i := 0; i < len(input); i += 4 {
+		end := i + 4
+		if end > len(input) {
+			copy(out[i:], input[i:])
+			continue
+		}
+		block := input[i:end]
+		for row := 0; row < 4; row++ {
+			var sum byte = 0
+			for col := 0; col < 4; col++ {
+				sum ^= gfMult(block[col], MDS_MATRIX[row][col])
+			}
+			out[i+row] = sum
+		}
+	}
+	return out
+}
+
+func (dc *DarkstarCrypt) deobfuscateMDSNetworkV9(input []byte, seed []byte, prngFactory func(string) PRNG) []byte {
+	if len(input) < 4 {
+		return dc.deobfuscateMatrixHillV4(input, seed, prngFactory)
+	}
+	out := make([]byte, len(input))
+	for i := 0; i < len(input); i += 4 {
+		end := i + 4
+		if end > len(input) {
+			copy(out[i:], input[i:])
+			continue
+		}
+		block := input[i:end]
+		for row := 0; row < 4; row++ {
+			var sum byte = 0
+			for col := 0; col < 4; col++ {
+				sum ^= gfMult(block[col], INV_MDS_MATRIX[row][col])
+			}
+			out[i+row] = sum
+		}
 	}
 	return out
 }
@@ -827,10 +903,10 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic string, keyMaterial string, v int) (ma
 				for i := 0; i < 16; i++ {
 					// S: Substitution
 					sIdx := 0
-					if i % 4 == 0 {
-						sIdx = 0 // Forced S-Box
-					} else if i % 4 == 2 {
-						sIdx = 1 // Forced ModMult
+					if i%4 == 0 {
+						sIdx = 0
+					} else if i%4 == 2 {
+						sIdx = 1
 					} else {
 						sIdx = groupS[int(rngPath.Next()%uint32(len(groupS)))]
 					}
@@ -840,14 +916,19 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic string, keyMaterial string, v int) (ma
 					pIdx := groupP[int(rngPath.Next()%uint32(len(groupP)))]
 					currentWordBytes = dc.obfuscationFunctionsV4[pIdx](currentWordBytes, funcKey, prngFactory)
 
-					// N: Network
-					nIdx := 0
-					if i % 4 == 1 {
-						nIdx = 8 // Forced GFMult
-					} else if i % 4 == 3 {
-						nIdx = 7 // Forced MatrixHill
-					} else {
+					// N: Network (V9 prioritized MDS)
+					var nIdx int
+					if v >= 9 {
+						groupN := []int{12, 12, 11}
 						nIdx = groupN[int(rngPath.Next()%uint32(len(groupN)))]
+					} else {
+						if i%4 == 1 {
+							nIdx = 8
+						} else if i%4 == 3 {
+							nIdx = 7
+						} else {
+							nIdx = groupN[int(rngPath.Next()%uint32(len(groupN)))]
+						}
 					}
 					currentWordBytes = dc.obfuscationFunctionsV4[nIdx](currentWordBytes, funcKey, prngFactory)
 
@@ -1257,14 +1338,19 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw, reverseKeyB64, keyMaterial st
 					// P: Permutation
 					pIdx := groupP[int(rngPath.Next()%uint32(len(groupP)))]
 
-					// N: Network
+					// N: Network (V9 prioritized MDS)
 					nIdx := 0
-					if i % 4 == 1 {
-						nIdx = 8
-					} else if i % 4 == 3 {
-						nIdx = 7
+					if detectedVersion >= 9 {
+						groupN_V9 := []int{12, 12, 11}
+						nIdx = groupN_V9[int(rngPath.Next()%uint32(len(groupN_V9)))]
 					} else {
-						nIdx = groupN[int(rngPath.Next()%uint32(len(groupN)))]
+						if i % 4 == 1 {
+							nIdx = 8
+						} else if i % 4 == 3 {
+							nIdx = 7
+						} else {
+							nIdx = groupN[int(rngPath.Next()%uint32(len(groupN)))]
+						}
 					}
 
 					// A: Algebraic

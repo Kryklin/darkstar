@@ -328,10 +328,10 @@ export class CryptService {
    * Extracted out to high-performance localized binaries (Rust/Go/Node).
    * @param {string} mnemonic The space-separated recovery phrase.
    * @param {string} keyMaterial The user-defined master password (legacy) or PK hex (V5).
-   * @param {number} version The protocol version (default 8).
+   * @param {number} version The protocol version (default 9).
    * @returns {Promise<{ encryptedData: string; reverseKey: string }>} JSON envelope + B64 packed key.
    */
-  async encrypt(mnemonic: string, keyMaterial: string, version: number = 8): Promise<{ encryptedData: string; reverseKey: string }> {
+  async encrypt(mnemonic: string, keyMaterial: string, version: number = 9): Promise<{ encryptedData: string; reverseKey: string }> {
     const engine = localStorage.getItem('dkasp_engine') || 'rust';
     const result = (await window.electronAPI.dKaspEncrypt(mnemonic, keyMaterial, engine, version)) as { encryptedData: string, reverseKey: string };
     return {
@@ -366,7 +366,7 @@ export class CryptService {
     }
 
     const engine = localStorage.getItem('dkasp_engine') || 'rust';
-    const decrypted = (await window.electronAPI.dKaspDecrypt(encryptedDataRaw, reverseKey, passwordOrSk, engine, v || 8)) as string;
+    const decrypted = (await window.electronAPI.dKaspDecrypt(encryptedDataRaw, reverseKey, passwordOrSk, engine, v || 9)) as string;
     
     return {
       decrypted,

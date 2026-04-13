@@ -30,15 +30,10 @@
               @if (passwordLoading) { <mat-spinner diameter="20"></mat-spinner> }
             </button>
           } @else {
-            <div class="biometric-force-view">
-                <mat-icon class="shield-lock">fingerprint</mat-icon>
-                <h3>Security Enforced</h3>
-                <p>Hardware authentication is required to access this vault.</p>
-                <button mat-flat-button color="primary" (click)="submitBiometrics()" [disabled]="loading">
-                    @if (!biometricsLoading) { <span>Authenticate with {{ authName }}</span> }
-                    @if (biometricsLoading) { <mat-spinner diameter="20"></mat-spinner> }
-                </button>
-                <button mat-button class="emergency-path" (click)="togglePasswordFallback()">Use Master Password Instead</button>
+            <div class="biometric-force-view" style="padding: 20px 0; text-align: center;">
+                <mat-icon class="shield-lock" style="font-size: 48px; width: 48px; height: 48px; color: var(--mat-sys-primary); opacity: 0.8;">fingerprint</mat-icon>
+                <h3 style="margin-top: 16px;">Security Enforced</h3>
+                <p style="opacity: 0.7; font-size: 0.9em;">Hardware authentication is mandated for this vault.</p>
             </div>
           }
         } @else {

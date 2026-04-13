@@ -52,7 +52,7 @@ export class SharedEncryptComponent implements OnInit {
   selectedCoverImage: File | null = null;
   selectedCoverAudio: File | null = null;
   showQrSender = false;
-
+  useHardwareId = false;
   vaultService = inject(VaultService);
 
   private _formBuilder = inject(FormBuilder);
@@ -103,7 +103,20 @@ export class SharedEncryptComponent implements OnInit {
           const hex = rawBody.charCodeAt(i).toString(16);
           pkHex += (hex.length === 2 ? hex : '0' + hex);
       }
-      const { encryptedData, reverseKey } = await this.cryptService.encrypt(mnemonic, pkHex, 8);
+
+      let keyMaterial = pkHex;
+
+      if (this.useHardwareId) {
+          const hwId = await this.vaultService.getHardwareId();
+          if (hwId) {
+              keyMaterial = keyMaterial + hwId;
+          } else {
+              this.snackBar.open('Failed to retrieve Machine Hardware ID from system.', 'Close', { duration: 3000 });
+              return;
+          }
+      }
+
+      const { encryptedData, reverseKey } = await this.cryptService.encrypt(mnemonic, keyMaterial, 8);
 
       this.encryptedData = encryptedData;
       this.reverseKey = reverseKey;

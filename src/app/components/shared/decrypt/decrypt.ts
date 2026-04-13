@@ -209,29 +209,29 @@ export class SharedDecryptComponent {
               skHex += (hex.length === 2 ? hex : '0' + hex);
           }
           passwordOrSk = skHex;
-      } else {
-          if (this.useVaultSignature && this.vaultService.isUnlocked()) {
-              const id = this.vaultService.identity();
-              if (id && id.privateKey && id.privateKey.d) {
-                  passwordOrSk = passwordOrSk + id.privateKey.d;
-              } else {
-                  console.error("Failed to retrieve vault identity private key");
-                  this.error = "Decryption failed: Unable to compute vault signature (Identity missing).";
-                  this.showResult = true;
-                  return;
-              }
-          }
+      }
 
-          if (this.useHardwareId) {
-              const hwId = await this.vaultService.getHardwareId();
-              if (hwId) {
-                  passwordOrSk = passwordOrSk + hwId;
-              } else {
-                  console.error("Failed to retrieve Machine Hardware ID");
-                  this.error = "Decryption failed: Unable to retrieve Machine Hardware ID from system.";
-                  this.showResult = true;
-                  return;
-              }
+      if (this.useVaultSignature && this.vaultService.isUnlocked()) {
+          const id = this.vaultService.identity();
+          if (id && id.privateKey && id.privateKey.d) {
+              passwordOrSk = passwordOrSk + id.privateKey.d;
+          } else if (!this.isV5Payload) {
+              console.error("Failed to retrieve vault identity private key");
+              this.error = "Decryption failed: Unable to compute vault signature (Identity missing).";
+              this.showResult = true;
+              return;
+          }
+      }
+
+      if (this.useHardwareId) {
+          const hwId = await this.vaultService.getHardwareId();
+          if (hwId) {
+              passwordOrSk = passwordOrSk + hwId;
+          } else {
+              console.error("Failed to retrieve Machine Hardware ID");
+              this.error = "Decryption failed: Unable to retrieve Machine Hardware ID from system.";
+              this.showResult = true;
+              return;
           }
       }
 

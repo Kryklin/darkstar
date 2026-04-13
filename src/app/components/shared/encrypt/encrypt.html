@@ -17,6 +17,15 @@
           }
           <button mat-raised-button color="primary" [disabled]="!firstFormGroup.valid || !vaultService.isUnlocked()" (click)="onSubmit()">Encrypt with Vault Key</button>
         </div>
+        <div class="security-options" style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px;">
+           <mat-slide-toggle [(ngModel)]="useHardwareId" [ngModelOptions]="{ standalone: true }" color="warn">
+             Require Machine Hardware ID
+           </mat-slide-toggle>
+           <p class="hint-text" style="font-size: 0.85em; margin: 0; opacity: 0.7;">
+             Data will be locked to this specific device hardware. Recovery on other machines will require entering this ID manually.
+           </p>
+        </div>
+
         @if (!vaultService.isUnlocked()) {
           <p class="hint-text" style="color: var(--mat-sys-error)">Your Vault must be unlocked to access your ML-KEM-1024 encryption keys.</p>
         }

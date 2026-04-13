@@ -69,45 +69,44 @@ class DarkstarCrypt:
     class DarkstarChaChaPRNG:
         def __init__(self, seed_str):
             import hashlib
-            hash_hex = hashlib.sha256(seed_str.encode('utf-8')).hexdigest()
-            self.state = [0]*8
+            import struct
+            self.hash = hashlib.sha256(seed_str.encode('utf-8')).digest()
+            # RFC 8439 Constants
+            self.state = [0]*16
+            self.state[0] = 0x61707865
+            self.state[1] = 0x3320646e
+            self.state[2] = 0x79622d32
+            self.state[3] = 0x6b206574
             for i in range(8):
-                self.state[i] = int(hash_hex[i * 8 : (i + 1) * 8], 16)
-            self.counter = 0
+                self.state[4+i] = struct.unpack('<I', self.hash[i*4:(i+1)*4])[0]
+            self.state[12] = 0 # Counter
+            self.block = self._chacha_block(self.state)
+            self.block_idx = 0
+
+        def _chacha_block(self, st):
+            x = list(st)
+            def rotate(v, n): return ((v << n) & 0xFFFFFFFF) | (v >> (32 - n))
+            def quarter_round(a, b, c, d):
+                x[a] = (x[a] + x[b]) & 0xFFFFFFFF; x[d] ^= x[a]; x[d] = rotate(x[d], 16)
+                x[c] = (x[c] + x[d]) & 0xFFFFFFFF; x[b] ^= x[c]; x[b] = rotate(x[b], 12)
+                x[a] = (x[a] + x[b]) & 0xFFFFFFFF; x[d] ^= x[a]; x[d] = rotate(x[d], 8)
+                x[c] = (x[c] + x[d]) & 0xFFFFFFFF; x[b] ^= x[c]; x[b] = rotate(x[b], 7)
+            
+            for _ in range(10):
+                quarter_round(0, 4, 8, 12); quarter_round(1, 5, 9, 13)
+                quarter_round(2, 6, 10, 14); quarter_round(3, 7, 11, 15)
+                quarter_round(0, 5, 10, 15); quarter_round(1, 6, 11, 12)
+                quarter_round(2, 7, 8, 13); quarter_round(3, 4, 9, 14)
+            return [(x[i] + st[i]) & 0xFFFFFFFF for i in range(16)]
 
         def next(self):
-            self.counter += 1
-            x = self.state[(self.counter + 0) % 8]
-            y = self.state[(self.counter + 3) % 8]
-            z = self.state[(self.counter + 5) % 8]
-
-            x = (x + y + self.counter) & 0xFFFFFFFF
-            z = (z ^ x) & 0xFFFFFFFF
-            z = ((z << 16) & 0xFFFFFFFF) | (z >> 16)
-
-            y = (y + z + (self.counter * 3)) & 0xFFFFFFFF
-            x = (x ^ y) & 0xFFFFFFFF
-            x = ((x << 12) & 0xFFFFFFFF) | (x >> 20)
-
-            self.state[(self.counter + 0) % 8] = x
-            self.state[(self.counter + 3) % 8] = y
-            self.state[(self.counter + 5) % 8] = z
-
-            def to_signed(val):
-                val &= 0xFFFFFFFF
-                return val - 0x100000000 if val >= 0x80000000 else val
-
-            def js_imul(a, b):
-                return (to_signed(a) * to_signed(b)) & 0xFFFFFFFF
-                
-            t = (x + y + z) & 0xFFFFFFFF
-            t = js_imul(t ^ (t >> 15), 1 | t)
-            
-            term2 = js_imul(t ^ (t >> 7), 61 | t)
-            t = ((t + term2) & 0xFFFFFFFF) ^ t
-
-            res = (t ^ (t >> 14)) & 0xFFFFFFFF
-            return res
+            if self.block_idx >= 16:
+                self.state[12] = (self.state[12] + 1) & 0xFFFFFFFF
+                self.block = self._chacha_block(self.state)
+                self.block_idx = 0
+            val = self.block[self.block_idx]
+            self.block_idx += 1
+            return val
 
     # --- Helpers ---
     def _to_bytes(self, s):
@@ -398,7 +397,8 @@ class DarkstarCrypt:
             self._obfuscate_gfmult_v4,
             self._obfuscate_bitflip_v4,
             self._obfuscate_columnar_v4,
-            self._obfuscate_recxor_v4
+            self._obfuscate_recxor_v4,
+            self._obfuscate_mds_network_v9
         ]
         
         self.deobfuscation_functions_v4 = [
@@ -413,7 +413,8 @@ class DarkstarCrypt:
             self._deobfuscate_gfmult_v4,
             self._deobfuscate_bitflip_v4,
             self._deobfuscate_columnar_v4,
-            self._deobfuscate_recxor_v4
+            self._deobfuscate_recxor_v4,
+            self._deobfuscate_mds_network_v9
         ]
 
     # --- Obfuscation Functions (V4) ---
@@ -571,6 +572,50 @@ class DarkstarCrypt:
         if len(data) == 0: return bytes(out)
         out[0] = data[0]
         for i in range(len(data) - 1, 0, -1): out[i] = data[i] ^ data[i-1]
+        return bytes(out)
+
+    MDS_MATRIX = [
+        [0x02, 0x03, 0x01, 0x01],
+        [0x01, 0x02, 0x03, 0x01],
+        [0x01, 0x01, 0x02, 0x03],
+        [0x03, 0x01, 0x01, 0x02]
+    ]
+
+    INV_MDS_MATRIX = [
+        [0x0E, 0x0B, 0x0D, 0x09],
+        [0x09, 0x0E, 0x0B, 0x0D],
+        [0x0D, 0x09, 0x0E, 0x0B],
+        [0x0B, 0x0D, 0x09, 0x0E]
+    ]
+
+    def _obfuscate_mds_network_v9(self, data, seed=None, prng_factory=None):
+        if len(data) < 4: return self._obfuscate_matrixhill_v4(data)
+        out = bytearray(len(data))
+        for i in range(0, len(data), 4):
+            block = data[i:i+4]
+            if len(block) < 4:
+                out[i:i+len(block)] = block
+                continue
+            for row in range(4):
+                val = 0
+                for col in range(4):
+                    val ^= self._gf_mult(block[col], self.MDS_MATRIX[row][col])
+                out[i + row] = val
+        return bytes(out)
+
+    def _deobfuscate_mds_network_v9(self, data, seed=None, prng_factory=None):
+        if len(data) < 4: return self._deobfuscate_matrixhill_v4(data)
+        out = bytearray(len(data))
+        for i in range(0, len(data), 4):
+            block = data[i:i+4]
+            if len(block) < 4:
+                out[i:i+len(block)] = block
+                continue
+            for row in range(4):
+                val = 0
+                for col in range(4):
+                    val ^= self._gf_mult(block[col], self.INV_MDS_MATRIX[row][col])
+                out[i + row] = val
         return bytes(out)
 
     # --- Core AES Encryption ---
@@ -800,13 +845,17 @@ class DarkstarCrypt:
                         p_idx = group_p[rng_path.next() % len(group_p)]
                         current_word_bytes = self.obfuscation_functions_v4[p_idx](current_word_bytes, seed=combined_seed, prng_factory=prng_factory)
 
-                        # N: Network (Forced GFMult or MatrixHill every 4 rounds)
-                        if i % 4 == 1:
-                            n_idx = 8
-                        elif i % 4 == 3:
-                            n_idx = 7
+                        # N: Network (V9 prioritized MDS)
+                        if version >= 9:
+                            group_n_v9 = [12, 12, 11]
+                            n_idx = group_n_v9[rng_path.next() % len(group_n_v9)]
                         else:
-                            n_idx = group_n[rng_path.next() % len(group_n)]
+                            if i % 4 == 1:
+                                n_idx = 8
+                            elif i % 4 == 3:
+                                n_idx = 7
+                            else:
+                                n_idx = group_n[rng_path.next() % len(group_n)]
                         current_word_bytes = self.obfuscation_functions_v4[n_idx](current_word_bytes, seed=combined_seed, prng_factory=prng_factory)
 
                         # A: Algebraic/AddKey (Always randomized)
@@ -1094,13 +1143,17 @@ class DarkstarCrypt:
                         # P: Permutation (Always randomized)
                         p_idx = group_p[rng_path.next() % len(group_p)]
 
-                        # N: Network (Forced GFMult or MatrixHill every 4 rounds)
-                        if i % 4 == 1:
-                            n_idx = 8
-                        elif i % 4 == 3:
-                            n_idx = 7
+                        # N: Network (V9 prioritized MDS)
+                        if detected_version >= 9:
+                            group_n_v9 = [12, 12, 11]
+                            n_idx = group_n_v9[rng_path.next() % len(group_n_v9)]
                         else:
-                            n_idx = group_n[rng_path.next() % len(group_n)]
+                            if i % 4 == 1:
+                                n_idx = 8
+                            elif i % 4 == 3:
+                                n_idx = 7
+                            else:
+                                n_idx = group_n[rng_path.next() % len(group_n)]
 
                         # A: Algebraic/AddKey (Always randomized)
                         a_idx = group_a[rng_path.next() % len(group_a)]
@@ -1240,7 +1293,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Darkstar D-KASP-512 (V5) Cryptographic Suite")
     
     # Global Flags
-    parser.add_argument("-v", "--v", type=int, choices=range(1, 9), default=8, help="D-KASP Protocol Version (default: 8)")
+    parser.add_argument("-v", "--v", type=int, choices=range(1, 10), default=9, help="D-KASP Protocol Version (default: 9)")
     parser.add_argument("-c", "--core", choices=["aes", "arx"], default="aes", help="Encryption Core (default: aes)")
     parser.add_argument("-f", "--format", choices=["json", "csv", "text"], default=None, help="Output format (default: json for encrypt/keygen, text for decrypt)")
     

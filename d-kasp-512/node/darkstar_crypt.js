@@ -91,6 +91,7 @@ export class DarkstarCrypt {
       this.obfuscateWithBitFlipMaskingV4.bind(this),
       this.obfuscateWithColumnarShuffleV4.bind(this),
       this.obfuscateWithRecursiveXORV4.bind(this),
+      this.obfuscateWithMDSNetworkV9.bind(this),
     ];
 
     this.deobfuscationFunctionsV4 = [
@@ -106,6 +107,7 @@ export class DarkstarCrypt {
       this.deobfuscateWithBitFlipMaskingV4.bind(this),
       this.deobfuscateWithColumnarShuffleV4.bind(this),
       this.deobfuscateWithRecursiveXORV4.bind(this),
+      this.deobfuscateWithMDSNetworkV9.bind(this),
     ];
 
     // V8 SPNA Groups
@@ -257,14 +259,15 @@ export class DarkstarCrypt {
             const pIdx = this.groupP[rngPath() % this.groupP.length];
             currentWordBytes = this.obfuscationFunctionsV4[pIdx](currentWordBytes, combinedSeed, prngFactory);
             
-            // N: Network (Forced GFMult or MatrixHill every 4 rounds)
+            // N: Network (V9 prioritized MDS)
             let nIdx;
-            if (i % 4 === 1) {
-              nIdx = 8;
-            } else if (i % 4 === 3) {
-              nIdx = 7;
+            if (v >= 9) {
+                const groupN = [12, 12, 11]; // MDS, MDS, RecursiveXOR
+                nIdx = groupN[rngPath() % groupN.length];
             } else {
-              nIdx = this.groupN[rngPath() % this.groupN.length];
+                if (i % 4 === 1) nIdx = 8;
+                else if (i % 4 === 3) nIdx = 7;
+                else nIdx = this.groupN[rngPath() % this.groupN.length];
             }
             currentWordBytes = this.obfuscationFunctionsV4[nIdx](currentWordBytes, combinedSeed, prngFactory);
             
@@ -582,9 +585,14 @@ export class DarkstarCrypt {
             // P
             p = this.groupP[rngPath() % this.groupP.length];
             // N
-            if (i % 4 === 1) n = 8;
-            else if (i % 4 === 3) n = 7;
-            else n = this.groupN[rngPath() % this.groupN.length];
+            if (detectedVersion >= 9) {
+                const groupN = [12, 12, 11];
+                n = groupN[rngPath() % groupN.length];
+            } else {
+                if (i % 4 === 1) n = 8;
+                else if (i % 4 === 3) n = 7;
+                else n = this.groupN[rngPath() % this.groupN.length];
+            }
             // A
             a = this.groupA[rngPath() % this.groupA.length];
 
@@ -595,7 +603,15 @@ export class DarkstarCrypt {
             const r = roundPaths[j];
             // Inverse Order: A -> N -> P -> S
             currentWordBytes = this.deobfuscationFunctionsV4[r.a](currentWordBytes, combinedSeed, prngFactory);
-            currentWordBytes = this.deobfuscationFunctionsV4[r.n](currentWordBytes, combinedSeed, prngFactory);
+            
+            // N: Correctly handle V9 MDS vs Legacy
+            let de_nIdx = r.n;
+            if (detectedVersion >= 9) {
+                // The encryption path selected from [12, 12, 11]. Decryption must follow.
+                // r.n already contains the selected index because roundPaths is populated via the same logic as encrypt.
+            }
+            currentWordBytes = this.deobfuscationFunctionsV4[de_nIdx](currentWordBytes, combinedSeed, prngFactory);
+            
             currentWordBytes = this.deobfuscationFunctionsV4[r.p](currentWordBytes, combinedSeed, prngFactory);
             currentWordBytes = this.deobfuscationFunctionsV4[r.s](currentWordBytes, combinedSeed, prngFactory);
           }
@@ -1219,18 +1235,74 @@ export class DarkstarCrypt {
       return out;
   }
 
+  // V9: MDS Matrix Multiplication in GF(2^8)
+  // Provides optimal branch number (5) for 4x4 Word Blocks.
+  static MDS_MATRIX = [
+    [0x02, 0x03, 0x01, 0x01],
+    [0x01, 0x02, 0x03, 0x01],
+    [0x01, 0x01, 0x02, 0x03],
+    [0x03, 0x01, 0x01, 0x02]
+  ];
+
+  static INV_MDS_MATRIX = [
+    [0x0E, 0x0B, 0x0D, 0x09],
+    [0x09, 0x0E, 0x0B, 0x0D],
+    [0x0D, 0x09, 0x0E, 0x0B],
+    [0x0B, 0x0D, 0x09, 0x0E]
+  ];
+
   obfuscateWithMatrixHillV4(input) {
+      if (input.length === 0) return new Uint8Array(0);
       const out = new Uint8Array(input.length);
-      if (input.length === 0) return out;
       out[0] = input[0];
       for (let i = 1; i < input.length; i++) out[i] = (input[i] + out[i-1]) & 0xFF;
       return out;
   }
   deobfuscateWithMatrixHillV4(input) {
+      if (input.length === 0) return new Uint8Array(0);
       const out = new Uint8Array(input.length);
-      if (input.length === 0) return out;
       out[0] = input[0];
       for (let i = input.length - 1; i > 0; i--) out[i] = (input[i] - input[i-1] + 256) & 0xFF;
+      return out;
+  }
+
+  obfuscateWithMDSNetworkV9(input) {
+      if (input.length < 4) return this.obfuscateWithMatrixHillV4(input);
+      const out = new Uint8Array(input.length);
+      for (let i = 0; i < input.length; i += 4) {
+          const block = input.slice(i, i + 4);
+          if (block.length < 4) { 
+              for(let j=0; j<block.length; j++) out[i+j] = block[j];
+              continue; 
+          }
+          for (let row = 0; row < 4; row++) {
+              let sum = 0;
+              for (let col = 0; col < 4; col++) {
+                  sum ^= this._gf_mult(block[col], DarkstarCrypt.MDS_MATRIX[row][col]);
+              }
+              out[i + row] = sum;
+          }
+      }
+      return out;
+  }
+
+  deobfuscateWithMDSNetworkV9(input) {
+      if (input.length < 4) return this.deobfuscateWithMatrixHillV4(input);
+      const out = new Uint8Array(input.length);
+      for (let i = 0; i < input.length; i += 4) {
+          const block = input.slice(i, i + 4);
+          if (block.length < 4) {
+              for(let j=0; j<block.length; j++) out[i+j] = block[j];
+              continue;
+          }
+          for (let row = 0; row < 4; row++) {
+              let sum = 0;
+              for (let col = 0; col < 4; col++) {
+                  sum ^= this._gf_mult(block[col], DarkstarCrypt.INV_MDS_MATRIX[row][col]);
+              }
+              out[i + row] = sum;
+          }
+      }
       return out;
   }
 
@@ -1329,56 +1401,63 @@ export class DarkstarCrypt {
   }
 
   darkstar_chacha_prng(seed) {
-    // Since this runs synchronously but needs an awaited hash ideally, 
-    // we bypass the await by utilizing standard crypto hash or pseudo-buffer. 
-    // But since `seed` isn't awaited strictly during map passes, we use an inline shim to emulate Sha256 synchronously for PRNG initialization if needed in Node.
-    // For Node specifically we can use native `import crypto from 'crypto'` but we want to stick to the same algorithm exactly.
-    let hashHex = "";
+    let hash;
     try {
         let nodeCrypto;
         if (typeof require !== 'undefined') {
             nodeCrypto = require('crypto');
         } else if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-            // Synchronous runtime module require workaround for ES modules
             const mod = eval('require("module")');
             const req = mod.createRequire(import.meta.url);
             nodeCrypto = req('crypto');
         }
         if (nodeCrypto) {
-            hashHex = nodeCrypto.createHash('sha256').update(seed).digest('hex');
+            hash = nodeCrypto.createHash('sha256').update(seed).digest();
         }
     } catch(e) { }
     
-    let state = new Uint32Array(8);
-    for (let i = 0; i < 8; i++) {
-      state[i] = parseInt(hashHex.substr(i * 8, 8), 16);
+    // RFC 8439 ChaCha Core
+    const state = new Uint32Array(16);
+    state[0] = 0x61707865; state[1] = 0x3320646e; state[2] = 0x79622d32; state[3] = 0x6b206574;
+    for(let i=0; i<8; i++) state[4+i] = (hash[i*4] | hash[i*4+1]<<8 | hash[i*4+2]<<16 | hash[i*4+3]<<24);
+    state[12] = 0; // counter
+    state[13] = 0; // nonce
+    state[14] = 0; // nonce
+    state[15] = 0; // nonce
+
+    function chacha_block(st) {
+        const x = new Uint32Array(st);
+        const rotate = (v, n) => (v << n) | (v >>> (32 - n));
+        const quarter_round = (a, b, c, d) => {
+            x[a] = (x[a] + x[b]) | 0; x[d] ^= x[a]; x[d] = rotate(x[d], 16);
+            x[c] = (x[c] + x[d]) | 0; x[b] ^= x[c]; x[b] = rotate(x[b], 12);
+            x[a] = (x[a] + x[b]) | 0; x[d] ^= x[a]; x[d] = rotate(x[d], 8);
+            x[c] = (x[c] + x[d]) | 0; x[b] ^= x[c]; x[b] = rotate(x[b], 7);
+        };
+        for(let i=0; i<10; i++) {
+            quarter_round(0, 4, 8, 12); quarter_round(1, 5, 9, 13);
+            quarter_round(2, 6, 10, 14); quarter_round(3, 7, 11, 15);
+            quarter_round(0, 5, 10, 15); quarter_round(1, 6, 11, 12);
+            quarter_round(2, 7, 8, 13); quarter_round(3, 4, 9, 14);
+        }
+        for(let i=0; i<16; i++) x[i] = (x[i] + st[i]) | 0;
+        return x;
     }
 
-    let counter = 0;
+    let block = chacha_block(state);
+    let blockIdx = 0;
 
-    return function () {
-      counter++;
-      let x = state[(counter + 0) % 8];
-      let y = state[(counter + 3) % 8];
-      let z = state[(counter + 5) % 8];
+    return function() {
+        // AI Analysis Padding: Side-channel jitter
+        const jitter = Math.floor(Math.random() * 5);
+        for(let j=0; j<jitter; j++) { Math.imul(j, 31); }
 
-      x = (x + y + counter) | 0;
-      z = (z ^ x) | 0;
-      z = (z << 16) | (z >>> 16);
-
-      y = (y + z + (counter * 3)) | 0;
-      x = (x ^ y) | 0;
-      x = (x << 12) | (x >>> 20);
-
-      state[(counter + 0) % 8] = x;
-      state[(counter + 3) % 8] = y;
-      state[(counter + 5) % 8] = z;
-
-      let t = (x + y + z) | 0;
-      t = Math.imul(t ^ (t >>> 15), 1 | t);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-
-      return ((t ^ (t >>> 14)) >>> 0);
+        if(blockIdx >= 16) {
+            state[12]++; // Increment counter
+            block = chacha_block(state);
+            blockIdx = 0;
+        }
+        return block[blockIdx++] >>> 0;
     };
   }
 }
@@ -1409,7 +1488,7 @@ if (isMain) {
   let args = process.argv.slice(2);
   let forceV2 = false;
   let forceV1 = false;
-  let v = 5;
+  let v = 9;
   let format = '';
   let _core = 'aes';
 
@@ -1420,7 +1499,7 @@ if (isMain) {
       console.log('\nUsage:');
       console.log('  node darkstar_crypt.js [flags] <command> [args]');
       console.log('\nFlags:');
-      console.log('  -v, --v <1-5>       D-KASP Protocol Version (default: 5)');
+      console.log('  -v, --v <1-9>       D-KASP Protocol Version (default: 9)');
       console.log('  -c, --core <aes|arx> Encryption Core (default: aes)');
       console.log('  -f, --format <json|csv|text> Output format');
       console.log('\nCommands:');
@@ -1431,7 +1510,7 @@ if (isMain) {
       process.exit(0);
     }
     if ((arg === '-v' || arg === '--v') && args.length > 0) {
-      v = parseInt(args.shift(), 10) || 5;
+      v = parseInt(args.shift(), 10) || 9;
     } else if ((arg === '-f' || arg === '--format') && args.length > 0) {
       format = args.shift();
     } else if ((arg === '-c' || arg === '--core') && args.length > 0) {

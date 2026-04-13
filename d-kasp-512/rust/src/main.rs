@@ -104,46 +104,58 @@ impl Mulberry32 {
 }
 
 struct DarkstarChaChaPRNG {
-    state: [u32; 8],
-    counter: u32,
+    state: [u32; 16],
+    block: [u32; 16],
+    block_idx: usize,
 }
 
 impl DarkstarChaChaPRNG {
     fn new(seed_str: &str) -> Self {
         use sha2::Digest;
         let hash = sha2::Sha256::digest(seed_str.as_bytes());
-        let hash_hex = hex::encode(hash);
-        let mut state = [0u32; 8];
+        let mut state = [0u32; 16];
+        state[0] = 0x61707865; state[1] = 0x3320646e; state[2] = 0x79622d32; state[3] = 0x6b206574;
         for i in 0..8 {
-            let chunk = &hash_hex[i * 8..(i + 1) * 8];
-            state[i] = u32::from_str_radix(chunk, 16).unwrap_or(0);
+            let chunk = &hash[i*4..(i+1)*4];
+            state[4+i] = u32::from_le_bytes(chunk.try_into().unwrap());
         }
-        DarkstarChaChaPRNG { state, counter: 0 }
+        state[12] = 0; // counter
+        state[13] = 0; // nonce
+        state[14] = 0; // nonce
+        state[15] = 0; // nonce
+
+        let block = Self::chacha_block(&state);
+        DarkstarChaChaPRNG { state, block, block_idx: 0 }
+    }
+
+    fn chacha_block(st: &[u32; 16]) -> [u32; 16] {
+        let mut x = *st;
+        fn rotate(v: u32, n: u32) -> u32 { (v << n) | (v >> (32 - n)) }
+        fn quarter_round(x: &mut [u32; 16], a: usize, b: usize, c: usize, d: usize) {
+            x[a] = x[a].wrapping_add(x[b]); x[d] ^= x[a]; x[d] = rotate(x[d], 16);
+            x[c] = x[c].wrapping_add(x[d]); x[b] ^= x[c]; x[b] = rotate(x[b], 12);
+            x[a] = x[a].wrapping_add(x[b]); x[d] ^= x[a]; x[d] = rotate(x[d], 8);
+            x[c] = x[c].wrapping_add(x[d]); x[b] ^= x[c]; x[b] = rotate(x[b], 7);
+        }
+        for _ in 0..10 {
+            quarter_round(&mut x, 0, 4, 8, 12); quarter_round(&mut x, 1, 5, 9, 13);
+            quarter_round(&mut x, 2, 6, 10, 14); quarter_round(&mut x, 3, 7, 11, 15);
+            quarter_round(&mut x, 0, 5, 10, 15); quarter_round(&mut x, 1, 6, 11, 12);
+            quarter_round(&mut x, 2, 7, 8, 13); quarter_round(&mut x, 3, 4, 9, 14);
+        }
+        for i in 0..16 { x[i] = x[i].wrapping_add(st[i]); }
+        x
     }
 
     fn next(&mut self) -> u32 {
-        self.counter = self.counter.wrapping_add(1);
-        let mut x = self.state[((self.counter + 0) % 8) as usize];
-        let mut y = self.state[((self.counter + 3) % 8) as usize];
-        let mut z = self.state[((self.counter + 5) % 8) as usize];
-
-        x = x.wrapping_add(y).wrapping_add(self.counter);
-        z = z ^ x;
-        z = (z << 16) | (z >> 16);
-
-        y = y.wrapping_add(z).wrapping_add(self.counter.wrapping_mul(3));
-        x = x ^ y;
-        x = (x << 12) | (x >> 20);
-
-        self.state[((self.counter + 0) % 8) as usize] = x;
-        self.state[((self.counter + 3) % 8) as usize] = y;
-        self.state[((self.counter + 5) % 8) as usize] = z;
-
-        let mut t = x.wrapping_add(y).wrapping_add(z);
-        t = (t ^ (t >> 15)).wrapping_mul(1 | t);
-        t = t.wrapping_add((t ^ (t >> 7)).wrapping_mul(61 | t)) ^ t;
-
-        t ^ (t >> 14)
+        if self.block_idx >= 16 {
+            self.state[12] = self.state[12].wrapping_add(1);
+            self.block = Self::chacha_block(&self.state);
+            self.block_idx = 0;
+        }
+        let val = self.block[self.block_idx];
+        self.block_idx += 1;
+        val
     }
 }
 
@@ -225,6 +237,7 @@ impl DarkstarCrypt {
                 Self::obfuscate_bitflip_v4,
                 Self::obfuscate_columnar_v4,
                 Self::obfuscate_recxor_v4,
+                Self::obfuscate_mds_network_v9,
             ],
             deobfuscation_functions_v4: vec![
                 Self::deobfuscate_sbox_v4,
@@ -239,6 +252,7 @@ impl DarkstarCrypt {
                 Self::deobfuscate_bitflip_v4,
                 Self::deobfuscate_columnar_v4,
                 Self::deobfuscate_recxor_v4,
+                Self::deobfuscate_mds_network_v9,
             ],
         }
     }
@@ -552,6 +566,62 @@ impl DarkstarCrypt {
         for i in (1..out.len()).rev() { out[i] = out[i].wrapping_sub(out[i - 1]); }
         Ok(out)
     }
+
+    const MDS_MATRIX: [[u8; 4]; 4] = [
+        [0x02, 0x03, 0x01, 0x01],
+        [0x01, 0x02, 0x03, 0x01],
+        [0x01, 0x01, 0x02, 0x03],
+        [0x03, 0x01, 0x01, 0x02]
+    ];
+
+    const INV_MDS_MATRIX: [[u8; 4]; 4] = [
+        [0x0E, 0x0B, 0x0D, 0x09],
+        [0x09, 0x0E, 0x0B, 0x0D],
+        [0x0D, 0x09, 0x0E, 0x0B],
+        [0x0B, 0x0D, 0x09, 0x0E]
+    ];
+
+    fn obfuscate_mds_network_v9(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> ObfuscationResult {
+        if input.len() < 4 { return Self::obfuscate_matrixhill_v4(input, _seed, _prng_factory); }
+        let mut out = vec![0u8; input.len()];
+        for i in (0..input.len()).step_by(4) {
+            let end = (i + 4).min(input.len());
+            let block = &input[i..end];
+            if block.len() < 4 {
+                for j in 0..block.len() { out[i+j] = block[j]; }
+                continue;
+            }
+            for row in 0..4 {
+                let mut sum = 0u8;
+                for col in 0..4 {
+                    sum ^= gf_mult_v4(block[col], Self::MDS_MATRIX[row][col]);
+                }
+                out[i + row] = sum;
+            }
+        }
+        Ok(out)
+    }
+
+    fn deobfuscate_mds_network_v9(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> ObfuscationResult {
+        if input.len() < 4 { return Self::deobfuscate_matrixhill_v4(input, _seed, _prng_factory); }
+        let mut out = vec![0u8; input.len()];
+        for i in (0..input.len()).step_by(4) {
+            let end = (i + 4).min(input.len());
+            let block = &input[i..end];
+            if block.len() < 4 {
+                for j in 0..block.len() { out[i+j] = block[j]; }
+                continue;
+            }
+            for row in 0..4 {
+                let mut sum = 0u8;
+                for col in 0..4 {
+                    sum ^= gf_mult_v4(block[col], Self::INV_MDS_MATRIX[row][col]);
+                }
+                out[i + row] = sum;
+            }
+        }
+        Ok(out)
+    }
     fn obfuscate_gfmult_v4(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> ObfuscationResult {
         Ok(input.iter().map(|&b| gf_mult_v4(b, 0x02)).collect())
     }
@@ -791,7 +861,7 @@ impl DarkstarCrypt {
                     let mut rng_path = prng_factory(&word_key_hex);
                     let group_s = [0usize, 1, 5];
                     let group_p = [2usize, 3, 10];
-                    let group_n = [7usize, 8, 11];
+                    let group_n = if v >= 9 { [12usize, 12, 11] } else { [7usize, 8, 11] };
                     let group_a = [4usize, 6, 9];
 
                     for i in 0..16 {
@@ -809,13 +879,17 @@ impl DarkstarCrypt {
                         let p_idx = group_p[(rng_path.next() as usize) % group_p.len()];
                         current_word_bytes = (self.obfuscation_functions_v4[p_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
 
-                        // N: Network (Forced GFMult or MatrixHill every 4 rounds)
-                        let n_idx = if i % 4 == 1 {
-                            8
-                        } else if i % 4 == 3 {
-                            7
-                        } else {
+                        // N: Network (V9 prioritizes MDS, Legacy uses Hill/GFMult)
+                        let n_idx = if v >= 9 {
                             group_n[(rng_path.next() as usize) % group_n.len()]
+                        } else {
+                            if i % 4 == 1 {
+                                8
+                            } else if i % 4 == 3 {
+                                7
+                            } else {
+                                group_n[(rng_path.next() as usize) % group_n.len()]
+                            }
                         };
                         current_word_bytes = (self.obfuscation_functions_v4[n_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
 
@@ -1105,14 +1179,25 @@ impl DarkstarCrypt {
                     let mut rng_path = prng_factory(&word_key_hex);
                     let group_s = [0usize, 1, 5];
                     let group_p = [2usize, 3, 10];
-                    let group_n = [7usize, 8, 11];
+                    let group_n = if v >= 9 { [12usize, 12, 11] } else { [7usize, 8, 11] };
                     let group_a = [4usize, 6, 9];
 
                     let mut round_paths = Vec::with_capacity(16);
                     for i in 0..16 {
+                        // S: Substitution
                         let s = if i % 4 == 0 { 0 } else if i % 4 == 2 { 1 } else { group_s[(rng_path.next() as usize) % group_s.len()] };
+                        
+                        // P: Permutation
                         let p = group_p[(rng_path.next() as usize) % group_p.len()];
-                        let n = if i % 4 == 1 { 8 } else if i % 4 == 3 { 7 } else { group_n[(rng_path.next() as usize) % group_n.len()] };
+                        
+                        // N: Network (V9 prioritizes MDS)
+                        let n = if v >= 9 {
+                            group_n[(rng_path.next() as usize) % group_n.len()]
+                        } else {
+                            if i % 4 == 1 { 8 } else if i % 4 == 3 { 7 } else { group_n[(rng_path.next() as usize) % group_n.len()] }
+                        };
+                        
+                        // A: Algebraic
                         let a = group_a[(rng_path.next() as usize) % group_a.len()];
                         round_paths.push((s, p, n, a));
                     }
