@@ -435,19 +435,19 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 const execFileAsync = promisify(execFile);
 
-async function runDKaspCommand(engine: string, args: string[]): Promise<unknown> {
+async function runDAsPCommand(engine: string, args: string[]): Promise<unknown> {
   const isWindows = process.platform === 'win32';
   const ext = isWindows ? '.exe' : '';
   let cmd = '';
   let execArgs: string[] = [];
 
-  const basePath = app.isPackaged ? path.join(process.resourcesPath, 'd-kasp-512') : path.join(__dirname, '..', '..', 'd-kasp-512');
+  const basePath = app.isPackaged ? path.join(process.resourcesPath, 'd-asp') : path.join(__dirname, '..', '..', 'd-asp');
 
   if (engine === 'rust') {
-    cmd = path.join(basePath, 'rust', 'target', 'release', `d-kasp-512${ext}`);
+    cmd = path.join(basePath, 'rust', 'target', 'release', `d_kasp_512${ext}`); // Binary name stays for now to avoid build system complexity
     execArgs = args;
   } else if (engine === 'go') {
-    cmd = path.join(basePath, 'go', `d-kasp-512${ext}`);
+    cmd = path.join(basePath, 'go', `main${ext}`); // Binary name stays main
     execArgs = args;
   } else {
     // default Node
@@ -464,26 +464,26 @@ async function runDKaspCommand(engine: string, args: string[]): Promise<unknown>
     }
   } catch (e: unknown) {
     const err = e as Error & { stderr?: string };
-    throw new Error(`D-KASP Engine (${engine}) failed: ${err.stderr || err.message}`);
+    throw new Error(`D-ASP Engine (${engine}) failed: ${err.stderr || err.message}`);
   }
 }
 
-ipcMain.handle('dkasp-encrypt', async (_event, mnemonic: string, pkHex: string, engine: string, hwid?: string) => {
+ipcMain.handle('dasp-encrypt', async (_event, payload: string, pkHex: string, engine: string, hwid?: string) => {
   const args: string[] = [];
   if (hwid) {
     args.push('--hwid', hwid);
   }
-  args.push('encrypt', mnemonic, pkHex);
-  return await runDKaspCommand(engine, args);
+  args.push('encrypt', payload, pkHex);
+  return await runDAsPCommand(engine, args);
 });
 
-ipcMain.handle('dkasp-decrypt', async (_event, data: string, rk: string, skHex: string, engine: string, hwid?: string) => {
+ipcMain.handle('dasp-decrypt', async (_event, data: string, rk: string, skHex: string, engine: string, hwid?: string) => {
   const args: string[] = [];
   if (hwid) {
     args.push('--hwid', hwid);
   }
   args.push('decrypt', data, skHex); // rk parameter is legacy and maintained for signature parity
-  return await runDKaspCommand(engine, args);
+  return await runDAsPCommand(engine, args);
 });
 
 // --- WebAuthn Native Proxy (Windows Hello Fix) ---

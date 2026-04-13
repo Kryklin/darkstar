@@ -23,7 +23,7 @@
 
 `darkstar` is a defense-grade client-side security enclave designed to safeguard recovery phrases, identities, and sensitive records using post-quantum cryptographic primitives.
 
-At its core, Darkstar utilizes the **D-KASP (Deterministic-KASP)** protocol—a sovereign 16-round structural permutation gauntlet paired with **ML-KEM-1024 (Kyber)** for NIST Level 5 security parity.
+At its core, Darkstar utilizes the **D-ASP (Darkstar Algebraic Substitution & Permutation)** protocol—a sovereign 16-round structural permutation gauntlet paired with **ML-KEM-1024 (Kyber)** for NIST Level 5 security parity.
 
 ---
 
@@ -31,7 +31,7 @@ At its core, Darkstar utilizes the **D-KASP (Deterministic-KASP)** protocol—a 
 
 - **Quantum Resistance**: Powered by ML-KEM-1024 lattice-based key encapsulation.
 - **Hardware Binding**: Cryptographic payloads are bound to host-machine silicon via Electron SafeStorage and machine-unique identifiers.
-- **High-Diffusion Obfuscation**: The D-KASP gauntlet ensures bit-perfect interoperability across Rust, Go, Python, and Node.js while providing maximum algebraic complexity.
+- **High-Diffusion Obfuscation**: The D-ASP gauntlet ensures bit-perfect interoperability across Rust, Go, Python, and Node.js while providing maximum algebraic complexity.
 - **Zero-Knowledge Architecture**: Your master password never leaves the isolated security enclave; data is encrypted/decrypted via a high-performance IPC bridge.
 
 ---
@@ -61,9 +61,9 @@ npm start           # Launch the Electron Dashboard
 
 For a deep-dive into the mathematical and system-level specifications, please refer to:
 
-- [**D-KASP Mathematical Specification**](DARKSTAR_ARCHITECTURE.md)
+- [**D-ASP Mathematical Specification**](DARKSTAR_ARCHITECTURE.md)
 - [**Security & Disclosure Policy**](SECURITY.md)
-- [**D-KASP Multi-Language Suite**](d-kasp-512/README.md)
+- [**D-ASP Multi-Language Suite**](d-asp/README.md)
 
 ---
 

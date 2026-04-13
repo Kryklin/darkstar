@@ -1,14 +1,13 @@
-// Package main implements the D-KASP cryptographic suite.
+// Package main implements the D-ASP cryptographic suite.
 //
-// D-KASP (Darkstar Key-Agnostic Structural Permutation) is a post-quantum
+// D-ASP (Darkstar Algebraic Substitution & Permutation) is a post-quantum
 // structural obfuscation protocol leveraging ML-KEM-1024 (Kyber-1024)
 // as its primary root of trust.
 //
 // Protocol Layers:
 // - D: Darkstar ecosystem origin
-// - K: ML-KEM-1024 NIST Level 5 security parity
-// - A: Augmented 16-round SPNA/ARX transformation gauntlet
-// - S: Sequential deterministic path-logic
+// - A: Algebraic Substitution
+// - S: Structural Permutation
 // - P: Permutation-based non-linear core
 package main
 
@@ -166,10 +165,15 @@ func init() {
 func gfMult(a, b byte) byte {
 	p := byte(0)
 	for i := 0; i < 8; i++ {
-		if (b & 1) != 0 { p ^= a }
-		hiBitSet := (a & 0x80) != 0
+		// Mask: if b & 1, add a to product p
+		maskB := byte(0) - (b & 1)
+		p ^= a & maskB
+
+		// Mask: if hi-bit of a is set, reduce by 0x1B
+		maskA := byte(0) - (a >> 7)
 		a <<= 1
-		if hiBitSet { a ^= 0x1B }
+		a ^= 0x1B & maskA
+
 		b >>= 1
 	}
 	return p
@@ -358,7 +362,7 @@ func (dc *DarkstarCrypt) invTransMDSNetwork(input []byte, seed []byte, prngFacto
 	return out
 }
 
-func (dc *DarkstarCrypt) Encrypt(mnemonic string, pkHex string, hwid []byte) (string, error) {
+func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (string, error) {
 	pkRaw, err := hex.DecodeString(pkHex)
 	if err != nil { return "", fmt.Errorf("invalid pk hex: %v", err) }
 	
@@ -387,21 +391,21 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic string, pkHex string, hwid []byte) (st
 	combinedSS := append([]byte{}, ssBytes...)
 	if len(finalHwid) > 0 { combinedSS = append(combinedSS, finalHwid...) }
 
-	cHasher := sha256.New(); cHasher.Write([]byte("dkasp-cipher-key")); cHasher.Write(combinedSS)
+	cHasher := sha256.New(); cHasher.Write([]byte("dasp-cipher-key")); cHasher.Write(combinedSS)
 	activePasswordStr := hex.EncodeToString(cHasher.Sum(nil))
 
-	hHasher := sha256.New(); hHasher.Write([]byte("dkasp-hmac-key")); hHasher.Write(combinedSS)
+	hHasher := sha256.New(); hHasher.Write([]byte("dasp-hmac-key")); hHasher.Write(combinedSS)
 	activeHmacKey := hHasher.Sum(nil)
 
 	for i := range ssBytes { ssBytes[i] = 0 }
 
 	prngFactory := func(s string) PRNG { return NewDarkstarChaChaPRNG(s) }
-	chainInit := sha256.Sum256([]byte("dkasp-chain-" + activePasswordStr))
+	chainInit := sha256.Sum256([]byte("dasp-chain-" + activePasswordStr))
 	chainState := chainInit[:]
 
-	currentWordBytes := []byte(mnemonic)
+	currentWordBytes := []byte(payload)
 
-	mac := hmac.New(sha256.New, []byte(activePasswordStr)); mac.Write([]byte("dkasp-word-0"))
+	mac := hmac.New(sha256.New, []byte(activePasswordStr)); mac.Write([]byte("dasp-word-0"))
 	wordKey := mac.Sum(nil); wordKeyHex := hex.EncodeToString(wordKey)
 
 	for i := range currentWordBytes { currentWordBytes[i] ^= chainState[i%32] }
@@ -440,10 +444,7 @@ func (dc *DarkstarCrypt) Encrypt(mnemonic string, pkHex string, hwid []byte) (st
 		"mac":  macTag,
 	}
 	innerJson, _ := json.Marshal(inner)
-	
-	res := map[string]interface{}{ "encryptedData": string(innerJson), "reverseKey": "" }
-	resJson, _ := json.Marshal(res)
-	return string(resJson), nil
+	return string(innerJson), nil
 }
 
 func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []byte) (string, error) {
@@ -477,10 +478,10 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []b
 	combinedSS := append([]byte{}, ssBytes...)
 	if len(finalHwid) > 0 { combinedSS = append(combinedSS, finalHwid...) }
 
-	cHasher := sha256.New(); cHasher.Write([]byte("dkasp-cipher-key")); cHasher.Write(combinedSS)
+	cHasher := sha256.New(); cHasher.Write([]byte("dasp-cipher-key")); cHasher.Write(combinedSS)
 	activePasswordStr := hex.EncodeToString(cHasher.Sum(nil))
 
-	hHasher := sha256.New(); hHasher.Write([]byte("dkasp-hmac-key")); hHasher.Write(combinedSS)
+	hHasher := sha256.New(); hHasher.Write([]byte("dasp-hmac-key")); hHasher.Write(combinedSS)
 	activeHmacKey := hHasher.Sum(nil)
 	for i := range ssBytes { ssBytes[i] = 0 }
 
@@ -491,10 +492,10 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []b
 	if !hmac.Equal(h.Sum(nil), tag) { return "", errors.New("Integrity Check Failed") }
 
 	prngFactory := func(s string) PRNG { return NewDarkstarChaChaPRNG(s) }
-	chainInit := sha256.Sum256([]byte("dkasp-chain-" + activePasswordStr))
+	chainInit := sha256.Sum256([]byte("dasp-chain-" + activePasswordStr))
 	chainState := chainInit[:]
 
-	mac := hmac.New(sha256.New, []byte(activePasswordStr)); mac.Write([]byte("dkasp-word-0"))
+	mac := hmac.New(sha256.New, []byte(activePasswordStr)); mac.Write([]byte("dasp-word-0"))
 	wordKey := mac.Sum(nil); wordKeyHex := hex.EncodeToString(wordKey)
 
 	rngPath := prngFactory(wordKeyHex)
@@ -527,14 +528,14 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []b
 }
 
 func printUsage() {
-	fmt.Println("Darkstar D-KASP Cryptographic Suite")
+	fmt.Println("Darkstar D-ASP Cryptographic Suite")
 	fmt.Println("\nUsage:")
 	fmt.Println("  darkstar [flags] <command> [args]")
 	fmt.Println("\nFlags:")
 	fmt.Println("  -f, --format <json|csv|text> Output format")
 	fmt.Println("\nCommands:")
-	fmt.Println("  encrypt <mnemonic> <pkHex>      Encrypt a mnemonic phrase")
-	fmt.Println("  decrypt <data> <skHex>          Decrypt a D-KASP payload")
+	fmt.Println("  encrypt <payload> <pkHex>      Encrypt a payload")
+	fmt.Println("  decrypt <data> <skHex>          Decrypt a D-ASP payload")
 	fmt.Println("  keygen                          Generate ML-KEM-1024 Keypair")
 	fmt.Println("  test                            Run internal self-test")
 }
@@ -571,25 +572,25 @@ func main() {
 	case "encrypt":
 		if len(args) < 3 { os.Exit(1) }
 		res, err := dc.Encrypt(resolveArg(args[1]), resolveArg(args[2]), hwid)
-		if err != nil { os.Exit(1) }; fmt.Println(res)
+		if err != nil { fmt.Fprintf(os.Stderr, "Encryption Error: %v\n", err); os.Exit(1) }; fmt.Println(res)
 	case "decrypt":
 		if len(args) < 3 { os.Exit(1) }
 		res, err := dc.Decrypt(resolveArg(args[1]), resolveArg(args[2]), hwid)
-		if err != nil { os.Exit(1) }; fmt.Print(res)
+		if err != nil { fmt.Fprintf(os.Stderr, "Decryption Error: %v\n", err); os.Exit(1) }; fmt.Print(res)
 	case "keygen":
 		sch := mlkem1024.Scheme(); pk, sk, _ := sch.GenerateKeyPair()
 		pkB, _ := pk.MarshalBinary(); skB, _ := sk.MarshalBinary()
 		fmt.Printf("PK: %s\nSK: %s\n", hex.EncodeToString(pkB), hex.EncodeToString(skB))
 	case "test":
-		mnemonic := "apple banana cherry date elderberry fig grape honeydew"
+		payload := "apple banana cherry date elderberry fig grape honeydew"
 		sch := mlkem1024.Scheme(); pk, sk, _ := sch.GenerateKeyPair()
 		pkB, _ := pk.MarshalBinary(); skB, _ := sk.MarshalBinary()
-		resJson, err := dc.Encrypt(mnemonic, hex.EncodeToString(pkB), nil)
-		if err != nil { os.Exit(1) }
+		resJson, err := dc.Encrypt(payload, hex.EncodeToString(pkB), nil)
+		if err != nil { fmt.Fprintf(os.Stderr, "Test Encryption Error: %v\n", err); os.Exit(1) }
 		var m map[string]interface{}; json.Unmarshal([]byte(resJson), &m)
-		dec, err := dc.Decrypt(m["encryptedData"].(string), hex.EncodeToString(skB), nil)
-		if err != nil { os.Exit(1) }
-		fmt.Printf("--- D-KASP Self-Test ---\nDecrypted: '%s'\nResult: PASSED\n", dec)
+		dec, err := dc.Decrypt(m["data"].(string), hex.EncodeToString(skB), nil)
+		if err != nil { fmt.Fprintf(os.Stderr, "Test Decryption Error: %v\n", err); os.Exit(1) }
+		fmt.Printf("--- D-ASP Self-Test ---\nDecrypted: '%s'\nResult: PASSED\n", dec)
 	default:
 		printUsage(); os.Exit(1)
 	}

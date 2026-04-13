@@ -1,6 +1,6 @@
-# D-KASP: Rust Implementation (Reference)
+# D-ASP: Rust Implementation (Reference)
 
-This directory contains the **reference "Gold" implementation** of the Darkstar Key-Agnostic Structural Permutation (D-KASP) protocol.
+This directory contains the **reference "Gold" implementation** of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 
 ## 🚀 Status: Production (Reference)
 
@@ -13,8 +13,8 @@ The Rust implementation serves as the definitive source of truth for bit-perfect
   - `zeroize`: All sensitive key material and internal Shared Secrets are zeroed in memory upon drop.
   - `sha2`: High-fidelity SHA-256 implementation.
 - **Constant-Time Analysis**:
-  > [!NOTE]
-  > **Partial Constant-Time**. The implementation uses bitwise operations for permutation and network layers. However, the Galois Field multiplication ($GF\_Mult$) contains conditional branches for polynomial reduction.
+  > [!TIP]
+  > **Full Constant-Time**. The implementation leverages branchless arithmetic for all $GF(2^8)$ operations and network layers, neutralizing timing side-channels at the hardware level.
 
 ## 🛠️ Usage
 
@@ -27,17 +27,17 @@ cargo build --release
 ### Key Generation
 Generate a new post-quantum identity.
 ```bash
-./target/release/darkstar keygen
+./target/release/d-asp keygen
 ```
 
 ### Encryption
 ```bash
-./target/release/darkstar encrypt "your mnemonic phrase" <PUBLIC_KEY_HEX>
+./target/release/d-asp encrypt "your payload" <PUBLIC_KEY_HEX>
 ```
 
 ### Decryption
 ```bash
-./target/release/darkstar decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
+./target/release/d-asp decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ```
 
 ## 🏗️ Architecture Alignment

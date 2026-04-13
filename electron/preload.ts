@@ -22,8 +22,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   vaultListFiles: () => ipcRenderer.invoke('vault-list-files'),
   vaultGenerateTotp: () => ipcRenderer.invoke('vault-generate-totp'),
   vaultVerifyTotp: (token: string, secret: string) => ipcRenderer.invoke('vault-verify-totp', token, secret),
-  dKaspEncrypt: (mnemonic: string, pkHex: string, engine: string, hwid?: string) => ipcRenderer.invoke('dkasp-encrypt', mnemonic, pkHex, engine, hwid),
-  dKaspDecrypt: (data: string, rk: string, skHex: string, engine: string, hwid?: string) => ipcRenderer.invoke('dkasp-decrypt', data, rk, skHex, engine, hwid),
+  dAsPEncrypt: (payload: string, pkHex: string, engine: string, hwid?: string) => ipcRenderer.invoke('dasp-encrypt', payload, pkHex, engine, hwid),
+  dAsPDecrypt: (data: string, rk: string, skHex: string, engine: string, hwid?: string) => ipcRenderer.invoke('dasp-decrypt', data, rk, skHex, engine, hwid),
 
   getDefaultBackupPath: () => ipcRenderer.invoke('get-default-backup-path'),
   saveBackup: (dir: string, filename: string, data: string) => ipcRenderer.invoke('save-backup', dir, filename, data),

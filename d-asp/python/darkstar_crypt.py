@@ -1,5 +1,7 @@
 
 import os
+import sys
+print(f"DEBUG: Running script from {__file__}", file=sys.stderr)
 import base64
 import json
 import struct
@@ -17,7 +19,7 @@ except ImportError:
 
 class DarkstarCrypt:
     """
-    D-KASP Cryptographic Suite
+    D-ASP Cryptographic Suite
     
     This suite implements the definitive Darkstar protocol:
     - Root of Trust: ML-KEM-1024
@@ -351,14 +353,16 @@ class DarkstarCrypt:
 
     def _gf_mult(self, a, b):
         p = 0
-        for i in range(8):
-            if (b & 1) != 0: p ^= a
-            hi_bit_set = (a & 0x80)
-            a <<= 1
-            if hi_bit_set != 0: a ^= 0x1B
+        for _ in range(8):
+            # Mask: if b & 1, add a to product p
+            p ^= a & (-(b & 1) & 0xFF)
+
+            # Mask: if hi-bit of a is set, reduce by 0x1B
+            mask = -(a >> 7) & 0xFF
+            a = ((a << 1) ^ (0x1B & mask)) & 0xFF
+
             b >>= 1
-            a &= 0xFF
-        return p & 0xFF
+        return p
 
     def _obfuscate_sbox_v4(self, data, seed=None, prng_factory=None):
         out = bytearray(len(data))
@@ -617,27 +621,31 @@ class DarkstarCrypt:
             print(f"GCM Decryption failed: {e}")
             raise e
 
-    def encrypt(self, mnemonic, pk_hex):
+    def encrypt(self, payload, pk_hex, hwid_hex=None):
         pk_bytes = bytes.fromhex(pk_hex)
         import pqcrypto.kem.ml_kem_1024 as kem
         ct_bytes, ss_bytes_tup = kem.encrypt(pk_bytes)
         ss_bytes = bytearray(ss_bytes_tup)
-        ct_hex = ct_bytes.hex()
         
-        cipher_key = hashlib.sha256(b"dkasp-cipher-key" + ss_bytes).digest()
-        hmac_key = hashlib.sha256(b"dkasp-hmac-key" + ss_bytes).digest()
+        combined_ss = bytes(ss_bytes)
+        if hwid_hex:
+            combined_ss += bytes.fromhex(hwid_hex)
+            
+        cipher_key = hashlib.sha256(b"dasp-cipher-key" + combined_ss).digest()
+        hmac_key = hashlib.sha256(b"dasp-hmac-key" + combined_ss).digest()
         active_password_str = cipher_key.hex()
         
+        # Zeroize secret key material
         for i in range(len(ss_bytes)): ss_bytes[i] = 0 
         
-        current_word_bytes = mnemonic.encode('utf-8')
+        current_word_bytes = payload.encode('utf-8')
         def prng_factory(s_str):
             return self.DarkstarChaChaPRNG(s_str)
         
-        word_key = hmac.new(active_password_str.encode('utf-8'), b"dkasp-word-0", hashlib.sha256).digest()
+        word_key = hmac.new(active_password_str.encode('utf-8'), b"dasp-word-0", hashlib.sha256).digest()
         word_key_hex = word_key.hex()
         
-        chain_state = hashlib.sha256(f"dkasp-chain-{active_password_str}".encode('utf-8')).digest()
+        chain_state = hashlib.sha256(f"dasp-chain-{active_password_str}".encode('utf-8')).digest()
         
         temp_word_bytes = bytearray(current_word_bytes)
         for i in range(len(temp_word_bytes)):
@@ -672,17 +680,17 @@ class DarkstarCrypt:
             current_word_bytes = self.obfuscation_functions_v4[a_idx](current_word_bytes, seed=func_key, prng_factory=prng_factory)
 
         final_payload = current_word_bytes
-        h = hmac.new(hmac_key, ct_bytes + final_payload, hashlib.sha256)
+        h = hmac.new(hmac_key, bytes.fromhex(ct_bytes.hex()) + final_payload, hashlib.sha256)
         mac_tag = h.hexdigest()
         
         res_obj = {
             "data": final_payload.hex(),
-            "ct": ct_hex,
+            "ct": ct_bytes.hex(),
             "mac": mac_tag
         }
         return json.dumps(res_obj)
 
-    def decrypt(self, encrypted_data_raw, sk_hex):
+    def decrypt(self, encrypted_data_raw, sk_hex, hwid_hex=None):
         parsed = json.loads(encrypted_data_raw)
         
         ct_hex = parsed.get('ct', "")
@@ -696,10 +704,15 @@ class DarkstarCrypt:
         ss_bytes_tup = kem.decrypt(sk_bytes, ct_bytes)
         ss_bytes = bytearray(ss_bytes_tup)
         
-        cipher_key = hashlib.sha256(b"dkasp-cipher-key" + ss_bytes).digest()
-        hmac_key = hashlib.sha256(b"dkasp-hmac-key" + ss_bytes).digest()
+        combined_ss = bytes(ss_bytes)
+        if hwid_hex:
+            combined_ss += bytes.fromhex(hwid_hex)
+            
+        cipher_key = hashlib.sha256(b"dasp-cipher-key" + combined_ss).digest()
+        hmac_key = hashlib.sha256(b"dasp-hmac-key" + combined_ss).digest()
         active_password_str = cipher_key.hex()
         
+        # Zeroize secret key material
         for i in range(len(ss_bytes)): ss_bytes[i] = 0 
         
         payload_bytes = bytes.fromhex(encrypted_content)
@@ -710,10 +723,10 @@ class DarkstarCrypt:
         def prng_factory(s_str):
             return self.DarkstarChaChaPRNG(s_str)
         
-        word_key = hmac.new(active_password_str.encode('utf-8'), b"dkasp-word-0", hashlib.sha256).digest()
+        word_key = hmac.new(active_password_str.encode('utf-8'), b"dasp-word-0", hashlib.sha256).digest()
         word_key_hex = word_key.hex()
         
-        chain_state = hashlib.sha256(f"dkasp-chain-{active_password_str}".encode('utf-8')).digest()
+        chain_state = hashlib.sha256(f"dasp-chain-{active_password_str}".encode('utf-8')).digest()
         
         rng_path = prng_factory(word_key_hex)
         group_s = [0, 1, 5]
@@ -754,18 +767,20 @@ if __name__ == "__main__":
     import argparse
     import sys
 
-    parser = argparse.ArgumentParser(description="Darkstar D-KASP V9 Monoculture (Python)")
+    parser = argparse.ArgumentParser(description="Darkstar D-ASP V9 Monoculture (Python)")
     parser.add_argument("-f", "--format", choices=["json", "text"], default="json", help="Output format")
     
     subparsers = parser.add_subparsers(dest="command", help="Commands")
     
-    enc_parser = subparsers.add_parser("encrypt", help="Encrypt mnemonic")
-    enc_parser.add_argument("mnemonic", help="Primary mnemonic")
+    enc_parser = subparsers.add_parser("encrypt", help="Encrypt payload")
+    enc_parser.add_argument("payload", help="Data to encrypt")
     enc_parser.add_argument("pk_hex", help="Kyber-1024 Public Key Hex")
+    enc_parser.add_argument("--hwid", help="Hardware ID Hex")
     
     dec_parser = subparsers.add_parser("decrypt", help="Decrypt data")
-    dec_parser.add_argument("data", help="V9 JSON blob")
+    dec_parser.add_argument("data", help="D-ASP JSON blob")
     dec_parser.add_argument("sk_hex", help="Kyber-1024 Private Key Hex")
+    dec_parser.add_argument("--hwid", help="Hardware ID Hex")
     
     subparsers.add_parser("keygen", help="Generate ML-KEM-1024 pair")
     subparsers.add_parser("test", help="Internal self-test")
@@ -778,24 +793,26 @@ if __name__ == "__main__":
             with open(val[1:], "r", encoding="utf-8") as f: return f.read().strip()
         return val
 
+    hardware_id = args.hwid if hasattr(args, 'hwid') else None
+
     if args.command == "encrypt":
-        print(crypt.encrypt(load_arg(args.mnemonic), load_arg(args.pk_hex)))
+        print(crypt.encrypt(load_arg(args.payload), load_arg(args.pk_hex), hwid_hex=hardware_id))
     elif args.command == 'decrypt':
-        print(crypt.decrypt(load_arg(args.data), load_arg(args.sk_hex)))
+        print(crypt.decrypt(load_arg(args.data), load_arg(args.sk_hex), hwid_hex=hardware_id))
     elif args.command == 'keygen':
         import pqcrypto.kem.ml_kem_1024 as kem
         pk, sk = kem.generate_keypair()
         print(json.dumps({"pk": pk.hex(), "sk": sk.hex()}))
     elif args.command == 'test':
-        mnemonic = "apple banana cherry date"
+        payload = "apple banana cherry date"
         import pqcrypto.kem.ml_kem_1024 as kem
         pk, sk = kem.generate_keypair()
-        print(f"--- Darkstar Python Self-Test (V9 Monoculture) ---")
+        print(f"--- Darkstar Python Self-Test (D-ASP Monoculture) ---")
         try:
-            res_json = crypt.encrypt(mnemonic, pk.hex())
+            res_json = crypt.encrypt(payload, pk.hex())
             decrypted = crypt.decrypt(res_json, sk.hex())
             print(f"Decrypted: '{decrypted}'")
-            if decrypted == mnemonic:
+            if decrypted == payload:
                 print("Result: PASSED")
             else:
                 print("Result: FAILED")
@@ -806,170 +823,4 @@ if __name__ == "__main__":
     else:
         parser.print_help()
 
-    # --- Compression Helpers ---
-    def _pack_reverse_key(self, reverse_key, is_v3=True):
-        import struct
-        buffer = bytearray()
-        for word_key in reverse_key:
-            if is_v3:
-                # Uint16BE length header
-                buffer.extend(struct.pack('>H', len(word_key)))
-            for i in range(0, len(word_key), 2):
-                high = word_key[i] & 0x0F
-                low = word_key[i+1] & 0x0F if i+1 < len(word_key) else 0x00
-                buffer.append((high << 4) | low)
-        
-        return base64.b64encode(buffer).decode('ascii')
-
-    def _unpack_reverse_key(self, b64, is_v3=True):
-        import struct
-        buffer = base64.b64decode(b64)
-        reverse_key = []
-        
-        offset = 0
-        while offset < len(buffer):
-            word_len = 12 # Legacy V2
-            if is_v3:
-                if offset + 2 > len(buffer): break
-                word_len = struct.unpack('>H', buffer[offset:offset+2])[0]
-                offset += 2
-            
-            num_bytes_to_read = (word_len + 1) // 2
-            
-            word_key = []
-            for i in range(num_bytes_to_read):
-                if offset >= len(buffer): break
-                byte = buffer[offset]
-                offset += 1
-                high = (byte >> 4) & 0x0F
-                low = byte & 0x0F
-                word_key.append(high)
-                if len(word_key) < word_len:
-                    word_key.append(low)
-                    
-            reverse_key.append(word_key)
-            
-        return reverse_key
-
-if __name__ == "__main__":
-    import argparse
-    import sys
-
-    parser = argparse.ArgumentParser(description="Darkstar D-KASP-512 (V5) Cryptographic Suite")
-    
-    # Global Flags
-    parser.add_argument("-v", "--v", type=int, choices=range(1, 10), default=9, help="D-KASP Protocol Version (default: 9)")
-    parser.add_argument("-c", "--core", choices=["aes", "arx"], default="aes", help="Encryption Core (default: aes)")
-    parser.add_argument("-f", "--format", choices=["json", "csv", "text"], default=None, help="Output format (default: json for encrypt/keygen, text for decrypt)")
-    
-    subparsers = parser.add_subparsers(dest="command", help="Commands")
-    
-    # Encrypt
-    enc_parser = subparsers.add_parser("encrypt", help="Encrypt mnemonic")
-    enc_parser.add_argument("mnemonic", help="The mnemonic phrase to encrypt")
-    enc_parser.add_argument("password", help="The user password (V1-V4) OR Kyber-1024 Public Key Hex (V5)")
-    
-    # Decrypt
-    dec_parser = subparsers.add_parser("decrypt", help="Decrypt data")
-    dec_parser.add_argument("data", help="The encrypted JSON data object")
-    dec_parser.add_argument("reverse_key", help="The Base64 encoded reverse key")
-    dec_parser.add_argument("password", help="The user password (V1-V4) OR Kyber-1024 Private Key Hex (V5)")
-    
-    # Keygen
-    subparsers.add_parser("keygen", help="Generate ML-KEM-1024 / Kyber-1024 Keypair")
-    
-    # Test
-    subparsers.add_parser("test", help="Run self-test suite")
-    
-    args = parser.parse_args()
-    
-    def load_arg(val):
-        if val and val.startswith("@"):
-            path = val[1:]
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    return f.read().strip()
-            except Exception as e:
-                print(f"Error reading argument file {path}: {e}", file=sys.stderr)
-                sys.exit(1)
-        return val
-
-    if not args.command:
-        parser.print_help()
-        sys.exit(0)
-
-    crypt = DarkstarCrypt()
-    v = args.v
-    format_opt = args.format
-    
-    if args.command == "encrypt":
-        mnemonic = load_arg(args.mnemonic)
-        password = load_arg(args.password)
-        res = crypt.encrypt(mnemonic, password, version=v)
-        
-        output_format = format_opt or 'json'
-        if output_format == "json":
-            print(json.dumps(res))
-        elif output_format == "csv":
-            res_dict = json.loads(res)
-            print(f"{res_dict['encryptedData']},{res_dict['reverseKey']}")
-        else: # text
-            res_dict = json.loads(res)
-            print(f"Data: {res_dict['encryptedData']}\nReverseKey: {res_dict['reverseKey']}")
-            
-    elif args.command == 'decrypt':
-        output_format = args.format or "text"
-        data = load_arg(args.data)
-        rk = load_arg(args.reverse_key)
-        psw = load_arg(args.password)
-        try:
-            res = crypt.decrypt(data, rk, psw)
-            if output_format == "json":
-                print(json.dumps({"decrypted": res}))
-            elif output_format == "csv":
-                print(res) # Just the text for CSV simplicity
-            else:
-                print(res)
-        except Exception as e:
-            print(f"ERROR: {str(e)}", file=sys.stderr)
-            sys.exit(1)
-            
-    elif args.command == 'keygen':
-        output_format = args.format or "text"
-        import pqcrypto.kem.ml_kem_1024 as kem
-        pk, sk = kem.generate_keypair()
-        if output_format == "json":
-            print(json.dumps({"pk": pk.hex(), "sk": sk.hex()}))
-        elif output_format == "csv":
-            print(f"{pk.hex()},{sk.hex()}")
-        else:
-            print(f"PK: {pk.hex()}\nSK: {sk.hex()}")
-            
-    elif args.command == 'test':
-        mnemonic = "apple banana cherry date"
-        password = "MySecre!Password123"
-        dec_psw = password
-        
-        if v >= 5:
-            import pqcrypto.kem.ml_kem_1024 as kem
-            pk, sk = kem.generate_keypair()
-            password = pk.hex()
-            dec_psw = sk.hex()
-            
-        print(f"--- Darkstar Python Self-Test (V{v}) ---")
-        try:
-            res_json = crypt.encrypt(mnemonic, password, version=v)
-            res = json.loads(res_json)
-            decrypted = crypt.decrypt(res['encryptedData'], res['reverseKey'], dec_psw)
-            print(f"Decrypted: '{decrypted}'")
-            if decrypted == mnemonic:
-                print("Result: PASSED")
-            else:
-                print("Result: FAILED")
-                sys.exit(1)
-        except Exception as e:
-            print(f"Result: FAILED with error {e}")
-            sys.exit(1)
-    else:
-        print(f"Unknown command: {args.command}")
 

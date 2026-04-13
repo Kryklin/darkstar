@@ -1,6 +1,6 @@
-# D-KASP: Multi-Language Cryptographic Engine Suite
+# D-ASP: Multi-Language Cryptographic Engine Suite
 
-The **D-KASP (Deterministic-KASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
+The **D-ASP (Darkstar Algebraic Substitution & Permutation)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
 
 ---
 
@@ -17,12 +17,12 @@ The **D-KASP (Deterministic-KASP)** suite is a sovereign post-quantum encryption
 
 All implementations are designed as **high-performance, standalone sources** to ensure maximum portability and zero external cryptographic dependencies (where possible).
 
-| Language    | Engine Path                | Core Implementation    | Constant-Time |
-| :---------- | :------------------------- | :--------------------- | :------------ |
-| **Rust**    | `rust/src/main.rs`         | ML-KEM / SPNA Gauntlet | **Partial**   |
-| **Go**      | `go/main.go`               | ML-KEM / SPNA Gauntlet | **Partial**   |
-| **Python**  | `python/darkstar_crypt.py` | SPNA Gauntlet          | **Non-CT**    |
-| **Node.js** | `node/darkstar_crypt.js`   | SPNA Gauntlet / Bridge | **Non-CT**    |
+| Language    | Engine Path                | Core Implementation    | Constant-Time           |
+| :---------- | :------------------------- | :--------------------- | :---------------------- |
+| **Rust**    | `rust/src/main.rs`         | ML-KEM / SPNA Gauntlet | **Full**                |
+| **Go**      | `go/main.go`               | ML-KEM / SPNA Gauntlet | **Full**                |
+| **Python**  | `python/darkstar_crypt.py` | SPNA Gauntlet          | **Branchless-Equivalent**|
+| **Node.js** | `node/darkstar_crypt.js`   | SPNA Gauntlet / Bridge | **Branchless-Equivalent**|
 
 ---
 
@@ -35,8 +35,8 @@ All CLI engines share a standardized argument structure for seamless integration
 ./darkstar [flags] <command> [arguments...]
 
 # Available Commands
-encrypt <mnemonic> <pk_hex> [--hwid <hex>]   # Encrypt using D-KASP
-decrypt <json_payload> <sk_hex> [--hwid <hex>] # Decrypt using D-KASP
+encrypt <payload> <pk_hex> [--hwid <hex>]    # Encrypt using D-ASP
+decrypt <json_payload> <sk_hex> [--hwid <hex>] # Decrypt using D-ASP
 keygen                                       # Generate ML-KEM keypair
 test                                         # Run bit-perfect self-test
 ```
@@ -45,7 +45,7 @@ test                                         # Run bit-perfect self-test
 
 ## 📜 Exchange Specification
 
-D-KASP utilizes a flattened JSON envelope for universal compatibility:
+D-ASP utilizes a flattened JSON envelope for universal compatibility:
 
 ```json
 {

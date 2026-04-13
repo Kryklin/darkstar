@@ -4,14 +4,13 @@ use std::fs;
 use ml_kem::{MlKem1024, MlKem1024Params, KemCore, EncodedSizeUser};
 use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
 
-/// D-KASP Cryptographic Suite
+/// D-ASP Cryptographic Suite
 ///
-/// Definitive implementation of the Darkstar Key-Agnostic Structural Permutation (D-KASP) protocol.
+/// Definitive implementation of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 ///
 /// - **D**: Darkstar ecosystem origin
-/// - **K**: ML-KEM-1024 (Kyber-1024) NIST Level 5 Root of Trust
-/// - **A**: Augmented 16-round SPNA/ARX transformation gauntlet
-/// - **S**: Sequential path-logic
+/// - **A**: Algebraic Substitution
+/// - **S**: Structural Permutation
 /// - **P**: Permutation-based non-linear core
 use serde_json;
 
@@ -35,12 +34,16 @@ const SBOX: [u8; 256] = [
 ];
 
 fn gf_mult(mut a: u8, mut b: u8) -> u8 {
-    let mut p = 0;
+    let mut p = 0u8;
     for _ in 0..8 {
-        if (b & 1) != 0 { p ^= a; }
-        let hi_bit_set = (a & 0x80) != 0;
+        // Mask: if b & 1, add a to product p
+        p ^= a & ((b & 1).wrapping_neg());
+
+        // Mask: if hi-bit of a is set, reduce by 0x1B
+        let mask = ((a as i8) >> 7) as u8;
         a <<= 1;
-        if hi_bit_set { a ^= 0x1B; }
+        a ^= 0x1B & mask;
+
         b >>= 1;
     }
     p
@@ -372,7 +375,7 @@ impl DarkstarCrypt {
         Ok(out)
     }
 
-    fn encrypt(&self, mnemonic: &str, pk_hex: &str, hwid: Option<Vec<u8>>) -> Result<String, Box<dyn std::error::Error>> {
+    fn encrypt(&self, payload: &str, pk_hex: &str, hwid: Option<Vec<u8>>) -> Result<String, Box<dyn std::error::Error>> {
         let pk_bytes: [u8; 1568] = hex::decode(clean_hex(pk_hex))?
             .try_into()
             .map_err(|_| format!("Invalid public key length (Arg length: {})", pk_hex.len()))?;
@@ -391,12 +394,12 @@ impl DarkstarCrypt {
         }
 
         let mut cipher_hasher = Sha256::new();
-        cipher_hasher.update(b"dkasp-cipher-key");
+        cipher_hasher.update(b"dasp-cipher-key");
         cipher_hasher.update(&combined_ss);
         let cipher_key = cipher_hasher.finalize();
 
         let mut hmac_hasher = Sha256::new();
-        hmac_hasher.update(b"dkasp-hmac-key");
+        hmac_hasher.update(b"dasp-hmac-key");
         hmac_hasher.update(&combined_ss);
         let hmac_key = hmac_hasher.finalize();
         let active_password_str = hex::encode(cipher_key);
@@ -406,17 +409,17 @@ impl DarkstarCrypt {
 
         let prng_factory = |s: &str| ActivePRNG::new(s);
         let mut chain_hasher = Sha256::new();
-        chain_hasher.update(format!("dkasp-chain-{}", active_password_str).as_bytes());
+        chain_hasher.update(format!("dasp-chain-{}", active_password_str).as_bytes());
         let chain_state = chain_hasher.finalize().to_vec();
 
-        let mut current_word_bytes = mnemonic.as_bytes().to_vec();
+        let mut current_word_bytes = payload.as_bytes().to_vec();
 
         use hmac::{Hmac, Mac};
         type HmacSha256 = Hmac<sha2::Sha256>;
         let word_key: Vec<u8> = {
             let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(active_password_str.as_bytes())
                 .map_err(|e| format!("HMAC init error: {:?}", e))?;
-            mac.update(b"dkasp-word-0");
+            mac.update(b"dasp-word-0");
             mac.finalize().into_bytes().to_vec()
         };
         let word_key_hex = hex::encode(&word_key);
@@ -465,10 +468,7 @@ impl DarkstarCrypt {
             "mac": mac_tag
         });
         
-        Ok(serde_json::json!({
-            "encryptedData": res_obj.to_string(),
-            "reverseKey": ""
-        }).to_string())
+        Ok(res_obj.to_string())
     }
 
     fn decrypt(&self, encrypted_data_raw: &str, sk_hex: &str, hwid: Option<Vec<u8>>) -> Result<String, Box<dyn std::error::Error>> {
@@ -496,12 +496,12 @@ impl DarkstarCrypt {
         }
 
         let mut cipher_hasher = Sha256::new();
-        cipher_hasher.update(b"dkasp-cipher-key");
+        cipher_hasher.update(b"dasp-cipher-key");
         cipher_hasher.update(&combined_ss);
         let cipher_key = cipher_hasher.finalize();
 
         let mut hmac_hasher = Sha256::new();
-        hmac_hasher.update(b"dkasp-hmac-key");
+        hmac_hasher.update(b"dasp-hmac-key");
         hmac_hasher.update(&combined_ss);
         let hmac_key = hmac_hasher.finalize();
         let active_password_str = hex::encode(cipher_key);
@@ -521,13 +521,13 @@ impl DarkstarCrypt {
 
         let prng_factory = |s: &str| ActivePRNG::new(s);
         let mut chain_hasher = Sha256::new();
-        chain_hasher.update(format!("dkasp-chain-{}", active_password_str).as_bytes());
+        chain_hasher.update(format!("dasp-chain-{}", active_password_str).as_bytes());
         let chain_state = chain_hasher.finalize().to_vec();
 
         let word_key: Vec<u8> = {
             let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(active_password_str.as_bytes())
                 .map_err(|e| format!("HMAC error: {:?}", e))?;
-            mac.update(b"dkasp-word-0");
+            mac.update(b"dasp-word-0");
             mac.finalize().into_bytes().to_vec()
         };
         let word_key_hex = hex::encode(&word_key);
@@ -575,10 +575,10 @@ impl DarkstarCrypt {
 fn print_usage() {
     println!("Usage: darkstar <command> [args]");
     println!("Commands:");
-    println!("  encrypt <mnemonic> <pk_hex>  Encrypt using D-KASP");
-    println!("  decrypt <json_data> <sk_hex> Decrypt using D-KASP");
+    println!("  encrypt <payload> <pk_hex>   Encrypt using D-ASP");
+    println!("  decrypt <json_data> <sk_hex> Decrypt using D-ASP");
     println!("  keygen                       Generate ML-KEM-1024 keys");
-    println!("  test                         Run D-KASP self-test");
+    println!("  test                         Run D-ASP self-test");
 }
 
 fn resolve_arg(arg: &str) -> String {
@@ -626,10 +626,10 @@ fn main() {
     match command.as_str() {
         "encrypt" => {
             if raw_args.len() < 2 { print_usage(); return; }
-            let mnemonic = resolve_arg(&raw_args[0]);
+            let payload = resolve_arg(&raw_args[0]);
             let pk_hex = resolve_arg(&raw_args[1]);
-
-            match dc.encrypt(&mnemonic, &pk_hex, hwid) {
+            
+            match dc.encrypt(&payload, &pk_hex, hwid) {
                 Ok(res_json) => println!("{}", res_json),
                 Err(e) => {
                     eprintln!("Encryption Failed: {}", e);
@@ -656,21 +656,21 @@ fn main() {
             println!("SK: {}", hex::encode(dk.as_bytes()));
         },
         "test" => {
-            let mnemonic = "apple banana cherry date elderberry fig grape honeydew";
+            let payload = "apple banana cherry date elderberry fig grape honeydew";
             let (dk, ek) = MlKem1024::generate(&mut rand::thread_rng());
             let pk_hex = hex::encode(ek.as_bytes());
             let sk_hex = hex::encode(dk.as_bytes());
 
-            println!("--- D-KASP Self-Test ---");
-            match dc.encrypt(mnemonic, &pk_hex, None) {
+            println!("--- D-ASP Self-Test ---");
+            match dc.encrypt(payload, &pk_hex, None) {
                 Ok(res_json) => {
                     let res: serde_json::Value = serde_json::from_str(&res_json).unwrap();
-                    let enc = res["encryptedData"].as_str().unwrap();
+                    let enc = res["data"].as_str().unwrap();
 
                     match dc.decrypt(enc, &sk_hex, None) {
                         Ok(decrypted) => {
                             println!("Decrypted: '{}'", decrypted);
-                            if decrypted == mnemonic {
+                            if decrypted == payload {
                                 println!("Result: PASSED");
                             } else {
                                 println!("Result: FAILED (mismatch)");

@@ -9,7 +9,7 @@ export interface DecryptionResult {
 })
 /**
  * Core cryptographic service for the Darkstar security suite.
- * Implements the definitive D-KASP protocol with hardware binding and performance optimization.
+ * Implements the definitive D-ASP protocol with hardware binding and performance optimization.
  */
 export class CryptService {
   /** Recommended iteration count for PBKDF2 standard layers. */
@@ -85,9 +85,9 @@ export class CryptService {
   }
 
   /**
-   * Encrypts binary data (Uint8Array) using D-KASP hardened key derivation and AES-256-GCM.
+   * Encrypts binary data (Uint8Array) using D-ASP hardened key derivation and AES-256-GCM.
    */
-  async encryptBinaryDKasp(data: Uint8Array, password: string, pqcPublicKey?: string, label = 'dkasp-file-v1'): Promise<Uint8Array> {
+  async encryptBinaryDAsP(data: Uint8Array, password: string, pqcPublicKey?: string, label = 'dasp-file-v1'): Promise<Uint8Array> {
     const salt = window.crypto.getRandomValues(new Uint8Array(this.SALT_SIZE_BYTES));
     const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
 
@@ -107,8 +107,8 @@ export class CryptService {
   }
 
   /**
-   * Decrypts a D-KASP hardened binary payload.
-   * Detects version (Legacy vs D-KASP) automatically.
+   * Decrypts a D-ASP hardened binary payload.
+   * Detects version (Legacy vs D-ASP) automatically.
    */
   async decryptBinaryAuto(payload: Uint8Array, password: string): Promise<Uint8Array> {
     if (payload[0] === 0xd1) {
@@ -238,24 +238,24 @@ export class CryptService {
   }
 
   /**
-   * Encrypts a mnemonic phrase using the D-KASP External Engine via IPC.
+   * Encrypts a payload using the D-ASP External Engine via IPC.
    * Performs advanced structural permutation and hardware binding.
    */
-  async encrypt(mnemonic: string, keyMaterial: string, hwid?: string): Promise<{ encryptedData: string; reverseKey: string }> {
-    const engine = localStorage.getItem('dkasp_engine') || 'rust';
-    const result = (await window.electronAPI.dKaspEncrypt(mnemonic, keyMaterial, engine, hwid)) as { encryptedData: string; reverseKey: string };
+  async encrypt(payload: string, keyMaterial: string, hwid?: string): Promise<{ encryptedData: string; reverseKey: string }> {
+    const engine = localStorage.getItem('dasp_engine') || 'rust';
+    const result = await window.electronAPI.dAsPEncrypt(payload, keyMaterial, engine, hwid);
     return {
-      encryptedData: result.encryptedData,
-      reverseKey: result.reverseKey,
+      encryptedData: typeof result === 'string' ? result : JSON.stringify(result),
+      reverseKey: '',
     };
   }
 
   /**
-   * Decrypts and de-obfuscates an encrypted mnemonic payload via IPC.
+   * Decrypts and de-obfuscates an encrypted payload via IPC.
    */
   async decrypt(encryptedDataRaw: string, reverseKey: string, passwordOrSk: string, hwid?: string): Promise<DecryptionResult> {
-    const engine = localStorage.getItem('dkasp_engine') || 'rust';
-    const result = await window.electronAPI.dKaspDecrypt(encryptedDataRaw, reverseKey, passwordOrSk, engine, hwid);
+    const engine = localStorage.getItem('dasp_engine') || 'rust';
+    const result = await window.electronAPI.dAsPDecrypt(encryptedDataRaw, reverseKey, passwordOrSk, engine, hwid);
 
     // If it's already a string, return it wrapped.
     if (typeof result === 'string') {

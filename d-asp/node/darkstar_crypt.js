@@ -4,13 +4,12 @@ const crypto = globalThis.crypto || require('node:crypto').webcrypto;
 const { ml_kem1024: kyber } = require('@noble/post-quantum/ml-kem.js');
 
 /**
- * DarkstarCrypt - D-KASP Cryptographic Suite
+ * DarkstarCrypt - D-ASP Cryptographic Suite
  *
- * Implements the definitive Darkstar Key-Agnostic Structural Permutation (D-KASP) protocol.
+ * Implements the definitive Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
  * - **D**: Darkstar ecosystem origin
- * - **K**: ML-KEM-1024 (Kyber-1024) NIST Root of Trust
- * - **A**: Augmented 16-round SPNA/ARX transformation gauntlet
- * - **S**: Sequential path-logic
+ * - **A**: Algebraic Substitution
+ * - **S**: Structural Permutation
  * - **P**: Permutation-based non-linear core
  */
 export class DarkstarCrypt {
@@ -82,7 +81,7 @@ export class DarkstarCrypt {
     return new Uint8Array(await crypto.subtle.digest('SHA-256', buf));
   }
 
-  async encrypt(mnemonic, keyMaterial, hwidHex = null) {
+  async encrypt(payload, keyMaterial, hwidHex = null) {
     const pkBytes = this.hex2buf(keyMaterial);
     const encap = kyber.encapsulate(pkBytes);
     const ctHex = this.buf2hex(encap.cipherText);
@@ -93,17 +92,17 @@ export class DarkstarCrypt {
       combinedSS = Buffer.concat([ss_bytes, this.hex2buf(hwidHex)]);
     }
 
-    const cipherKey = await this.sha256Bytes(Buffer.concat([Buffer.from('dkasp-cipher-key'), combinedSS]));
-    const hmacKey = await this.sha256Bytes(Buffer.concat([Buffer.from('dkasp-hmac-key'), combinedSS]));
+    const cipherKey = await this.sha256Bytes(Buffer.concat([Buffer.from('dasp-cipher-key'), combinedSS]));
+    const hmacKey = await this.sha256Bytes(Buffer.concat([Buffer.from('dasp-hmac-key'), combinedSS]));
     const activePasswordStr = this.buf2hex(cipherKey);
     const activeHmacKey = hmacKey;
     ss_bytes.fill(0);
 
     const prngFactory = this.darkstar_chacha_prng.bind(this);
-    let chainState = await this.sha256Bytes('dkasp-chain-' + activePasswordStr);
-    let currentWordBytes = this.stringToBytes(mnemonic);
+    let chainState = await this.sha256Bytes('dasp-chain-' + activePasswordStr);
+    let currentWordBytes = this.stringToBytes(payload);
 
-    const wordKey = await this.hmacSha256Bytes(new TextEncoder().encode(activePasswordStr), 'dkasp-word-0');
+    const wordKey = await this.hmacSha256Bytes(new TextEncoder().encode(activePasswordStr), 'dasp-word-0');
     const wordKeyHex = this.buf2hex(wordKey);
 
     for (let i = 0; i < currentWordBytes.length; i++) {
@@ -126,12 +125,9 @@ export class DarkstarCrypt {
     const mac = require('node:crypto').createHmac('sha256', activeHmacKey).update(macData).digest();
 
     return {
-      encryptedData: {
-        data: this.buf2hex(currentWordBytes),
-        ct: ctHex,
-        mac: this.buf2hex(mac),
-      },
-      reverseKey: '',
+      data: this.buf2hex(currentWordBytes),
+      ct: ctHex,
+      mac: this.buf2hex(mac),
     };
   }
 
@@ -148,8 +144,8 @@ export class DarkstarCrypt {
       combinedSS = Buffer.concat([ss_bytes, this.hex2buf(hwidHex)]);
     }
 
-    const cipherKey = await this.sha256Bytes(Buffer.concat([Buffer.from('dkasp-cipher-key'), combinedSS]));
-    const hmacKey = await this.sha256Bytes(Buffer.concat([Buffer.from('dkasp-hmac-key'), combinedSS]));
+    const cipherKey = await this.sha256Bytes(Buffer.concat([Buffer.from('dasp-cipher-key'), combinedSS]));
+    const hmacKey = await this.sha256Bytes(Buffer.concat([Buffer.from('dasp-hmac-key'), combinedSS]));
     const activePasswordStr = this.buf2hex(cipherKey);
     const activeHmacKey = hmacKey;
     ss_bytes.fill(0);
@@ -162,9 +158,9 @@ export class DarkstarCrypt {
     }
 
     const prngFactory = this.darkstar_chacha_prng.bind(this);
-    let chainState = await this.sha256Bytes('dkasp-chain-' + activePasswordStr);
+    let chainState = await this.sha256Bytes('dasp-chain-' + activePasswordStr);
     let currentWordBytes = new Uint8Array(payloadBytes);
-    const wordKey = await this.hmacSha256Bytes(new TextEncoder().encode(activePasswordStr), 'dkasp-word-0');
+    const wordKey = await this.hmacSha256Bytes(new TextEncoder().encode(activePasswordStr), 'dasp-word-0');
     const wordKeyHex = this.buf2hex(wordKey);
 
     const rngPath = prngFactory(wordKeyHex);
@@ -213,14 +209,18 @@ export class DarkstarCrypt {
   _gf_mult(a, b) {
     let p = 0;
     for (let i = 0; i < 8; i++) {
-      if ((b & 1) !== 0) p ^= a;
-      let hi = a & 0x80;
-      a <<= 1;
-      if (hi !== 0) a ^= 0x1b;
+      // Mask: if b & 1, add a to product p
+      p ^= a & -(b & 1);
+
+      // Mask: if hi-bit of a is set, reduce by 0x1B
+      const mask = -(a >> 7);
+      a = (a << 1) ^ (0x1b & mask);
+
       b >>= 1;
       a &= 0xff;
+      p &= 0xff;
     }
-    return p & 0xff;
+    return p;
   }
 
   transSBox(input) {
@@ -519,11 +519,11 @@ if (isMain) {
     const k = kyber.keygen();
     console.log(`PK: ${Buffer.from(k.publicKey).toString('hex')}\nSK: ${Buffer.from(k.secretKey).toString('hex')}`);
   } else if (command === 'test') {
-    const m = 'apple banana cherry date elderberry fig';
+    const p = 'apple banana cherry date elderberry fig';
     const k = kyber.keygen();
     crypt
-      .encrypt(m, Buffer.from(k.publicKey).toString('hex'))
-      .then((e) => crypt.decrypt(e.encryptedData, '', Buffer.from(k.secretKey).toString('hex')))
-      .then((d) => console.log(`Dec: ${d}\nResult: ${d === m ? 'PASSED' : 'FAILED'}`));
+      .encrypt(p, Buffer.from(k.publicKey).toString('hex'))
+      .then((e) => crypt.decrypt(e, '', Buffer.from(k.secretKey).toString('hex')))
+      .then((d) => console.log(`Dec: ${d}\nResult: ${d === p ? 'PASSED' : 'FAILED'}`));
   }
 }

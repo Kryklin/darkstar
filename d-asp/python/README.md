@@ -1,6 +1,6 @@
-# D-KASP: Python Implementation
+# D-ASP: Python Implementation
 
-This directory contains the Python implementation of the Darkstar Key-Agnostic Structural Permutation (D-KASP) protocol.
+This directory contains the Python implementation of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 
 ## 🚀 Status: Interoperability Script
 
@@ -13,8 +13,8 @@ The Python implementation is provided primarily for cross-platform validation, r
   - Uses `hmac.compare_digest` for timing-resistant MAC validation.
   - Relies on Standard Library `hashlib` for SHA-256.
 - **Constant-Time Analysis**:
-  > [!WARNING]
-  > **Non-Constant-Time**. Python's interpreter overhead and dynamic memory management prevent constant-time guarantees. This implementation is intended for low-bandwidth, high-auditability use cases.
+  > [!IMPORTANT]
+  > **Branchless-Equivalent**. To mitigate timing side-channels, this implementation utilizes branchless arithmetic masking for all $GF(2^8)$ field operations. However, due to the nature of the Python interpreter and dynamic memory management, absolute constant-time execution cannot be guaranteed.
 
 ## 🛠️ Usage
 
@@ -31,7 +31,7 @@ python darkstar_crypt.py keygen
 
 ### Encryption
 ```bash
-python darkstar_crypt.py encrypt "your mnemonic phrase" <PUBLIC_KEY_HEX>
+python darkstar_crypt.py encrypt "your payload" <PUBLIC_KEY_HEX>
 ```
 
 ### Decryption

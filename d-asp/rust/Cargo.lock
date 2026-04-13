@@ -116,7 +116,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "d-kasp-512"
+name = "d-asp"
 version = "0.1.0"
 dependencies = [
  "aes",
