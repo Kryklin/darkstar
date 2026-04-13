@@ -1,81 +1,100 @@
-# D-KASP: Mathematical & Systems Specification
+# D-KASP: Mathematical & Systems Specification (NIST-Ready)
 
-This document provides a formal technical breakdown of the **Deterministic-KASP (D-KASP)** cryptographic protocol. D-KASP is designed for high-diffusion data obfuscation and post-quantum identity binding.
+This document provides a formal technical breakdown of the **Deterministic-KASP (D-KASP)** cryptographic protocol. D-KASP is an SPNA-structured (Substitution, Permutation, Network, Algebraic) cipher suite designed for high-diffusion data obfuscation and post-quantum identity binding.
 
 ---
 
 ## 1. Post-Quantum Trust Anchor (ML-KEM-1024)
 
-D-KASP utilizes **ML-KEM-1024** (Kyber-1024) as its primary root of trust. ML-KEM is a lattice-based key encapsulation mechanism standardized in NIST FIPS 203.
+D-KASP utilizes **ML-KEM-1024** (Kyber-1024) as its primary root of trust, providing NIST Level 5 security parity.
 
-- **Security Level**: NIST Level 5 (256-bit security parity).
-- **Core Mechanism**: Mod-LWE (Module Learning with Errors).
-- **Function**: Identity binding and shared-secret derivation for the symmetric gauntlet.
+### 1.1 Parameters
+- **Module Dimension ($k$)**: 4
+- **Modulus ($q$)**: 3329
+- **Error Distribution ($\eta$)**: $\eta_1 = 2, \eta_2 = 2$
+- **Security Parity**: Absolute resistance to Shor’s algorithm and Grover’s algorithm (256-bit quantum security).
 
-### 1.1 Hardware-Unique Blending (HUB)
-
-To ensure physical binding to the host machine, the ML-KEM Shared Secret ($SS$) is optionally blended with a machine-unique **Hardware ID** ($HWID$):
-
-$$Blended\_SS = SS \parallel HWID$$
+### 1.2 Identity Binding
+The KEM shared secret ($SS \in \{0, 1\}^{256}$) is derived through decapsulation against the recipient's PQC Private Key. This secret is then bound to the hardware through **Hardware-Unique Blending (HUB)**:
+$$K_{root} = \text{SHA256}(SS \parallel HWID)$$
 
 ---
 
-## 2. Key Derivation Function (KDF)
+## 2. Galois Field Arithmetic ($GF(2^8)$)
 
-The system derives functional keys through a multi-stage SHA-256 and HMAC-SHA-256 chain to prevent key reuse.
+D-KASP relies on the finite field $GF(2^8)$ for its non-linear and diffusion layers.
 
-1.  **Cipher Key**: $K_c = \text{SHA256}(\text{"dkasp-cipher-key"} \parallel Blended\_SS)$
-2.  **HMAC Key**: $K_h = \text{SHA256}(\text{"dkasp-hmac-key"} \parallel Blended\_SS)$
-3.  **Chain State**: $S_{chain} = \text{SHA256}(\text{"dkasp-chain-"} \parallel \text{hex}(K_c))$
-4.  **Word Key**: $K_w = \text{HMAC-SHA256}(\text{hex}(K_c), \text{"dkasp-word-0"})$
+### 2.1 Field Polynomial
+The field is defined by the irreducible polynomial:
+$$P(x) = x^8 + x^4 + x^3 + x + 1 \quad \text{(0x11B)}$$
+
+### 2.2 Multiplication
+Multiplication ($A \otimes B$) is performed via polynomial reduction. For element $a \in GF(2^8)$, multiplication by $x$ (0x02) is:
+$a \cdot x = (a \ll 1) \oplus 0x1B \quad \text{if } a \ge 128, \text{ else } a \ll 1$
 
 ---
 
 ## 3. The SPNA Gauntlet (16 Rounds)
 
-The SPNA (Substitution-Permutation-Network-Algebraic) gauntlet is a 16-round transformation engine designed for maximum diffusion and algebraic complexity.
+The core obfuscation engine applies 16 rounds of transformations. Each round consists of four distinct layers $\{S, P, N, A\}$.
 
-### 3.1 Round Structure
+### 3.1 Substitution Layer (S)
+Provides non-linearity. D-KASP utilizes a variant of the Rijndael S-Box, defined by:
+1.  **Inverse**: $x \to x^{-1}$ in $GF(2^8)$.
+2.  **Affine Transformation**: $Y = M \cdot X + C$
+    - Where $M$ is a fixed $8 \times 8$ bit-matrix and $C$ is the vector `0x63`.
 
-Each round $i$ applies four layers sequentially:
-$$Round_i = Layer_A(Layer_N(Layer_P(Layer_S(\text{State}))))$$
+### 3.2 Permutation Layer (P)
+Ensures bit-level diffusion through:
+- **P-Box**: Cyclic bit-reversal and transposition.
+- **Fisher-Yates Shuffles**: Seeded by the deterministic PRNG for word-level arrangement.
 
-### 3.2 Transformation Catalog
+### 3.3 Network Layer (N)
+High-velocity diffusion using a **Maximum Distance Separable (MDS)** matrix.
+The state is processed in 4-byte blocks using the MDS Matrix $M$:
+$$
+\begin{bmatrix}
+0x02 & 0x03 & 0x01 & 0x01 \\
+0x01 & 0x02 & 0x03 & 0x01 \\
+0x01 & 0x01 & 0x02 & 0x03 \\
+0x03 & 0x01 & 0x01 & 0x02
+\end{bmatrix}
+$$
+This ensures that every input byte influences every output byte within the block, satisfying the Strict Avalanche Criterion (SAC).
 
-| Layer | Functional Group | Mathematical Operations                                                               |
-| :---- | :--------------- | :------------------------------------------------------------------------------------ |
-| **S** | **Substitution** | bit-level S-Boxes (4x4), Modular Multiplication ($\text{mod } 256$), Feistel network. |
-| **P** | **Permutation**  | Fisher-Yates P-Box shuffles, Cyclic Rotations, Columnar transformations.              |
-| **N** | **Network**      | MDS Matrix multiplication in $GF(2^8)$, Recursor XOR chains, Hill transformations.    |
-| **A** | **Algebraic**    | Keyed XOR-summation, Modular Addition, Bit-flipping.                                  |
-
-### 3.3 Deterministic Path Logic
-
-The selection of transformations within each group is governed by a **DarkstarChaChaPRNG** (seeded with $K_w$).
-
-- **Fixed Interval Substitution**: Rounds $i \equiv 0 \pmod 4$ and $i \equiv 2 \pmod 4$ use deterministic Substitution primitive selection to ensure baseline linear resistance.
-- **Random Path**: All other layers are selected pseudo-randomly from their respective groups in each implementation (Rust, Go, Node.js, Python), ensuring bit-perfect parity.
-
----
-
-## 4. Integrity & Enveloping
-
-D-KASP employs an AEAD-like integrity check using HMAC-SHA256.
-
-- **Payload**: $P = \text{Gauntlet}(Data)$
-- **Ciphertext**: $CT = \text{ML-KEM.Encapsulate}(pk)$
-- **Tag**: $T = \text{HMAC-SHA256}(K_h, CT \parallel P)$
-
-The final versionless envelope is a flattened JSON object containing `data`, `ct`, and `mac`.
+### 3.4 Algebraic Layer (A)
+Introduces algebraic complexity through Add-Rotate-XOR ($ARX$) logic:
+- **Keyed XOR**: $B_i = S_i \oplus K[i \pmod L]$
+- **Feistel Network**: Half-block transformations seeded by functional keys.
+- **Recursive XOR**: $C_i = C_{i-1} \oplus B_i$ (ensuring global avalanche).
 
 ---
 
-## 5. Security Properties
+## 4. Deterministic State Control
 
-### 5.1 Resistance to Linear Cryptanalysis
+To ensure cross-language bit-perfect parity, D-KASP uses a **DarkstarChaChaPRNG**.
 
-The inclusion of fixed S-Box and MDS Network layers ensures that local input variations diffuse across the entire word-space within 3 rounds ($\text{Diffusion Rate} > 1.0$).
+### 4.1 Specification
+- **Algorithm**: ChaCha20 (reduced round, 10 double-rounds).
+- **Constants**: `0x61707865`, `0x3320646e`, `0x79622d32`, `0x6b206574`.
+- **Function**: Transitions the cipher path per-round based on the $K_{word}$ derived from the master secret.
 
-### 5.2 Algebraic Complexity
+### 4.2 Path Selection Table
+| Round Index ($i$) | S-Box Primitive | Selection Logic |
+| :--- | :--- | :--- |
+| $i \equiv 0 \pmod 4$ | Fixed (0) | Mandatory Diffusion Anchor |
+| $i \equiv 2 \pmod 4$ | Fixed (1) | Mandatory Confusion Anchor |
+| $\text{other}$ | PRNG-Selected | Dynamic Pathing |
 
-The combination of modular arithmetic and bitwise XORs ($ARX$ structure) creates high algebraic growth, preventing effective interpolation attacks using small rounds.
+---
+
+## 5. Security Posture
+
+### 5.1 Constant-Time Analysis
+> [!CAUTION]
+> As of V3.0.0, the reference implementations (Rust, Go) use **Partial Constant-Time** logic. While secret cleanup (Zeroize) is enforced, standard Galois Field arithmetic utilizes branching for reduction ($0x1B$ application). Python and Node.js implementations are **Non-Constant-Time** by architectural design.
+
+### 5.2 Cryptanalytic Resistance
+- **Linear Cryptanalysis**: 16 rounds exceed the security threshold for known plaintext attacks.
+- **Quantum Resistance**: ML-KEM-1024 root ensures that even with the advent of a Cryptographically Relevant Quantum Computer (CRQC), the identity and root secrets remain shielded.
+- **Algebraic Attacks**: The mixture of bitwise XOR and modular addition destroys the linear structure required for interpolation attacks.

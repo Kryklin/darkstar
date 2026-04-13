@@ -17,12 +17,12 @@ The **D-KASP (Deterministic-KASP)** suite is a sovereign post-quantum encryption
 
 All implementations are designed as **high-performance, standalone sources** to ensure maximum portability and zero external cryptographic dependencies (where possible).
 
-| Language    | Engine Path                | Core Implementation    |
-| :---------- | :------------------------- | :--------------------- |
-| **Rust**    | `rust/src/main.rs`         | ML-KEM / SPNA Gauntlet |
-| **Go**      | `go/main.go`               | ML-KEM / SPNA Gauntlet |
-| **Python**  | `python/darkstar_crypt.py` | SPNA Gauntlet          |
-| **Node.js** | `node/darkstar_crypt.js`   | SPNA Gauntlet / Bridge |
+| Language    | Engine Path                | Core Implementation    | Constant-Time |
+| :---------- | :------------------------- | :--------------------- | :------------ |
+| **Rust**    | `rust/src/main.rs`         | ML-KEM / SPNA Gauntlet | **Partial**   |
+| **Go**      | `go/main.go`               | ML-KEM / SPNA Gauntlet | **Partial**   |
+| **Python**  | `python/darkstar_crypt.py` | SPNA Gauntlet          | **Non-CT**    |
+| **Node.js** | `node/darkstar_crypt.js`   | SPNA Gauntlet / Bridge | **Non-CT**    |
 
 ---
 

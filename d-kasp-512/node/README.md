@@ -1,53 +1,42 @@
-# @kryklin/darkstar-crypt-node
+# D-KASP: Node.js / Javascript Implementation
 
-> **Darkstar V8 (D-KASP) Post-Quantum Encryption - Node.js**
+This directory contains the Node.js (ESM) implementation of the Darkstar Key-Agnostic Structural Permutation (D-KASP) protocol.
 
-A high-performance implementation of the D-KASP V8 protocol for Node.js. Optimized for backend systems and desktop applications requiring ML-KEM-1024 security and the 16-round SPNA gauntlet.
+## 🚀 Status: Production Bridge
 
-## 🛡️ Security Features
+The Node.js implementation acts as the primary bridge for web applications and Electron-based host environments. It is designed for maximum interoperability with the Rust reference.
 
-- **ML-KEM-1024 (Kyber)**: NIST FIPS 203 root-of-trust.
-- **D-KASP V8 SPNA**: 16-round, 64-layer non-linear gauntlet with index-salted entropy.
-- **HMAC-Linked Fusion**: Integrated authentication for payload integrity.
-- **Native Performance**: Leverages the Node.js `crypto` module.
+## 🛡️ Security Profile
 
-## 🚀 Installation
+- **KEM**: NIST Level 5 (ML-KEM-1024) via [@noble/post-quantum](https://github.com/paulmillr/noble-post-quantum).
+- **Hardening**:
+  - Leverages Node.js `crypto` module for high-entropy PBKDF2 and SHA-256 operations.
+  - Implements `timingSafeEqual` for MAC verification.
+- **Constant-Time Analysis**:
+  > [!WARNING]
+  > **Non-Constant-Time**. Due to the nature of the V8 JavaScript engine (JIT compilation, Garbage Collection, and object overhead), this implementation cannot guarantee constant-time execution. It is intended for environments where the host assumes security responsibility.
 
+## 🛠️ Usage
+
+### Install Dependencies
 ```bash
-npm install @kryklin/darkstar-crypt-node
+npm install
 ```
 
-## 💻 Usage
-
-### Library Usage
-
-```javascript
-import { DarkstarCrypt } from '@kryklin/darkstar-crypt-node';
-
-const crypt = new DarkstarCrypt();
-
-// Encrypt (V8 requires Public Key Hex)
-const { encryptedData, reverseKey } = await crypt.encrypt('secret', 'pk_hex');
-
-// Decrypt (V8 requires JSON, Reverse Key, and Private Key Hex)
-const decrypted = await crypt.decrypt(encryptedData, reverseKey, 'sk_hex');
+### Key Generation
+```bash
+node darkstar_crypt.js keygen
 ```
 
----
-
-## 📜 Standard Format (V8)
-
-Standard output is a JSON-encapsulated envelope:
-
-```json
-{
-  "v": 8,
-  "data": "HEX_ENCODED_OBFUSCATED_PAYLOAD",
-  "ct": "ML_KEM_ENCAPSULATED_KEY_HEX",
-  "mac": "HMAC_SHA256_TAG_HEX"
-}
+### Encryption
+```bash
+node darkstar_crypt.js encrypt "your mnemonic phrase" <PUBLIC_KEY_HEX>
 ```
 
-## ⚖️ License
+### Decryption
+```bash
+node darkstar_crypt.js decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
+```
 
-MIT © Victor Kane
+## 🏗️ Architecture Alignment
+This implementation strictly follows the [DARKSTAR_ARCHITECTURE.md](../../DARKSTAR_ARCHITECTURE.md) specification. It utilizes identical AES S-Box and MDS matrix constants to ensure bit-perfect cross-platform recovery.
