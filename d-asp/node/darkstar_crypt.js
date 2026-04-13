@@ -93,14 +93,19 @@ export class DarkstarCrypt {
     const ss_bytes = encap.sharedSecret;
 
     const kdfStart = performance.now();
-    let combinedSS = ss_bytes;
-    if (hwidHex) {
-      combinedSS = Buffer.concat([ss_bytes, this.hex2buf(hwidHex)]);
-    }
+    
+    // Stage 1: Blended_SS (K_root)
+    const kRootHasher = require('node:crypto').createHash('sha256');
+    kRootHasher.update(ss_bytes);
+    if (hwidHex) kRootHasher.update(this.hex2buf(hwidHex));
+    kRootHasher.update(Buffer.from('dasp-identity-v3'));
+    const blendedSS = kRootHasher.digest();
+    const blendedSSHex = blendedSS.toString('hex');
 
-    const cipherKey = await this.sha256Bytes(Buffer.concat([Buffer.from('dasp-cipher-key'), combinedSS]));
-    const hmacKey = await this.sha256Bytes(Buffer.concat([Buffer.from('dasp-hmac-key'), combinedSS]));
-    const activePasswordStr = this.buf2hex(cipherKey);
+    const cipherKey = require('node:crypto').createHash('sha256').update(Buffer.concat([Buffer.from('cipher'), blendedSS])).digest();
+    const hmacKey = require('node:crypto').createHash('sha256').update(Buffer.concat([Buffer.from('hmac'), blendedSS])).digest();
+    
+    const activePasswordStr = cipherKey.toString('hex');
     const activeHmacKey = hmacKey;
     ss_bytes.fill(0);
     const kdfDuration = performance.now() - kdfStart;
@@ -109,6 +114,7 @@ export class DarkstarCrypt {
     let chainState = await this.sha256Bytes('dasp-chain-' + activePasswordStr);
     let currentWordBytes = this.stringToBytes(payload);
 
+    // Stage 2: word_key
     const wordKey = await this.hmacSha256Bytes(new TextEncoder().encode(activePasswordStr), 'dasp-word-0');
     const wordKeyHex = this.buf2hex(wordKey);
 
@@ -120,25 +126,48 @@ export class DarkstarCrypt {
     const funcKey = await this.hmacSha256Bytes(wordKey, `keyed-${checksum}`);
 
     const rngPath = prngFactory(wordKeyHex);
+    
+    // Stage 3: Round Indices
+    const roundIndices = [];
     const gauntletStart = performance.now();
     for (let i = 0; i < 16; i++) {
       let sIdx = i % 4 === 0 ? 0 : i % 4 === 2 ? 1 : this.groupS[rngPath() % this.groupS.length];
+      let pIdx = this.groupP[rngPath() % this.groupP.length];
+      let nIdx = this.groupN[rngPath() % this.groupN.length];
+      let aIdx = this.groupA[rngPath() % this.groupA.length];
+      
       currentWordBytes = this.forwardPipeline[sIdx](currentWordBytes, funcKey, prngFactory);
-      currentWordBytes = this.forwardPipeline[this.groupP[rngPath() % this.groupP.length]](currentWordBytes, funcKey, prngFactory);
-      currentWordBytes = this.forwardPipeline[this.groupN[rngPath() % this.groupN.length]](currentWordBytes, funcKey, prngFactory);
-      currentWordBytes = this.forwardPipeline[this.groupA[rngPath() % this.groupA.length]](currentWordBytes, funcKey, prngFactory);
+      currentWordBytes = this.forwardPipeline[pIdx](currentWordBytes, funcKey, prngFactory);
+      currentWordBytes = this.forwardPipeline[nIdx](currentWordBytes, funcKey, prngFactory);
+      currentWordBytes = this.forwardPipeline[aIdx](currentWordBytes, funcKey, prngFactory);
+      
+      roundIndices.push([sIdx, pIdx, nIdx, aIdx]);
     }
     const gauntletDuration = performance.now() - gauntletStart;
 
     const macData = Buffer.concat([this.hex2buf(ctHex), currentWordBytes]);
     const mac = require('node:crypto').createHmac('sha256', activeHmacKey).update(macData).digest();
+    
+    // Stage 4: final mac
+    const macTagFinal = mac.toString('hex');
+
+    if (process.env.DASP_DIAGNOSTIC === '1') {
+      process.stderr.write(JSON.stringify({
+        diagnostics: {
+          stage1_blended_ss: blendedSSHex,
+          stage2_word_key: wordKeyHex,
+          stage3_round_indices: roundIndices,
+          stage4_mac: macTagFinal
+        }
+      }) + '\n');
+    }
 
     const totalDuration = performance.now() - totalStart;
 
     return {
       data: this.buf2hex(currentWordBytes),
       ct: ctHex,
-      mac: this.buf2hex(mac),
+      mac: macTagFinal,
       timings: {
         kem_us: Math.round(kemDuration * 1000),
         kdf_us: Math.round(kdfDuration * 1000),
@@ -161,40 +190,69 @@ export class DarkstarCrypt {
     const kemDuration = performance.now() - kemStart;
 
     const kdfStart = performance.now();
-    let combinedSS = ss_bytes;
-    if (hwidHex) {
-      combinedSS = Buffer.concat([ss_bytes, this.hex2buf(hwidHex)]);
-    }
+    
+    // Stage 1: Blended_SS (K_root)
+    const kRootHasher = require('node:crypto').createHash('sha256');
+    kRootHasher.update(ss_bytes);
+    if (hwidHex) kRootHasher.update(this.hex2buf(hwidHex));
+    kRootHasher.update(Buffer.from('dasp-identity-v3'));
+    const blendedSS = kRootHasher.digest();
+    const blendedSSHex = blendedSS.toString('hex');
 
-    const cipherKey = await this.sha256Bytes(Buffer.concat([Buffer.from('dasp-cipher-key'), combinedSS]));
-    const hmacKey = await this.sha256Bytes(Buffer.concat([Buffer.from('dasp-hmac-key'), combinedSS]));
-    const activePasswordStr = this.buf2hex(cipherKey);
+    const cipherKey = require('node:crypto').createHash('sha256').update(Buffer.concat([Buffer.from('cipher'), blendedSS])).digest();
+    const hmacKey = require('node:crypto').createHash('sha256').update(Buffer.concat([Buffer.from('hmac'), blendedSS])).digest();
+    
+    const activePasswordStr = cipherKey.toString('hex');
     const activeHmacKey = hmacKey;
     ss_bytes.fill(0);
     const kdfDuration = performance.now() - kdfStart;
 
     const payloadBytes = this.hex2buf(parsed.data);
     const macData = Buffer.concat([this.hex2buf(ctHex), payloadBytes]);
-    const mac = require('node:crypto').createHmac('sha256', activeHmacKey).update(macData).digest();
-    if (!require('node:crypto').timingSafeEqual(mac, this.hex2buf(parsed.mac || ''))) {
+    const macActual = require('node:crypto').createHmac('sha256', activeHmacKey).update(macData).digest();
+    
+    // Stage 4: final mac
+    const macTagActual = macActual.toString('hex');
+    
+    if (!require('node:crypto').timingSafeEqual(macActual, this.hex2buf(parsed.mac || ''))) {
       throw new Error('Integrity Check Failed');
     }
 
     const prngFactory = this.darkstar_chacha_prng.bind(this);
     let chainState = await this.sha256Bytes('dasp-chain-' + activePasswordStr);
     let currentWordBytes = new Uint8Array(payloadBytes);
+    
+    // Stage 2: word_key
     const wordKey = await this.hmacSha256Bytes(new TextEncoder().encode(activePasswordStr), 'dasp-word-0');
     const wordKeyHex = this.buf2hex(wordKey);
 
     const rngPath = prngFactory(wordKeyHex);
+    
+    // Stage 3: Round Indices
+    const roundIndices = [];
     const roundPaths = [];
     for (let i = 0; i < 16; i++) {
       let s = i % 4 === 0 ? 0 : i % 4 === 2 ? 1 : this.groupS[rngPath() % this.groupS.length];
-      roundPaths.push({ s, p: this.groupP[rngPath() % this.groupP.length], n: this.groupN[rngPath() % this.groupN.length], a: this.groupA[rngPath() % this.groupA.length] });
+      let p = this.groupP[rngPath() % this.groupP.length];
+      let n = this.groupN[rngPath() % this.groupN.length];
+      let a = this.groupA[rngPath() % this.groupA.length];
+      roundPaths.push({ s, p, n, a });
+      roundIndices.push([s, p, n, a]);
     }
 
     const checksum = this._generateChecksum(Array.from({ length: 12 }, (_, i) => i));
     const funcKey = await this.hmacSha256Bytes(wordKey, `keyed-${checksum}`);
+
+    if (process.env.DASP_DIAGNOSTIC === '1') {
+      process.stderr.write(JSON.stringify({
+        diagnostics: {
+          stage1_blended_ss: blendedSSHex,
+          stage2_word_key: wordKeyHex,
+          stage3_round_indices: roundIndices,
+          stage4_mac: macTagActual
+        }
+      }) + '\n');
+    }
 
     const gauntletStart = performance.now();
     for (let j = 15; j >= 0; j--) {
@@ -529,6 +587,9 @@ if (isMain) {
     if (args[i] === '--hwid' && i + 1 < args.length) {
       hwid = args[i + 1];
       args.splice(i, 2);
+    } else if (args[i] === '--diagnostic') {
+      process.env.DASP_DIAGNOSTIC = '1';
+      args.splice(i, 1);
     } else if ((args[i] === '-v' || args[i] === '--version') && i + 1 < args.length) {
       args.splice(i, 2);
     } else i++;

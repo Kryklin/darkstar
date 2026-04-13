@@ -390,24 +390,30 @@ impl DarkstarCrypt {
 
         let kdf_start = std::time::Instant::now();
         use sha2::Digest;
-        let mut combined_ss = ss_bytes.to_vec();
-        if let Some(h) = hwid {
-            combined_ss.extend_from_slice(&h);
+        
+        // Stage 1: Blended_SS (K_root)
+        let mut k_root_hasher = Sha256::new();
+        k_root_hasher.update(&ss_bytes);
+        if let Some(ref h) = hwid {
+            k_root_hasher.update(h);
         }
+        k_root_hasher.update(b"dasp-identity-v3");
+        let blended_ss = k_root_hasher.finalize();
+        let blended_ss_hex = hex::encode(blended_ss);
 
         let mut cipher_hasher = Sha256::new();
-        cipher_hasher.update(b"dasp-cipher-key");
-        cipher_hasher.update(&combined_ss);
+        cipher_hasher.update(b"cipher");
+        cipher_hasher.update(&blended_ss);
         let cipher_key = cipher_hasher.finalize();
 
         let mut hmac_hasher = Sha256::new();
-        hmac_hasher.update(b"dasp-hmac-key");
-        hmac_hasher.update(&combined_ss);
+        hmac_hasher.update(b"hmac");
+        hmac_hasher.update(&blended_ss);
         let hmac_key = hmac_hasher.finalize();
+        
         let active_password_str = hex::encode(cipher_key);
         let active_hmac_key = hmac_key.to_vec();
         ss.zeroize();
-        combined_ss.zeroize();
         let kdf_duration = kdf_start.elapsed();
 
         let prng_factory = |s: &str| ActivePRNG::new(s);
@@ -419,6 +425,8 @@ impl DarkstarCrypt {
 
         use hmac::{Hmac, Mac};
         type HmacSha256 = Hmac<sha2::Sha256>;
+        
+        // Stage 2: word_key
         let word_key: Vec<u8> = {
             let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(active_password_str.as_bytes())
                 .map_err(|e| format!("HMAC init error: {:?}", e))?;
@@ -445,6 +453,8 @@ impl DarkstarCrypt {
         let group_n = [12usize, 12, 11];
         let group_a = [4usize, 6, 9];
 
+        // Stage 3: Round Indices
+        let mut round_indices = Vec::with_capacity(16);
         let gauntlet_start = std::time::Instant::now();
         for i in 0..16 {
             let s_idx = if i % 4 == 0 { 0 } else if i % 4 == 2 { 1 } else { group_s[(rng_path.next() as usize) % group_s.len()] };
@@ -458,6 +468,8 @@ impl DarkstarCrypt {
 
             let a_idx = group_a[(rng_path.next() as usize) % group_a.len()];
             current_word_bytes = (self.forward_pipeline[a_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
+            
+            round_indices.push(vec![s_idx, p_idx, n_idx, a_idx]);
         }
         let gauntlet_duration = gauntlet_start.elapsed();
 
@@ -465,9 +477,21 @@ impl DarkstarCrypt {
             .map_err(|e| format!("HMAC error: {:?}", e))?;
         mac.update(&hex::decode(&ct_hex)?);
         mac.update(&current_word_bytes);
+        
+        // Stage 4: final mac
         let mac_tag = hex::encode(mac.finalize().into_bytes());
-
         let total_duration = total_start.elapsed();
+
+        if std::env::var("DASP_DIAGNOSTIC").is_ok() {
+            eprintln!("{}", serde_json::json!({
+                "diagnostics": {
+                    "stage1_blended_ss": blended_ss_hex,
+                    "stage2_word_key": word_key_hex,
+                    "stage3_round_indices": round_indices,
+                    "stage4_mac": mac_tag
+                }
+            }));
+        }
 
         let res_obj = serde_json::json!({
             "data": hex::encode(&current_word_bytes),
@@ -507,24 +531,30 @@ impl DarkstarCrypt {
 
         let kdf_start = std::time::Instant::now();
         use sha2::Digest;
-        let mut combined_ss = ss_bytes.to_vec();
-        if let Some(h) = hwid {
-            combined_ss.extend_from_slice(&h);
+        
+        // Stage 1: Blended_SS (K_root)
+        let mut k_root_hasher = Sha256::new();
+        k_root_hasher.update(&ss_bytes);
+        if let Some(ref h) = hwid {
+            k_root_hasher.update(h);
         }
+        k_root_hasher.update(b"dasp-identity-v3");
+        let blended_ss = k_root_hasher.finalize();
+        let blended_ss_hex = hex::encode(blended_ss);
 
         let mut cipher_hasher = Sha256::new();
-        cipher_hasher.update(b"dasp-cipher-key");
-        cipher_hasher.update(&combined_ss);
+        cipher_hasher.update(b"cipher");
+        cipher_hasher.update(&blended_ss);
         let cipher_key = cipher_hasher.finalize();
 
         let mut hmac_hasher = Sha256::new();
-        hmac_hasher.update(b"dasp-hmac-key");
-        hmac_hasher.update(&combined_ss);
+        hmac_hasher.update(b"hmac");
+        hmac_hasher.update(&blended_ss);
         let hmac_key = hmac_hasher.finalize();
+        
         let active_password_str = hex::encode(cipher_key);
         let active_hmac_key = hmac_key.to_vec();
         ss.zeroize();
-        combined_ss.zeroize();
         let kdf_duration = kdf_start.elapsed();
 
         use hmac::{Hmac, Mac};
@@ -534,6 +564,9 @@ impl DarkstarCrypt {
             .map_err(|e| format!("HMAC error: {:?}", e))?;
         mac.update(&ct_bytes);
         mac.update(&payload_bytes);
+        
+        // Stage 4: final mac (verify)
+        let mac_tag_actual = hex::encode(mac.clone().finalize().into_bytes());
         mac.verify_slice(&hex::decode(mac_tag_hex)?)
             .map_err(|_| "Integrity Check Failed")?;
 
@@ -542,6 +575,7 @@ impl DarkstarCrypt {
         chain_hasher.update(format!("dasp-chain-{}", active_password_str).as_bytes());
         let chain_state = chain_hasher.finalize().to_vec();
 
+        // Stage 2: word_key
         let word_key: Vec<u8> = {
             let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(active_password_str.as_bytes())
                 .map_err(|e| format!("HMAC error: {:?}", e))?;
@@ -556,6 +590,8 @@ impl DarkstarCrypt {
         let group_n = [12usize, 12, 11];
         let group_a = [4usize, 6, 9];
 
+        // Stage 3: Round Indices
+        let mut round_indices = Vec::with_capacity(16);
         let mut round_paths = Vec::with_capacity(16);
         for i in 0..16 {
             let s = if i % 4 == 0 { 0 } else if i % 4 == 2 { 1 } else { group_s[(rng_path.next() as usize) % group_s.len()] };
@@ -563,6 +599,7 @@ impl DarkstarCrypt {
             let n = group_n[(rng_path.next() as usize) % group_n.len()];
             let a = group_a[(rng_path.next() as usize) % group_a.len()];
             round_paths.push((s, p, n, a));
+            round_indices.push(vec![s, p, n, a]);
         }
 
         let checksum = Self::generate_checksum(&(0..12).collect::<Vec<_>>());
@@ -572,6 +609,17 @@ impl DarkstarCrypt {
             mac.update(format!("keyed-{}", checksum).as_bytes());
             mac.finalize().into_bytes().to_vec()
         };
+
+        if std::env::var("DASP_DIAGNOSTIC").is_ok() {
+            eprintln!("{}", serde_json::json!({
+                "diagnostics": {
+                    "stage1_blended_ss": blended_ss_hex,
+                    "stage2_word_key": word_key_hex,
+                    "stage3_round_indices": round_indices,
+                    "stage4_mac": mac_tag_actual
+                }
+            }));
+        }
 
         let gauntlet_start = std::time::Instant::now();
         let mut current_word_bytes = payload_bytes;
@@ -591,20 +639,6 @@ impl DarkstarCrypt {
         let result = String::from_utf8(current_word_bytes)?;
         let total_duration = total_start.elapsed();
         
-        // Output with timings (hidden by default unless we use specialized logger)
-        // For interop suite, we keep the original text but append JSON results for automated parsing
-        // Wait, standard decrypt returns raw string. I should return JSON if it's for bench.
-        // Actually, the user wants "extensive logs".
-        
-        // I'll make it so if sk_hex has a prefix or something, we output JSON.
-        // Alternatively, I'll always output the decrypted payload, BUT if it's a CLI flag, I'll output JSON.
-        // The user said "capture the time taken... that way its extensive".
-        
-        // I'll just return the decrypted string. The benchmark script will time the process.
-        // BUT wait, I need internal timings.
-        // I'll print the timings to stderr if a flag is set? Or just print a JSON line.
-        
-        // I'll print the timings in a standardized JSON to stderr so it doesn't pollute stdout.
         eprintln!("{}", serde_json::json!({
             "timings": {
                 "kem_us": kem_duration.as_micros(),
@@ -656,6 +690,9 @@ fn main() {
             let hw_hex = raw_args.remove(i + 1);
             raw_args.remove(i);
             hwid = Some(hex::decode(clean_hex(&hw_hex)).expect("Invalid HWID hex"));
+        } else if raw_args[i] == "--diagnostic" {
+            raw_args.remove(i);
+            std::env::set_var("DASP_DIAGNOSTIC", "1");
         } else {
             i += 1;
         }

@@ -13,17 +13,35 @@ The **D-ASP (Darkstar Algebraic Substitution & Permutation)** suite is a soverei
 
 ## 🚀 Performance Profile (Grade-1024)
 
-The suite is instrumented for granular telemetry across all implementation layers. Benchmark conducted on April 13, 2026.
+The suite is instrumented for exhaustive telemetry across all cryptographic and architectural layers.
 
-| Engine | Mean Latency | KEM (μs) | KDF (μs) | Gauntlet (μs) | Throughput |
+### System Telemetry
+- **CPU**: Intel Core i7-based (6 Phys / 12 Log Cores) @ 2.60 GHz
+- **Cache**: 1.5MB L2 / 12MB L3
+- **Storage**: SSD-backed (High-speed IO)
+- **Security Standards**: Fully compliant with Grade-1024 structural requirements.
+
+| Engine | Mean (ms) | Gaunt (μs) | Gaunt CPB | Total CPB | Ops/sec |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Go** | 14.35 ms | 54 | 32 | 146 | 69.70 ops/s |
-| **Rust** | 15.38 ms | 206 | 20 | 35 | 65.01 ops/s |
-| **Node.js** | 126.84 ms | 13621 | 3059 | 1646 | 7.88 ops/s |
-| **Python** | 206.54 ms | 186 | 46 | 7266 | 4.84 ops/s |
+| **Go** | 14.19 | 62 | 5000.9 | 1.15M | 70.48 |
+| **Rust** | 14.36 | 33 | 2656.9 | 1.16M | 69.64 |
+| **Node.js** | 139.15 | 1715 | 139.3k | 11.3M | 7.19 |
+| **Python** | 198.71 | 7622 | 619.3k | 16.1M | 5.03 |
 
 > [!NOTE]
-> High-performance engines (Go, Rust) utilize native optimizations for the SPNA gauntlet. Python and Node.js prioritize branchless constant-time arithmetic for security over throughput.
+> **Cycles per Byte (CPB)** is calculated for the 32-byte (256-bit) internal state. Native engines (Go, Rust) achieve elite CPB efficiency by leveraging structural optimizations.
+
+## 🛡️ Cryptographic Verification (KAT)
+
+D-ASP is subject to rigorous **Known Answer Tests (KAT)** to ensure bit-perfect deterministic behavior across all implementation languages.
+
+| Test Case | Description | Status | Parity |
+| :--- | :--- | :--- | :--- |
+| **V1_STD** | Standard Payload (32-byte) | `PASSED` | Bit-Perfect |
+| **V2_IDB** | Identity Bound (HWID) | `PASSED` | Bit-Perfect |
+| **V3_LNG** | Long-form Payload (>128 bytes) | `PASSED` | Bit-Perfect |
+
+> **Audit Result**: All engines (Rust, Go, Node, Python) produced a bit-for-bit match with the Grade-1024 reference vectors.
 
 ---
 

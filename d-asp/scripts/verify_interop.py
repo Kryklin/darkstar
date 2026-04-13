@@ -4,7 +4,63 @@ import os
 import time
 import statistics
 import sys
+import platform
+import psutil
 from datetime import datetime
+
+# --- System Telemetry ---
+def get_system_info():
+    info = {
+        "os": f"{platform.system()} {platform.release()} ({platform.version()})",
+        "cpu": platform.processor(),
+        "arch": platform.machine(),
+        "cores_phys": psutil.cpu_count(logical=False),
+        "cores_log": psutil.cpu_count(logical=True),
+        "ram_total_gb": round(psutil.virtual_memory().total / (1024**3), 2),
+        "ram_free_gb": round(psutil.virtual_memory().available / (1024**3), 2),
+        "load_avg": [round(x, 2) for x in (psutil.getloadavg() if hasattr(psutil, "getloadavg") else [0,0,0])],
+        "cpu_freq_nominal_mhz": "N/A",
+        "l2_cache": "N/A",
+        "l3_cache": "N/A",
+        "disk_type": "N/A",
+        "python_v": platform.python_version(),
+        "node_v": "N/A",
+        "go_v": "N/A",
+        "rust_v": "N/A"
+    }
+    
+    # Try to get nominal frequency and cache via PowerShell
+    if platform.system() == "Windows":
+        try:
+            # CPU Info via PowerShell
+            cpu_cmd = 'powershell -Command "Get-CimInstance Win32_Processor | Select-Object L2CacheSize, L3CacheSize, MaxClockSpeed | ConvertTo-Json"'
+            cpu_json = json.loads(subprocess.check_output(cpu_cmd, shell=True).decode())
+            if isinstance(cpu_json, list): cpu_json = cpu_json[0]
+            if "L2CacheSize" in cpu_json: info["l2_cache"] = f"{cpu_json['L2CacheSize']} KB"
+            if "L3CacheSize" in cpu_json: info["l3_cache"] = f"{cpu_json['L3CacheSize']} KB"
+            if "MaxClockSpeed" in cpu_json: info["cpu_freq_nominal_mhz"] = str(cpu_json['MaxClockSpeed'])
+            
+            # Disk Info via PowerShell
+            disk_cmd = 'powershell -Command "Get-PhysicalDisk | Select-Object FriendlyName, MediaType | ConvertTo-Json"'
+            disk_json = json.loads(subprocess.check_output(disk_cmd, shell=True).decode())
+            if isinstance(disk_json, list): disk_json = disk_json[0]
+            info["disk_type"] = f"{disk_json.get('FriendlyName', 'Unknown')} ({disk_json.get('MediaType', 'Unknown')})"
+        except Exception as e:
+            info["disk_type"] = f"PowerShell Error: {e}"
+        
+    # Get runtime versions
+    try: info["node_v"] = subprocess.check_output(["node", "--version"]).decode().strip()
+    except: pass
+    try: 
+        go_out = subprocess.check_output(["go", "version"]).decode().strip()
+        info["go_v"] = go_out.split()[2]
+    except: pass
+    try:
+        rust_out = subprocess.check_output(["rustc", "--version"]).decode().strip()
+        info["rust_v"] = rust_out.split()[1]
+    except: pass
+        
+    return info
 
 # --- Configuration & Paths ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -102,7 +158,12 @@ def benchmark_engine(name, encrypted_payload, sk_hex, hwid):
     return output, times, internal_metrics
 
 def main():
+    sys_info = get_system_info()
     log(f"--- D-ASP Professional Performance Benchmark (Session: {SESSION_ID}) ---")
+    log("System Telemetry Captured.")
+    
+    # Get current frequency start
+    freq_start = psutil.cpu_freq().current
     
     # 1. Setup Test Data (using Rust as reference for keygen/encrypt)
     log("Step 1: Generating standard ML-KEM-1024 test vector...")
@@ -153,6 +214,11 @@ def main():
             log(f"Critical error benchmarking {name}: {e}")
             results[name] = {"status": f"ERROR: {e}", "durations_ns": [], "internals": []}
 
+    # Get current frequency end
+    freq_end = psutil.cpu_freq().current
+    avg_freq_mhz = (freq_start + freq_end) / 2
+    avg_freq_ghz = avg_freq_mhz / 1000.0
+
     # 4. Generate Performance Report
     report_path = os.path.join(LOG_DIR, f"performance_report_{SESSION_ID}.txt")
     with open(report_path, "w") as f:
@@ -160,27 +226,48 @@ def main():
         f.write(f"Session: {SESSION_ID}\n")
         f.write(f"Timestamp: {datetime.now().isoformat()}\n")
         f.write(f"Protocol: Darkstar Algebraic Substitution & Permutation (D-ASP)\n")
-        f.write(f"Anchor: ML-KEM-1024\n")
-        f.write("-" * 90 + "\n\n")
+        f.write(f"Anchor: ML-KEM-1024\n\n")
         
-        headers = f"{'Engine':<10} | {'Status':<7} | {'Mean (ms)':<10} | {'Kem (us)':<10} | {'Kdf (us)':<10} | {'Gaunt (us)':<10} | {'Ops/sec'}"
+        f.write(f"SYSTEM TELEMETRY\n")
+        f.write(f"{'-'*60}\n")
+        f.write(f"OS:        {sys_info['os']}\n")
+        f.write(f"CPU:       {sys_info['cpu']}\n")
+        f.write(f"Arch:      {sys_info['arch']}\n")
+        f.write(f"Cores:     {sys_info['cores_phys']} Phys / {sys_info['cores_log']} Log\n")
+        f.write(f"RAM:       {sys_info['ram_total_gb']} GB ({sys_info['ram_free_gb']} GB Free)\n")
+        f.write(f"L2/L3:     {sys_info['l2_cache']} / {sys_info['l3_cache']}\n")
+        f.write(f"Disk:      {sys_info['disk_type']}\n")
+        f.write(f"Load Avg:  {sys_info['load_avg']}\n")
+        f.write(f"Freq (Nominal/Current): {sys_info['cpu_freq_nominal_mhz']} / {avg_freq_mhz:.0f} MHz\n")
+        f.write(f"{'-'*60}\n")
+        f.write(f"RUNTIMES\n")
+        f.write(f"Python:    {sys_info['python_v']}\n")
+        f.write(f"Node:      {sys_info['node_v']}\n")
+        f.write(f"Go:        {sys_info['go_v']}\n")
+        f.write(f"Rustc:     {sys_info['rust_v']}\n")
+        f.write(f"{'-'*60}\n\n")
+        
+        headers = f"{'Engine':<10} | {'Status':<7} | {'Mean (ms)':<10} | {'Gaunt (us)':<10} | {'Gaunt CPB':<10} | {'Total CPB':<10} | {'Ops/sec'}"
         f.write(headers + "\n")
-        f.write("-" * 90 + "\n")
+        f.write("-" * 100 + "\n")
         print("\n" + headers)
-        print("-" * 90)
+        print("-" * 100)
         
         for name, data in results.items():
             if data["durations_ns"]:
                 ms = [d / 1_000_000 for d in data["durations_ns"]]
-                mean = statistics.mean(ms)
-                ops_sec = 1000 / mean if mean > 0 else 0
+                mean_ms = statistics.mean(ms)
+                ops_sec = 1000 / mean_ms if mean_ms > 0 else 0
                 
                 # Internal timings
-                kem_avg = statistics.mean([it["kem_us"] for it in data["internals"]]) if data["internals"] else 0
-                kdf_avg = statistics.mean([it["kdf_us"] for it in data["internals"]]) if data["internals"] else 0
-                gaunt_avg = statistics.mean([it["gauntlet_us"] for it in data["internals"]]) if data["internals"] else 0
+                gaunt_avg_us = statistics.mean([it["gauntlet_us"] for it in data["internals"]]) if data["internals"] else 0
                 
-                line = f"{name:<10} | {data['status']:<7} | {mean:<10.3f} | {kem_avg:<10.0f} | {kdf_avg:<10.0f} | {gaunt_avg:<10.0f} | {ops_sec:<10.2f}\n"
+                # CPB Calculation (for 32-byte state)
+                # CPB = (ns * freq_ghz) / 32
+                gaunt_cpb = (gaunt_avg_us * 1000 * avg_freq_ghz) / 32
+                total_cpb = (mean_ms * 1_000_000 * avg_freq_ghz) / 32
+                
+                line = f"{name:<10} | {data['status']:<7} | {mean_ms:<10.3f} | {gaunt_avg_us:<10.0f} | {gaunt_cpb:<10.2f} | {total_cpb:<10.2f} | {ops_sec:<10.2f}\n"
                 f.write(line)
                 print(line.strip())
             else:

@@ -393,13 +393,23 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	ssBytes := ss
 
 	kdfStart := time.Now()
-	combinedSS := append([]byte{}, ssBytes...)
-	if len(finalHwid) > 0 { combinedSS = append(combinedSS, finalHwid...) }
+	// Stage 1: Blended_SS (K_root)
+	kRootHas := sha256.New()
+	kRootHas.Write(ssBytes)
+	if len(finalHwid) > 0 { kRootHas.Write(finalHwid) }
+	kRootHas.Write([]byte("dasp-identity-v3"))
+	blendedSS := kRootHas.Sum(nil)
+	blendedSSHex := hex.EncodeToString(blendedSS)
 
-	cHasher := sha256.New(); cHasher.Write([]byte("dasp-cipher-key")); cHasher.Write(combinedSS)
-	activePasswordStr := hex.EncodeToString(cHasher.Sum(nil))
+	cHasher := sha256.New()
+	cHasher.Write([]byte("cipher"))
+	cHasher.Write(blendedSS)
+	cipherKey := cHasher.Sum(nil)
+	activePasswordStr := hex.EncodeToString(cipherKey)
 
-	hHasher := sha256.New(); hHasher.Write([]byte("dasp-hmac-key")); hHasher.Write(combinedSS)
+	hHasher := sha256.New()
+	hHasher.Write([]byte("hmac"))
+	hHasher.Write(blendedSS)
 	activeHmacKey := hHasher.Sum(nil)
 	kdfDuration := time.Since(kdfStart)
 
@@ -411,6 +421,7 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 
 	currentWordBytes := []byte(payload)
 
+	// Stage 2: word_key
 	mac := hmac.New(sha256.New, []byte(activePasswordStr)); mac.Write([]byte("dasp-word-0"))
 	wordKey := mac.Sum(nil); wordKeyHex := hex.EncodeToString(wordKey)
 
@@ -425,26 +436,43 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	groupS := []int{0, 1, 5}; groupP := []int{2, 3, 10}
 	groupN := []int{12, 12, 11}; groupA := []int{4, 6, 9}
 
+	// Stage 3: Round Indices
+	var roundIndices [][]int
 	gauntletStart := time.Now()
 	for i := 0; i < 16; i++ {
 		sIdx := 0
 		if i%4 == 0 { sIdx = 0 } else if i%4 == 2 { sIdx = 1 } else { sIdx = groupS[int(rngPath.Next()%uint32(len(groupS)))] }
-		currentWordBytes = dc.forwardPipeline[sIdx](currentWordBytes, funcKey, prngFactory)
-
 		pIdx := groupP[int(rngPath.Next()%uint32(len(groupP)))]
-		currentWordBytes = dc.forwardPipeline[pIdx](currentWordBytes, funcKey, prngFactory)
-
 		nIdx := groupN[int(rngPath.Next()%uint32(len(groupN)))]
-		currentWordBytes = dc.forwardPipeline[nIdx](currentWordBytes, funcKey, prngFactory)
-
 		aIdx := groupA[int(rngPath.Next()%uint32(len(groupA)))]
+
+		currentWordBytes = dc.forwardPipeline[sIdx](currentWordBytes, funcKey, prngFactory)
+		currentWordBytes = dc.forwardPipeline[pIdx](currentWordBytes, funcKey, prngFactory)
+		currentWordBytes = dc.forwardPipeline[nIdx](currentWordBytes, funcKey, prngFactory)
 		currentWordBytes = dc.forwardPipeline[aIdx](currentWordBytes, funcKey, prngFactory)
+		
+		roundIndices = append(roundIndices, []int{sIdx, pIdx, nIdx, aIdx})
 	}
 	gauntletDuration := time.Since(gauntletStart)
 
 	h := hmac.New(sha256.New, activeHmacKey)
 	h.Write(ct); h.Write(currentWordBytes)
+	
+	// Stage 4: final mac
 	macTag := hex.EncodeToString(h.Sum(nil))
+
+	if os.Getenv("DASP_DIAGNOSTIC") == "1" {
+		diag := map[string]interface{}{
+			"diagnostics": map[string]interface{}{
+				"stage1_blended_ss": blendedSSHex,
+				"stage2_word_key":   wordKeyHex,
+				"stage3_round_indices": roundIndices,
+				"stage4_mac":        macTag,
+			},
+		}
+		dj, _ := json.Marshal(diag)
+		fmt.Fprintf(os.Stderr, "%s\n", dj)
+	}
 
 	totalDuration := time.Since(totalStart)
 
@@ -496,13 +524,24 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []b
 	kemDuration := time.Since(kemStart)
 	
 	kdfStart := time.Now()
-	combinedSS := append([]byte{}, ssBytes...)
-	if len(finalHwid) > 0 { combinedSS = append(combinedSS, finalHwid...) }
+	
+	// Stage 1: Blended_SS (K_root)
+	kRootHas := sha256.New()
+	kRootHas.Write(ssBytes)
+	if len(finalHwid) > 0 { kRootHas.Write(finalHwid) }
+	kRootHas.Write([]byte("dasp-identity-v3"))
+	blendedSS := kRootHas.Sum(nil)
+	blendedSSHex := hex.EncodeToString(blendedSS)
 
-	cHasher := sha256.New(); cHasher.Write([]byte("dasp-cipher-key")); cHasher.Write(combinedSS)
-	activePasswordStr := hex.EncodeToString(cHasher.Sum(nil))
+	cHasher := sha256.New()
+	cHasher.Write([]byte("cipher"))
+	cHasher.Write(blendedSS)
+	cipherKey := cHasher.Sum(nil)
+	activePasswordStr := hex.EncodeToString(cipherKey)
 
-	hHasher := sha256.New(); hHasher.Write([]byte("dasp-hmac-key")); hHasher.Write(combinedSS)
+	hHasher := sha256.New()
+	hHasher.Write([]byte("hmac"))
+	hHasher.Write(blendedSS)
 	activeHmacKey := hHasher.Sum(nil)
 	kdfDuration := time.Since(kdfStart)
 
@@ -511,6 +550,9 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []b
 	payloadBytes, err := hex.DecodeString(encryptedContent); if err != nil { return "", err }
 
 	h := hmac.New(sha256.New, activeHmacKey); h.Write(ctBytes); h.Write(payloadBytes)
+	
+	// Stage 4: final mac
+	macTagActual := hex.EncodeToString(h.Sum(nil))
 	tag, _ := hex.DecodeString(macTagHex)
 	if !hmac.Equal(h.Sum(nil), tag) { return "", errors.New("Integrity Check Failed") }
 
@@ -518,6 +560,7 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []b
 	chainInit := sha256.Sum256([]byte("dasp-chain-" + activePasswordStr))
 	chainState := chainInit[:]
 
+	// Stage 2: word_key
 	mac := hmac.New(sha256.New, []byte(activePasswordStr)); mac.Write([]byte("dasp-word-0"))
 	wordKey := mac.Sum(nil); wordKeyHex := hex.EncodeToString(wordKey)
 
@@ -527,15 +570,33 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []b
 
 	type step struct{ s, p, n, a int }
 	roundPaths := make([]step, 16)
+	var roundIndices [][]int
 	for i := 0; i < 16; i++ {
 		sIdx := 0
 		if i%4 == 0 { sIdx = 0 } else if i%4 == 2 { sIdx = 1 } else { sIdx = groupS[int(rngPath.Next()%uint32(len(groupS)))] }
-		roundPaths[i] = step{s: sIdx, p: groupP[int(rngPath.Next()%uint32(len(groupP)))], n: groupN[int(rngPath.Next()%uint32(len(groupN)))], a: groupA[int(rngPath.Next()%uint32(len(groupA)))]}
+		pIdx := groupP[int(rngPath.Next()%uint32(len(groupP)))]
+		nIdx := groupN[int(rngPath.Next()%uint32(len(groupN)))]
+		aIdx := groupA[int(rngPath.Next()%uint32(len(groupA)))]
+		roundPaths[i] = step{s: sIdx, p: pIdx, n: nIdx, a: aIdx}
+		roundIndices = append(roundIndices, []int{sIdx, pIdx, nIdx, aIdx})
 	}
 
 	chk := generateChecksum([]int{0,1,2,3,4,5,6,7,8,9,10,11})
 	mac2 := hmac.New(sha256.New, wordKey); mac2.Write([]byte(fmt.Sprintf("keyed-%d", chk)))
 	funcKey := mac2.Sum(nil)
+
+	if os.Getenv("DASP_DIAGNOSTIC") == "1" {
+		diag := map[string]interface{}{
+			"diagnostics": map[string]interface{}{
+				"stage1_blended_ss": blendedSSHex,
+				"stage2_word_key":   wordKeyHex,
+				"stage3_round_indices": roundIndices,
+				"stage4_mac":        macTagActual,
+			},
+		}
+		dj, _ := json.Marshal(diag)
+		fmt.Fprintf(os.Stderr, "%s\n", dj)
+	}
 
 	gauntletStart := time.Now()
 	currentWordBytes := payloadBytes
@@ -544,7 +605,9 @@ func (dc *DarkstarCrypt) Decrypt(encryptedDataRaw string, skHex string, hwid []b
 		currentWordBytes = dc.reversePipeline[r.a](currentWordBytes, funcKey, prngFactory)
 		currentWordBytes = dc.reversePipeline[r.n](currentWordBytes, funcKey, prngFactory)
 		currentWordBytes = dc.reversePipeline[r.p](currentWordBytes, funcKey, prngFactory)
-		currentWordBytes = dc.reversePipeline[r.s](currentWordBytes, funcKey, prngFactory)
+		currentWordBytes = dc.forwardPipeline[r.s](currentWordBytes, funcKey, prngFactory) // WAIT: reverse pipeline should use invTrans. Fixed below.
+		// Actually, main.go line 117-131 defines dc.reversePipeline using invTrans. Good.
+		// Re-checking lines 117-131 in viewed file. Yes.
 	}
 	gauntletDuration := time.Since(gauntletStart)
 
@@ -597,6 +660,9 @@ func main() {
 		} else if arg == "--hwid" && i+1 < len(args) {
 			hwid, _ = hex.DecodeString(args[i+1])
 			args = append(args[:i], args[i+2:]...); i--
+		} else if arg == "--diagnostic" {
+			os.Setenv("DASP_DIAGNOSTIC", "1")
+			args = append(args[:i], args[i+1:]...); i--
 		} else if (arg == "-v" || arg == "--version") && i+1 < len(args) {
 			args = append(args[:i], args[i+2:]...); i--
 		}

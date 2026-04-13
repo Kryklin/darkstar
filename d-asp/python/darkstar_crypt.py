@@ -485,6 +485,29 @@ class DarkstarCrypt:
         return bytes(out)
         
     def _deobfuscate_columnar_v4(self, data, seed=None, prng_factory=None):
+        if len(sys.argv) < 2:
+            print("Usage: python darkstar_crypt.py <command> [args]")
+            sys.exit(1)
+
+        command = ""
+        args = []
+        hwid_hex = None
+        
+        i = 1
+        while i < len(sys.argv):
+            arg = sys.argv[i]
+            if arg == "--hwid" and i + 1 < len(sys.argv):
+                hwid_hex = sys.argv[i+1]
+                i += 2
+            elif arg == "--diagnostic":
+                os.environ["DASP_DIAGNOSTIC"] = "1"
+                i += 1
+            else:
+                if not command:
+                    command = arg
+                else:
+                    args.append(arg)
+                i += 1
         n = len(data)
         out = bytearray(n)
         cols = 3
@@ -634,12 +657,18 @@ class DarkstarCrypt:
         ss_bytes = bytearray(ss_bytes_tup)
         
         kdf_start = time.perf_counter()
-        combined_ss = bytes(ss_bytes)
+        
+        # Stage 1: Blended_SS (K_root)
+        k_root_hasher = hashlib.sha256()
+        k_root_hasher.update(bytes(ss_bytes))
         if hwid_hex:
-            combined_ss += bytes.fromhex(hwid_hex)
-            
-        cipher_key = hashlib.sha256(b"dasp-cipher-key" + combined_ss).digest()
-        hmac_key = hashlib.sha256(b"dasp-hmac-key" + combined_ss).digest()
+            k_root_hasher.update(bytes.fromhex(hwid_hex))
+        k_root_hasher.update(b"dasp-identity-v3")
+        blended_ss = k_root_hasher.digest()
+        blended_ss_hex = blended_ss.hex()
+
+        cipher_key = hashlib.sha256(b"cipher" + blended_ss).digest()
+        hmac_key = hashlib.sha256(b"hmac" + blended_ss).digest()
         active_password_str = cipher_key.hex()
         
         # Zeroize secret key material
@@ -650,6 +679,7 @@ class DarkstarCrypt:
         def prng_factory(s_str):
             return self.DarkstarChaChaPRNG(s_str)
         
+        # Stage 2: word_key
         word_key = hmac.new(active_password_str.encode('utf-8'), b"dasp-word-0", hashlib.sha256).digest()
         word_key_hex = word_key.hex()
         
@@ -671,6 +701,8 @@ class DarkstarCrypt:
         group_n = [12, 12, 11]
         group_a = [4, 6, 9]
 
+        # Stage 3: Round Indices
+        round_indices = []
         gauntlet_start = time.perf_counter()
         for i in range(16):
             s_idx = 0
@@ -687,12 +719,27 @@ class DarkstarCrypt:
 
             a_idx = group_a[rng_path.next() % len(group_a)]
             current_word_bytes = self.obfuscation_functions_v4[a_idx](current_word_bytes, seed=func_key, prng_factory=prng_factory)
+            
+            round_indices.append([s_idx, p_idx, n_idx, a_idx])
+            
         gauntlet_duration = time.perf_counter() - gauntlet_start
 
         final_payload = current_word_bytes
         h = hmac.new(hmac_key, bytes.fromhex(ct_bytes.hex()) + final_payload, hashlib.sha256)
+        
+        # Stage 4: final mac
         mac_tag = h.hexdigest()
         
+        if os.environ.get("DASP_DIAGNOSTIC") == "1":
+            print(json.dumps({
+                "diagnostics": {
+                    "stage1_blended_ss": blended_ss_hex,
+                    "stage2_word_key": word_key_hex,
+                    "stage3_round_indices": round_indices,
+                    "stage4_mac": mac_tag
+                }
+            }), file=sys.stderr)
+
         total_duration = time.perf_counter() - total_start
         res_obj = {
             "data": final_payload.hex(),
@@ -726,12 +773,18 @@ class DarkstarCrypt:
         ss_bytes = bytearray(ss_bytes_tup)
         
         kdf_start = time.perf_counter()
-        combined_ss = bytes(ss_bytes)
+        
+        # Stage 1: Blended_SS (K_root)
+        k_root_hasher = hashlib.sha256()
+        k_root_hasher.update(bytes(ss_bytes))
         if hwid_hex:
-            combined_ss += bytes.fromhex(hwid_hex)
-            
-        cipher_key = hashlib.sha256(b"dasp-cipher-key" + combined_ss).digest()
-        hmac_key = hashlib.sha256(b"dasp-hmac-key" + combined_ss).digest()
+            k_root_hasher.update(bytes.fromhex(hwid_hex))
+        k_root_hasher.update(b"dasp-identity-v3")
+        blended_ss = k_root_hasher.digest()
+        blended_ss_hex = blended_ss.hex()
+
+        cipher_key = hashlib.sha256(b"cipher" + blended_ss).digest()
+        hmac_key = hashlib.sha256(b"hmac" + blended_ss).digest()
         active_password_str = cipher_key.hex()
         
         # Zeroize secret key material
@@ -740,12 +793,16 @@ class DarkstarCrypt:
         
         payload_bytes = bytes.fromhex(encrypted_content)
         h = hmac.new(hmac_key, ct_bytes + payload_bytes, hashlib.sha256)
-        if not hmac.compare_digest(h.hexdigest(), mac_tag):
+        
+        # Stage 4: final mac
+        mac_tag_actual = h.hexdigest()
+        if not hmac.compare_digest(mac_tag_actual, mac_tag):
             raise ValueError("Integrity Check Failed")
             
         def prng_factory(s_str):
             return self.DarkstarChaChaPRNG(s_str)
         
+        # Stage 2: word_key
         word_key = hmac.new(active_password_str.encode('utf-8'), b"dasp-word-0", hashlib.sha256).digest()
         word_key_hex = word_key.hex()
         
@@ -757,6 +814,8 @@ class DarkstarCrypt:
         group_n = [12, 12, 11]
         group_a = [4, 6, 9]
 
+        # Stage 3: Round Indices
+        round_indices = []
         round_paths = []
         for i in range(16):
             s_idx = 0
@@ -767,10 +826,21 @@ class DarkstarCrypt:
             n_idx = group_n[rng_path.next() % len(group_n)]
             a_idx = group_a[rng_path.next() % len(group_a)]
             round_paths.append({'s': s_idx, 'p': p_idx, 'n': n_idx, 'a': a_idx})
+            round_indices.append([s_idx, p_idx, n_idx, a_idx])
 
         base_indices = list(range(12))
         checksum = self._generate_checksum(base_indices)
         func_key = hmac.new(word_key, f"keyed-{checksum}".encode('utf-8'), hashlib.sha256).digest()
+
+        if os.environ.get("DASP_DIAGNOSTIC") == "1":
+            print(json.dumps({
+                "diagnostics": {
+                    "stage1_blended_ss": blended_ss_hex,
+                    "stage2_word_key": word_key_hex,
+                    "stage3_round_indices": round_indices,
+                    "stage4_mac": mac_tag_actual
+                }
+            }), file=sys.stderr)
 
         current_word_bytes = payload_bytes
         gauntlet_start = time.perf_counter()
