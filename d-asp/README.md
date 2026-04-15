@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/Python-v3.0.0-3776AB?style=for-the-badge&logo=python" alt="Python">
 </p>
 
-[**&larr; Back to Project Root**](../README.md) | [**Mathematical Specification**](DASP_CRYPTO_MATH.md)
+[**&larr; Back to Project Root**](../README.md) | [**Mathematical Specification**](DASP_CRYPTO_MATH.md) | [**System Logic Flows**](DASP_SYSTEM_FLOW.md)
 
 The **D-ASP (Darkstar Algebraic Substitution & Permutation)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
 

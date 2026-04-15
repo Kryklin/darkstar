@@ -22,17 +22,8 @@ Darkstar is a defense-grade client-side security enclave. It provides a hardened
 
 Darkstar's security model is built on the **D-ASP (Darkstar Algebraic Substitution & Permutation)** protocol. This architecture ensures that data remains cryptographically bound to the host hardware through a multi-stage post-quantum gauntlet.
 
-```mermaid
-graph TD
-    subgraph "The Security Enclave"
-    A[User Input / Secrets] --> B{Hardware-Unique Blending}
-    B -- "HWID + OS Entropy" --> C[ML-KEM-1024 Root Key]
-    C --> D[D-ASP Gauntlet: 16-Round SPNA]
-    D -- "Diffusion & Network Layers" --> E[Encrypted Storage Enclave]
-    end
-    
-    E -- "Multi-Language Interop" --> F[Rust / Go / Node / Python]
-```
+> [!TIP]
+> **Detailed Architectural Deep-Dive**: For a comprehensive visual breakdown of logic flows, hardware binding ($HUB$), and the 16-round SPNA gauntlet, see the [**DASP System Flow Documentation**](d-asp/DASP_SYSTEM_FLOW.md).
 
 > [!NOTE]
 > **Grade-1024 Compliance**: Every byte processed by Darkstar undergoes a 16-round algebraic transformation, providing maximum resistance to standard and differential cryptanalysis.
