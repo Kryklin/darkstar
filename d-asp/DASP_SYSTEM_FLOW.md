@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-# D-ASP: System Logic & Architectural Flows
+# ASP Cascade 16: System Logic & Architectural Flows
 
 [**&larr; Back to D-ASP Suite**](README.md) | [**Mathematical Specification**](DASP_CRYPTO_MATH.md) | [**Project Root**](../README.md)
 
@@ -22,7 +22,7 @@ graph TD
     subgraph "The Security Enclave"
     A[User Input / Secrets] --> B{Hardware-Unique Blending}
     B -- "HWID + OS Entropy" --> C[ML-KEM-1024 Root Key]
-    C --> D[D-ASP Gauntlet: 16-Round SPNA]
+    C --> D[ASP Cascade 16 Engine]
     D -- "Diffusion & Network Layers" --> E[Encrypted Storage Enclave]
     end
     
@@ -40,7 +40,7 @@ sequenceDiagram
     participant U as User / OS
     participant K as ML-KEM-1024 Engine
     participant H as HUB (Blender)
-    participant G as SPNA Gauntlet
+    participant G as ASP Cascade 16
 
     U->>K: Provide Secret + HWID
     K->>K: Decapsulate Shared Secret (SS)
@@ -52,13 +52,13 @@ sequenceDiagram
 
 ---
 
-## 3. The 16-Round SPNA Gauntlet
+## 3. The ASP Cascade 16 Loop
 
 The core cryptographic engine applies 16 rounds of deterministic transformation. Each round cascades through four distinct mathematical layers to achieve maximum entropy and bit-diffusion.
 
 ```mermaid
 graph LR
-    subgraph "SPNA Round Logic (Repeats x16)"
+    subgraph "ASP Cascade Round Logic (Repeats x16)"
     S[S-Box Layer] --> P[Permutation Layer]
     P --> N[MDS Network Layer]
     N --> A[Algebraic ARX Mixing]
@@ -91,10 +91,10 @@ stateDiagram-v2
     [*] --> NodeJS: Reference Input
     [*] --> Python: Reference Input
 
-    RustRef --> JSON_Envelope: SPNA Gauntlet
-    GoNative --> JSON_Envelope: SPNA Gauntlet
-    NodeJS --> JSON_Envelope: SPNA Gauntlet
-    Python --> JSON_Envelope: SPNA Gauntlet
+    RustRef --> JSON_Envelope: ASP Cascade 16
+    GoNative --> JSON_Envelope: ASP Cascade 16
+    NodeJS --> JSON_Envelope: ASP Cascade 16
+    Python --> JSON_Envelope: ASP Cascade 16
 
     JSON_Envelope --> InteropSuccess: Bit-Perfect Match
     InteropSuccess --> [*]

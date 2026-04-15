@@ -9,7 +9,7 @@
 
 [**&larr; Back to D-ASP Suite**](README.md) | [**Project Root**](../README.md)
 
-This document provides the formal cryptographic and mathematical specification for the **Darkstar Algebraic Substitution & Permutation (D-ASP)** protocol. D-ASP is an SPNA-structured (Substitution, Permutation, Network, Algebraic) cipher suite optimized for high-security identity binding and side-channel resistance.
+This document provides the formal cryptographic and mathematical specification for the **ASP Cascade 16 (D-ASP)** protocol. ASP Cascade 16 is an SPNA-structured (Substitution, Permutation, Network, Algebraic) cipher suite optimized for high-security identity binding and side-channel resistance.
 
 ---
 
@@ -54,9 +54,9 @@ $$
 
 ---
 
-## 3. The 16-Round SPNA Gauntlet
+## 3. The ASP Cascade 16 Engine
 
-The SPNA structure utilizes a cascade of Substitution, Permutation, Network, and Algebraic layers to achieve rapid avalanche.
+The ASP Cascade structure utilizes a cascade of Substitution, Permutation, Network, and Algebraic layers to achieve rapid avalanche.
 
 ### 3.1 Substitution (S) Layer: Non-Linearity
 Each round begins with a 256-entry lookup table mapping.
@@ -106,12 +106,12 @@ The non-commutativity of these operations prevents linear approximation attacks.
 ### 4.2 Managed Compliance (NodeJS/Python)
 While high-level runtimes introduce jitter (jitter != side-channel), the **D-ASP V3 reference code** for Node.js and Python has been refactored to be **Branchless-Equivalent**.
 - **No conditional jumps** based on bit-values in $GF(2^8)$ multiplication.
-- **No secret-dependent branching** in the SPNA round selections.
+- **No secret-dependent branching** in the ASP Cascade 16 round selections.
 
-### 4.3 Entropy Gauntlet Verification
+### 4.3 Entropy Cascade Verification
 - **Strict Avalanche Criterion (SAC)**: Tested at >49.98% bitflip probability per round.
 - **Bit Independence Criterion (BIC)**: No statistically significant correlation observed between input/output bit pairs after 8 rounds.
-- **Interop**: All four engines (Rust, Go, Node, Python) achieve bit-perfect parity for the SPNA-V9 deterministic gauntlet.
+- **Interop**: All four engines (Rust, Go, Node, Python) achieve bit-perfect parity for the **ASP Cascade 16** deterministic engine.
 
 ---
 

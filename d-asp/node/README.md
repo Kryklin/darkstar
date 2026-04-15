@@ -9,11 +9,11 @@
 
 <img src="https://img.shields.io/badge/Node.js-v3.0.0-339933?style=for-the-badge&logo=node.js" alt="Node.js">
 
-This directory contains the Node.js (ESM) implementation of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
+This directory contains the Node.js (ESM) implementation of the **ASP Cascade 16** engine, part of the D-ASP protocol suite.
 
 ## 🛡️ Status: Production Bridge
 
-The Node.js implementation acts as the primary bridge for web applications and Electron-based host environments. It is designed for maximum interoperability with the Rust reference.
+The Node.js implementation acts as the primary bridge for web applications and Electron-based host environments ($Darkstar$).
 
 ## 🔒 Security Profile
 
@@ -50,6 +50,6 @@ node darkstar_crypt.js decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_K
 ---
 
 ## 🏗️ Architecture Alignment
-This implementation strictly follows the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification. It utilizes identical AES S-Box and MDS matrix constants to ensure bit-perfect cross-platform recovery.
+This implementation strictly follows the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification. It utilizes the same 16-round **ASP Cascade** engine and MDS matrix constants as the reference.
 
 [**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)

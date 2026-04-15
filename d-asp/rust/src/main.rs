@@ -20,6 +20,7 @@ use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
 /// Definitive implementation of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 ///
 /// - **D**: Darkstar ecosystem origin
+/// - **ASP Cascade 16**: The 16-round core engine logic
 /// - **A**: Algebraic Substitution
 /// - **S**: Structural Permutation
 /// - **P**: Permutation-based non-linear core
@@ -468,7 +469,7 @@ impl DarkstarCrypt {
 
         // Stage 3: Round Indices
         let mut round_indices = Vec::with_capacity(16);
-        let gauntlet_start = std::time::Instant::now();
+        let cascade_start = std::time::Instant::now();
         for i in 0..16 {
             let s_idx = if i % 4 == 0 { 0 } else if i % 4 == 2 { 1 } else { group_s[(rng_path.next() as usize) % group_s.len()] };
             current_word_bytes = (self.forward_pipeline[s_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
@@ -484,7 +485,7 @@ impl DarkstarCrypt {
             
             round_indices.push(vec![s_idx, p_idx, n_idx, a_idx]);
         }
-        let gauntlet_duration = gauntlet_start.elapsed();
+        let cascade_duration = cascade_start.elapsed();
 
         let active_hmac_key = hmac_key.clone();
         
@@ -635,7 +636,7 @@ impl DarkstarCrypt {
         chain_hasher.update(format!("dasp-chain-{}", active_password_str).as_bytes());
         let chain_state = chain_hasher.finalize().to_vec();
 
-        let gauntlet_start = std::time::Instant::now();
+        let cascade_start = std::time::Instant::now();
         let mut current_word_bytes = payload_bytes;
         for j in (0..16).rev() {
             let (s, p, n, a) = round_paths[j];
@@ -644,7 +645,7 @@ impl DarkstarCrypt {
             current_word_bytes = (self.reverse_pipeline[p])(&current_word_bytes, Some(&func_key), &prng_factory)?;
             current_word_bytes = (self.reverse_pipeline[s])(&current_word_bytes, Some(&func_key), &prng_factory)?;
         }
-        let gauntlet_duration = gauntlet_start.elapsed();
+        let cascade_duration = cascade_start.elapsed();
 
         for (i, b) in current_word_bytes.iter_mut().enumerate() {
             *b ^= chain_state[i % 32];

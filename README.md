@@ -1,7 +1,7 @@
-<p align="left">
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="public/assets/img/logo-white.png">
-    <img src="public/assets/img/logo-black.png" width="120" alt="Darkstar Logo">
+    <img src="public/assets/img/logo-black.png" width="400" alt="Darkstar Logo">
   </picture>
 </p>
 
@@ -20,19 +20,19 @@ Darkstar is a defense-grade client-side security enclave. It provides a hardened
 
 ## 🏗️ System Architecture
 
-Darkstar's security model is built on the **D-ASP (Darkstar Algebraic Substitution & Permutation)** protocol. This architecture ensures that data remains cryptographically bound to the host hardware through a multi-stage post-quantum gauntlet.
+At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-round structural permutation engine paired with **ML-KEM-1024 (Kyber)** for Grade-1024 security parity.
 
 > [!TIP]
-> **Detailed Architectural Deep-Dive**: For a comprehensive visual breakdown of logic flows, hardware binding ($HUB$), and the 16-round SPNA gauntlet, see the [**DASP System Flow Documentation**](d-asp/DASP_SYSTEM_FLOW.md).
+> **Detailed Architectural Deep-Dive**: For a comprehensive visual breakdown of logic flows, hardware binding ($HUB$), and the **ASP Cascade 16** engine, see the [**DASP System Flow Documentation**](d-asp/DASP_SYSTEM_FLOW.md).
 
 > [!NOTE]
-> **Grade-1024 Compliance**: Every byte processed by Darkstar undergoes a 16-round algebraic transformation, providing maximum resistance to standard and differential cryptanalysis.
+> **Grade-1024 Compliance**: Every byte processed by Darkstar undergoes a 16-round algebraic transformation (ASP Cascade 16), providing maximum resistance to standard and differential cryptanalysis.
 
 ---
 
 ## 🛡️ The Multi-Engine Matrix
 
-Darkstar provides bit-perfect interoperability across four core implementation languages. This ensures zero vendor lock-in and a verifiable, multi-language audit trail.
+**ASP Cascade 16**: The 16-round engine ensures bit-perfect interoperability across Rust, Go, Python, and Node.js while providing maximum algebraic complexity.
 
 | Engine | optimization | implementation | Security Tier | Interop |
 | :--- | :--- | :--- | :--- | :--- |

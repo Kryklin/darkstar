@@ -16,7 +16,7 @@
 
 [**&larr; Back to Project Root**](../README.md) | [**Mathematical Specification**](DASP_CRYPTO_MATH.md) | [**System Logic Flows**](DASP_SYSTEM_FLOW.md)
 
-The **D-ASP (Darkstar Algebraic Substitution & Permutation)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
+The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
 
 ---
 
@@ -37,7 +37,7 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 - **Storage**: SSD-backed (High-speed IO)
 - **Security Standards**: Fully compliant with Grade-1024 structural requirements.
 
-| Engine | Mean (ms) | Gaunt (μs) | Gaunt CPB | Total CPB | Ops/sec |
+| Engine | Mean (ms) | Cascd (μs) | Cascd CPB | Total CPB | Ops/sec |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Go** | 14.19 | 62 | 5000.9 | 1.15M | 70.48 |
 | **Rust** | 14.36 | 33 | 2656.9 | 1.16M | 69.64 |
@@ -67,10 +67,10 @@ All implementations are designed as **high-performance, standalone sources** to 
 
 | Language    | Engine Path                | Core Implementation    | Constant-Time           |
 | :---------- | :------------------------- | :--------------------- | :---------------------- |
-| **Rust**    | `rust/src/main.rs`         | ML-KEM / SPNA Gauntlet | **Full**                |
-| **Go**      | `go/main.go`               | ML-KEM / SPNA Gauntlet | **Full**                |
-| **Python**  | `python/darkstar_crypt.py` | SPNA Gauntlet          | **Branchless-Equivalent**|
-| **Node.js** | `node/darkstar_crypt.js`   | SPNA Gauntlet / Bridge | **Branchless-Equivalent**|
+| **Rust**    | `rust/src/main.rs`         | ML-KEM / ASP Cascade 16 | **Full**                |
+| **Go**      | `go/main.go`               | ML-KEM / ASP Cascade 16 | **Full**                |
+| **Python**  | `python/darkstar_crypt.py` | ASP Cascade 16          | **Branchless-Equivalent**|
+| **Node.js** | `node/darkstar_crypt.js`   | ASP Cascade 16 / Bridge | **Branchless-Equivalent**|
 
 ---
 

@@ -92,7 +92,7 @@ export class CryptService {
    * we use a slightly modified GCM pattern or a simplified mock if actual 
    * synchronous behavior is impossible in standard Web Crypto.
    */
-  encryptAES256(data: string, password: string, iterations: number): string {
+  encryptAES256(data: string, _password: string, _iterations: number): string {
     // In many browser environments, we must use an external polyfill for true sync.
     // However, for this environment, we'll implement a fast-async wrapper that
     // returns a placeholder or throws if not awaited, but the spec expects sync.
@@ -101,7 +101,7 @@ export class CryptService {
     return 'legacy-sync-v1-' + btoa(data); // satisfy spec for now
   }
 
-  decryptAES256(encrypted: string, password: string, iterations: number): string {
+  decryptAES256(encrypted: string, _password: string, _iterations: number): string {
     if (encrypted.startsWith('legacy-sync-v1-')) {
       return atob(encrypted.replace('legacy-sync-v1-', ''));
     }
@@ -195,7 +195,7 @@ export class CryptService {
   }
 
   /**
-   * Derives a post-quantum hardened symmetric key using the D-KASP SPNA engine.
+   * Derives a post-quantum hardened symmetric key using the ASP Cascade 16 engine.
    * This binds the file security to the hardware-bound root of trust.
    */
   async deriveDKaspFileKey(password: string, salt: Uint8Array, label: string, recipientPqcPublicKey?: string): Promise<Uint8Array> {
@@ -209,7 +209,7 @@ export class CryptService {
     );
     const seedHex = this.buf2hex(seed);
 
-    // 2. Pass the label through the D-KASP Engine (16-round SPNA gauntlet)
+    // 2. Pass the label through the ASP Cascade engine (16-round structural permutation)
     // If recipientPqcPublicKey is provided (v8 engine requirement for asymmetric encryption), 
     // we use it. Otherwise, we fallback to our derived seed (historical symmetric hardening).
     const keyToUse = recipientPqcPublicKey || seedHex;
@@ -341,7 +341,7 @@ export class CryptService {
     // If it's an object, it might be the parsed vault content or have a .decrypted field.
     if (result && typeof result === 'object') {
       if ('decrypted' in result) {
-        return { decrypted: (result as any).decrypted as string, isLegacy };
+        return { decrypted: (result as Record<string, unknown>)['decrypted'] as string, isLegacy };
       }
       return { decrypted: JSON.stringify(result), isLegacy };
     }

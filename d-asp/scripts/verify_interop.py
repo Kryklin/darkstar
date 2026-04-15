@@ -270,7 +270,7 @@ def main():
         f.write(f"Rustc:     {sys_info['rust_v']}\n")
         f.write(f"{'-'*60}\n\n")
         
-        headers = f"{'Engine':<10} | {'Status':<7} | {'Mean (ms)':<10} | {'Gaunt (us)':<10} | {'Gaunt CPB':<10} | {'Total CPB':<10} | {'Ops/sec'}"
+        headers = f"{'Engine':<10} | {'Status':<7} | {'Mean (ms)':<10} | {'Casca (us)':<10} | {'Casca CPB':<10} | {'Total CPB':<10} | {'Ops/sec'}"
         f.write(headers + "\n")
         f.write("-" * 100 + "\n")
         print("\n" + headers)
@@ -283,14 +283,14 @@ def main():
                 ops_sec = 1000 / mean_ms if mean_ms > 0 else 0
                 
                 # Internal timings
-                gaunt_avg_us = statistics.mean([it["gauntlet_us"] for it in data["internals"]]) if data["internals"] else 0
+                casca_avg_us = statistics.mean([it["cascade_us"] for it in data["internals"]]) if data["internals"] else 0
                 
                 # CPB Calculation (for 32-byte state)
                 # CPB = (ns * freq_ghz) / 32
-                gaunt_cpb = (gaunt_avg_us * 1000 * avg_freq_ghz) / 32
+                casca_cpb = (casca_avg_us * 1000 * avg_freq_ghz) / 32
                 total_cpb = (mean_ms * 1_000_000 * avg_freq_ghz) / 32
                 
-                line = f"{name:<10} | {data['status']:<7} | {mean_ms:<10.3f} | {gaunt_avg_us:<10.0f} | {gaunt_cpb:<10.2f} | {total_cpb:<10.2f} | {ops_sec:<10.2f}\n"
+                line = f"{name:<10} | {data['status']:<7} | {mean_ms:<10.3f} | {casca_avg_us:<10.0f} | {casca_cpb:<10.2f} | {total_cpb:<10.2f} | {ops_sec:<10.2f}\n"
                 f.write(line)
                 print(line.strip())
             else:

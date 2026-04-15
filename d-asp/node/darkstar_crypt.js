@@ -1,7 +1,7 @@
 /*
  * DARKSTAR - Secure Multi-Layered Encryption & Steganography Suite
  * Version: 3.0.0
- * Protocol: D-ASP (Darkstar Algebraic Substitution & Permutation)
+ * Protocol: D-ASP (ASP Cascade 16 Engine)
  * Security: Grade-1024 (Kyber-Standard)
  * Implementation: Node.js (Production Bridge Implementation)
  *
@@ -131,7 +131,7 @@ export class DarkstarCrypt {
     
     // Stage 3: Round Indices
     const roundIndices = [];
-    const gauntletStart = performance.now();
+    const cascadeStart = performance.now();
     for (let i = 0; i < 16; i++) {
       let sIdx = i % 4 === 0 ? 0 : i % 4 === 2 ? 1 : this.groupS[rngPath() % this.groupS.length];
       let pIdx = this.groupP[rngPath() % this.groupP.length];
@@ -145,7 +145,7 @@ export class DarkstarCrypt {
       
       roundIndices.push([sIdx, pIdx, nIdx, aIdx]);
     }
-    const gauntletDuration = performance.now() - gauntletStart;
+    const cascadeDuration = performance.now() - cascadeStart;
 
     const macData = Buffer.concat([this.hex2buf(ctHex), currentWordBytes]);
     const mac = require('node:crypto').createHmac('sha256', activeHmacKey).update(macData).digest();
@@ -173,7 +173,7 @@ export class DarkstarCrypt {
       timings: {
         kem_us: Math.round(kemDuration * 1000),
         kdf_us: Math.round(kdfDuration * 1000),
-        gauntlet_us: Math.round(gauntletDuration * 1000),
+        cascade_us: Math.round(cascadeDuration * 1000),
         total_us: Math.round(totalDuration * 1000)
       }
     };
@@ -256,7 +256,7 @@ export class DarkstarCrypt {
     const checksum = this._generateChecksum(Array.from({ length: 12 }, (_, i) => i));
     const funcKey = await this.hmacSha256Bytes(wordKey, `keyed-${checksum}`);
 
-    const gauntletStart = performance.now();
+    const cascadeStart = performance.now();
     for (let j = 15; j >= 0; j--) {
       const r = roundPaths[j];
       currentWordBytes = this.reversePipeline[r.a](currentWordBytes, funcKey, prngFactory);
@@ -264,7 +264,7 @@ export class DarkstarCrypt {
       currentWordBytes = this.reversePipeline[r.p](currentWordBytes, funcKey, prngFactory);
       currentWordBytes = this.reversePipeline[r.s](currentWordBytes, funcKey, prngFactory);
     }
-    const gauntletDuration = performance.now() - gauntletStart;
+    const cascadeDuration = performance.now() - cascadeStart;
 
     for (let i = 0; i < currentWordBytes.length; i++) {
       currentWordBytes[i] ^= chainState[i % 32];
@@ -275,7 +275,7 @@ export class DarkstarCrypt {
       timings: {
         kem_us: Math.round(kemDuration * 1000),
         kdf_us: Math.round(kdfDuration * 1000),
-        gauntlet_us: Math.round(gauntletDuration * 1000),
+        cascade_us: Math.round(cascadeDuration * 1000),
         total_us: Math.round(totalDuration * 1000)
       }
     }) + '\n');

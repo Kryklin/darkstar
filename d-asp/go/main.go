@@ -9,7 +9,7 @@
  * Bit-Perfect Interoperability Verified
  */
 
-// Package main implements the D-ASP cryptographic suite.
+// Package main implements the D-ASP (ASP Cascade 16) cryptographic engine.
 package main
 
 import (
@@ -378,7 +378,7 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	groupN := []int{12, 12, 11}; groupA := []int{4, 6, 9}
 
 	var roundIndices [][]int
-	gauntletStart := time.Now()
+	cascadeStart := time.Now()
 	for i := 0; i < 16; i++ {
 		sIdx := 0
 		switch i % 4 {
@@ -399,7 +399,7 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 		currentWordBytes = dc.forwardPipeline[aIdx](currentWordBytes, funcKey, prngFactory)
 		roundIndices = append(roundIndices, []int{sIdx, pIdx, nIdx, aIdx})
 	}
-	gauntletDur := time.Since(gauntletStart)
+	cascadeDur := time.Since(cascadeStart)
 	runtime.KeepAlive(currentWordBytes)
 
 	h := hmac.New(sha256.New, activeHmacKey); h.Write(ct); h.Write(currentWordBytes)
@@ -420,10 +420,10 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	totalDur := time.Since(totalStart)
 	timingReport := map[string]interface{}{
 		"timings": map[string]interface{}{
-			"kem_us":      kemDur.Microseconds(),
-			"kdf_us":      kdfDur.Microseconds(),
-			"gauntlet_us": gauntletDur.Microseconds(),
-			"total_us":    totalDur.Microseconds(),
+			"kem_us":     kemDur.Microseconds(),
+			"kdf_us":     kdfDur.Microseconds(),
+			"cascade_us": cascadeDur.Microseconds(),
+			"total_us":   totalDur.Microseconds(),
 		},
 	}
 	tj, _ := json.Marshal(timingReport)
@@ -518,7 +518,7 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 	chainInit := sha256.Sum256([]byte("dasp-chain-" + activePasswordStr))
 	chainState := chainInit[:]
 
-	gauntletStart := time.Now()
+	cascadeStart := time.Now()
 	currentWordBytes := payloadBytes
 	for j := 15; j >= 0; j-- {
 		r := roundPaths[j]
@@ -527,7 +527,7 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 		currentWordBytes = dc.reversePipeline[r.p](currentWordBytes, funcKey, prngFactory)
 		currentWordBytes = dc.reversePipeline[r.s](currentWordBytes, funcKey, prngFactory)
 	}
-	gauntletDur := time.Since(gauntletStart)
+	cascadeDur := time.Since(cascadeStart)
 	runtime.KeepAlive(currentWordBytes)
 
 	for i := range currentWordBytes { currentWordBytes[i] ^= chainState[i%32] }
@@ -535,10 +535,10 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 	totalDur := time.Since(totalStart)
 	timingReport := map[string]interface{}{
 		"timings": map[string]interface{}{
-			"kem_us":      kemDur.Microseconds(),
-			"kdf_us":      kdfDur.Microseconds(),
-			"gauntlet_us": gauntletDur.Microseconds(),
-			"total_us":    totalDur.Microseconds(),
+			"kem_us":     kemDur.Microseconds(),
+			"kdf_us":     kdfDur.Microseconds(),
+			"cascade_us": cascadeDur.Microseconds(),
+			"total_us":   totalDur.Microseconds(),
 		},
 	}
 	tj, _ := json.Marshal(timingReport)

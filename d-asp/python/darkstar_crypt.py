@@ -33,9 +33,9 @@ class DarkstarCrypt:
     
     This suite implements the definitive Darkstar protocol:
     - Root of Trust: ML-KEM-1024
-    - Structure: 16-round SPNA (Substitution, Permutation, Network, Algebraic)
+    - Engine: ASP Cascade 16 (16-round structural permutation logic)
     - Integrity: HMAC-SHA256
-    - Engine: ChaCha20-based Deterministic PRNG
+    - Pathing: ChaCha20-based Deterministic PRNG
     """
 
     class DarkstarChaChaPRNG:
@@ -689,7 +689,7 @@ class DarkstarCrypt:
 
         # Stage 3: Round Indices
         round_indices = []
-        gauntlet_start = time.perf_counter()
+        cascade_start = time.perf_counter()
         for i in range(16):
             s_idx = 0
             if i % 4 == 0: s_idx = 0
@@ -708,7 +708,7 @@ class DarkstarCrypt:
             
             round_indices.append([s_idx, p_idx, n_idx, a_idx])
             
-        gauntlet_duration = time.perf_counter() - gauntlet_start
+        cascade_duration = time.perf_counter() - cascade_start
 
         final_payload = current_word_bytes
         h = hmac.new(hmac_key, bytes.fromhex(ct_bytes.hex()) + final_payload, hashlib.sha256)
@@ -734,7 +734,7 @@ class DarkstarCrypt:
             "timings": {
                 "kem_us": int(kem_duration * 1_000_000),
                 "kdf_us": int(kdf_duration * 1_000_000),
-                "gauntlet_us": int(gauntlet_duration * 1_000_000),
+                "cascade_us": int(cascade_duration * 1_000_000),
                 "total_us": int(total_duration * 1_000_000)
             }
         }
@@ -854,14 +854,14 @@ class DarkstarCrypt:
             }), file=sys.stderr)
 
         current_word_bytes = payload_bytes
-        gauntlet_start = time.perf_counter()
+        cascade_start = time.perf_counter()
         for j in range(15, -1, -1):
             r = round_paths[j]
             current_word_bytes = self.deobfuscation_functions_v4[r['a']](current_word_bytes, seed=func_key, prng_factory=prng_factory)
             current_word_bytes = self.deobfuscation_functions_v4[r['n']](current_word_bytes, seed=func_key, prng_factory=prng_factory)
             current_word_bytes = self.deobfuscation_functions_v4[r['p']](current_word_bytes, seed=func_key, prng_factory=prng_factory)
             current_word_bytes = self.deobfuscation_functions_v4[r['s']](current_word_bytes, seed=func_key, prng_factory=prng_factory)
-        gauntlet_duration = time.perf_counter() - gauntlet_start
+        cascade_duration = time.perf_counter() - cascade_start
 
         temp_word_bytes = bytearray(current_word_bytes)
         for i in range(len(temp_word_bytes)):
