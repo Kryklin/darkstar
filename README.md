@@ -1,74 +1,90 @@
-<p align="right">
+<p align="left">
   <img src="public/assets/img/logo-white.png" width="120" alt="Darkstar Logo">
 </p>
 
-# Darkstar Security Suite
-
 <p align="center">
-  <img src="public/assets/img/logo-white.png" width="400" alt="Darkstar Logo">
+  <img src="public/assets/img/logo-white.png" width="600" alt="Darkstar Banner">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Security-Grade--1024-black?style=for-the-badge&logo=shield" alt="Security Grade">
-  <img src="https://img.shields.io/badge/Interoperability-Verified-success?style=for-the-badge&logo=checkmarx" alt="Interoperability">
+  <a href="SECURITY.md"><img src="https://img.shields.io/badge/Security-Grade--1024-black?style=for-the-badge&logo=shield" alt="Security Grade"></a>
+  <a href="d-asp/README.md"><img src="https://img.shields.io/badge/Interoperability-Verified-success?style=for-the-badge&logo=checkmarx" alt="Interoperability"></a>
   <img src="https://img.shields.io/badge/Version-3.0.0-blue?style=for-the-badge" alt="Version">
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Rust-v3.0.0-black?style=for-the-badge&logo=rust" alt="Rust">
-  <img src="https://img.shields.io/badge/Go-v3.0.0-00ADD8?style=for-the-badge&logo=go" alt="Go">
-  <img src="https://img.shields.io/badge/Node.js-v3.0.0-339933?style=for-the-badge&logo=node.js" alt="Node.js">
-  <img src="https://img.shields.io/badge/Python-v3.0.0-3776AB?style=for-the-badge&logo=python" alt="Python">
-</p>
+# Darkstar Security Suite
+### *The Sovereign Post-Quantum Enclave for Identity & Asset Recovery.*
 
-## Overview
-
-`darkstar` is a defense-grade client-side security enclave designed to safeguard recovery phrases, identities, and sensitive records using post-quantum cryptographic primitives.
-
-At its core, Darkstar utilizes the **D-ASP (Darkstar Algebraic Substitution & Permutation)** protocol—a sovereign 16-round structural permutation gauntlet paired with **ML-KEM-1024 (Kyber)** for Grade-1024 security parity.
+Darkstar is a defense-grade client-side security enclave. It provides a hardened, air-gapped-ready environment for safeguarding recovery phrases, cryptographic identities, and sensitive records using next-generation post-quantum primitives.
 
 ---
 
-## 🛡️ Core Security Pillars
+## 🏗️ System Architecture
 
-- **Quantum Resistance**: Powered by ML-KEM-1024 lattice-based key encapsulation.
-- **Hardware Binding**: Cryptographic payloads are bound to host-machine silicon via Electron SafeStorage and machine-unique identifiers.
-- **High-Diffusion Obfuscation**: The D-ASP gauntlet ensures bit-perfect interoperability across Rust, Go, Python, and Node.js while providing maximum algebraic complexity.
-- **Zero-Knowledge Architecture**: Your master password never leaves the isolated security enclave; data is encrypted/decrypted via a high-performance IPC bridge.
+Darkstar's security model is built on the **D-ASP (Darkstar Algebraic Substitution & Permutation)** protocol. This architecture ensures that data remains cryptographically bound to the host hardware through a multi-stage post-quantum gauntlet.
+
+```mermaid
+graph TD
+    subgraph "The Security Enclave"
+    A[User Input / Secrets] --> B{Hardware-Unique Blending}
+    B -- "HWID + OS Entropy" --> C[ML-KEM-1024 Root Key]
+    C --> D[D-ASP Gauntlet: 16-Round SPNA]
+    D -- "Diffusion & Network Layers" --> E[Encrypted Storage Enclave]
+    end
+    
+    E -- "Multi-Language Interop" --> F[Rust / Go / Node / Python]
+```
+
+> [!NOTE]
+> **Grade-1024 Compliance**: Every byte processed by Darkstar undergoes a 16-round algebraic transformation, providing maximum resistance to standard and differential cryptanalysis.
 
 ---
 
-## 🚀 Getting Started
+## 🛡️ The Multi-Engine Matrix
 
-### Prerequisites
+Darkstar provides bit-perfect interoperability across four core implementation languages. This ensures zero vendor lock-in and a verifiable, multi-language audit trail.
 
-- Node.js v19+
-- Rust (Cargo)
-- Go v1.25+
+| Engine | optimization | implementation | Security Tier | Interop |
+| :--- | :--- | :--- | :--- | :--- |
+| **Rust** | **Native (LTO)** | Reference implementation | Grade-1024 | `PASSED` |
+| **Go** | **Native (SSA)** | High-performance bridge | Grade-1024 | `PASSED` |
+| **Node.js** | **Managed** | Production Bridge (Electron) | Grade-1024 | `PASSED` |
+| **Python** | **Managed** | Research & Validation | Grade-1024 | `PASSED` |
 
-### Installation & Development
+---
+
+## 🚀 Quick Start
+
+Ensure you have the required runtimes (Node 19+, Rust 1.75+, Go 1.25+).
 
 ```bash
-git clone https://github.com/Kryklin/darkstar.git
-cd darkstar
+# 1. Clone the Sovereign Repository
+git clone https://github.com/Kryklin/darkstar.git && cd darkstar
+
+# 2. Deploy Local Enclave Dependencies
 npm install
-npm run build:rust  # Compile the Rust engine
-npm run build:go    # Compile the Go engine
-npm start           # Launch the Electron Dashboard
+
+# 3. Synchronize Cryptographic Engines
+npm run build:rust  # Reference Native
+npm run build:go    # Performance Native
+
+# 4. Initialize Dashboard
+npm start
 ```
 
 ---
 
 ## 🏗️ Technical Resources
 
-For a deep-dive into the mathematical and system-level specifications, please refer to:
-
-- [**D-ASP Mathematical Specification**](DARKSTAR_ARCHITECTURE.md)
-- [**Security & Disclosure Policy**](SECURITY.md)
-- [**D-ASP Multi-Language Suite**](d-asp/README.md)
+| Resource | Scope | Link |
+| :--- | :--- | :--- |
+| **D-ASP Specification** | Formal Math & Logic | [**DASP_CRYPTO_MATH.md**](d-asp/DASP_CRYPTO_MATH.md) |
+| **Multi-Language Docs** | Integration & Usage | [**D-ASP Suite**](d-asp/README.md) |
+| **Security Policy** | Disclosure & Auditing | [**SECURITY.md**](SECURITY.md) |
+| **Contribution Guide** | Standards & Workflows | [**CONTRIBUTING.md**](CONTRIBUTING.md) |
 
 ---
 
 ## ⚖️ License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Darkstar is released under the **MIT License**. We prioritize freedom of audit and the right to sovereign encryption.

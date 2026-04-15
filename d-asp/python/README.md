@@ -1,4 +1,4 @@
-<p align="right">
+<p align="left">
   <img src="../../public/assets/img/logo-white.png" width="120" alt="Darkstar Logo">
 </p>
 
