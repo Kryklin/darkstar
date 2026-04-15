@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/cloudflare/circl/kem/mlkem/mlkem1024"
 )
@@ -319,6 +321,7 @@ func (dc *DarkstarCrypt) invTransMDSNetwork(in []byte, s []byte, pf func(string)
 }
 
 func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (string, error) {
+	totalStart := time.Now()
 	pkBytes, _ := hex.DecodeString(cleanHex(pkHex))
 	var finalHwid []byte = hwid
 	if len(pkBytes) == 1600 && len(finalHwid) == 0 {
@@ -326,9 +329,12 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	}
 
 	sch := mlkem1024.Scheme()
+	kemStart := time.Now()
 	pk, err := sch.UnmarshalBinaryPublicKey(pkBytes); if err != nil { return "", err }
 	ss, ct, err := sch.Encapsulate(pk); if err != nil { return "", err }
+	kemDur := time.Since(kemStart)
 
+	kdfStart := time.Now()
 	kHasher := sha256.New(); kHasher.Write(ss)
 	if len(finalHwid) > 0 { kHasher.Write(finalHwid) }
 	kHasher.Write([]byte("dasp-identity-v3"))
@@ -341,15 +347,16 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	hHasher := sha256.New(); hHasher.Write(append([]byte("hmac"), blendedSS...))
 	activeHmacKey := hHasher.Sum(nil)
 
+	macGen := hmac.New(sha256.New, []byte(activePasswordStr)); macGen.Write([]byte("dasp-word-0"))
+	wordKey := macGen.Sum(nil); wordKeyHex := hex.EncodeToString(wordKey)
+	kdfDur := time.Since(kdfStart)
+
 	prngFactory := func(s string) PRNG { return NewDarkstarChaChaPRNG(s) }
 	chainInit := sha256.Sum256([]byte("dasp-chain-" + activePasswordStr))
 	chainState := chainInit[:]
 
 	currentWordBytes := []byte(payload)
 	for i := range currentWordBytes { currentWordBytes[i] ^= chainState[i%32] }
-
-	macGen := hmac.New(sha256.New, []byte(activePasswordStr)); macGen.Write([]byte("dasp-word-0"))
-	wordKey := macGen.Sum(nil); wordKeyHex := hex.EncodeToString(wordKey)
 
 	chk := generateChecksum([]int{0,1,2,3,4,5,6,7,8,9,10,11})
 	mac2 := hmac.New(sha256.New, wordKey); mac2.Write([]byte(fmt.Sprintf("keyed-%d", chk)))
@@ -360,6 +367,7 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	groupN := []int{12, 12, 11}; groupA := []int{4, 6, 9}
 
 	var roundIndices [][]int
+	gauntletStart := time.Now()
 	for i := 0; i < 16; i++ {
 		sIdx := 0
 		switch i % 4 {
@@ -380,6 +388,8 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 		currentWordBytes = dc.forwardPipeline[aIdx](currentWordBytes, funcKey, prngFactory)
 		roundIndices = append(roundIndices, []int{sIdx, pIdx, nIdx, aIdx})
 	}
+	gauntletDur := time.Since(gauntletStart)
+	runtime.KeepAlive(currentWordBytes)
 
 	h := hmac.New(sha256.New, activeHmacKey); h.Write(ct); h.Write(currentWordBytes)
 	macTag := hex.EncodeToString(h.Sum(nil))
@@ -396,11 +406,25 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 		dj, _ := json.Marshal(diag); fmt.Fprintf(os.Stderr, "%s\n", dj)
 	}
 
+	totalDur := time.Since(totalStart)
+	timingReport := map[string]interface{}{
+		"timings": map[string]interface{}{
+			"kem_us":      kemDur.Microseconds(),
+			"kdf_us":      kdfDur.Microseconds(),
+			"gauntlet_us": gauntletDur.Microseconds(),
+			"total_us":    totalDur.Microseconds(),
+		},
+	}
+	tj, _ := json.Marshal(timingReport)
+	fmt.Fprintf(os.Stderr, "%s\n", tj)
+
 	inner := map[string]interface{}{"data": hex.EncodeToString(currentWordBytes), "ct": hex.EncodeToString(ct), "mac": macTag}
 	innerJson, _ := json.Marshal(inner); return string(innerJson), nil
 }
 
+
 func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (string, error) {
+	totalStart := time.Now()
 	var val map[string]interface{}
 	if err := json.Unmarshal([]byte(encDataRaw), &val); err != nil { return "", err }
 	ctHex, _ := val["ct"].(string); dataHex, _ := val["data"].(string); macHex, _ := val["mac"].(string)
@@ -413,9 +437,12 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 
 	ctBytes, _ := hex.DecodeString(ctHex); payloadBytes, _ := hex.DecodeString(dataHex)
 	sch := mlkem1024.Scheme()
+	kemStart := time.Now()
 	sk, err := sch.UnmarshalBinaryPrivateKey(skBytes); if err != nil { return "", err }
 	ss, err := sch.Decapsulate(sk, ctBytes); if err != nil { return "", err }
+	kemDur := time.Since(kemStart)
 
+	kdfStart := time.Now()
 	kHasher := sha256.New(); kHasher.Write(ss)
 	if len(finalHwid) > 0 { kHasher.Write(finalHwid) }
 	kHasher.Write([]byte("dasp-identity-v3"))
@@ -429,6 +456,7 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 
 	macGen := hmac.New(sha256.New, []byte(activePasswordStr)); macGen.Write([]byte("dasp-word-0"))
 	wordKey := macGen.Sum(nil); wordKeyHex := hex.EncodeToString(wordKey)
+	kdfDur := time.Since(kdfStart)
 
 	prngFactory := func(s string) PRNG { return NewDarkstarChaChaPRNG(s) }
 	rngPath := prngFactory(wordKeyHex)
@@ -479,6 +507,7 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 	chainInit := sha256.Sum256([]byte("dasp-chain-" + activePasswordStr))
 	chainState := chainInit[:]
 
+	gauntletStart := time.Now()
 	currentWordBytes := payloadBytes
 	for j := 15; j >= 0; j-- {
 		r := roundPaths[j]
@@ -487,7 +516,23 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 		currentWordBytes = dc.reversePipeline[r.p](currentWordBytes, funcKey, prngFactory)
 		currentWordBytes = dc.reversePipeline[r.s](currentWordBytes, funcKey, prngFactory)
 	}
+	gauntletDur := time.Since(gauntletStart)
+	runtime.KeepAlive(currentWordBytes)
+
 	for i := range currentWordBytes { currentWordBytes[i] ^= chainState[i%32] }
+
+	totalDur := time.Since(totalStart)
+	timingReport := map[string]interface{}{
+		"timings": map[string]interface{}{
+			"kem_us":      kemDur.Microseconds(),
+			"kdf_us":      kdfDur.Microseconds(),
+			"gauntlet_us": gauntletDur.Microseconds(),
+			"total_us":    totalDur.Microseconds(),
+		},
+	}
+	tj, _ := json.Marshal(timingReport)
+	fmt.Fprintf(os.Stderr, "%s\n", tj)
+
 	return string(currentWordBytes), nil
 }
 
