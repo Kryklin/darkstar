@@ -1,12 +1,14 @@
 # D-ASP: Go Implementation
 
+<img src="https://img.shields.io/badge/Language-Go-00ADD8?style=for-the-badge&logo=go" alt="Go">
+
 This directory contains the high-performance Go implementation of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 
-## 🚀 Status: Production
+## 🛡️ Status: Production
 
 The Go implementation is designed for systems integration and high-velocity cryptographic operations, maintaining bit-perfect parity with the Rust reference.
 
-## 🛡️ Security Profile
+## 🔒 Security Profile
 
 - **KEM**: NIST Level 5 (ML-KEM-1024) via [Cloudflare Circl](https://github.com/cloudflare/circl).
 - **Hardening**:
@@ -16,10 +18,10 @@ The Go implementation is designed for systems integration and high-velocity cryp
   > [!TIP]
   > **Full Constant-Time**. Similar to the reference implementation, the core algebraic transforms ($GF\_Mult$) leverage branchless masking for all reductions, ensuring secret-independent execution time.
 
-## 🛠️ Usage
+## 🚀 Usage
 
 ### Build
-Requires Go 1.20+.
+Requires Go 1.25+.
 ```bash
 go build -o main.exe main.go
 ```

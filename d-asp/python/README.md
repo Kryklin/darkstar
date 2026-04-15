@@ -1,12 +1,14 @@
 # D-ASP: Python Implementation
 
+<img src="https://img.shields.io/badge/Language-Python-3776AB?style=for-the-badge&logo=python" alt="Python">
+
 This directory contains the Python implementation of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 
-## 🚀 Status: Interoperability Script
+## 🛡️ Status: Interoperability Script
 
 The Python implementation is provided primarily for cross-platform validation, research, and standalone recovery in environments where native binaries are not feasible.
 
-## 🛡️ Security Profile
+## 🔒 Security Profile
 
 - **KEM**: Grade-1024 (ML-KEM-1024) via [`pqcrypto`](https://github.com/kpeters93/pqcrypto).
 - **Hardening**:
@@ -16,7 +18,7 @@ The Python implementation is provided primarily for cross-platform validation, r
   > [!IMPORTANT]
   > **Branchless-Equivalent**. To mitigate timing side-channels, this implementation utilizes branchless arithmetic masking for all $GF(2^8)$ field operations. However, due to the nature of the Python interpreter and dynamic memory management, absolute constant-time execution cannot be guaranteed.
 
-## 🛠️ Usage
+## 🚀 Usage
 
 ### Install Dependencies
 Requires Python 3.9+.

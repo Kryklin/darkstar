@@ -1,12 +1,14 @@
 # D-ASP: Node.js / Javascript Implementation
 
+<img src="https://img.shields.io/badge/Language-Node.js-339933?style=for-the-badge&logo=node.js" alt="Node.js">
+
 This directory contains the Node.js (ESM) implementation of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 
-## 🚀 Status: Production Bridge
+## 🛡️ Status: Production Bridge
 
 The Node.js implementation acts as the primary bridge for web applications and Electron-based host environments. It is designed for maximum interoperability with the Rust reference.
 
-## 🛡️ Security Profile
+## 🔒 Security Profile
 
 - **KEM**: Grade-1024 (ML-KEM-1024) via [@noble/post-quantum](https://github.com/paulmillr/noble-post-quantum).
 - **Hardening**:
@@ -16,7 +18,7 @@ The Node.js implementation acts as the primary bridge for web applications and E
   > [!IMPORTANT]
   > **Branchless-Equivalent**. To mitigate timing side-channels, this implementation utilizes branchless arithmetic masking for all $GF(2^8)$ field operations. However, due to the nature of the V8 JavaScript engine (JIT, GC), absolute constant-time execution cannot be guaranteed on the same level as the hardware-bound Rust reference.
 
-## 🛠️ Usage
+## 🚀 Usage
 
 ### Install Dependencies
 ```bash

@@ -1,12 +1,14 @@
 # D-ASP: Rust Implementation (Reference)
 
+<img src="https://img.shields.io/badge/Language-Rust-black?style=for-the-badge&logo=rust" alt="Rust">
+
 This directory contains the **reference "Gold" implementation** of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 
-## 🚀 Status: Production (Reference)
+## 🛡️ Status: Production (Reference)
 
 The Rust implementation serves as the definitive source of truth for bit-perfect interoperability across the Darkstar ecosystem. It is optimized for safety and performance.
 
-## 🛡️ Security Profile
+## 🔒 Security Profile
 
 - **KEM**: Grade-1024 (ML-KEM-1024).
 - **Hardening**:
@@ -16,7 +18,7 @@ The Rust implementation serves as the definitive source of truth for bit-perfect
   > [!TIP]
   > **Full Constant-Time**. The implementation leverages branchless arithmetic for all $GF(2^8)$ operations and network layers, neutralizing timing side-channels at the hardware level.
 
-## 🛠️ Usage
+## 🚀 Usage
 
 ### Build
 Requires Rust 1.70+.
