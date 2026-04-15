@@ -1,5 +1,8 @@
 <p align="left">
-  <img src="../public/assets/img/logo-white.png" width="120" alt="Darkstar Logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../public/assets/img/logo-white.png">
+    <img src="../public/assets/img/logo-black.png" width="120" alt="Darkstar Logo">
+  </picture>
 </p>
 
 # D-ASP: Multi-Language Cryptographic Engine Suite

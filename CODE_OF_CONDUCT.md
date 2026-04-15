@@ -1,11 +1,7 @@
 <p align="left">
-  <img src="public/assets/img/logo-white.png" width="120" alt="Darkstar Logo">
-</p>
-
-<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="public/assets/img/logo-white.png">
-    <img src="public/assets/img/logo-black.png" alt="Darkstar Logo" width="400">
+    <img src="public/assets/img/logo-black.png" width="120" alt="Darkstar Logo">
   </picture>
 </p>
 
