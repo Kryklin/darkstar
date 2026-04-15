@@ -1,3 +1,7 @@
+<p align="right">
+  <img src="../public/assets/img/logo-white.png" width="120" alt="Darkstar Logo">
+</p>
+
 # D-ASP: Formal Mathematical & Systems Specification (Professional Grade)
 
 [**&larr; Back to D-ASP Suite**](README.md) | [**Project Root**](../README.md)

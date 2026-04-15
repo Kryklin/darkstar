@@ -1,3 +1,7 @@
+<p align="right">
+  <img src="../../public/assets/img/logo-white.png" width="120" alt="Darkstar Logo">
+</p>
+
 # D-ASP: Python Implementation
 
 <img src="https://img.shields.io/badge/Python-v3.0.0-3776AB?style=for-the-badge&logo=python" alt="Python">

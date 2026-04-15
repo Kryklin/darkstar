@@ -1,3 +1,7 @@
+<p align="right">
+  <img src="public/assets/img/logo-white.png" width="120" alt="Darkstar Logo">
+</p>
+
 # Security Policy
 
 Darkstar is a defense-grade security suite. We prioritize the security and integrity of our cryptographic implementations and the privacy of our users.

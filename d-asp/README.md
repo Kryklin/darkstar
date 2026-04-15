@@ -1,3 +1,7 @@
+<p align="right">
+  <img src="../public/assets/img/logo-white.png" width="120" alt="Darkstar Logo">
+</p>
+
 # D-ASP: Multi-Language Cryptographic Engine Suite
 
 <p align="left">

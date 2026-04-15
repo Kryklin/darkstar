@@ -1,3 +1,7 @@
+<p align="right">
+  <img src="../../public/assets/img/logo-white.png" width="120" alt="Darkstar Logo">
+</p>
+
 # D-ASP: Node.js / Javascript Implementation
 
 <img src="https://img.shields.io/badge/Node.js-v3.0.0-339933?style=for-the-badge&logo=node.js" alt="Node.js">

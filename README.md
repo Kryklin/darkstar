@@ -1,3 +1,7 @@
+<p align="right">
+  <img src="public/assets/img/logo-white.png" width="120" alt="Darkstar Logo">
+</p>
+
 # Darkstar Security Suite
 
 <p align="center">

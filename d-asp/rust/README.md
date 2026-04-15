@@ -1,3 +1,7 @@
+<p align="right">
+  <img src="../../public/assets/img/logo-white.png" width="120" alt="Darkstar Logo">
+</p>
+
 # D-ASP: Rust Implementation (Reference)
 
 <img src="https://img.shields.io/badge/Rust-v3.0.0-black?style=for-the-badge&logo=rust" alt="Rust">
