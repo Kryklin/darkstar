@@ -9,6 +9,14 @@ import psutil
 from datetime import datetime
 
 # --- System Telemetry ---
+def run_ps(cmd_body, timeout=8):
+    """Helper to run PowerShell commands with a timeout."""
+    cmd = ["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd_body]
+    try:
+        return subprocess.check_output(cmd, timeout=timeout).decode().strip()
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+        return None
+
 def get_system_info():
     info = {
         "os": f"{platform.system()} {platform.release()} ({platform.version()})",
@@ -31,32 +39,35 @@ def get_system_info():
     
     # Try to get nominal frequency and cache via PowerShell
     if platform.system() == "Windows":
-        try:
-            # CPU Info via PowerShell
-            cpu_cmd = 'powershell -Command "Get-CimInstance Win32_Processor | Select-Object L2CacheSize, L3CacheSize, MaxClockSpeed | ConvertTo-Json"'
-            cpu_json = json.loads(subprocess.check_output(cpu_cmd, shell=True).decode())
-            if isinstance(cpu_json, list): cpu_json = cpu_json[0]
-            if "L2CacheSize" in cpu_json: info["l2_cache"] = f"{cpu_json['L2CacheSize']} KB"
-            if "L3CacheSize" in cpu_json: info["l3_cache"] = f"{cpu_json['L3CacheSize']} KB"
-            if "MaxClockSpeed" in cpu_json: info["cpu_freq_nominal_mhz"] = str(cpu_json['MaxClockSpeed'])
-            
-            # Disk Info via PowerShell
-            disk_cmd = 'powershell -Command "Get-PhysicalDisk | Select-Object FriendlyName, MediaType | ConvertTo-Json"'
-            disk_json = json.loads(subprocess.check_output(disk_cmd, shell=True).decode())
-            if isinstance(disk_json, list): disk_json = disk_json[0]
-            info["disk_type"] = f"{disk_json.get('FriendlyName', 'Unknown')} ({disk_json.get('MediaType', 'Unknown')})"
-        except Exception as e:
-            info["disk_type"] = f"PowerShell Error: {e}"
+        # CPU Info via PowerShell
+        cpu_ps = run_ps("Get-CimInstance Win32_Processor | Select-Object L2CacheSize, L3CacheSize, MaxClockSpeed | ConvertTo-Json")
+        if cpu_ps:
+            try:
+                cpu_json = json.loads(cpu_ps)
+                if isinstance(cpu_json, list): cpu_json = cpu_json[0]
+                if "L2CacheSize" in cpu_json: info["l2_cache"] = f"{cpu_json['L2CacheSize']} KB"
+                if "L3CacheSize" in cpu_json: info["l3_cache"] = f"{cpu_json['L3CacheSize']} KB"
+                if "MaxClockSpeed" in cpu_json: info["cpu_freq_nominal_mhz"] = str(cpu_json['MaxClockSpeed'])
+            except: pass
         
-    # Get runtime versions
-    try: info["node_v"] = subprocess.check_output(["node", "--version"]).decode().strip()
+        # Disk Info via PowerShell (Optimized CIM call)
+        disk_ps = run_ps(r"Get-CimInstance -ClassName MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage | Select-Object FriendlyName, MediaType | ConvertTo-Json")
+        if disk_ps:
+            try:
+                disk_json = json.loads(disk_ps)
+                if isinstance(disk_json, list): disk_json = disk_json[0]
+                info["disk_type"] = f"{disk_json.get('FriendlyName', 'Unknown')} ({disk_json.get('MediaType', 'Unknown')})"
+            except: pass
+        
+    # Get runtime versions with timeouts
+    try: info["node_v"] = subprocess.check_output(["node", "--version"], timeout=5).decode().strip()
     except: pass
     try: 
-        go_out = subprocess.check_output(["go", "version"]).decode().strip()
+        go_out = subprocess.check_output(["go", "version"], timeout=5).decode().strip()
         info["go_v"] = go_out.split()[2]
     except: pass
     try:
-        rust_out = subprocess.check_output(["rustc", "--version"]).decode().strip()
+        rust_out = subprocess.check_output(["rustc", "--version"], timeout=5).decode().strip()
         info["rust_v"] = rust_out.split()[1]
     except: pass
         
