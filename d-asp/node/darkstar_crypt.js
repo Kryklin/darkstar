@@ -575,6 +575,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import fs from 'node:fs';
 const __filename = fileURLToPath(import.meta.url);
+const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(__filename);
 function resolveArg(arg) {
   if (arg && arg.startsWith('@')) return fs.readFileSync(arg.slice(1), 'utf8').trim();
   return arg;
