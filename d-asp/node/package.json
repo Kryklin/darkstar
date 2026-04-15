@@ -8,7 +8,12 @@
     "darkstar-crypt": "darkstar_crypt.js"
   },
   "scripts": {
-    "test": "node test.js"
+    "test": "node test.js",
+    "build:go": "cd ../go && go build -o main.exe main.go",
+    "build:rust": "cd ../rust && cargo build --release",
+    "build": "npm run build:go && npm run build:rust",
+    "test:kat": "python ../scripts/verify_kat.py",
+    "test:interop": "python ../scripts/verify_interop.py"
   },
   "keywords": [
     "darkstar",

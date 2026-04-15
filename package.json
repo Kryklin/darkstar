@@ -12,9 +12,11 @@
   },
   "scripts": {
     "start": "node scripts/package.js",
-    "build:rust": "cd d-kasp-512/rust && cargo build --release",
-    "build:go": "cd d-kasp-512/go && go build -o d-kasp-512.exe main.go",
+    "build:rust": "cd d-asp/rust && cargo build --release",
+    "build:go": "cd d-asp/go && go build -o main.exe main.go",
     "build": "npm run build:rust && npm run build:go && ng build --configuration production --base-href ./ && tsc --p tsconfig.electron.json && node scripts/build-integrity.js",
+    "test:kat": "npm run build:rust && npm run build:go && python d-asp/scripts/verify_kat.py",
+    "test:interop": "npm run build:rust && npm run build:go && python d-asp/scripts/verify_interop.py",
     "cap:sync": "npx cap sync",
     "cap:open:android": "npx cap open android",
     "cap:open:ios": "npx cap open ios"

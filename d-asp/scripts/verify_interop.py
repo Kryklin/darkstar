@@ -64,9 +64,11 @@ def get_system_info():
 
 # --- Configuration & Paths ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOG_DIR = os.path.join(os.path.dirname(__file__), "log")
+SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
+ROOT_LOG_DIR = os.path.join(BASE_DIR, "logs")
+LOG_DIR = os.path.join(ROOT_LOG_DIR, f"interop_{SESSION_ID}")
 if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
+    os.makedirs(LOG_DIR, exist_ok=True)
 
 # Engine Definitions
 # Adjust binary names if they differ on your platform
@@ -93,8 +95,7 @@ ENGINES = {
     }
 }
 
-SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
-SESSION_LOG_PATH = os.path.join(LOG_DIR, f"session_{SESSION_ID}.log")
+SESSION_LOG_PATH = os.path.join(LOG_DIR, "session.log")
 
 def log(msg, to_console=True):
     timestamp = datetime.now().isoformat()
@@ -206,7 +207,7 @@ def main():
             }
             
             # Save raw output log
-            raw_log_path = os.path.join(LOG_DIR, f"engine_raw_{name}_{SESSION_ID}.json")
+            raw_log_path = os.path.join(LOG_DIR, f"engine_raw_{name}.json")
             with open(raw_log_path, "w") as f:
                 f.write(decrypted)
                 
@@ -220,7 +221,7 @@ def main():
     avg_freq_ghz = avg_freq_mhz / 1000.0
 
     # 4. Generate Performance Report
-    report_path = os.path.join(LOG_DIR, f"performance_report_{SESSION_ID}.txt")
+    report_path = os.path.join(LOG_DIR, "performance_report.txt")
     with open(report_path, "w") as f:
         f.write(f"D-ASP PROFESSIONAL PERFORMANCE REPORT\n")
         f.write(f"Session: {SESSION_ID}\n")

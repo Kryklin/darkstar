@@ -22,6 +22,14 @@ python/ENV/
 .env
 *.log
 
+# D-ASP Specific Temp Files
+tmp_*.hex
+tmp_*.json
+tmp_*.txt
+diag_*.txt
+scripts/log/
+logs/
+
 # OS Specific
 .DS_Store
 Thumbs.db

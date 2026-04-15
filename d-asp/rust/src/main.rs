@@ -55,6 +55,8 @@ fn get_inv_sbox() -> [u8; 256] {
     inv
 }
 
+// clean_hex moved to top
+
 /// Deterministic PRNG Implementation
 ///
 /// Custom ChaCha20-based PRNG for cross-language bit-perfect path selection.
@@ -473,14 +475,15 @@ impl DarkstarCrypt {
         }
         let gauntlet_duration = gauntlet_start.elapsed();
 
+        let active_hmac_key = hmac_key.clone();
+        
         let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&active_hmac_key)
             .map_err(|e| format!("HMAC error: {:?}", e))?;
-        mac.update(&hex::decode(&ct_hex)?);
+        mac.update(&ct);
         mac.update(&current_word_bytes);
         
         // Stage 4: final mac
         let mac_tag = hex::encode(mac.finalize().into_bytes());
-        let total_duration = total_start.elapsed();
 
         if std::env::var("DASP_DIAGNOSTIC").is_ok() {
             eprintln!("{}", serde_json::json!({
@@ -492,6 +495,7 @@ impl DarkstarCrypt {
                 }
             }));
         }
+        let total_duration = total_start.elapsed();
 
         let res_obj = serde_json::json!({
             "data": hex::encode(&current_word_bytes),
@@ -516,11 +520,10 @@ impl DarkstarCrypt {
         let encrypted_content = value["data"].as_str().ok_or("Missing data")?;
         let mac_tag_hex = value["mac"].as_str().ok_or("Missing MAC")?;
 
-        let sk_bytes: [u8; 3168] = hex::decode(clean_hex(sk_hex))?
+        let sk_bytes: [u8; 3168] = hex::decode(clean_hex(&sk_hex))?
             .try_into().map_err(|_| format!("Invalid secret key length (Arg length: {})", sk_hex.len()))?;
-
         let ct_bytes: [u8; 1568] = hex::decode(clean_hex(ct_hex))?
-            .try_into().map_err(|_| "Invalid CT length")?;
+            .try_into().map_err(|_| format!("Invalid ciphertext length (Arg length: {})", ct_hex.len()))?;
 
         let kem_start = std::time::Instant::now();
         let dk = DecapsulationKey::<MlKem1024Params>::from_bytes(&sk_bytes.into());
@@ -559,21 +562,6 @@ impl DarkstarCrypt {
 
         use hmac::{Hmac, Mac};
         type HmacSha256 = Hmac<sha2::Sha256>;
-        let payload_bytes = hex::decode(encrypted_content)?;
-        let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&active_hmac_key)
-            .map_err(|e| format!("HMAC error: {:?}", e))?;
-        mac.update(&ct_bytes);
-        mac.update(&payload_bytes);
-        
-        // Stage 4: final mac (verify)
-        let mac_tag_actual = hex::encode(mac.clone().finalize().into_bytes());
-        mac.verify_slice(&hex::decode(mac_tag_hex)?)
-            .map_err(|_| "Integrity Check Failed")?;
-
-        let prng_factory = |s: &str| ActivePRNG::new(s);
-        let mut chain_hasher = Sha256::new();
-        chain_hasher.update(format!("dasp-chain-{}", active_password_str).as_bytes());
-        let chain_state = chain_hasher.finalize().to_vec();
 
         // Stage 2: word_key
         let word_key: Vec<u8> = {
@@ -584,6 +572,7 @@ impl DarkstarCrypt {
         };
         let word_key_hex = hex::encode(&word_key);
 
+        let prng_factory = |s: &str| ActivePRNG::new(s);
         let mut rng_path = prng_factory(&word_key_hex);
         let group_s = [0usize, 1, 5];
         let group_p = [2usize, 3, 10];
@@ -601,14 +590,13 @@ impl DarkstarCrypt {
             round_paths.push((s, p, n, a));
             round_indices.push(vec![s, p, n, a]);
         }
-
-        let checksum = Self::generate_checksum(&(0..12).collect::<Vec<_>>());
-        let func_key: Vec<u8> = {
-            let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&word_key)
-                .map_err(|e| format!("HMAC error: {:?}", e))?;
-            mac.update(format!("keyed-{}", checksum).as_bytes());
-            mac.finalize().into_bytes().to_vec()
-        };
+        let payload_bytes = hex::decode(encrypted_content)?;
+        let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&active_hmac_key)
+            .map_err(|e| format!("HMAC error: {:?}", e))?;
+        mac.update(&ct_bytes);
+        mac.update(&payload_bytes);
+        
+        let mac_tag_actual = hex::encode(mac.clone().finalize().into_bytes());
 
         if std::env::var("DASP_DIAGNOSTIC").is_ok() {
             eprintln!("{}", serde_json::json!({
@@ -620,6 +608,21 @@ impl DarkstarCrypt {
                 }
             }));
         }
+
+        mac.verify_slice(&hex::decode(mac_tag_hex)?)
+            .map_err(|_| "Integrity Check Failed")?;
+
+        let checksum = Self::generate_checksum(&(0..12).collect::<Vec<_>>());
+        let func_key: Vec<u8> = {
+            let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&word_key)
+                .map_err(|e| format!("HMAC error: {:?}", e))?;
+            mac.update(format!("keyed-{}", checksum).as_bytes());
+            mac.finalize().into_bytes().to_vec()
+        };
+
+        let mut chain_hasher = Sha256::new();
+        chain_hasher.update(format!("dasp-chain-{}", active_password_str).as_bytes());
+        let chain_state = chain_hasher.finalize().to_vec();
 
         let gauntlet_start = std::time::Instant::now();
         let mut current_word_bytes = payload_bytes;
@@ -663,14 +666,10 @@ fn print_usage() {
 
 fn resolve_arg(arg: &str) -> String {
     if arg.starts_with('@') {
-        let path = &arg[1..];
-        match fs::read_to_string(path) {
-            Ok(content) => content,
-            Err(e) => {
-                eprintln!("Error reading argument file {}: {}", path, e);
-                std::process::exit(1);
-            }
-        }
+        let path = std::path::Path::new(&arg[1..]);
+        let content = std::fs::read_to_string(path)
+            .unwrap_or_else(|e| panic!("Error reading argument @file '{}': {}", path.display(), e));
+        content.trim().to_string()
     } else {
         arg.to_string()
     }
@@ -687,7 +686,7 @@ fn main() {
     let mut i = 0;
     while i < raw_args.len() {
         if raw_args[i] == "--hwid" && i + 1 < raw_args.len() {
-            let hw_hex = raw_args.remove(i + 1);
+            let hw_hex = resolve_arg(&raw_args.remove(i + 1));
             raw_args.remove(i);
             hwid = Some(hex::decode(clean_hex(&hw_hex)).expect("Invalid HWID hex"));
         } else if raw_args[i] == "--diagnostic" {
@@ -747,10 +746,9 @@ fn main() {
             println!("--- D-ASP Self-Test ---");
             match dc.encrypt(payload, &pk_hex, None) {
                 Ok(res_json) => {
-                    let res: serde_json::Value = serde_json::from_str(&res_json).unwrap();
-                    let enc = res["data"].as_str().unwrap();
+                    println!("Encrypted: {}", res_json);
 
-                    match dc.decrypt(enc, &sk_hex, None) {
+                    match dc.decrypt(&res_json, &sk_hex, None) {
                         Ok(decrypted) => {
                             println!("Decrypted: '{}'", decrypted);
                             if decrypted == payload {

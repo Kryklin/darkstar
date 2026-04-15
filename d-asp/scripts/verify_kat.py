@@ -7,9 +7,11 @@ from datetime import datetime
 
 # --- Configuration & Paths ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOG_DIR = os.path.join(os.path.dirname(__file__), "log")
+SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
+ROOT_LOG_DIR = os.path.join(BASE_DIR, "logs")
+LOG_DIR = os.path.join(ROOT_LOG_DIR, f"kat_{SESSION_ID}")
 if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
+    os.makedirs(LOG_DIR, exist_ok=True)
 
 KAT_FILE = os.path.join(os.path.dirname(__file__), "kat_vectors.json")
 
@@ -32,8 +34,7 @@ ENGINES = {
     }
 }
 
-SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
-KAT_LOG_PATH = os.path.join(LOG_DIR, f"kat_report_{SESSION_ID}.log")
+KAT_LOG_PATH = os.path.join(LOG_DIR, "kat_report.log")
 
 def log(msg):
     timestamp = datetime.now().isoformat()
@@ -42,18 +43,36 @@ def log(msg):
         f.write(line)
     print(msg)
 
-def run_decrypt(engine_name, ciphertext_json, sk_hex, hwid):
+def run_decrypt(engine_name, ciphertext_json, sk_hex, hwid, use_diagnostic=True):
     engine = ENGINES[engine_name]
-    cmd = engine["cmd"] + ["decrypt", "@kat_temp.json", sk_hex, "--diagnostic"]
-    if hwid:
-        cmd += ["--hwid", hwid]
+    ct_json_str = json.dumps(ciphertext_json)
     
-    temp_path = os.path.join(engine["cwd"], "kat_temp.json")
-    with open(temp_path, "w") as f:
-        json.dump(ciphertext_json, f)
+    # Write absolute paths to temp files to avoid CLI length limits
+    sk_file = os.path.join(engine["cwd"], "tmp_sk.hex")
+    with open(sk_file, "w") as f: f.write(sk_hex)
+    sk_path_abs = os.path.abspath(sk_file)
+    
+    data_file = os.path.join(engine["cwd"], "tmp_data.json")
+    with open(data_file, "w") as f: f.write(ct_json_str)
+    data_path_abs = os.path.abspath(data_file)
+    
+    cmd = engine["cmd"] + ["decrypt", f"@{data_path_abs}", f"@{sk_path_abs}"]
+    if hwid:
+        hwid_file = os.path.join(engine["cwd"], "tmp_hwid.hex")
+        with open(hwid_file, "w") as f: f.write(hwid)
+        hwid_path_abs = os.path.abspath(hwid_file)
+        cmd += ["--hwid", f"@{hwid_path_abs}"]
+        
+    if use_diagnostic:
+        cmd += ["--diagnostic"]
         
     try:
         res = subprocess.run(cmd, cwd=engine["cwd"], capture_output=True, text=True, check=True)
+        # Cleanup
+        if os.path.exists(os.path.join(engine["cwd"], "tmp_sk.hex")): os.remove(os.path.join(engine["cwd"], "tmp_sk.hex"))
+        if os.path.exists(os.path.join(engine["cwd"], "tmp_data.json")): os.remove(os.path.join(engine["cwd"], "tmp_data.json"))
+        if os.path.exists(os.path.join(engine["cwd"], "tmp_hwid.hex")): os.remove(os.path.join(engine["cwd"], "tmp_hwid.hex"))
+        
         out = res.stdout
         if out.endswith("\n"): out = out[:-1]
         if out.endswith("\r"): out = out[:-1]

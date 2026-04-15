@@ -19,9 +19,14 @@ def run_rust(args):
 def main():
     print("Generating KAT Master Key...")
     keygen_out, _ = run_rust(["keygen"])
-    lines = keygen_out.splitlines()
-    pk = lines[0].split(": ")[1]
-    sk = lines[1].split(": ")[1]
+    # Robustly find PK and SK lines
+    pk, sk = None, None
+    for line in keygen_out.strip().splitlines():
+        if "PK: " in line: pk = line.split("PK: ")[1].strip()
+        if "SK: " in line: sk = line.split("SK: ")[1].strip()
+    
+    if not pk or not sk:
+        raise ValueError(f"Failed to find PK/SK in keygen output: {keygen_out}")
     
     vectors = []
     
@@ -33,11 +38,26 @@ def main():
     
     for tc in test_cases:
         print(f"Generating Vector {tc['id']}...")
-        args = ["encrypt", tc["payload"], pk, "--diagnostic"]
+        # Write absolute paths to temp files to avoid CLI length limits
+        pk_file = os.path.join(RUST_CWD, "tmp_pk.hex")
+        with open(pk_file, "w") as f: f.write(pk)
+        pk_path_abs = os.path.abspath(pk_file)
+        
+        args = ["encrypt", tc["payload"], f"@{pk_path_abs}", "--diagnostic"]
         if tc["hwid"]:
-            args += ["--hwid", tc["hwid"]]
+            hwid_file = os.path.join(RUST_CWD, "tmp_hwid.hex")
+            with open(hwid_file, "w") as f: f.write(tc["hwid"])
+            hwid_path_abs = os.path.abspath(hwid_file)
+            args += ["--hwid", f"@{hwid_path_abs}"]
         
         enc_json_raw, diag_raw = run_rust(args)
+        
+        # Cleanup temp files
+        if os.path.exists(pk_path_abs): os.remove(pk_path_abs)
+        hwid_path_tmp = os.path.abspath(os.path.join(RUST_CWD, "tmp_hwid.hex"))
+        if tc["hwid"] and os.path.exists(hwid_path_tmp):
+             os.remove(hwid_path_tmp)
+        
         enc_json = json.loads(enc_json_raw)
         
         # Parse diagnostics from stderr
@@ -60,10 +80,11 @@ def main():
             "diagnostics": diagnostics
         })
         
-    with open("kat_vectors.json", "w") as f:
+    output_path = os.path.join(os.path.dirname(__file__), "kat_vectors.json")
+    with open(output_path, "w") as f:
         json.dump(vectors, f, indent=2)
     
-    print(f"Successfully generated {len(vectors)} vectors in kat_vectors.json")
+    print(f"Successfully generated {len(vectors)} vectors in {output_path}")
 
 if __name__ == "__main__":
     main()

@@ -485,29 +485,6 @@ class DarkstarCrypt:
         return bytes(out)
         
     def _deobfuscate_columnar_v4(self, data, seed=None, prng_factory=None):
-        if len(sys.argv) < 2:
-            print("Usage: python darkstar_crypt.py <command> [args]")
-            sys.exit(1)
-
-        command = ""
-        args = []
-        hwid_hex = None
-        
-        i = 1
-        while i < len(sys.argv):
-            arg = sys.argv[i]
-            if arg == "--hwid" and i + 1 < len(sys.argv):
-                hwid_hex = sys.argv[i+1]
-                i += 2
-            elif arg == "--diagnostic":
-                os.environ["DASP_DIAGNOSTIC"] = "1"
-                i += 1
-            else:
-                if not command:
-                    command = arg
-                else:
-                    args.append(arg)
-                i += 1
         n = len(data)
         out = bytearray(n)
         cols = 3
@@ -796,6 +773,31 @@ class DarkstarCrypt:
         
         # Stage 4: final mac
         mac_tag_actual = h.hexdigest()
+        
+        if os.environ.get("DASP_DIAGNOSTIC") == "1":
+            # Stage 2: word_key (needed for diag)
+            word_key_diag = hmac.new(active_password_str.encode('utf-8'), b"dasp-word-0", hashlib.sha256).digest()
+            word_key_hex_diag = word_key_diag.hex()
+            
+            # Stage 3: Round Indices (needed for diag)
+            rng_diag = self.DarkstarChaChaPRNG(word_key_hex_diag)
+            round_indices_diag = []
+            for i in range(16):
+                s = 0 if i % 4 == 0 else (1 if i % 4 == 2 else [0, 1, 5][rng_diag.next() % 3])
+                p = [2, 3, 10][rng_diag.next() % 3]
+                n = [12, 12, 11][rng_diag.next() % 3]
+                a = [4, 6, 9][rng_diag.next() % 3]
+                round_indices_diag.append([s, p, n, a])
+
+            print(json.dumps({
+                "diagnostics": {
+                    "stage1_blended_ss": blended_ss_hex,
+                    "stage2_word_key": word_key_hex_diag,
+                    "stage3_round_indices": round_indices_diag,
+                    "stage4_mac": mac_tag_actual
+                }
+            }), file=sys.stderr)
+
         if not hmac.compare_digest(mac_tag_actual, mac_tag):
             raise ValueError("Integrity Check Failed")
             
@@ -874,6 +876,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Darkstar D-ASP V9 Monoculture (Python)")
     parser.add_argument("-f", "--format", choices=["json", "text"], default="json", help="Output format")
+    parser.add_argument("--diagnostic", action="store_true", help="Output intermediate cryptographic states")
     
     subparsers = parser.add_subparsers(dest="command", help="Commands")
     
@@ -886,6 +889,7 @@ if __name__ == "__main__":
     dec_parser.add_argument("data", help="D-ASP JSON blob")
     dec_parser.add_argument("sk_hex", help="Kyber-1024 Private Key Hex")
     dec_parser.add_argument("--hwid", help="Hardware ID Hex")
+    dec_parser.add_argument("--diagnostic", action="store_true", help="Output intermediate cryptographic states")
     
     subparsers.add_parser("keygen", help="Generate ML-KEM-1024 pair")
     subparsers.add_parser("test", help="Internal self-test")
@@ -898,7 +902,10 @@ if __name__ == "__main__":
             with open(val[1:], "r", encoding="utf-8") as f: return f.read().strip()
         return val
 
-    hardware_id = args.hwid if hasattr(args, 'hwid') else None
+    if args.diagnostic:
+        os.environ["DASP_DIAGNOSTIC"] = "1"
+
+    hardware_id = load_arg(args.hwid) if hasattr(args, "hwid") and args.hwid else None
 
     if args.command == "encrypt":
         print(crypt.encrypt(load_arg(args.payload), load_arg(args.pk_hex), hwid_hex=hardware_id))

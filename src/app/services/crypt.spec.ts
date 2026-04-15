@@ -14,11 +14,11 @@ describe('CryptService', () => {
 
     // Mock Electron API
     (window as any).electronAPI = {
-      dKaspEncrypt: jasmine.createSpy('dKaspEncrypt').and.resolveTo({
+      dAsPEncrypt: jasmine.createSpy('dAsPEncrypt').and.resolveTo({
         encryptedData: JSON.stringify({ v: 6, data: 'mock-encrypted-data' }),
         reverseKey: '',
       }),
-      dKaspDecrypt: jasmine.createSpy('dKaspDecrypt').and.resolveTo(testMnemonic),
+      dAsPDecrypt: jasmine.createSpy('dAsPDecrypt').and.resolveTo(testMnemonic),
     };
   });
 
@@ -30,7 +30,7 @@ describe('CryptService', () => {
     it('should call Electron IPC for encryption', async () => {
       const result = await service.encrypt(testMnemonic, testPassword);
 
-      expect((window as any).electronAPI.dKaspEncrypt).toHaveBeenCalledWith(testMnemonic, testPassword, jasmine.any(String), 6);
+      expect((window as any).electronAPI.dAsPEncrypt).toHaveBeenCalledWith(testMnemonic, testPassword, jasmine.any(String), undefined);
       expect(JSON.parse(result.encryptedData).v).toBe(6);
     });
 
@@ -38,7 +38,7 @@ describe('CryptService', () => {
       const encryptedData = JSON.stringify({ v: 6, data: 'mock-encrypted-data' });
       const result = await service.decrypt(encryptedData, '', testPassword);
 
-      expect((window as any).electronAPI.dKaspDecrypt).toHaveBeenCalledWith(encryptedData, '', testPassword, jasmine.any(String), 6);
+      expect((window as any).electronAPI.dAsPDecrypt).toHaveBeenCalledWith(encryptedData, '', testPassword, jasmine.any(String), undefined);
       expect(result.decrypted).toBe(testMnemonic);
       expect(result.isLegacy).toBeFalse();
     });

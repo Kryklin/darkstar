@@ -21,8 +21,8 @@ interface ElectronAPI {
   safeStorageEncrypt(text: string): Promise<string>;
   safeStorageDecrypt(base64: string): Promise<string>;
   safeStorageAvailable(): Promise<boolean>;
-  dKaspEncrypt(mnemonic: string, keyHex: string, engine: string, hwid?: string): Promise<unknown>;
-  dKaspDecrypt(data: string, rk: string, keyOrPass: string, engine: string, hwid?: string): Promise<unknown>;
+  dAsPEncrypt(mnemonic: string, keyHex: string, engine: string, hwid?: string): Promise<unknown>;
+  dAsPDecrypt(data: string, rk: string, keyOrPass: string, engine: string, hwid?: string): Promise<unknown>;
 
   vaultEnsureDir(): Promise<boolean>;
   vaultSaveFile(filename: string, buffer: Uint8Array): Promise<boolean>;

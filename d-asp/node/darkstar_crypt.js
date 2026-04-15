@@ -214,10 +214,6 @@ export class DarkstarCrypt {
     // Stage 4: final mac
     const macTagActual = macActual.toString('hex');
     
-    if (!require('node:crypto').timingSafeEqual(macActual, this.hex2buf(parsed.mac || ''))) {
-      throw new Error('Integrity Check Failed');
-    }
-
     const prngFactory = this.darkstar_chacha_prng.bind(this);
     let chainState = await this.sha256Bytes('dasp-chain-' + activePasswordStr);
     let currentWordBytes = new Uint8Array(payloadBytes);
@@ -240,9 +236,6 @@ export class DarkstarCrypt {
       roundIndices.push([s, p, n, a]);
     }
 
-    const checksum = this._generateChecksum(Array.from({ length: 12 }, (_, i) => i));
-    const funcKey = await this.hmacSha256Bytes(wordKey, `keyed-${checksum}`);
-
     if (process.env.DASP_DIAGNOSTIC === '1') {
       process.stderr.write(JSON.stringify({
         diagnostics: {
@@ -253,6 +246,13 @@ export class DarkstarCrypt {
         }
       }) + '\n');
     }
+
+    if (!require('node:crypto').timingSafeEqual(macActual, this.hex2buf(parsed.mac || ''))) {
+      throw new Error('Integrity Check Failed');
+    }
+
+    const checksum = this._generateChecksum(Array.from({ length: 12 }, (_, i) => i));
+    const funcKey = await this.hmacSha256Bytes(wordKey, `keyed-${checksum}`);
 
     const gauntletStart = performance.now();
     for (let j = 15; j >= 0; j--) {
@@ -585,7 +585,7 @@ if (isMain) {
   let i = 0;
   while (i < args.length) {
     if (args[i] === '--hwid' && i + 1 < args.length) {
-      hwid = args[i + 1];
+      hwid = resolveArg(args[i + 1]);
       args.splice(i, 2);
     } else if (args[i] === '--diagnostic') {
       process.env.DASP_DIAGNOSTIC = '1';

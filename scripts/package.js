@@ -46,7 +46,9 @@ const pkg = require('../package.json');
     new inquirer.Separator(chalk.dim('--- Development ---')),
     { name: chalk.cyan('  💻  Run Dev Environment'), value: 'dev' },
     { name: chalk.blue('  🔍  Lint Code'), value: 'lint' },
-    { name: chalk.magenta('  🧪  Run Tests (Headless & Interop)'), value: 'test' },
+    { name: chalk.cyan('  🧪  Run Angular (Karma) Unit Tests'), value: 'karma' },
+    { name: chalk.magenta('  📊  Run Interop Benchmark'), value: 'interop' },
+    { name: chalk.hex('#A020F0')('  🤖  Run KAT Verification (Bit-Perfect Check)'), value: 'kat' },
 
     new inquirer.Separator(chalk.dim('--- Mobile (Capacitor) ---')),
     { name: chalk.cyan('  📱  Sync Mobile Assets'), value: 'cap:sync' },
@@ -132,8 +134,12 @@ const pkg = require('../package.json');
      */
     const CMD = {
       LINT: 'ng lint',
-      // Test: Runs headless Chrome tests and executes the Python interop verification script
-      TEST: 'ng test --watch=false --browsers=ChromeHeadless && python "d-kasp-512/scripts/verify_interop.py"',
+      // Karma: Runs headless Angular unit tests
+      KARMA: 'ng test --watch=false --browsers=ChromeHeadless',
+      // Interop: Executes the Python interop verification script
+      INTEROP: 'python "d-asp/scripts/verify_interop.py"',
+      // KAT: Runs the Known Answer Test suite for bit-perfect parity check
+      KAT: 'python "d-asp/scripts/verify_kat.py"',
       // Build: Compiles Angular (Production) and Electron (TypeScript), then generates integrity
       BUILD: 'ng build --configuration production --base-href ./ && tsc --p tsconfig.electron.json && node scripts/build-integrity.js',
       // Dev: Runs Angular Serve and Electron Watch (via Wrapper) concurrently
@@ -153,7 +159,9 @@ const pkg = require('../package.json');
       console.log(chalk.bold.underline('\n🚀 Starting Full Release Pipeline\n'));
       await runShell('Linting', CMD.LINT);
       await new Promise((r) => setTimeout(r, 2000));
-      await runShell('Testing', CMD.TEST);
+      await runShell('Testing (Angular)', CMD.KARMA);
+      await new Promise((r) => setTimeout(r, 2000));
+      await runShell('Testing (Interop)', CMD.INTEROP);
       await new Promise((r) => setTimeout(r, 2000));
       await new Promise((r) => setTimeout(r, 2000));
       await runShell('Building', CMD.BUILD);
@@ -178,8 +186,14 @@ const pkg = require('../package.json');
         case 'lint':
           await runShell('Linting', CMD.LINT);
           break;
-        case 'test':
-          await runShell('Testing', CMD.TEST);
+        case 'karma':
+          await runShell('Angular Unit Testing', CMD.KARMA);
+          break;
+        case 'interop':
+          await runShell('Interop Benchmarking', CMD.INTEROP);
+          break;
+        case 'kat':
+          await runShell('KAT Verification', CMD.KAT);
           break;
         case 'cap:sync':
           console.log(chalk.yellow('ℹ Building core application before sync...'));
