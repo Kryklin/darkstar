@@ -78,3 +78,7 @@ We welcome suggestions for new features and improvements to existing functionali
 - We use **Prettier** for formatting.
 - We use **ESLint** for linting.
 - Please ensure `npm run lint` passes before submitting.
+
+---
+
+[**&larr; Back to Project Root**](README.md) | [**D-ASP Mathematical Specification**](d-asp/DASP_CRYPTO_MATH.md)

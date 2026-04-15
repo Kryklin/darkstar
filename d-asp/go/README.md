@@ -1,6 +1,6 @@
 # D-ASP: Go Implementation
 
-<img src="https://img.shields.io/badge/Language-Go-00ADD8?style=for-the-badge&logo=go" alt="Go">
+<img src="https://img.shields.io/badge/Go-v3.0.0-00ADD8?style=for-the-badge&logo=go" alt="Go">
 
 This directory contains the high-performance Go implementation of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 
@@ -41,5 +41,9 @@ go build -o main.exe main.go
 ./main.exe decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ```
 
+---
+
 ## 🏗️ Architecture Alignment
-This implementation strictly follows the [DARKSTAR_ARCHITECTURE.md](../../DARKSTAR_ARCHITECTURE.md) specification. It utilizes the same 16-round SPNA gauntlet and MDS matrix constants as the reference.
+This implementation strictly follows the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification. It utilizes the same 16-round SPNA gauntlet and MDS matrix constants as the reference.
+
+[**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)

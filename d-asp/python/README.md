@@ -1,6 +1,6 @@
 # D-ASP: Python Implementation
 
-<img src="https://img.shields.io/badge/Language-Python-3776AB?style=for-the-badge&logo=python" alt="Python">
+<img src="https://img.shields.io/badge/Python-v3.0.0-3776AB?style=for-the-badge&logo=python" alt="Python">
 
 This directory contains the Python implementation of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 
@@ -41,5 +41,9 @@ python darkstar_crypt.py encrypt "your payload" <PUBLIC_KEY_HEX>
 python darkstar_crypt.py decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ```
 
+---
+
 ## 🏗️ Architecture Alignment
-This implementation adheres to the [DARKSTAR_ARCHITECTURE.md](../../DARKSTAR_ARCHITECTURE.md) specification, implementing the full 16-round SPNA-structured gauntlet to ensure bit-perfect ciphertext parity with Rust, Go, and Node.js.
+This implementation adheres to the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification, implementing the full 16-round SPNA-structured gauntlet to ensure bit-perfect ciphertext parity with Rust, Go, and Node.js.
+
+[**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)

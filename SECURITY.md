@@ -40,3 +40,7 @@ You should receive a response within **48 hours**. If no response is received, p
 ### Security Guarantees
 
 Darkstar does not contain backdoors, and we do not collect telemetry or usage data. The source remains open and verifiable for independent security audits.
+
+---
+
+[**&larr; Back to Project Root**](README.md) | [**D-ASP Mathematical Specification**](d-asp/DASP_CRYPTO_MATH.md)

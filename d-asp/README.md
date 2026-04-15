@@ -1,11 +1,13 @@
 # D-ASP: Multi-Language Cryptographic Engine Suite
 
 <p align="left">
-  <img src="https://img.shields.io/badge/Rust-Reference-black?style=for-the-badge&logo=rust" alt="Rust">
-  <img src="https://img.shields.io/badge/Go-Performance-00ADD8?style=for-the-badge&logo=go" alt="Go">
-  <img src="https://img.shields.io/badge/Node.js-Bridge-339933?style=for-the-badge&logo=node.js" alt="Node.js">
-  <img src="https://img.shields.io/badge/Python-Validation-3776AB?style=for-the-badge&logo=python" alt="Python">
+  <img src="https://img.shields.io/badge/Rust-v3.0.0-black?style=for-the-badge&logo=rust" alt="Rust">
+  <img src="https://img.shields.io/badge/Go-v3.0.0-00ADD8?style=for-the-badge&logo=go" alt="Go">
+  <img src="https://img.shields.io/badge/Node.js-v3.0.0-339933?style=for-the-badge&logo=node.js" alt="Node.js">
+  <img src="https://img.shields.io/badge/Python-v3.0.0-3776AB?style=for-the-badge&logo=python" alt="Python">
 </p>
+
+[**&larr; Back to Project Root**](../README.md) | [**Mathematical Specification**](DASP_CRYPTO_MATH.md)
 
 The **D-ASP (Darkstar Algebraic Substitution & Permutation)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
 

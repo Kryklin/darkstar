@@ -1,6 +1,6 @@
 # D-ASP: Rust Implementation (Reference)
 
-<img src="https://img.shields.io/badge/Language-Rust-black?style=for-the-badge&logo=rust" alt="Rust">
+<img src="https://img.shields.io/badge/Rust-v3.0.0-black?style=for-the-badge&logo=rust" alt="Rust">
 
 This directory contains the **reference "Gold" implementation** of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 
@@ -42,5 +42,9 @@ Generate a new post-quantum identity.
 ./target/release/d-asp decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ```
 
+---
+
 ## 🏗️ Architecture Alignment
-This implementation strictly follows the [DARKSTAR_ARCHITECTURE.md](../../DARKSTAR_ARCHITECTURE.md) specification, implementing all 16 rounds of the SPNA gauntlet with deterministic ChaCha20-based path logic.
+This implementation strictly follows the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification, implementing all 16 rounds of the SPNA gauntlet with deterministic ChaCha20-based path logic.
+
+[**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)

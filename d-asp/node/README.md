@@ -1,6 +1,6 @@
 # D-ASP: Node.js / Javascript Implementation
 
-<img src="https://img.shields.io/badge/Language-Node.js-339933?style=for-the-badge&logo=node.js" alt="Node.js">
+<img src="https://img.shields.io/badge/Node.js-v3.0.0-339933?style=for-the-badge&logo=node.js" alt="Node.js">
 
 This directory contains the Node.js (ESM) implementation of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 
@@ -40,5 +40,9 @@ node darkstar_crypt.js encrypt "your payload" <PUBLIC_KEY_HEX>
 node darkstar_crypt.js decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ```
 
+---
+
 ## 🏗️ Architecture Alignment
-This implementation strictly follows the [DARKSTAR_ARCHITECTURE.md](../../DARKSTAR_ARCHITECTURE.md) specification. It utilizes identical AES S-Box and MDS matrix constants to ensure bit-perfect cross-platform recovery.
+This implementation strictly follows the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification. It utilizes identical AES S-Box and MDS matrix constants to ensure bit-perfect cross-platform recovery.
+
+[**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)

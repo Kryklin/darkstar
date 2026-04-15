@@ -1,5 +1,7 @@
 # D-ASP: Formal Mathematical & Systems Specification (Professional Grade)
 
+[**&larr; Back to D-ASP Suite**](README.md) | [**Project Root**](../README.md)
+
 This document provides the formal cryptographic and mathematical specification for the **Darkstar Algebraic Substitution & Permutation (D-ASP)** protocol. D-ASP is an SPNA-structured (Substitution, Permutation, Network, Algebraic) cipher suite optimized for high-security identity binding and side-channel resistance.
 
 ---
