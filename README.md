@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="SECURITY.md"><img src="https://img.shields.io/badge/Security-Grade--1024-black?style=for-the-badge&logo=shield" alt="Security Grade"></a>
+  <img src="https://img.shields.io/badge/Status-Experimental-orange?style=for-the-badge&logo=flask" alt="Status Experimental">
   <a href="d-asp/README.md"><img src="https://img.shields.io/badge/Interoperability-Verified-success?style=for-the-badge&logo=checkmarx" alt="Interoperability"></a>
   <img src="https://img.shields.io/badge/Version-3.0.0-blue?style=for-the-badge" alt="Version">
 </p>
