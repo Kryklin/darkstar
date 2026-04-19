@@ -47,7 +47,7 @@ D-ASP implements a deterministic "Gauntlet" path selection based on the shared s
 ## 4. Implementation Security
 
 ### 4.1 Side-Channel Resistance
-All reference implementations (Rust, Go, Node.js, Python) have been audited for **Constant-Time (CT)** behavior in the core mathematical layers.
+All reference implementations (Rust, Go, C, Node.js, Python) have been audited for **Constant-Time (CT)** behavior in the core mathematical layers.
 - **GF(2^8) Arithmetic**: Implemented using branchless arithmetic masks.
 - **S-Box Lookup**: Table-based lookups are performed in fixed-time loops where applicable.
 - **HMAC Verification**: Uses `timingSafeEqual`-equivalent primitives to prevent timing attacks on integrity checks.

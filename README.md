@@ -6,7 +6,6 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Status-Submitted-success?style=for-the-badge" alt="Status Submitted">
   <a href="d-asp/README.md"><img src="https://img.shields.io/badge/Interoperability-Verified-success?style=for-the-badge&logo=checkmarx" alt="Interoperability"></a>
   <img src="https://img.shields.io/badge/Version-3.0.0-blue?style=for-the-badge" alt="Version">
 </p>
@@ -32,12 +31,13 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 
 ## 🛡️ The Multi-Engine Matrix
 
-**ASP Cascade 16**: The 16-round engine ensures bit-perfect interoperability across Rust, Go, Python, and Node.js while providing maximum algebraic complexity.
+**ASP Cascade 16**: The 16-round engine ensures bit-perfect interoperability across Rust, Go, C, Python, and Node.js while providing maximum algebraic complexity.
 
 | Engine | optimization | implementation | Security Tier | Interop |
 | :--- | :--- | :--- | :--- | :--- |
 | **Rust** | **Native (LTO)** | Reference implementation | Grade-1024 | `PASSED` |
 | **Go** | **Native (SSA)** | High-performance bridge | Grade-1024 | `PASSED` |
+| **C** | **Native (Clang)** | Procedural Reference | Grade-1024 | `PASSED` |
 | **Node.js** | **Managed** | Production Bridge (Electron) | Grade-1024 | `PASSED` |
 | **Python** | **Managed** | Research & Validation | Grade-1024 | `PASSED` |
 
@@ -45,7 +45,7 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 
 ## 🚀 Quick Start
 
-Ensure you have the required runtimes (Node 19+, Rust 1.75+, Go 1.25+).
+Ensure you have the required runtimes (Node 19+, Rust 1.75+, Go 1.25+, Clang 15+).
 
 ```bash
 # 1. Clone the Sovereign Repository
@@ -57,6 +57,7 @@ npm install
 # 3. Synchronize Cryptographic Engines
 npm run build:rust  # Reference Native
 npm run build:go    # Performance Native
+npm run build:c     # Procedural Native
 
 # 4. Initialize Dashboard
 npm start

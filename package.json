@@ -15,9 +15,10 @@
     "start": "node scripts/package.js",
     "build:rust": "cd d-asp/rust && cargo build --release",
     "build:go": "cd d-asp/go && go build -o main.exe main.go",
-    "build": "npm run build:rust && npm run build:go && ng build --configuration production --base-href ./ && tsc --p tsconfig.electron.json && node scripts/build-integrity.js",
-    "test:kat": "npm run build:rust && npm run build:go && python d-asp/scripts/verify_kat.py",
-    "test:interop": "npm run build:rust && npm run build:go && python d-asp/scripts/verify_interop.py",
+    "build:c": "cd d-asp/c && clang -o dasp.exe main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha256.c aes.c rng.c -I. -lws2_32 -luserenv -ladvapi32 -lbcrypt",
+    "build": "npm run build:rust && npm run build:go && npm run build:c && ng build --configuration production --base-href ./ && tsc --p tsconfig.electron.json && node scripts/build-integrity.js",
+    "test:kat": "npm run build:rust && npm run build:go && npm run build:c && python d-asp/scripts/verify_kat.py",
+    "test:interop": "npm run build:rust && npm run build:go && npm run build:c && python d-asp/scripts/verify_interop.py",
     "cap:sync": "npx cap sync",
     "cap:open:android": "npx cap open android",
     "cap:open:ios": "npx cap open ios"

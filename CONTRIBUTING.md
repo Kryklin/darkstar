@@ -64,6 +64,10 @@ We welcome suggestions for new features and improvements to existing functionali
     npx prettier --write .
     ```
 
+5.  **C Implementation Requirements**:
+    - Requires **Clang 15+** or **GCC 12+**.
+    - Build locally using: `npm run build:c`.
+
 ## Styleguides
 
 ### Git Commit Messages
