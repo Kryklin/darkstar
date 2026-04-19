@@ -7,7 +7,7 @@
 
 # D-ASP: C Reference Implementation
 
-<img src="https://img.shields.io/badge/C-v3.0.0-A8B9CC?style=for-the-badge&logo=c" alt="C">
+<img src="https://img.shields.io/badge/C-A8B9CC?style=for-the-badge&logo=c" alt="C">
 
 This directory contains the original native C reference implementation of the **ASP Cascade 16** engine, part of the D-ASP protocol suite.
 

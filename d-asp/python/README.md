@@ -7,7 +7,7 @@
 
 # D-ASP: Python Implementation
 
-<img src="https://img.shields.io/badge/Python-v3.0.0-3776AB?style=for-the-badge&logo=python" alt="Python">
+<img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python" alt="Python">
 
 This directory contains the Python implementation of the **ASP Cascade 16** engine, part of the D-ASP protocol suite.
 
@@ -51,6 +51,6 @@ python darkstar_crypt.py decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET
 ---
 
 ## 🏗️ Architecture Alignment
-This implementation adheres to the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification, implementing the full 16-round **ASP Cascade** engine to ensure bit-perfect ciphertext parity with Rust, Go, and Node.js.
+This implementation adheres to the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification, implementing the full 16-round **ASP Cascade** engine to ensure bit-perfect ciphertext parity with Rust, Go, C, and Node.js.
 
 [**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)

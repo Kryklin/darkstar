@@ -7,7 +7,7 @@
 
 # D-ASP: Go Implementation
 
-<img src="https://img.shields.io/badge/Go-v3.0.0-00ADD8?style=for-the-badge&logo=go" alt="Go">
+<img src="https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go" alt="Go">
 
 This directory contains the high-performance Go implementation of the **ASP Cascade 16** engine, part of the D-ASP protocol suite.
 

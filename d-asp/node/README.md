@@ -7,7 +7,7 @@
 
 # D-ASP: Node.js / Javascript Implementation
 
-<img src="https://img.shields.io/badge/Node.js-v3.0.0-339933?style=for-the-badge&logo=node.js" alt="Node.js">
+<img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js" alt="Node.js">
 
 This directory contains the Node.js (ESM) implementation of the **ASP Cascade 16** engine, part of the D-ASP protocol suite.
 

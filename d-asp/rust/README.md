@@ -7,7 +7,7 @@
 
 # D-ASP: Rust Implementation (Reference)
 
-<img src="https://img.shields.io/badge/Rust-v3.0.0-black?style=for-the-badge&logo=rust" alt="Rust">
+<img src="https://img.shields.io/badge/Rust-black?style=for-the-badge&logo=rust" alt="Rust">
 
 This directory contains the **reference "Gold" implementation** of the **ASP Cascade 16 (D-ASP)** protocol.
 
@@ -52,6 +52,6 @@ Generate a new post-quantum identity.
 ---
 
 ## 🏗️ Architecture Alignment
-This implementation strictly follows the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification, implementing all 16 rounds of the **ASP Cascade** engine with deterministic ChaCha20-based path logic.
+This implementation strictly follows the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification, implementing all 16 rounds of the **ASP Cascade** engine with deterministic ChaCha20-based path logic to ensure bit-perfect ciphertext parity with Go, C, Node.js, and Python.
 
 [**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)
