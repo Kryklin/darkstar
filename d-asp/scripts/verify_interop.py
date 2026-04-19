@@ -114,6 +114,11 @@ ENGINES = {
         "cwd": os.path.join(BASE_DIR, "python"),
         "cmd": ["python", os.path.join(BASE_DIR, "python", "darkstar_crypt.py")],
         "type": "managed"
+    },
+    "C": {
+        "cwd": os.path.join(BASE_DIR, "c"),
+        "cmd": [os.path.join(BASE_DIR, "c", "dasp.exe")],
+        "type": "native"
     }
 }
 
@@ -283,8 +288,11 @@ def main():
                 ops_sec = 1000 / mean_ms if mean_ms > 0 else 0
                 
                 # Internal timings
-                casca_avg_us = statistics.mean([it["cascade_us"] for it in data["internals"]]) if data["internals"] else 0
-                
+                try:
+                    casca_avg_us = statistics.mean([it["cascade_us"] for it in data["internals"]]) if data["internals"] else 0
+                except KeyError as e:
+                    print(f"CRITICAL ERROR in {name}: internals missing {e}. Internals: {data['internals']}")
+                    raise
                 # CPB Calculation (for 32-byte state)
                 # CPB = (ns * freq_ghz) / 32
                 casca_cpb = (casca_avg_us * 1000 * avg_freq_ghz) / 32

@@ -1,12 +1,12 @@
 /*
- * DARKSTAR - Secure Multi-Layered Encryption & Steganography Suite
- * Version: 3.0.0
- * Protocol: D-ASP (ASP Cascade 16 Engine)
- * Security: Grade-1024 (Kyber-Standard)
+ * D-ASP (ASP Cascade 16)
  * Implementation: Node.js (Production Bridge Implementation)
  *
- * Professional Grade Cryptographic Module
- * Bit-Perfect Interoperability Verified
+ * To the extent possible under law, the author(s) have dedicated all copyright 
+ * and related and neighboring rights to this software to the public domain 
+ * worldwide. This software is distributed without any warranty.
+ * 
+ * See <http://creativecommons.org/publicdomain/zero/1.0/>
  */
 
 import { createRequire } from 'node:module';

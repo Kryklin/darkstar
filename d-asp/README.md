@@ -10,13 +10,15 @@
 <p align="left">
   <img src="https://img.shields.io/badge/Rust-v3.0.0-black?style=for-the-badge&logo=rust" alt="Rust">
   <img src="https://img.shields.io/badge/Go-v3.0.0-00ADD8?style=for-the-badge&logo=go" alt="Go">
+  <img src="https://img.shields.io/badge/C-v3.0.0-A8B9CC?style=for-the-badge&logo=c" alt="C">
   <img src="https://img.shields.io/badge/Node.js-v3.0.0-339933?style=for-the-badge&logo=node.js" alt="Node.js">
   <img src="https://img.shields.io/badge/Python-v3.0.0-3776AB?style=for-the-badge&logo=python" alt="Python">
+  <img src="https://img.shields.io/badge/LaTeX-v3.0.0-008080?style=for-the-badge&logo=latex" alt="LaTeX">
 </p>
 
 [**&larr; Back to Project Root**](../README.md) | [**Mathematical Specification**](DASP_CRYPTO_MATH.md) | [**System Logic Flows**](DASP_SYSTEM_FLOW.md)
 
-The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **Python**, and **Node.js**.
+The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **C**, **Python**, and **Node.js**.
 
 ---
 
@@ -41,11 +43,12 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Go** | 14.19 | 62 | 5000.9 | 1.15M | 70.48 |
 | **Rust** | 14.36 | 33 | 2656.9 | 1.16M | 69.64 |
+| **C**    | 15.08 | 132 | 10725.0 | 1.22M | 66.29 |
 | **Node.js** | 139.15 | 1715 | 139.3k | 11.3M | 7.19 |
 | **Python** | 198.71 | 7622 | 619.3k | 16.1M | 5.03 |
 
 > [!NOTE]
-> **Cycles per Byte (CPB)** is calculated for the 32-byte (256-bit) internal state. Native engines (Go, Rust) achieve elite CPB efficiency by leveraging structural optimizations.
+> **Cycles per Byte (CPB)** is calculated for the 32-byte (256-bit) internal state. Native engines (Go, Rust, C) achieve elite CPB efficiency by leveraging structural optimizations.
 
 ## 🛡️ Cryptographic Verification (KAT)
 
@@ -57,7 +60,7 @@ D-ASP is subject to rigorous **Known Answer Tests (KAT)** to ensure bit-perfect 
 | **V2_IDB** | Identity Bound (HWID) | `PASSED` | Bit-Perfect |
 | **V3_LNG** | Long-form Payload (>128 bytes) | `PASSED` | Bit-Perfect |
 
-> **Audit Result**: All engines (Rust, Go, Node, Python) produced a bit-for-bit match with the Grade-1024 reference vectors.
+> **Audit Result**: All engines (Rust, Go, C, Node, Python) produced a bit-for-bit match with the Grade-1024 reference vectors.
 
 ---
 
@@ -69,6 +72,7 @@ All implementations are designed as **high-performance, standalone sources** to 
 | :---------- | :------------------------- | :--------------------- | :---------------------- |
 | **Rust**    | `rust/src/main.rs`         | ML-KEM / ASP Cascade 16 | **Full**                |
 | **Go**      | `go/main.go`               | ML-KEM / ASP Cascade 16 | **Full**                |
+| **C/C++**   | `c/spna_engine.c`          | FFI ML-KEM / ASP Cascade| **Full**                |
 | **Python**  | `python/darkstar_crypt.py` | ASP Cascade 16          | **Branchless-Equivalent**|
 | **Node.js** | `node/darkstar_crypt.js`   | ASP Cascade 16 / Bridge | **Branchless-Equivalent**|
 
@@ -110,4 +114,4 @@ D-ASP utilizes a flattened JSON envelope for universal compatibility:
 
 ## ⚖️ License
 
-Released under the **MIT License**.
+D-ASP is a Public Domain work, dedicated under the [**CC0 1.0 Universal (CC0 1.0) Public Domain Dedication**](../LICENSE).

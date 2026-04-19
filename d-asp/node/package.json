@@ -23,7 +23,7 @@
     "cli"
   ],
   "author": "Victor Kane",
-  "license": "MIT",
+  "license": "CC0-1.0",
   "dependencies": {
     "@noble/post-quantum": "^0.5.4",
     "crystals-kyber": "^5.1.0"

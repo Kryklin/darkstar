@@ -1,12 +1,12 @@
 """
-DARKSTAR - Secure Multi-Layered Encryption & Steganography Suite
-Version: 3.0.0
-Protocol: D-ASP (Darkstar Algebraic Substitution & Permutation)
-Security: Grade-1024 (Kyber-Standard)
+D-ASP (ASP Cascade 16)
 Implementation: Python (Research & Validation Implementation)
 
-Professional Grade Cryptographic Module
-Bit-Perfect Interoperability Verified
+To the extent possible under law, the author(s) have dedicated all copyright 
+and related and neighboring rights to this software to the public domain 
+worldwide. This software is distributed without any warranty.
+
+See <http://creativecommons.org/publicdomain/zero/1.0/>
 """
 
 import os
@@ -680,7 +680,7 @@ class DarkstarCrypt:
         checksum = self._generate_checksum(base_indices)
         func_key = hmac.new(word_key, f"keyed-{checksum}".encode('utf-8'), hashlib.sha256).digest()
 
-        # V9: SPNA Structured Gauntlet
+        # V9: ASP Cascade 16 Engine
         rng_path = prng_factory(word_key_hex)
         group_s = [0, 1, 5]
         group_p = [2, 3, 10]
@@ -872,7 +872,7 @@ class DarkstarCrypt:
             "timings": {
                 "kem_us": int(kem_duration * 1_000_000),
                 "kdf_us": int(kdf_duration * 1_000_000),
-                "gauntlet_us": int(gauntlet_duration * 1_000_000),
+                "cascade_us": int(cascade_duration * 1_000_000),
                 "total_us": int(total_duration * 1_000_000)
             }
         }), file=sys.stderr)

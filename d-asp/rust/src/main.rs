@@ -1,12 +1,12 @@
 /*
- * DARKSTAR - Secure Multi-Layered Encryption & Steganography Suite
- * Version: 3.0.0
- * Protocol: D-ASP (Darkstar Algebraic Substitution & Permutation)
- * Security: Grade-1024 (Kyber-Standard)
+ * D-ASP (ASP Cascade 16)
  * Implementation: Rust (Reference "Gold" Implementation)
  *
- * Professional Grade Cryptographic Module
- * Bit-Perfect Interoperability Verified
+ * To the extent possible under law, the author(s) have dedicated all copyright 
+ * and related and neighboring rights to this software to the public domain 
+ * worldwide. This software is distributed without any warranty.
+ * 
+ * See <http://creativecommons.org/publicdomain/zero/1.0/>
  */
 
 use sha2::{Sha256, Digest};
@@ -15,7 +15,7 @@ use std::fs;
 use ml_kem::{MlKem1024, MlKem1024Params, KemCore, EncodedSizeUser};
 use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
 
-/// D-ASP Cryptographic Suite
+/// ASP Cascade 16 Engine Implementation
 ///
 /// Definitive implementation of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
 ///
@@ -516,7 +516,7 @@ impl DarkstarCrypt {
             "timings": {
                 "kem_us": kem_duration.as_micros(),
                 "kdf_us": kdf_duration.as_micros(),
-                "gauntlet_us": gauntlet_duration.as_micros(),
+                "cascade_us": cascade_duration.as_micros(),
                 "total_us": total_duration.as_micros()
             }
         });
@@ -658,7 +658,7 @@ impl DarkstarCrypt {
             "timings": {
                 "kem_us": kem_duration.as_micros(),
                 "kdf_us": kdf_duration.as_micros(),
-                "gauntlet_us": gauntlet_duration.as_micros(),
+                "cascade_us": cascade_duration.as_micros(),
                 "total_us": total_duration.as_micros()
             }
         }));

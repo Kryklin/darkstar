@@ -77,4 +77,4 @@ npm start
 
 ## ⚖️ License
 
-Darkstar is released under the **MIT License**. We prioritize freedom of audit and the right to sovereign encryption.
+Darkstar is a Public Domain work, dedicated under the [**CC0 1.0 Universal (CC0 1.0) Public Domain Dedication**](LICENSE). We prioritize freedom of audit and the right to sovereign encryption.

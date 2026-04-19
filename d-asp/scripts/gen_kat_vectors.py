@@ -2,61 +2,59 @@ import subprocess
 import json
 import os
 
-RUST_BIN = r"x:\Projects\darkstar\d-asp\rust\target\release\d-asp.exe"
-RUST_CWD = r"x:\Projects\darkstar\d-asp\rust"
+C_BIN = r"x:\Projects\darkstar\d-asp\c\dasp.exe"
+C_CWD = r"x:\Projects\darkstar\d-asp\c"
 
-def run_rust(args):
-    try:
-        res = subprocess.run([RUST_BIN] + args, cwd=RUST_CWD, capture_output=True, text=True, check=True)
-        out = res.stdout
-        if out.endswith("\n"): out = out[:-1]
-        if out.endswith("\r"): out = out[:-1]
-        return out, res.stderr
-    except subprocess.CalledProcessError as e:
-        print(f"ERROR running Rust: {e.stderr}")
-        raise
+def run_engine(bin_path, cwd, args):
+    res = subprocess.run([bin_path] + args, cwd=cwd, capture_output=True, text=True, timeout=60)
+    out = res.stdout
+    if out.endswith("\n"): out = out[:-1]
+    if out.endswith("\r"): out = out[:-1]
+    if res.returncode != 0:
+        print(f"ERROR: {res.stderr}")
+        raise RuntimeError(f"Engine {bin_path} returned {res.returncode}")
+    return out, res.stderr
 
 def main():
-    print("Generating KAT Master Key...")
-    keygen_out, _ = run_rust(["keygen"])
-    # Robustly find PK and SK lines
+    print("Generating Master KAT Key using C Reference Engine...")
+    keygen_out, _ = run_engine(C_BIN, C_CWD, ["keygen"])
+    
     pk, sk = None, None
     for line in keygen_out.strip().splitlines():
+        if line.startswith("{\"diagnostics\""): continue
         if "PK: " in line: pk = line.split("PK: ")[1].strip()
         if "SK: " in line: sk = line.split("SK: ")[1].strip()
     
     if not pk or not sk:
-        raise ValueError(f"Failed to find PK/SK in keygen output: {keygen_out}")
+        raise ValueError(f"Failed to find PK/SK in keygen output:\n{keygen_out}")
+    
+    print(f"PK length: {len(pk)//2} bytes, SK length: {len(sk)//2} bytes")
     
     vectors = []
     
     test_cases = [
         {"id": "V1_STD", "payload": "Darkstar Professional Grade KAT Vector 001", "hwid": None},
         {"id": "V2_IDB", "payload": "Darkstar Identity Bound KAT Vector 002", "hwid": "00112233445566778899AABBCCDDEEFF00112233445566778899AABBCCDDEEFF"},
-        {"id": "V3_LNG", "payload": "Long KAT Payload: " + ("ABCDEF " * 20), "hwid": "FFEEDDCCBBAA99887766554433221100FFEEDDCCBBAA99887766554433221100"}
+        {"id": "V3_LNG", "payload": "Long KAT Payload: " + ("ABCDEF " * 20).rstrip(), "hwid": "FFEEDDCCBBAA99887766554433221100FFEEDDCCBBAA99887766554433221100"}
     ]
     
     for tc in test_cases:
-        print(f"Generating Vector {tc['id']}...")
-        # Write absolute paths to temp files to avoid CLI length limits
-        pk_file = os.path.join(RUST_CWD, "tmp_pk.hex")
+        print(f"Generating Vector {tc['id']} using C engine encrypt...")
+        
+        pk_file = os.path.join(C_CWD, "tmp_pk.hex")
         with open(pk_file, "w") as f: f.write(pk)
-        pk_path_abs = os.path.abspath(pk_file)
         
-        args = ["encrypt", tc["payload"], f"@{pk_path_abs}", "--diagnostic"]
+        args = ["encrypt", tc["payload"], f"@{pk_file}"]
         if tc["hwid"]:
-            hwid_file = os.path.join(RUST_CWD, "tmp_hwid.hex")
+            hwid_file = os.path.join(C_CWD, "tmp_hwid.hex")
             with open(hwid_file, "w") as f: f.write(tc["hwid"])
-            hwid_path_abs = os.path.abspath(hwid_file)
-            args += ["--hwid", f"@{hwid_path_abs}"]
+            args += ["--hwid", f"@{hwid_file}"]
         
-        enc_json_raw, diag_raw = run_rust(args)
+        enc_json_raw, diag_raw = run_engine(C_BIN, C_CWD, args)
         
-        # Cleanup temp files
-        if os.path.exists(pk_path_abs): os.remove(pk_path_abs)
-        hwid_path_tmp = os.path.abspath(os.path.join(RUST_CWD, "tmp_hwid.hex"))
-        if tc["hwid"] and os.path.exists(hwid_path_tmp):
-             os.remove(hwid_path_tmp)
+        # Filter diagnostic lines from stdout
+        output_lines = [l for l in enc_json_raw.splitlines() if not l.startswith("{\"diagnostics\"")]
+        enc_json_raw = output_lines[-1].strip() if output_lines else enc_json_raw
         
         enc_json = json.loads(enc_json_raw)
         
@@ -80,11 +78,17 @@ def main():
             "diagnostics": diagnostics
         })
         
+        # Cleanup
+        for tmp in [os.path.join(C_CWD, "tmp_pk.hex"), os.path.join(C_CWD, "tmp_hwid.hex")]:
+            if os.path.exists(tmp): os.remove(tmp)
+        
     output_path = os.path.join(os.path.dirname(__file__), "kat_vectors.json")
     with open(output_path, "w") as f:
         json.dump(vectors, f, indent=2)
     
-    print(f"Successfully generated {len(vectors)} vectors in {output_path}")
+    print(f"\nSuccessfully generated {len(vectors)} vectors in {output_path}")
+    print("NOTE: KAT vectors use C-native ML-KEM-1024 keypair + C encrypt.")
+    print("All engines decrypt to validate SPNA cascade parity.")
 
 if __name__ == "__main__":
     main()

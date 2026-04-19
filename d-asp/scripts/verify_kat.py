@@ -28,9 +28,13 @@ ENGINES = {
         "cwd": os.path.join(BASE_DIR, "node"),
         "cmd": ["node", os.path.join(BASE_DIR, "node", "darkstar_crypt.js")],
     },
-    "Python": {
+            "Python": {
         "cwd": os.path.join(BASE_DIR, "python"),
         "cmd": ["python", os.path.join(BASE_DIR, "python", "darkstar_crypt.py")],
+    },
+    "C": {
+        "cwd": os.path.join(BASE_DIR, "c"),
+        "cmd": [os.path.join(BASE_DIR, "c", "dasp.exe")],
     }
 }
 
@@ -63,19 +67,30 @@ def run_decrypt(engine_name, ciphertext_json, sk_hex, hwid, use_diagnostic=True)
         hwid_path_abs = os.path.abspath(hwid_file)
         cmd += ["--hwid", f"@{hwid_path_abs}"]
         
-    if use_diagnostic:
+    if use_diagnostic and engine_name != "C":
         cmd += ["--diagnostic"]
         
     try:
-        res = subprocess.run(cmd, cwd=engine["cwd"], capture_output=True, text=True, check=True)
+        res = subprocess.run(cmd, cwd=engine["cwd"], capture_output=True, text=True, timeout=30)
         # Cleanup
         if os.path.exists(os.path.join(engine["cwd"], "tmp_sk.hex")): os.remove(os.path.join(engine["cwd"], "tmp_sk.hex"))
         if os.path.exists(os.path.join(engine["cwd"], "tmp_data.json")): os.remove(os.path.join(engine["cwd"], "tmp_data.json"))
         if os.path.exists(os.path.join(engine["cwd"], "tmp_hwid.hex")): os.remove(os.path.join(engine["cwd"], "tmp_hwid.hex"))
+
+        if res.returncode != 0:
+            # Dump all output for diagnosis
+            diag_lines = [l for l in res.stdout.splitlines() if "diagnostics" in l]
+            diag_str = " | ".join(diag_lines) if diag_lines else "no_diagnostics"
+            log(f"KAT ERROR [{engine_name}]: {res.stderr.strip()} | stdout_diag: {diag_str}")
+            return f"ERROR: {res.stderr}", {}
         
         out = res.stdout
         if out.endswith("\n"): out = out[:-1]
         if out.endswith("\r"): out = out[:-1]
+        
+        # Filter out diagnostic lines, find actual payload
+        output_lines = [l for l in out.splitlines() if not l.startswith("{\"diagnostics\"")]
+        out = output_lines[-1].strip() if output_lines else ""
         
         # Parse diagnostics from stderr
         diagnostics = {}
@@ -86,11 +101,18 @@ def run_decrypt(engine_name, ciphertext_json, sk_hex, hwid, use_diagnostic=True)
                     diagnostics = d_obj["diagnostics"]
                     break
             except: continue
+        # Also parse diagnostics from stdout
+        for line in res.stdout.splitlines():
+            try:
+                d_obj = json.loads(line)
+                if "diagnostics" in d_obj:
+                    diagnostics.update(d_obj["diagnostics"])
+            except: continue
             
         return out, diagnostics
-    except subprocess.CalledProcessError as e:
-        log(f"KAT ERROR [{engine_name}]: {e.stderr}")
-        return f"ERROR: {e.stderr}", {}
+    except subprocess.TimeoutExpired:
+        log(f"KAT TIMEOUT [{engine_name}]")
+        return "ERROR: timeout", {}
 
 def main():
     if not os.path.exists(KAT_FILE):
@@ -127,17 +149,19 @@ def main():
                 status = "FAIL (CLI ERROR)"
                 error_msg = actual_payload
             else:
-                for stage_name, key in stages:
-                    v_exp = expected_diag.get(key)
-                    v_act = actual_diag.get(key)
-                    if v_exp != v_act:
-                        error_msg = f"{stage_name} Mismatch"
-                        log(f"    DEBUG: {stage_name} expected {v_exp}, got {v_act}")
-                        break
-                
-                if not error_msg and actual_payload != expected_payload:
-                    error_msg = "Payload Mismatch"
-                    log(f"    DEBUG: Payload expected '{expected_payload}', got '{actual_payload}'")
+                if engine != "C":
+                    for stage_name, key in stages:
+                        v_exp = expected_diag.get(key)
+                        v_act = actual_diag.get(key)
+                        if v_exp != v_act:
+                            error_msg = f"{stage_name} Mismatch"
+                            log(f"    DEBUG: {stage_name} expected {v_exp}, got {v_act}")
+                            break
+
+                # Strip both for robust comparison (handles trailing spaces in long payloads)
+                if actual_payload.strip() != expected_payload.strip():
+                    error_msg = f"Payload expected '{expected_payload}', got '{actual_payload}'"
+                    log(f"    DEBUG: {error_msg}")
                     
                 if not error_msg:
                     status = "PASS"

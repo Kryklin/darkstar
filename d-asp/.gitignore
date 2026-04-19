@@ -33,3 +33,8 @@ logs/
 # OS Specific
 .DS_Store
 Thumbs.db
+
+# NIST Submission Assets
+D_ASP_Submission_Package/
+dasp.exe
+

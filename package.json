@@ -4,6 +4,7 @@
   "productName": "Darkstar",
   "description": "Secure Multi-Layered Encryption & Steganography Suite",
   "author": "Victor Kane",
+  "license": "CC0-1.0",
   "private": true,
   "main": "dist/electron/main.js",
   "repository": {

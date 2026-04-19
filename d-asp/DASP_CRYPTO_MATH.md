@@ -99,9 +99,9 @@ The non-commutativity of these operations prevents linear approximation attacks.
 
 ## 4. Constant-Time Analysis & Security Posture
 
-### 4.1 Native Compliance (Rust/Go)
+### 4.1 Native Compliance (Rust/Go/C)
 > [!IMPORTANT]
-> **Full Constant-Time (CT) Enforcement**. Rust and Go engines utilize architecture-specific primitives (`wrapping_sub`, `atomic` masks) to ensure execution time is independent of the secret permutation state.
+> **Full Constant-Time (CT) Enforcement**. Rust, Go, and C engines utilize architecture-specific primitives (`wrapping_sub`, `atomic` masks, native bitwise logic) to ensure execution time is independent of the secret permutation state.
 
 ### 4.2 Managed Compliance (NodeJS/Python)
 While high-level runtimes introduce jitter (jitter != side-channel), the **D-ASP V3 reference code** for Node.js and Python has been refactored to be **Branchless-Equivalent**.
@@ -111,7 +111,7 @@ While high-level runtimes introduce jitter (jitter != side-channel), the **D-ASP
 ### 4.3 Entropy Cascade Verification
 - **Strict Avalanche Criterion (SAC)**: Tested at >49.98% bitflip probability per round.
 - **Bit Independence Criterion (BIC)**: No statistically significant correlation observed between input/output bit pairs after 8 rounds.
-- **Interop**: All four engines (Rust, Go, Node, Python) achieve bit-perfect parity for the **ASP Cascade 16** deterministic engine.
+- **Interop**: All five engines (Rust, Go, C, Node, Python) achieve bit-perfect parity for the **ASP Cascade 16** deterministic engine.
 
 ---
 
