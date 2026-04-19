@@ -25,7 +25,7 @@ The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engi
 ## 🛠️ Core Capabilities
 
 - **ML-KEM-1024 (Kyber)**: Grade-1024 High-Security root of trust.
-- **16-Round SPNA Gauntlet**: Hardened deterministic schedule (Substitution, Permutation, Network, Algebraic) every round.
+- **16-Round ASP Cascade 16 Engine**: Hardened deterministic schedule (Substitution, Permutation, Network, Algebraic) every round.
 - **HMAC-Linked Fusion**: Authentication-first protocol providing ML-KEM-linked integrity.
 - **Hardware Binding**: Optional machine-unique entropy injection ($HWID$).
 
@@ -72,7 +72,7 @@ All implementations are designed as **high-performance, standalone sources** to 
 | :---------- | :------------------------- | :--------------------- | :---------------------- |
 | **Rust**    | `rust/src/main.rs`         | ML-KEM / ASP Cascade 16 | **Full**                |
 | **Go**      | `go/main.go`               | ML-KEM / ASP Cascade 16 | **Full**                |
-| **C/C++**   | `c/spna_engine.c`          | FFI ML-KEM / ASP Cascade| **Full**                |
+| **C/C++**   | `c/spna_engine.c`          | FFI ML-KEM / ASP Cascade 16| **Full**                |
 | **Python**  | `python/darkstar_crypt.py` | ASP Cascade 16          | **Branchless-Equivalent**|
 | **Node.js** | `node/darkstar_crypt.js`   | ASP Cascade 16 / Bridge | **Branchless-Equivalent**|
 

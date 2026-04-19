@@ -28,25 +28,24 @@ The C implementation is designed to serve as the exact procedural specification 
 ## 🚀 Usage
 
 ### Build (NIST Reference Implementation)
-Requires `clang` natively installed. Navigate to the `Reference_Implementation` directory to build the core engine.
+Requires `clang` natively installed. Build the core engine using the following command:
 ```bash
-cd Reference_Implementation
-clang -o dasp.exe main.c spna_engine.c gf_math.c -I. ..\..\rust\target\release\libdasp_crypto.dll.a -lws2_32 -luserenv -ladvapi32 -lbcrypt
+clang -o dasp.exe main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha256.c aes.c rng.c -I. -lws2_32 -luserenv -ladvapi32 -lbcrypt
 ```
 
 ### Key Generation
 ```bash
-./Reference_Implementation/dasp.exe keygen
+./dasp.exe keygen
 ```
 
 ### Encryption (NIST KEM-DEM Hybrid)
 ```bash
-./Reference_Implementation/dasp.exe encrypt "your payload" <PK_HEX> [--hwid <HWID_HEX>]
+./dasp.exe encrypt "your payload" <PK_HEX> [--hwid <HWID_HEX>]
 ```
 
 ### Decryption
 ```bash
-./Reference_Implementation/dasp.exe decrypt '{"data":"...","ct":"...","mac":"..."}' <SK_HEX> [--hwid <HWID_HEX>]
+./dasp.exe decrypt '{"data":"...","ct":"...","mac":"..."}' <SK_HEX> [--hwid <HWID_HEX>]
 ```
 
 ---

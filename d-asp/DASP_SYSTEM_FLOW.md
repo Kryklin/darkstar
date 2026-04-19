@@ -15,7 +15,7 @@ This document provides a high-fidelity visual breakdown of the logic flows withi
 
 ## 1. Global Enclave Lifecycle
 
-The high-level flow from raw user input to secure persistent storage. The enclave ensures that every secret is cryptographically bound to the host hardware before being processed by the SPNA gauntlet.
+The high-level flow from raw user input to secure persistent storage. The enclave ensures that every secret is cryptographically bound to the host hardware before being processed by the **ASP Cascade 16** engine.
 
 ```mermaid
 graph TD
@@ -26,7 +26,7 @@ graph TD
     D -- "Diffusion & Network Layers" --> E[Encrypted Storage Enclave]
     end
     
-    E -- "Multi-Language Interop" --> F[Rust / Go / Node / Python]
+    E -- "Multi-Language Interop" --> F[Rust / Go / C / Node / Python]
 ```
 
 ---
@@ -88,11 +88,13 @@ D-ASP achieves "Bit-Perfect" parity. Regardless of the implementation language, 
 stateDiagram-v2
     [*] --> RustRef: Reference Input
     [*] --> GoNative: Reference Input
+    [*] --> CNative: Reference Input
     [*] --> NodeJS: Reference Input
     [*] --> Python: Reference Input
 
     RustRef --> JSON_Envelope: ASP Cascade 16
     GoNative --> JSON_Envelope: ASP Cascade 16
+    CNative --> JSON_Envelope: ASP Cascade 16
     NodeJS --> JSON_Envelope: ASP Cascade 16
     Python --> JSON_Envelope: ASP Cascade 16
 

@@ -50,7 +50,7 @@ We welcome suggestions for new features and improvements to existing functionali
 2.  **Run in development mode (Angular + Electron)**:
 
     ```bash
-    npm run electron:dev
+    npm start
     ```
 
 3.  **Linting**:
