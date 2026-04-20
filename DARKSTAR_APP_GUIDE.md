@@ -80,4 +80,44 @@ Darkstar uses **Electron Forge** for desktop distribution and **Capacitor CLI** 
 
 ---
 
+## 🔒 The Sovereign Vault
+
+The Darkstar Vault is the primary high-security storage layer for sensitive cryptographic material. Unlike standard password managers, the Vault utilizes a **Hybrid Post-Quantum Strategy** to ensure long-term data resilience.
+
+### Encryption Architecture
+- **KEM-DEM Construction**: Uses **ML-KEM-1024** (Kyber) for the KEM layer and the **ASP Cascade 16** engine for the Data Encapsulation (DEM).
+- **Hardened Key Derivation**: Master passwords are expanded using **PBKDF2-HMAC-SHA256** with 100,000 iterations before being injected into the PQC keygen logic.
+- **Hardware Binding**: If enabled, the Vault injects a machine-unique identifier (`machine-id`) as a salt for the **ASP Cascade 16** round diversification, ensuring the data cannot be decrypted on a different physical device even with the correct password.
+
+### Data Model
+- **Notes**: Full Markdown support for longform secrets.
+- **Identities**: Secure storage for ECDSA (P-256) and PQC (ML-KEM) key pairs.
+- **Signatures**: Native support for message signing and identity verification.
+
+---
+
+## 🛡️ Biometric Security (Windows Hello & TouchID)
+
+Darkstar integrates native hardware authentication to streamline secure access without compromising the underlying cryptographic safety.
+
+### WebAuthn Native Bridge
+The app utilizes the **WebAuthn (FIDO2)** API to interface with the system's secure enclave (TPM for Windows, Secure Enclave for macOS). 
+- **Windows Hello**: Full support for Pin, Fingerprint, and Facial recognition.
+- **TouchID / FaceID**: Native integration for macOS and mobile platforms.
+- **Security Keys**: Supports cross-platform FIDO2/WebAuthn hardware tokens (e.g., YubiKey) via USB, NFC, and BLE.
+
+### Session Hardening
+When Biometric Unlock is enabled, Darkstar uses **Electron safeStorage** to protect the session keys. The master password is never stored in plaintext; it is encrypted using the OS-level encryption provider before being cached for biometric retrieval.
+
+---
+
+## 🔑 TOTP & 2nd-Factor Authentication
+
+Darkstar provides built-in support for **Time-based One-Time Passwords (TOTP)** to protect high-value vaults with an additional layer of verification.
+
+- **Verification Lifecycle**: If a TOTP secret is present in the vault envelope, the system enters a **"Pending TOTP"** state after initial password decryption. The vault contents remain zeroed in memory until the 6-digit token is verified.
+- **Library integration**: Uses the industry-standard **otplib** for synchronous token validation across all platform bridges.
+
+---
+
 [**&larr; Back to Project Root**](README.md)
