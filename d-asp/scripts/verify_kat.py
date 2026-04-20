@@ -26,11 +26,11 @@ ENGINES = {
     },
     "Node": {
         "cwd": os.path.join(BASE_DIR, "node"),
-        "cmd": ["node", os.path.join(BASE_DIR, "node", "darkstar_crypt.js")],
+        "cmd": ["node", os.path.join(BASE_DIR, "node", "dasp.js")],
     },
             "Python": {
         "cwd": os.path.join(BASE_DIR, "python"),
-        "cmd": ["python", os.path.join(BASE_DIR, "python", "darkstar_crypt.py")],
+        "cmd": ["python", os.path.join(BASE_DIR, "python", "dasp.py")],
     },
     "C": {
         "cwd": os.path.join(BASE_DIR, "c"),

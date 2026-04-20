@@ -5,6 +5,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY darkstar_crypt.py .
+COPY dasp.py .
 
-ENTRYPOINT ["python", "darkstar_crypt.py"]
+ENTRYPOINT ["python", "dasp.py"]

@@ -5,6 +5,6 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 
-COPY darkstar_crypt.js ./
+COPY dasp.js ./
 
-ENTRYPOINT ["node", "darkstar_crypt.js"]
+ENTRYPOINT ["node", "dasp.js"]

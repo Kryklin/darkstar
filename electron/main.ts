@@ -441,18 +441,39 @@ async function runDAsPCommand(engine: string, args: string[]): Promise<unknown> 
   let cmd = '';
   let execArgs: string[] = [];
 
-  const basePath = app.isPackaged ? path.join(process.resourcesPath, 'd-asp') : path.join(__dirname, '..', '..', 'd-asp');
-
-  if (engine === 'rust') {
-    cmd = path.join(basePath, 'rust', 'target', 'release', `d_kasp_512${ext}`); // Binary name stays for now to avoid build system complexity
-    execArgs = args;
-  } else if (engine === 'go') {
-    cmd = path.join(basePath, 'go', `main${ext}`); // Binary name stays main
-    execArgs = args;
+  if (app.isPackaged) {
+    // In production, assets are flattened into the resources directory via extraResource
+    if (engine === 'rust') {
+      cmd = path.join(process.resourcesPath, `d-asp${ext}`);
+      execArgs = args;
+    } else if (engine === 'go') {
+      cmd = path.join(process.resourcesPath, `main${ext}`);
+      execArgs = args;
+    } else if (engine === 'c') {
+      cmd = path.join(process.resourcesPath, `dasp${ext}`);
+      execArgs = args;
+    } else {
+      // default Node
+      cmd = 'node';
+      execArgs = [path.join(process.resourcesPath, 'dasp.js'), ...args];
+    }
   } else {
-    // default Node
-    cmd = 'node';
-    execArgs = [path.join(basePath, 'node', 'darkstar_crypt.js'), ...args];
+    // In development, use the local d-asp source tree
+    const basePath = path.join(__dirname, '..', '..', 'd-asp');
+    if (engine === 'rust') {
+      cmd = path.join(basePath, 'rust', 'target', 'release', `d-asp${ext}`);
+      execArgs = args;
+    } else if (engine === 'go') {
+      cmd = path.join(basePath, 'go', `main${ext}`);
+      execArgs = args;
+    } else if (engine === 'c') {
+      cmd = path.join(basePath, 'c', `dasp${ext}`);
+      execArgs = args;
+    } else {
+      // default Node
+      cmd = 'node';
+      execArgs = [path.join(basePath, 'node', 'darkstar_crypt.js'), ...args];
+    }
   }
 
   try {
@@ -469,21 +490,33 @@ async function runDAsPCommand(engine: string, args: string[]): Promise<unknown> 
 }
 
 ipcMain.handle('dasp-encrypt', async (_event, payload: string, pkHex: string, engine: string, hwid?: string) => {
-  const args: string[] = [];
+  const args: string[] = ['--diagnostic'];
   if (hwid) {
     args.push('--hwid', hwid);
   }
   args.push('encrypt', payload, pkHex);
-  return await runDAsPCommand(engine, args);
+  
+  try {
+    return await runDAsPCommand(engine, args);
+  } catch (err: any) {
+    console.error(`D-ASP Engine (${engine}) failed:`, err.stderr || err.message);
+    throw new Error(`D-ASP Engine (${engine}) failed: ${err.stderr || err.message}`);
+  }
 });
 
 ipcMain.handle('dasp-decrypt', async (_event, data: string, rk: string, skHex: string, engine: string, hwid?: string) => {
-  const args: string[] = [];
+  const args: string[] = ['--diagnostic'];
   if (hwid) {
     args.push('--hwid', hwid);
   }
   args.push('decrypt', data, skHex); // rk parameter is legacy and maintained for signature parity
-  return await runDAsPCommand(engine, args);
+
+  try {
+    return await runDAsPCommand(engine, args);
+  } catch (err: any) {
+    console.error(`D-ASP Engine (${engine}) failed:`, err.stderr || err.message);
+    throw new Error(`D-ASP Engine (${engine}) failed: ${err.stderr || err.message}`);
+  }
 });
 
 // --- WebAuthn Native Proxy (Windows Hello Fix) ---

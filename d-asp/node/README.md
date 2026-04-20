@@ -34,17 +34,17 @@ npm install
 
 ### Key Generation
 ```bash
-node darkstar_crypt.js keygen
+node dasp.js keygen
 ```
 
 ### Encryption
 ```bash
-node darkstar_crypt.js encrypt "your payload" <PUBLIC_KEY_HEX>
+node dasp.js encrypt "your payload" <PUBLIC_KEY_HEX>
 ```
 
 ### Decryption
 ```bash
-node darkstar_crypt.js decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
+node dasp.js decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ```
 
 ---

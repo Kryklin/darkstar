@@ -35,17 +35,17 @@ pip install -r requirements.txt
 
 ### Key Generation
 ```bash
-python darkstar_crypt.py keygen
+python dasp.py keygen
 ```
 
 ### Encryption
 ```bash
-python darkstar_crypt.py encrypt "your payload" <PUBLIC_KEY_HEX>
+python dasp.py encrypt "your payload" <PUBLIC_KEY_HEX>
 ```
 
 ### Decryption
 ```bash
-python darkstar_crypt.py decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
+python dasp.py decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ```
 
 ---

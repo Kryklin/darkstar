@@ -6,7 +6,12 @@ module.exports = {
   packagerConfig: {
     asar: true,
     icon: path.resolve(__dirname, 'public/favicon'),
-    extraResource: [],
+    extraResource: [
+      path.join(__dirname, 'd-asp/rust/target/release/d-asp.exe'),
+      path.join(__dirname, 'd-asp/go/main.exe'),
+      path.join(__dirname, 'd-asp/c/dasp.exe'),
+      path.join(__dirname, 'd-asp/node/dasp.js'),
+    ],
   },
   rebuildConfig: {},
   makers: [

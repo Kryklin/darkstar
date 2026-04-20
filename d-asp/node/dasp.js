@@ -285,7 +285,8 @@ export class DarkstarCrypt {
 
   // --- Helpers ---
   hex2buf(hex) {
-    return new Uint8Array(Buffer.from(hex, 'hex'));
+    const cleaned = hex.replace(/[^a-fA-F0-9]/g, '');
+    return new Uint8Array(Buffer.from(cleaned, 'hex'));
   }
   buf2hex(buf) {
     return Buffer.from(buf).toString('hex');
