@@ -111,7 +111,7 @@ export class BackupService {
       // We expect a base64 encoded JSON string representing the Vault envelope
       try {
         const parsed = JSON.parse(backupData);
-        if (!parsed || parsed.v === undefined || !parsed.data) {
+        if (!parsed || !parsed.data) {
           return { success: false, message: 'Invalid backup file format or corrupted payload.' };
         }
       } catch (_e) {

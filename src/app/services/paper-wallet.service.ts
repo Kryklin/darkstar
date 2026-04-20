@@ -12,19 +12,9 @@ export interface PaperWalletMetadata {
   providedIn: 'root',
 })
 export class PaperWalletService {
-  /**
-   * Generates and downloads two separate PDF paper wallet documents.
-   * @param encryptedData The main encrypted payload.
-   * @param reverseKey The reverse compression key.
-   * @param metadata Protocol metadata for the header.
-   */
-  async generate(encryptedData: string, reverseKey: string, metadata: PaperWalletMetadata): Promise<void> {
+  async generate(encryptedData: string, _reverseKey: string, metadata: PaperWalletMetadata): Promise<void> {
     const timestamp = Date.now();
     await this.generateDocument('Part 1: Encrypted Payload', encryptedData, metadata, `darkstar-passport-payload-${timestamp}.pdf`);
-
-    if (reverseKey) {
-      await this.generateDocument('Part 2: Reverse Key', reverseKey, metadata, `darkstar-passport-key-${timestamp}.pdf`);
-    }
   }
 
   private async generateDocument(title: string, content: string, metadata: PaperWalletMetadata, filename: string): Promise<void> {
@@ -154,9 +144,7 @@ export class PaperWalletService {
     const instructions = [
       'IMPORTANT RECOVERY INSTRUCTIONS:',
       `1. This document contains ${title}.`,
-      title.includes('Key')
-        ? "2. To recover, you will need BOTH the 'Encrypted Payload' and this 'Reverse Key' document."
-        : "2. To recover, you will need this 'Encrypted Payload' and your Encryption Password.",
+      "2. To recover, you will need this 'Encrypted Payload' and your Encryption Password or Vault Key.",
       '3. Your Entropy/Master Password is NOT printed here.',
       '4. Keep this document in a physically secure location (e.g., fireproof safe).',
       '5. Do not share this document.',

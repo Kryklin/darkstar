@@ -45,15 +45,7 @@
             <mat-icon>content_copy</mat-icon>
           </button>
         </mat-form-field>
-        @if (reverseKey) {
-          <mat-form-field class="full-width">
-            <mat-label>Reverse Key</mat-label>
-            <textarea matInput readonly [value]="reverseKey" rows="2"></textarea>
-            <button mat-icon-button matSuffix (click)="copyToClipboard(reverseKey)" matTooltip="Copy Reverse Key">
-              <mat-icon>content_copy</mat-icon>
-            </button>
-          </mat-form-field>
-        }
+
 
         <div class="qr-transfer-section" style="margin: 16px 0; padding: 16px; background: rgba(0, 145, 234, 0.05); border-radius: 8px; border: 1px solid rgba(0, 145, 234, 0.2)">
           <div style="display: flex; align-items: center; justify-content: space-between">
@@ -124,11 +116,7 @@
         <button mat-button (click)="reset()">Reset</button>
       </mat-card-actions>
       <mat-card-footer>
-        @if (reverseKey) {
-          <p class="footer-text">Store both the encrypted data and the reverse key securely. You will need both to decrypt your data.</p>
-        } @else {
-          <p class="footer-text">Store the encrypted data securely. Your Vault Key will be used to recover the plaintext.</p>
-        }
+        <p class="footer-text">Store the encrypted data securely. Your Vault Key will be used to recover the plaintext.</p>
       </mat-card-footer>
     }
   </mat-card>

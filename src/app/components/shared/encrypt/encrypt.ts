@@ -34,7 +34,6 @@ export class SharedEncryptComponent implements OnInit {
 
   showResult = false;
   encryptedData = '';
-  reverseKey = '';
 
   stealthMode: StealthMode | 'standard' = 'standard';
   stealthModes = [
@@ -112,10 +111,9 @@ export class SharedEncryptComponent implements OnInit {
         }
       }
 
-      const { encryptedData, reverseKey } = await this.cryptService.encrypt(mnemonic, pkHex, hwid);
+      const { encryptedData } = await this.cryptService.encrypt(mnemonic, pkHex, hwid);
 
       this.encryptedData = encryptedData;
-      this.reverseKey = reverseKey;
       this.showResult = true;
     }
   }
@@ -216,7 +214,7 @@ export class SharedEncryptComponent implements OnInit {
   }
 
   downloadPaperWallet() {
-    this.paperWalletService.generate(this.encryptedData, this.reverseKey, {
+    this.paperWalletService.generate(this.encryptedData, '', {
       protocolTitle: this.protocolTitle,
       protocolSummary: this.protocolSummary,
     });
@@ -249,7 +247,6 @@ export class SharedEncryptComponent implements OnInit {
     this.firstFormGroup.reset();
     this.showResult = false;
     this.encryptedData = '';
-    this.reverseKey = '';
     this.stealthMode = 'standard';
     this.stealthNoiseLevel = 0.5;
     this.showQrSender = false;
