@@ -69,6 +69,7 @@ npm start
 | Resource | Scope | Link |
 | :--- | :--- | :--- |
 | **D-ASP Specification** | Formal Math & Logic | [**DASP_CRYPTO_MATH.md**](d-asp/DASP_CRYPTO_MATH.md) |
+| **App Guide** | Desktop & Mobile Setup | [**DARKSTAR_APP_GUIDE.md**](DARKSTAR_APP_GUIDE.md) |
 | **Multi-Language Docs** | Integration & Usage | [**D-ASP Suite**](d-asp/README.md) |
 | **Security Policy** | Disclosure & Auditing | [**SECURITY.md**](SECURITY.md) |
 | **Contribution Guide** | Standards & Workflows | [**CONTRIBUTING.md**](CONTRIBUTING.md) |
