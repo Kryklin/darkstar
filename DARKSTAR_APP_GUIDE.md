@@ -45,18 +45,21 @@ For mobile platforms, **Capacitor** bridges the Angular web views to native Andr
 - **Android Studio** (for Android development)
 
 ### Standard Execution
-To launch the application in development mode:
+The app uses an interactive developer dashboard for all execution and testing tasks.
+
 ```bash
+# Launch the unified dashboard
 npm start
 ```
 
+*Select the **Run Dev Environment** option to launch Angular and Electron concurrently.*
+
 ### Mobile Synchronization
-When UI changes are made, they must be synchronized to the native mobile wrappers:
-```bash
-# Build the web assets and sync with Capacitor
-npm run build
-npx cap sync
-```
+When UI changes are made, they must be synchronized to the native mobile wrappers. This can be handled directly via the CLI:
+
+1.  Launch `npm start`.
+2.  Select **Sync Mobile Assets**.
+    - This will automatically build the web assets (`npm run build`) and perform the synchronization (`npx cap sync`).
 
 ### Opening Native IDEs
 ```bash

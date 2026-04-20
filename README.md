@@ -42,9 +42,9 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Interactive Dashboard)
 
-Ensure you have the required runtimes (Node 19+, Rust 1.75+, Go 1.25+, Clang 15+).
+The easiest way to manage Darkstar is via the integrated developer dashboard. This tool handles orchestration for all language engines, mobile synchronization, and distribution.
 
 ```bash
 # 1. Clone the Sovereign Repository
@@ -53,14 +53,11 @@ git clone https://github.com/Kryklin/darkstar.git && cd darkstar
 # 2. Deploy Local Enclave Dependencies
 npm install
 
-# 3. Synchronize Cryptographic Engines
-npm run build:rust  # Reference Native
-npm run build:go    # Performance Native
-npm run build:c     # Procedural Native
-
-# 4. Initialize Dashboard
+# 3. Launch Interactive CLI
 npm start
 ```
+
+For a detailed breakdown of all dashboard options, see the [**Darkstar CLI Guide**](DARKSTAR_CLI_GUIDE.md).
 
 ---
 
@@ -69,6 +66,7 @@ npm start
 | Resource | Scope | Link |
 | :--- | :--- | :--- |
 | **D-ASP Specification** | Formal Math & Logic | [**DASP_CRYPTO_MATH.md**](d-asp/DASP_CRYPTO_MATH.md) |
+| **Interactive CLI** | Dev & Release Dashboard | [**DARKSTAR_CLI_GUIDE.md**](DARKSTAR_CLI_GUIDE.md) |
 | **App Guide** | Desktop & Mobile Setup | [**DARKSTAR_APP_GUIDE.md**](DARKSTAR_APP_GUIDE.md) |
 | **Multi-Language Docs** | Integration & Usage | [**D-ASP Suite**](d-asp/README.md) |
 | **Security Policy** | Disclosure & Auditing | [**SECURITY.md**](SECURITY.md) |

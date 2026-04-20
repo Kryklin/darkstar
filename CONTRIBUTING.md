@@ -40,24 +40,22 @@ We welcome suggestions for new features and improvements to existing functionali
 6.  Issue that pull request!
 
 ## Development Setup
-
-1.  **Install dependencies**:
-
-    ```bash
-    npm install
-    ```
-
-2.  **Run in development mode (Angular + Electron)**:
-
-    ```bash
-    npm start
-    ```
-
-3.  **Linting**:
-
-    ```bash
-    npm run lint
-    ```
+ 
+ 1.  **Install dependencies**:
+ 
+     ```bash
+     npm install
+     ```
+ 
+ 2.  **Launch the Interactive CLI (Strongly Recommended)**:
+ 
+     Darkstar utilizes a terminal-based dashboard for all developer operations. This tool automates engine synchronization, environment setup, and testing.
+ 
+     ```bash
+     npm start
+     ```
+ 
+     See the [**Darkstar CLI Guide**](DARKSTAR_CLI_GUIDE.md) for a full breakdown of options (Dev Env, Lint, Interop, Release).
 
 4.  **Formatting**:
     ```bash
