@@ -6,7 +6,6 @@
 </p>
 
 <p align="center">
-  <a href="d-asp/README.md"><img src="https://img.shields.io/badge/Interoperability-Verified-success?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Interoperability"></a>
   <img src="https://img.shields.io/badge/Version-3.0.0-blue?style=for-the-badge" alt="Version">
 </p>
 

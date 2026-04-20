@@ -63,4 +63,3 @@ The system has passed high-fidelity **Known Answer Tests (KAT)** across four dis
 The D-ASP protocol, specifically the **ASP Cascade 16** engine, is fundamentally grounded in NIST-approved mathematics while introducing innovative structural diversification. It has been formally submitted for the NIST PQC transition process.
 
 ---
-*D-ASP Security Enclave Team*
