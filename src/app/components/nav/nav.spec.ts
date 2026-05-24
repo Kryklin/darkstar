@@ -12,7 +12,7 @@ describe('Nav', () => {
 
   beforeEach(async () => {
     // Mock Electron API
-    (window as any).electronAPI = {
+    (window as unknown as { electronAPI: unknown }).electronAPI = {
       onUpdateStatus: jasmine.createSpy('onUpdateStatus'),
       onInitiateUpdateCheck: jasmine.createSpy('onInitiateUpdateCheck'),
       setVersionLock: jasmine.createSpy('setVersionLock'),

@@ -484,7 +484,7 @@ export class DarkstarCrypt {
   transColumnar(input) {
     const n = input.length;
     const out = new Uint8Array(n);
-    const cols = 3;
+    const cols = 4;
     let idx = 0;
     for (let c = 0; c < cols; c++) {
       for (let i = c; i < n; i += cols) out[idx++] = input[i];
@@ -494,7 +494,7 @@ export class DarkstarCrypt {
   invTransColumnar(input) {
     const n = input.length;
     const out = new Uint8Array(n);
-    const cols = 3;
+    const cols = 4;
     let idx = 0;
     for (let c = 0; c < cols; c++) {
       for (let i = c; i < n; i += cols) out[i] = input[idx++];
@@ -517,7 +517,7 @@ export class DarkstarCrypt {
   }
 
   darkstar_chacha_prng(seed) {
-    let hash = require('crypto').createHash('sha256').update(seed).digest();
+    let hash = require('crypto').createHash('sha512').update(seed).digest();
     const state = new Uint32Array(16);
     state[0] = 0x61707865;
     state[1] = 0x3320646e;

@@ -2,14 +2,16 @@ const { FusesPlugin } = require('@electron-forge/plugin-fuses');
 const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 const path = require('path');
 
+const ext = process.platform === 'win32' ? '.exe' : '';
+
 module.exports = {
   packagerConfig: {
     asar: true,
     icon: path.resolve(__dirname, 'public/favicon'),
     extraResource: [
-      path.join(__dirname, 'd-asp/rust/target/release/d-asp.exe'),
-      path.join(__dirname, 'd-asp/go/main.exe'),
-      path.join(__dirname, 'd-asp/c/dasp.exe'),
+      path.join(__dirname, `d-asp/rust/target/release/d-asp${ext}`),
+      path.join(__dirname, `d-asp/go/main${ext}`),
+      path.join(__dirname, `d-asp/c/dasp${ext}`),
       path.join(__dirname, 'd-asp/node/dasp.js'),
     ],
   },

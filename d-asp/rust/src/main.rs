@@ -9,7 +9,7 @@
  * See <http://creativecommons.org/publicdomain/zero/1.0/>
  */
 
-use sha2::{Sha256, Digest};
+use sha2::{Sha256, Sha512, Digest};
 use zeroize::Zeroize;
 use std::fs;
 use ml_kem::{MlKem1024, MlKem1024Params, KemCore, EncodedSizeUser};
@@ -81,7 +81,7 @@ struct DarkstarChaChaPRNG {
 
 impl DarkstarChaChaPRNG {
     fn new(seed_str: &str) -> Self {
-        let mut hasher = Sha256::new();
+        let mut hasher = Sha512::new();
         hasher.update(seed_str.as_bytes());
         let hash = hasher.finalize();
         let mut state = [0u32; 16];
@@ -349,7 +349,7 @@ impl DarkstarCrypt {
     fn trans_columnar(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
         let n = input.len();
         let mut out = vec![0u8; n];
-        let cols = 3;
+        let cols = 4;
         let mut idx = 0;
         for c in 0..cols {
             let mut i = c;
@@ -364,7 +364,7 @@ impl DarkstarCrypt {
     fn inv_trans_columnar(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
         let n = input.len();
         let mut out = vec![0u8; n];
-        let cols = 3;
+        let cols = 4;
         let mut idx = 0;
         for c in 0..cols {
             let mut i = c;
@@ -475,12 +475,11 @@ impl DarkstarCrypt {
             current_word_bytes = (self.forward_pipeline[s_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
 
             let p_idx = group_p[(rng_path.next() as usize) % group_p.len()];
-            current_word_bytes = (self.forward_pipeline[p_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
-
             let n_idx = group_n[(rng_path.next() as usize) % group_n.len()];
-            current_word_bytes = (self.forward_pipeline[n_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
-
             let a_idx = group_a[(rng_path.next() as usize) % group_a.len()];
+            
+            current_word_bytes = (self.forward_pipeline[p_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
+            current_word_bytes = (self.forward_pipeline[n_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
             current_word_bytes = (self.forward_pipeline[a_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
             
             round_indices.push(vec![s_idx, p_idx, n_idx, a_idx]);

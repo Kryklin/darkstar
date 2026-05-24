@@ -1,9 +1,10 @@
 use ml_kem::{MlKem1024, MlKem1024Params, KemCore, EncodedSizeUser};
 use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
-use sha2::{Sha256, Digest};
+use sha2::{Sha256, Sha512, Digest};
 use hmac::{Hmac, Mac};
 use std::slice;
 
+type HmacSha512 = Hmac<Sha512>;
 type HmacSha256 = Hmac<Sha256>;
 
 #[no_mangle]
@@ -38,6 +39,29 @@ pub extern "C" fn crypto_kem_dec(ss_out: *mut u8, ct: *const u8, sk: *const u8) 
         std::ptr::copy_nonoverlapping(ss.as_ptr(), ss_out, ss.len());
     }
     0
+}
+
+#[no_mangle]
+pub extern "C" fn crypto_sha512(data: *const u8, len: usize, out: *mut u8) {
+    let data_slice = unsafe { slice::from_raw_parts(data, len) };
+    let mut hasher = Sha512::new();
+    hasher.update(data_slice);
+    let result = hasher.finalize();
+    unsafe {
+        std::ptr::copy_nonoverlapping(result.as_ptr(), out, result.len());
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn crypto_hmac_sha512(key: *const u8, key_len: usize, data: *const u8, data_len: usize, out: *mut u8) {
+    let key_slice = unsafe { slice::from_raw_parts(key, key_len) };
+    let data_slice = unsafe { slice::from_raw_parts(data, data_len) };
+    let mut mac = HmacSha512::new_from_slice(key_slice).unwrap();
+    mac.update(data_slice);
+    let result = mac.finalize().into_bytes();
+    unsafe {
+        std::ptr::copy_nonoverlapping(result.as_ptr(), out, result.len());
+    }
 }
 
 #[no_mangle]

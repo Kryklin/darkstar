@@ -40,7 +40,7 @@ class DarkstarCrypt:
 
     class DarkstarChaChaPRNG:
         def __init__(self, seed_str):
-            self.hash = hashlib.sha256(seed_str.encode('utf-8')).digest()
+            self.hash = hashlib.sha512(seed_str.encode('utf-8')).digest()
             self.state = [0]*16
             self.state[0] = 0x61707865
             self.state[1] = 0x3320646e
@@ -485,7 +485,7 @@ class DarkstarCrypt:
     def _obfuscate_columnar_v4(self, data, seed=None, prng_factory=None):
         n = len(data)
         out = bytearray(n)
-        cols = 3
+        cols = 4
         idx = 0
         for c in range(cols):
             for i in range(c, n, cols):
@@ -496,7 +496,7 @@ class DarkstarCrypt:
     def _deobfuscate_columnar_v4(self, data, seed=None, prng_factory=None):
         n = len(data)
         out = bytearray(n)
-        cols = 3
+        cols = 4
         idx = 0
         for c in range(cols):
             for i in range(c, n, cols):
@@ -695,15 +695,13 @@ class DarkstarCrypt:
             if i % 4 == 0: s_idx = 0
             elif i % 4 == 2: s_idx = 1
             else: s_idx = group_s[rng_path.next() % len(group_s)]
-            current_word_bytes = self.obfuscation_functions_v4[s_idx](current_word_bytes, seed=func_key, prng_factory=prng_factory)
-
             p_idx = group_p[rng_path.next() % len(group_p)]
-            current_word_bytes = self.obfuscation_functions_v4[p_idx](current_word_bytes, seed=func_key, prng_factory=prng_factory)
-
             n_idx = group_n[rng_path.next() % len(group_n)]
-            current_word_bytes = self.obfuscation_functions_v4[n_idx](current_word_bytes, seed=func_key, prng_factory=prng_factory)
-
             a_idx = group_a[rng_path.next() % len(group_a)]
+
+            current_word_bytes = self.obfuscation_functions_v4[s_idx](current_word_bytes, seed=func_key, prng_factory=prng_factory)
+            current_word_bytes = self.obfuscation_functions_v4[p_idx](current_word_bytes, seed=func_key, prng_factory=prng_factory)
+            current_word_bytes = self.obfuscation_functions_v4[n_idx](current_word_bytes, seed=func_key, prng_factory=prng_factory)
             current_word_bytes = self.obfuscation_functions_v4[a_idx](current_word_bytes, seed=func_key, prng_factory=prng_factory)
             
             round_indices.append([s_idx, p_idx, n_idx, a_idx])
@@ -783,6 +781,11 @@ class DarkstarCrypt:
         # Stage 4: final mac
         mac_tag_actual = h.hexdigest()
         
+        group_s = [0, 1, 5]
+        group_p = [2, 3, 10]
+        group_n = [12, 12, 11]
+        group_a = [4, 6, 9]
+        
         if os.environ.get("DASP_DIAGNOSTIC") == "1":
             # Stage 2: word_key (needed for diag)
             word_key_diag = hmac.new(active_password_str.encode('utf-8'), b"dasp-word-0", hashlib.sha256).digest()
@@ -792,10 +795,10 @@ class DarkstarCrypt:
             rng_diag = self.DarkstarChaChaPRNG(word_key_hex_diag)
             round_indices_diag = []
             for i in range(16):
-                s = 0 if i % 4 == 0 else (1 if i % 4 == 2 else [0, 1, 5][rng_diag.next() % 3])
-                p = [2, 3, 10][rng_diag.next() % 3]
-                n = [12, 12, 11][rng_diag.next() % 3]
-                a = [4, 6, 9][rng_diag.next() % 3]
+                s = 0 if i % 4 == 0 else (1 if i % 4 == 2 else group_s[rng_diag.next() % len(group_s)])
+                p = group_p[rng_diag.next() % len(group_p)]
+                n = group_n[rng_diag.next() % len(group_n)]
+                a = group_a[rng_diag.next() % len(group_a)]
                 round_indices_diag.append([s, p, n, a])
 
             print(json.dumps({
@@ -820,19 +823,12 @@ class DarkstarCrypt:
         chain_state = hashlib.sha256(f"dasp-chain-{active_password_str}".encode('utf-8')).digest()
         
         rng_path = prng_factory(word_key_hex)
-        group_s = [0, 1, 5]
-        group_p = [2, 3, 10]
-        group_n = [12, 12, 11]
-        group_a = [4, 6, 9]
 
         # Stage 3: Round Indices
         round_indices = []
         round_paths = []
         for i in range(16):
-            s_idx = 0
-            if i % 4 == 0: s_idx = 0
-            elif i % 4 == 2: s_idx = 1
-            else: s_idx = group_s[rng_path.next() % len(group_s)]
+            s_idx = 0 if i % 4 == 0 else (1 if i % 4 == 2 else group_s[rng_path.next() % len(group_s)])
             p_idx = group_p[rng_path.next() % len(group_p)]
             n_idx = group_n[rng_path.next() % len(group_n)]
             a_idx = group_a[rng_path.next() % len(group_a)]

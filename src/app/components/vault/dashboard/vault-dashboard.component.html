@@ -159,38 +159,136 @@
     }
 
     @else if (activeTab() === 'settings') {
-      <div class="settings-view custom-scroll">
-          <div class="settings-content glass-card">
-              <h2>Vault Configuration</h2>
-              <mat-divider></mat-divider>
-              
-              <div class="info-section">
-                  <h3>Cryptographic Identity</h3>
-                  <div class="id-display">
-                      <code>{{ identityFingerprint() }}</code>
-                      <button mat-icon-button (click)="copyIdentity()"><mat-icon>content_copy</mat-icon></button>
+      <div class="settings-view custom-scroll animate-fade-in">
+        <div class="settings-grid">
+          
+          <!-- IDENTITY MODULE: Digital Passport -->
+          <div class="settings-module identity-module">
+            <div class="module-header">
+              <mat-icon>fingerprint</mat-icon>
+              <span>Cryptographic Identity</span>
+            </div>
+            
+            <div class="digital-passport">
+              <div class="passport-glow"></div>
+              <div class="passport-content">
+                <div class="passport-header">
+                  <div class="passport-brand">D-ASP SIGNAL</div>
+                  <div class="passport-status">
+                    @if (isQuantumSafe()) {
+                      <div class="status-badge quantum">
+                        <mat-icon>auto_awesome</mat-icon> Quantum Safe
+                      </div>
+                    } @else {
+                      <div class="status-badge standard">
+                        <mat-icon>security</mat-icon> Standard
+                      </div>
+                    }
                   </div>
-                  <div class="id-actions">
-                      <button mat-stroked-button (click)="backupIdentity()">Backup Identity</button>
-                      <button mat-stroked-button (click)="recoverIdentity()">Recover Identity</button>
-                  </div>
-              </div>
-
-              @if (hardwareId()) {
-                <div class="info-section">
-                    <h3>Machine Binding</h3>
-                    <div class="id-display">
-                        <code>{{ hardwareId() }}</code>
-                    </div>
-                    <p class="hint">This vault is currently bound to this device's hardware signature.</p>
                 </div>
-              }
+                
+                <div class="fingerprint-display">
+                  <div class="label">IDENTITY FINGERPRINT</div>
+                  <div class="value">
+                    <code>{{ identityFingerprint() }}</code>
+                    <button mat-icon-button (click)="copyIdentity()" matTooltip="Copy ID">
+                      <mat-icon>content_copy</mat-icon>
+                    </button>
+                  </div>
+                </div>
 
-              <div class="danger-zone">
-                  <h3>Advanced Actions</h3>
-                  <button mat-flat-button color="warn" (click)="vaultService.deleteVault()">ERASE ALL DATA (PURGE VAULT)</button>
+                <div class="passport-footer">
+                  <div class="pqc-marker">ASP CASCADE 16</div>
+                  <mat-icon class="watermark">lock</mat-icon>
+                </div>
               </div>
+            </div>
+
+            <div class="module-actions">
+              <button mat-flat-button class="action-btn" (click)="backupIdentity()">
+                <mat-icon>cloud_download</mat-icon> BACKUP IDENTITY
+              </button>
+              <button mat-stroked-button class="action-btn" (click)="recoverIdentity()">
+                <mat-icon>restore</mat-icon> RECOVER IDENTITY
+              </button>
+            </div>
           </div>
+
+          <!-- HARDWARE MODULE: Machine Binding -->
+          <div class="settings-module device-module">
+            <div class="module-header">
+              <mat-icon>hub</mat-icon>
+              <span>Hardware Integrity</span>
+            </div>
+            
+            <div class="glass-card hardware-card">
+              @if (hardwareId()) {
+                <div class="hw-status-header">
+                  <div class="status-indicator active"></div>
+                  <span>BOUND TO HOST</span>
+                </div>
+                <div class="hw-id-box">
+                  <mat-icon class="hw-icon">computer</mat-icon>
+                  <div class="hw-details">
+                    <div class="label">MACHINE SIGNATURE</div>
+                    <code>{{ hardwareId() }}</code>
+                  </div>
+                </div>
+                <p class="hw-hint">This vault is cryptographically bound to this device's hardware root. Local safeStorage is enforced.</p>
+              } @else {
+                <div class="hw-status-header">
+                  <div class="status-indicator warning"></div>
+                  <span>GENERIC STORAGE</span>
+                </div>
+                <p class="hw-hint">No hardware signature detected. Using standard envelope encryption.</p>
+              }
+            </div>
+
+            <div class="info-module">
+               <div class="module-header">
+                  <mat-icon>info</mat-icon>
+                  <span>Protocol Info</span>
+               </div>
+               <div class="info-card glass-card">
+                  <div class="info-item">
+                    <span class="label">Engine</span>
+                    <span class="value">D-ASP (Rust)</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">Encryption</span>
+                    <span class="value">AES-256-GCM (Hardened)</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">PQC Layer</span>
+                    <span class="value">ML-KEM-1024</span>
+                  </div>
+               </div>
+            </div>
+          </div>
+
+          <!-- DANGER ZONE: Advanced Actions -->
+          <div class="settings-module danger-module full-width">
+            <mat-expansion-panel class="danger-panel glass-card">
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  <mat-icon color="warn">warning</mat-icon>
+                  <span class="danger-title">ADVANCED OPS & DESTRUCTION</span>
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+
+              <div class="danger-panel-content">
+                <div class="danger-hint">
+                  Performing a vault purge will permanently erase all local storage, identities, and encrypted data. 
+                  This action is irreversible unless you have an identity backup.
+                </div>
+                <button mat-flat-button class="purge-btn pulse-red" (click)="vaultService.deleteVault()">
+                  <mat-icon>delete_forever</mat-icon> ERASE ALL VAULT DATA (PURGE)
+                </button>
+              </div>
+            </mat-expansion-panel>
+          </div>
+
+        </div>
       </div>
     }
   </div>

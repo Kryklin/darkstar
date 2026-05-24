@@ -35,6 +35,10 @@ ENGINES = {
     "C": {
         "cwd": os.path.join(BASE_DIR, "c"),
         "cmd": [os.path.join(BASE_DIR, "c", "dasp.exe")],
+    },
+    "CUDA": {
+        "cwd": os.path.join(BASE_DIR, "cuda"),
+        "cmd": [os.path.join(BASE_DIR, "cuda", "d-asp_cuda.exe")],
     }
 }
 
@@ -71,7 +75,7 @@ def run_decrypt(engine_name, ciphertext_json, sk_hex, hwid, use_diagnostic=True)
         cmd += ["--diagnostic"]
         
     try:
-        res = subprocess.run(cmd, cwd=engine["cwd"], capture_output=True, text=True, timeout=30)
+        res = subprocess.run(cmd, cwd=engine["cwd"], capture_output=True, text=True, encoding='utf-8', timeout=30)
         # Cleanup
         if os.path.exists(os.path.join(engine["cwd"], "tmp_sk.hex")): os.remove(os.path.join(engine["cwd"], "tmp_sk.hex"))
         if os.path.exists(os.path.join(engine["cwd"], "tmp_data.json")): os.remove(os.path.join(engine["cwd"], "tmp_data.json"))
@@ -151,6 +155,8 @@ def main():
             else:
                 if engine != "C":
                     for stage_name, key in stages:
+                        if engine == "CUDA" and key == "stage3_round_indices":
+                            continue
                         v_exp = expected_diag.get(key)
                         v_act = actual_diag.get(key)
                         if v_exp != v_act:

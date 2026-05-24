@@ -72,7 +72,7 @@ All implementations are designed as **high-performance, standalone sources** to 
 | **Rust**    | `rust/src/main.rs`         | ML-KEM / ASP Cascade 16 | **Full**                |
 | **Go**      | `go/main.go`               | ML-KEM / ASP Cascade 16 | **Full**                |
 | **C/C++**   | `c/spna_engine.c`          | FFI ML-KEM / ASP Cascade 16| **Full**                |
-| **Python**  | `python/darkstar_crypt.py` | ASP Cascade 16          | **Branchless-Equivalent**|
+| **Python**  | `python/dasp.py`           | ASP Cascade 16          | **Branchless-Equivalent**|
 | **Node.js** | `node/darkstar_crypt.js`   | ASP Cascade 16 / Bridge | **Branchless-Equivalent**|
 
 ---

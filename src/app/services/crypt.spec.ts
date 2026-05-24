@@ -16,10 +16,8 @@ describe('CryptService', () => {
 
     // Mock Electron API
     const mockElectron = {
-      dAsPEncrypt: jasmine.createSpy('dAsPEncrypt').and.resolveTo({
-        encryptedData: 'mock-encrypted-data',
-        reverseKey: '',
-      }),
+      dAsPEncrypt: jasmine.createSpy('dAsPEncrypt').and.resolveTo('mock-encrypted-data'),
+      dAsPDecrypt: jasmine.createSpy('dAsPDecrypt').and.resolveTo(testMnemonic),
     };
     mockWin = window as unknown as { electronAPI: typeof mockElectron };
     mockWin.electronAPI = mockElectron;

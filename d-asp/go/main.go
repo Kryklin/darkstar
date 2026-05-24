@@ -15,6 +15,7 @@ package main
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -43,7 +44,7 @@ type DarkstarChaChaPRNG struct {
 
 func NewDarkstarChaChaPRNG(seedStr string) *DarkstarChaChaPRNG {
 	c := &DarkstarChaChaPRNG{}
-	hash := sha256.Sum256([]byte(seedStr))
+	hash := sha512.Sum512([]byte(seedStr))
 	c.state[0] = 0x61707865; c.state[1] = 0x3320646e; c.state[2] = 0x79622d32; c.state[3] = 0x6b206574;
 	for i := 0; i < 8; i++ {
 		chunk := hash[i*4 : (i+1)*4]
@@ -264,7 +265,7 @@ func (dc *DarkstarCrypt) invTransBitFlip(in []byte, s []byte, pf func(string) PR
 }
 func (dc *DarkstarCrypt) transColumnar(in []byte, s []byte, pf func(string) PRNG) []byte {
 	n := len(in); out := make([]byte, n)
-	cols := 3; idx := 0
+	cols := 4; idx := 0
 	for c := 0; c < cols; c++ {
 		for i := c; i < n; i += cols { out[idx] = in[i]; idx++ }
 	}
@@ -272,7 +273,7 @@ func (dc *DarkstarCrypt) transColumnar(in []byte, s []byte, pf func(string) PRNG
 }
 func (dc *DarkstarCrypt) invTransColumnar(in []byte, s []byte, pf func(string) PRNG) []byte {
 	n := len(in); out := make([]byte, n)
-	cols := 3; idx := 0
+	cols := 4; idx := 0
 	for c := 0; c < cols; c++ {
 		for i := c; i < n; i += cols { out[i] = in[idx]; idx++ }
 	}
@@ -342,7 +343,7 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	sch := mlkem1024.Scheme()
 	kemStart := time.Now()
 	pk, err := sch.UnmarshalBinaryPublicKey(pkBytes); if err != nil { return "", err }
-	ss, ct, err := sch.Encapsulate(pk); if err != nil { return "", err }
+	ct, ss, err := sch.Encapsulate(pk); if err != nil { return "", err }
 	kemDur := time.Since(kemStart)
 
 	kdfStart := time.Now()
@@ -605,8 +606,10 @@ func main() {
 		pk, sk, _ := sch.GenerateKeyPair()
 		pkb, _ := pk.MarshalBinary(); skb, _ := sk.MarshalBinary()
 		pkHex := hex.EncodeToString(pkb); skHex := hex.EncodeToString(skb)
-		res, _ := dc.Encrypt("test payload", pkHex, nil)
-		dec, _ := dc.Decrypt(res, skHex, nil)
+		res, err := dc.Encrypt("test payload", pkHex, nil)
+		if err != nil { fmt.Printf("Enc Err: %v\n", err) }
+		dec, err := dc.Decrypt(res, skHex, nil)
+		if err != nil { fmt.Printf("Err: %v\n", err) }
 		fmt.Printf("Decrypted: %s\n", dec)
 	}
 }

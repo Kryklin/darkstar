@@ -106,15 +106,15 @@
       gap: 10px;
       font-family: 'Roboto Mono', monospace;
       font-size: 0.75rem;
-      color: #00e676;
+      color: var(--mat-sys-tertiary);
       letter-spacing: 2px;
 
       .dot {
         width: 8px;
         height: 8px;
-        background: #00e676;
+        background: var(--mat-sys-tertiary);
         border-radius: 50%;
-        box-shadow: 0 0 10px #00e676;
+        box-shadow: 0 0 10px var(--mat-sys-tertiary);
         animation: pulse-dot 1.5s infinite;
       }
     }
@@ -417,7 +417,9 @@
       color: var(--glass-text-muted);
       margin-bottom: 20px;
       transition: all 0.4s ease;
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
 
       .material-icons {
         font-size: 48px;
@@ -426,9 +428,10 @@
 
     h3 {
       font-size: 1.5rem;
-      font-weight: 300;
+      font-weight: 200;
       margin: 0 0 5px 0;
       color: var(--glass-text);
+      letter-spacing: 1px;
     }
 
     .phase-tech {
@@ -498,7 +501,7 @@
       span {
         font-size: 0.8rem;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
       }
     }
   }
@@ -525,8 +528,11 @@
     button {
       padding: 10px 30px;
       height: 50px;
-      border-radius: 8px;
+      border-radius: 25px;
       letter-spacing: 1px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
 
       .material-icons {
         margin-right: 8px;
@@ -560,8 +566,8 @@
   position: relative;
   width: 100%;
   max-width: 600px;
-  background: linear-gradient(135deg, rgba(var(--mat-sys-primary-rgb), 0.15) 0%, rgba(var(--mat-sys-secondary-rgb), 0.05) 100%);
-  border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.3);
+  background: linear-gradient(135deg, rgba(var(--mat-sys-primary-rgb), 0.08) 0%, var(--mat-sys-surface-container-lowest) 100%);
+  border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.15);
   border-radius: 24px;
   padding: 30px;
   backdrop-filter: blur(20px);
@@ -570,7 +576,6 @@
   justify-content: space-between;
   box-shadow:
     0 15px 35px rgba(0, 0, 0, 0.4),
-    0 0 50px rgba(var(--mat-sys-primary-rgb), 0.1),
     inset 0 0 20px rgba(var(--mat-sys-primary-rgb), 0.05);
 
   overflow: hidden;
@@ -590,8 +595,8 @@
 
     .badge-icon {
       transform: rotate(10deg) scale(1.2);
-      color: #ffd700;
-      filter: drop-shadow(0 0 15px gold);
+      color: var(--mat-sys-secondary);
+      filter: drop-shadow(0 0 15px rgba(var(--mat-sys-secondary-rgb), 0.6));
     }
   }
 }
@@ -624,8 +629,11 @@
   font-size: 64px !important;
   width: 64px !important;
   height: 64px !important;
-  color: #c0c0c0;
+  color: var(--glass-text-muted);
   transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .badge-info {

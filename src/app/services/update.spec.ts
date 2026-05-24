@@ -6,14 +6,22 @@ import { UpdateService } from './update';
 describe('UpdateService', () => {
   let service: UpdateService;
 
+  let mockElectronAPI: {
+    setVersionLock: jasmine.Spy;
+    onUpdateStatus: jasmine.Spy;
+    onInitiateUpdateCheck: jasmine.Spy;
+    restartAndInstall: jasmine.Spy;
+  };
+
   beforeEach(() => {
     // Mock Electron API
-    (window as any).electronAPI = {
+    mockElectronAPI = {
       setVersionLock: jasmine.createSpy('setVersionLock'),
       onUpdateStatus: jasmine.createSpy('onUpdateStatus'),
       onInitiateUpdateCheck: jasmine.createSpy('onInitiateUpdateCheck'),
       restartAndInstall: jasmine.createSpy('restartAndInstall'),
     };
+    (window as unknown as { electronAPI: typeof mockElectronAPI }).electronAPI = mockElectronAPI;
 
     TestBed.configureTestingModule({
       imports: [MatSnackBarModule],
@@ -27,14 +35,14 @@ describe('UpdateService', () => {
   });
 
   it('should set up listeners if running in electron', () => {
-    expect((window as any).electronAPI.onUpdateStatus).toHaveBeenCalled();
-    expect((window as any).electronAPI.onInitiateUpdateCheck).toHaveBeenCalled();
+    expect(mockElectronAPI.onUpdateStatus).toHaveBeenCalled();
+    expect(mockElectronAPI.onInitiateUpdateCheck).toHaveBeenCalled();
   });
 
   it('should toggle version lock', () => {
     const initialLock = service.versionLocked();
     service.toggleVersionLock();
     expect(service.versionLocked()).toBe(!initialLock);
-    expect((window as any).electronAPI.setVersionLock).toHaveBeenCalledWith(!initialLock);
+    expect(mockElectronAPI.setVersionLock).toHaveBeenCalledWith(!initialLock);
   });
 });

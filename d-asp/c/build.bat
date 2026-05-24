@@ -1,5 +1,11 @@
 @echo off
-cl /Ox /W3 /std:c11 /Fe:dasp.exe main.c spna_engine.c ml_kem.c fips202.c sha256.c rng.c poly.c poly_sampling.c aes.c gf_math.c
+set VS_VARS=X:\vs\cache\VC\Auxiliary\Build\vcvarsall.bat
+if not exist "%VS_VARS%" (
+    echo MSVC environment script not found at %VS_VARS%
+    exit /b 1
+)
+call "%VS_VARS%" x64 -vcvars_ver=14.29
+cl /Ox /W3 /std:c11 /Fe:dasp.exe main.c spna_engine.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c aes.c gf_math.c
 if %errorlevel% neq 0 (
     echo Build failed.
     exit /b %errorlevel%

@@ -28,7 +28,5 @@ describe('SharedDecryptComponent', () => {
 
   it('should initialize forms', () => {
     expect(component.firstFormGroup).toBeDefined();
-    expect(component.secondFormGroup).toBeDefined();
-    expect(component.thirdFormGroup).toBeDefined();
   });
 });

@@ -119,6 +119,11 @@ ENGINES = {
         "cwd": os.path.join(BASE_DIR, "c"),
         "cmd": [os.path.join(BASE_DIR, "c", "dasp.exe")],
         "type": "native"
+    },
+    "CUDA": {
+        "cwd": os.path.join(BASE_DIR, "cuda"),
+        "cmd": [os.path.join(BASE_DIR, "cuda", "d-asp_cuda.exe")],
+        "type": "native"
     }
 }
 

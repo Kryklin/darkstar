@@ -12,8 +12,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include "api.h"
+#include "sha512.h"
 #include "sha256.h"
 #include "ml_kem.h"
 
@@ -94,8 +94,8 @@ static void chacha_block(uint32_t *state, uint32_t *out) {
  * @param seed_str Hexadecimal or literal seed string.
  */
 static void prng_init(prng_t *ctx, const char *seed_str) {
-    uint8_t hash[32];
-    crypto_sha256((const uint8_t*)seed_str, strlen(seed_str), hash);
+    uint8_t hash[64];
+    crypto_sha512((const uint8_t*)seed_str, strlen(seed_str), hash);
     ctx->state[0] = 0x61707865;
     ctx->state[1] = 0x3320646e;
     ctx->state[2] = 0x79622d32;
@@ -214,7 +214,7 @@ static void t_bitflip(uint8_t *data, size_t len, const uint8_t *seed, size_t see
 
 static void t_columnar(uint8_t *data, size_t len, const uint8_t *seed, size_t seed_len, prng_t *prng, int fw) {
     uint8_t *out = malloc(len);
-    int cols = 3;
+    int cols = 4;
     size_t idx = 0;
     if(fw) {
         for(int c=0; c<cols; c++) {
@@ -314,7 +314,7 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len, const
 
     uint8_t chain_state[32];
     {
-        char buf[128];
+        char buf[256];
         sprintf(buf, "dasp-chain-%s", active_password_str);
         crypto_sha256((uint8_t*)buf, strlen(buf), chain_state);
     }
@@ -459,7 +459,7 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len, const
 
     uint8_t chain_state[32];
     {
-        char buf[128];
+        char buf[256];
         sprintf(buf, "dasp-chain-%s", active_password_str);
         crypto_sha256((uint8_t*)buf, strlen(buf), chain_state);
     }

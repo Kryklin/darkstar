@@ -2,11 +2,11 @@ import subprocess
 import json
 import os
 
-C_BIN = r"x:\Projects\darkstar\d-asp\c\dasp.exe"
-C_CWD = r"x:\Projects\darkstar\d-asp\c"
+C_BIN = "python"
+C_CWD = r"x:\Projects\darkstar\d-asp\python"
 
 def run_engine(bin_path, cwd, args):
-    res = subprocess.run([bin_path] + args, cwd=cwd, capture_output=True, text=True, timeout=60)
+    res = subprocess.run([bin_path] + args, cwd=cwd, capture_output=True, text=True, encoding='utf-8', timeout=60)
     out = res.stdout
     if out.endswith("\n"): out = out[:-1]
     if out.endswith("\r"): out = out[:-1]
@@ -17,13 +17,12 @@ def run_engine(bin_path, cwd, args):
 
 def main():
     print("Generating Master KAT Key using C Reference Engine...")
-    keygen_out, _ = run_engine(C_BIN, C_CWD, ["keygen"])
+    keygen_out, _ = run_engine(C_BIN, C_CWD, ["dasp.py", "keygen"])
     
     pk, sk = None, None
-    for line in keygen_out.strip().splitlines():
-        if line.startswith("{\"diagnostics\""): continue
-        if "PK: " in line: pk = line.split("PK: ")[1].strip()
-        if "SK: " in line: sk = line.split("SK: ")[1].strip()
+    key_obj = json.loads(keygen_out)
+    pk = key_obj['pk']
+    sk = key_obj['sk']
     
     if not pk or not sk:
         raise ValueError(f"Failed to find PK/SK in keygen output:\n{keygen_out}")
@@ -44,7 +43,7 @@ def main():
         pk_file = os.path.join(C_CWD, "tmp_pk.hex")
         with open(pk_file, "w") as f: f.write(pk)
         
-        args = ["encrypt", tc["payload"], f"@{pk_file}"]
+        args = ["dasp.py", "--diagnostic", "encrypt", tc["payload"], f"@{pk_file}"]
         if tc["hwid"]:
             hwid_file = os.path.join(C_CWD, "tmp_hwid.hex")
             with open(hwid_file, "w") as f: f.write(tc["hwid"])
@@ -87,7 +86,7 @@ def main():
         json.dump(vectors, f, indent=2)
     
     print(f"\nSuccessfully generated {len(vectors)} vectors in {output_path}")
-    print("NOTE: KAT vectors use C-native ML-KEM-1024 keypair + C encrypt.")
+    print("NOTE: KAT vectors use Python-native ML-KEM-1024 keypair + Python encrypt.")
     print("All engines decrypt to validate SPNA cascade parity.")
 
 if __name__ == "__main__":

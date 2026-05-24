@@ -5,7 +5,7 @@ import { CryptService } from '../../../services/crypt';
 import { VaultService } from '../../../services/vault';
 import { SteganographyService } from '../../../services/steganography.service';
 import { PaperWalletService } from '../../../services/paper-wallet.service';
-import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MaterialModule } from '../../../modules/material/material';
 import { signal, WritableSignal } from '@angular/core';
 
@@ -13,7 +13,7 @@ describe('SharedEncryptComponent', () => {
   let component: SharedEncryptComponent;
   let fixture: ComponentFixture<SharedEncryptComponent>;
   let mockCryptService: jasmine.SpyObj<CryptService>;
-  let mockVaultService: { isUnlocked: WritableSignal<boolean>; identity: WritableSignal<any> };
+  let mockVaultService: { isUnlocked: WritableSignal<boolean>; identity: WritableSignal<unknown> };
 
   beforeEach(async () => {
     mockCryptService = jasmine.createSpyObj('CryptService', ['encrypt']);
@@ -54,7 +54,7 @@ describe('SharedEncryptComponent', () => {
 
     it('should show snackbar if vault is locked', fakeAsync(() => {
       // Directly spy on the component's injected snackbar instance
-      const spy = spyOn((component as any).snackBar, 'open');
+      const spy = spyOn((component as unknown as { snackBar: { open: (...args: unknown[]) => void } }).snackBar, 'open');
 
       mockVaultService.isUnlocked.set(false);
       fixture.detectChanges();
@@ -88,13 +88,11 @@ describe('SharedEncryptComponent', () => {
   it('should reset component state', () => {
     component.showResult = true;
     component.encryptedData = 'data';
-    component.reverseKey = 'key';
 
     component.reset();
 
     expect(component.showResult).toBeFalse();
     expect(component.encryptedData).toBe('');
-    expect(component.reverseKey).toBe('');
     expect(component.firstFormGroup.pristine).toBeTrue();
   });
 });

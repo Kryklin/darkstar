@@ -11,6 +11,8 @@ import { VaultService } from '../../services/vault';
 import { LayoutService } from '../../services/layout.service';
 import { MaterialModule } from '../../modules/material/material';
 
+import { trigger, transition, style, animate } from '@angular/animations';
+
 @Component({
   selector: 'app-nav',
   standalone: true,
@@ -20,6 +22,18 @@ import { MaterialModule } from '../../modules/material/material';
     CommonModule,
     RouterModule, // Import entire module to ensure outlet is recognized
     MaterialModule,
+  ],
+  animations: [
+    trigger('slideFade', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateX(-20px)', maxHeight: 0, overflow: 'hidden' }),
+        animate('300ms ease-out', style({ opacity: 1, transform: 'translateX(0)', maxHeight: '500px' })),
+      ]),
+      transition(':leave', [
+        style({ opacity: 1, transform: 'translateX(0)', maxHeight: '500px', overflow: 'hidden' }),
+        animate('250ms ease-in', style({ opacity: 0, transform: 'translateX(-20px)', maxHeight: 0 })),
+      ]),
+    ]),
   ],
 })
 export class Nav {

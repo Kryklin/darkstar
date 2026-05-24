@@ -24,6 +24,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { VaultFilesComponent } from './vault-files.component';
 
 export type VaultTab = 'notes' | 'files' | 'settings';
@@ -48,7 +49,8 @@ export type VaultTab = 'notes' | 'files' | 'settings';
     MatTabsModule,
     MatSnackBarModule,
     MatDialogModule,
-    MatCardModule
+    MatCardModule,
+    MatExpansionModule
   ],
   templateUrl: './vault-dashboard.component.html',
   styleUrls: ['./vault-dashboard.component.scss'],
@@ -73,7 +75,7 @@ export class VaultDashboardComponent {
 
   filteredNotes = computed(() => {
     const term = this.searchTerm().toLowerCase();
-    let n = this.notes();
+    const n = this.notes();
 
     if (!term) return n;
     return n.filter((note) => 

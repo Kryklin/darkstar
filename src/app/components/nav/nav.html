@@ -21,40 +21,44 @@
           </div>
         </a>
 
-        <div class="nav-divider"></div>
-        <span class="nav-section-title">Security Tools</span>
+        @if (vaultService.isUnlocked()) {
+          <div @slideFade>
+            <div class="nav-divider"></div>
+            <span class="nav-section-title">Security Tools</span>
 
-        <!-- Secure Notes -->
-        <a mat-list-item routerLink="/secure-notes" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
-          <div class="nav-link-center">
-            <mat-icon>notes</mat-icon>
-            <span style="margin-left: 10px">Secure Messages</span>
-          </div>
-        </a>
+            <!-- Secure Notes -->
+            <a mat-list-item routerLink="/secure-notes" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
+              <div class="nav-link-center">
+                <mat-icon>notes</mat-icon>
+                <span style="margin-left: 10px">Secure Messages</span>
+              </div>
+            </a>
 
-        <!-- BIP39 Tools -->
-        <a mat-list-item routerLink="/bip39" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
-          <div class="nav-link-center">
-            <mat-icon>security</mat-icon>
-            <span style="margin-left: 10px">BIP39 Tools</span>
-          </div>
-        </a>
+            <!-- BIP39 Tools -->
+            <a mat-list-item routerLink="/bip39" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
+              <div class="nav-link-center">
+                <mat-icon>security</mat-icon>
+                <span style="margin-left: 10px">BIP39 Tools</span>
+              </div>
+            </a>
 
-        <!-- SLIP39 Tools -->
-        <a mat-list-item routerLink="/slip39" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
-          <div class="nav-link-center">
-            <mat-icon>splitscreen</mat-icon>
-            <span style="margin-left: 10px">SLIP39 Tools</span>
-          </div>
-        </a>
+            <!-- SLIP39 Tools -->
+            <a mat-list-item routerLink="/slip39" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
+              <div class="nav-link-center">
+                <mat-icon>splitscreen</mat-icon>
+                <span style="margin-left: 10px">SLIP39 Tools</span>
+              </div>
+            </a>
 
-        <!-- Electrum Tools -->
-        <a mat-list-item routerLink="/electrum" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
-          <div class="nav-link-center">
-            <mat-icon>bolt</mat-icon>
-            <span style="margin-left: 10px">Electrum Tools</span>
+            <!-- Electrum Tools -->
+            <a mat-list-item routerLink="/electrum" routerLinkActive="active-link" [class.disabled-link]="updateService.isChecking()" (click)="closeOnMobile()">
+              <div class="nav-link-center">
+                <mat-icon>bolt</mat-icon>
+                <span style="margin-left: 10px">Electrum Tools</span>
+              </div>
+            </a>
           </div>
-        </a>
+        }
 
         <div class="nav-divider"></div>
 

@@ -31,39 +31,37 @@ const pkg = require('../package.json');
    */
   function printHeader() {
     console.clear();
-    const border = chalk.dim('='.repeat(60));
-    console.log(border);
-    console.log(chalk.bold.hex('#00ADD8')(`${pkg.productName.toUpperCase()}`));
-    console.log(chalk.dim(`v${pkg.version}`));
-    console.log(chalk.white(`${pkg.description}`));
-    console.log(chalk.gray(`Author: ${pkg.author}`));
-    console.log(border);
-    console.log('');
+    console.log(chalk.hex('#00ADD8').bold('\n  🚀  D A R K S T A R   C L I'));
+    console.log(chalk.dim('  ────────────────────────────────────────────────────────────'));
+    console.log(chalk.white(`  Version: ${pkg.version}`));
+    console.log(chalk.white(`  ${pkg.description}`));
+    console.log(chalk.gray(`  Author: ${pkg.author}`));
+    console.log(chalk.dim('  ────────────────────────────────────────────────────────────\n'));
   }
 
   // --- Menu Configuration ---
   const choices = [
-    new inquirer.Separator(chalk.dim('--- Development ---')),
+    new inquirer.Separator(chalk.dim('─── Development ──────────────────────────────────────────')),
     { name: chalk.cyan('  💻  Run Dev Environment'), value: 'dev' },
     { name: chalk.blue('  🔍  Lint Code'), value: 'lint' },
     { name: chalk.cyan('  🧪  Run Angular (Karma) Unit Tests'), value: 'karma' },
     { name: chalk.magenta('  📊  Run Interop Benchmark'), value: 'interop' },
     { name: chalk.hex('#A020F0')('  🤖  Run KAT Verification (Bit-Perfect Check)'), value: 'kat' },
 
-    new inquirer.Separator(chalk.dim('--- Mobile (Capacitor) ---')),
+    new inquirer.Separator(chalk.dim('─── Mobile (Capacitor) ───────────────────────────────────')),
     { name: chalk.cyan('  📱  Sync Mobile Assets'), value: 'cap:sync' },
     { name: chalk.green('  🤖  Open Android Studio'), value: 'cap:open:android' },
     { name: chalk.blue('  🍏  Open Xcode'), value: 'cap:open:ios' },
 
-    new inquirer.Separator(chalk.dim('--- Release ---')),
+    new inquirer.Separator(chalk.dim('─── Release ──────────────────────────────────────────────')),
     { name: chalk.yellow('  🏗️   Build Production'), value: 'build' },
     { name: chalk.hex('#FFA500')('  📦  Package Application'), value: 'package' },
     { name: chalk.green('  🚀  Publish Release'), value: 'publish' },
 
-    new inquirer.Separator(chalk.dim('--- Pipelines ---')),
-    { name: chalk.bold.white('  ⚡  Run All (Lint -> Test -> Build -> Publish)'), value: 'all' },
+    new inquirer.Separator(chalk.dim('─── Pipelines ────────────────────────────────────────────')),
+    { name: chalk.bold.white('  ⚡  Run All (Lint -> Tests -> Build -> Publish)'), value: 'all' },
 
-    new inquirer.Separator(chalk.dim('--- System ---')),
+    new inquirer.Separator(chalk.dim('─── System ───────────────────────────────────────────────')),
     { name: chalk.red.bold('  ❌  Exit'), value: 'exit' },
   ];
 
@@ -156,26 +154,33 @@ const pkg = require('../package.json');
 
     // Execute selected action
     if (action === 'all') {
-      console.log(chalk.bold.underline('\n🚀 Starting Full Release Pipeline\n'));
-      await runShell('Linting', CMD.LINT);
-      await new Promise((r) => setTimeout(r, 2000));
-      await runShell('Testing (Angular)', CMD.KARMA);
-      await new Promise((r) => setTimeout(r, 2000));
-      await runShell('Testing (Interop)', CMD.INTEROP);
-      await new Promise((r) => setTimeout(r, 2000));
-      await new Promise((r) => setTimeout(r, 2000));
-      await runShell('Building', CMD.BUILD);
-      await new Promise((r) => setTimeout(r, 2000));
+      const stages = [
+        { name: 'Linting', cmd: CMD.LINT },
+        { name: 'Testing (Angular)', cmd: CMD.KARMA },
+        { name: 'Testing (Interop)', cmd: CMD.INTEROP },
+        { name: 'Testing (KAT)', cmd: CMD.KAT },
+        { name: 'Building', cmd: CMD.BUILD },
+        { name: 'Publishing', cmd: CMD.PUBLISH, options: { clear: false } }
+      ];
 
-      if (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN) {
-        console.log(chalk.red.bold('\n⚠️  Error: GITHUB_TOKEN not found in environment.'));
-        console.log(chalk.yellow('Publishing requires a GitHub Personal Access Token.'));
-        console.log(chalk.yellow('Please create a .env file in the root directory with:'));
-        console.log(chalk.cyan('GITHUB_TOKEN=your_token_here\n'));
-        return;
+      for (let i = 0; i < stages.length; i++) {
+        const stage = stages[i];
+        
+        if (stage.name === 'Publishing' && (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN)) {
+          console.log(chalk.red.bold('\n⚠️  Error: GITHUB_TOKEN not found in environment.'));
+          console.log(chalk.yellow('Publishing requires a GitHub Personal Access Token.'));
+          console.log(chalk.yellow('Please create a .env file in the root directory with:'));
+          console.log(chalk.cyan('GITHUB_TOKEN=your_token_here\n'));
+          break;
+        }
+
+        const stageNameWithProgress = `[Stage ${i + 1}/${stages.length}] ${stage.name}`;
+        await runShell(stageNameWithProgress, stage.cmd, stage.options || { clear: true });
+        
+        if (i < stages.length - 1) {
+          await new Promise((r) => setTimeout(r, 2000));
+        }
       }
-
-      await runShell('Publishing', CMD.PUBLISH, { clear: false });
 
       console.log(chalk.bold.green('\n✨ Full Release Pipeline Completed! ✨\n'));
     } else {
