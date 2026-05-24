@@ -62,6 +62,7 @@ const pkg = require('../package.json');
     { name: chalk.bold.white('  ⚡  Run All (Lint -> Tests -> Build -> Publish)'), value: 'all' },
 
     new inquirer.Separator(chalk.dim('─── System ───────────────────────────────────────────────')),
+    { name: chalk.bold.cyan('  ⚙️   Run Dev Environment Check (C, Rust, Go, Python)'), value: 'check-env' },
     { name: chalk.red.bold('  ❌  Exit'), value: 'exit' },
   ];
 
@@ -105,6 +106,97 @@ const pkg = require('../package.json');
    */
   async function runShell(stepName, shellCommand, options = {}) {
     await runStep(stepName, shellCommand, [], { shell: true, ...options });
+  }
+
+  /**
+   * Environment Checker
+   * Checks for required development dependencies and offers to install them via winget.
+   * 
+   * @param {boolean} interactive - Whether to prompt for installation via winget
+   */
+  async function checkEnvironment(interactive = false) {
+    if (interactive) printHeader();
+    const spinner = ora(chalk.blue('Checking development environment...')).start();
+    
+    // Inject common installation paths into process.env.PATH so newly installed tools are detected without a terminal restart
+    const commonPaths = [
+      'C:\\Program Files\\LLVM\\bin',
+      'C:\\Program Files\\Go\\bin',
+      path.join(process.env.USERPROFILE || '', '.cargo', 'bin')
+    ];
+    for (const p of commonPaths) {
+      if (!process.env.PATH.includes(p) && fs.existsSync(p)) {
+        process.env.PATH = `${p}${path.delimiter}${process.env.PATH}`;
+      }
+    }
+    
+    const deps = [
+      { name: 'C Compiler (clang/gcc)', cmd: 'clang', args: ['--version'], pkg: 'LLVM.LLVM' },
+      { name: 'Rust (cargo)', cmd: 'cargo', args: ['--version'], pkg: 'Rustlang.Rustup' },
+      { name: 'Go', cmd: 'go', args: ['version'], pkg: 'GoLang.Go' },
+      { name: 'Python', cmd: 'python', args: ['--version'], pkg: 'Python.Python.3.11' },
+    ];
+
+    const missing = [];
+
+    for (const dep of deps) {
+      try {
+        await execa(dep.cmd, dep.args, { preferLocal: true });
+        if (interactive) console.log(chalk.green(`✔ ${dep.name} is installed.`));
+      } catch (e) {
+        // Try fallback for C compiler if clang fails
+        if (dep.cmd === 'clang') {
+          try {
+            await execa('gcc', ['--version'], { preferLocal: true });
+            if (interactive) console.log(chalk.green(`✔ C Compiler (gcc) is installed.`));
+            continue;
+          } catch (e2) {
+            // Both failed
+          }
+        }
+        if (interactive) console.log(chalk.red(`✖ ${dep.name} is missing.`));
+        missing.push(dep);
+      }
+    }
+
+    spinner.stop();
+
+    if (missing.length === 0) {
+      if (interactive) console.log(chalk.bold.green('\n✨ All development tools are installed! ✨\n'));
+      return true;
+    }
+
+    if (!interactive) {
+      throw new Error(`Missing required development tools: ${missing.map(m => m.name).join(', ')}.\nPlease run the "Run Dev Environment Check" from the main menu to install them.`);
+    }
+
+    console.log(chalk.yellow(`\nMissing tools detected: ${missing.map(m => m.name).join(', ')}`));
+    const { install } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'install',
+        message: 'Would you like to install the missing dependencies via winget? (Requires UAC Administrator privileges)',
+        default: true
+      }
+    ]);
+
+    if (install) {
+      for (const dep of missing) {
+        const installSpinner = ora(chalk.blue(`Installing ${dep.name} via winget...`)).start();
+        try {
+          // Elevated powershell process for winget installation
+          const psCommand = `Start-Process -Wait -Verb RunAs "winget" -ArgumentList "install", "${dep.pkg}", "--silent", "--accept-package-agreements", "--accept-source-agreements"`;
+          await execa('powershell', ['-NoProfile', '-Command', psCommand]);
+          installSpinner.succeed(chalk.green(`Successfully installed ${dep.name}!`));
+        } catch (err) {
+          installSpinner.fail(chalk.red(`Failed to install ${dep.name}.`));
+          console.error(chalk.dim(err.message));
+        }
+      }
+      console.log(chalk.yellow.bold('\nℹ Note: You may need to restart your terminal or PC for the newly installed tools to be available in your PATH.'));
+    }
+    
+    return false;
   }
 
   // --- Main Execution Loop ---
@@ -153,85 +245,99 @@ const pkg = require('../package.json');
     };
 
     // Execute selected action
-    if (action === 'all') {
-      const stages = [
-        { name: 'Linting', cmd: CMD.LINT },
-        { name: 'Testing (Angular)', cmd: CMD.KARMA },
-        { name: 'Testing (Interop)', cmd: CMD.INTEROP },
-        { name: 'Testing (KAT)', cmd: CMD.KAT },
-        { name: 'Building', cmd: CMD.BUILD },
-        { name: 'Publishing', cmd: CMD.PUBLISH, options: { clear: false } }
-      ];
-
-      for (let i = 0; i < stages.length; i++) {
-        const stage = stages[i];
+    try {
+      if (action === 'all') {
+        await checkEnvironment(false); // Fail-safe dependency check
         
-        if (stage.name === 'Publishing' && (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN)) {
-          console.log(chalk.red.bold('\n⚠️  Error: GITHUB_TOKEN not found in environment.'));
-          console.log(chalk.yellow('Publishing requires a GitHub Personal Access Token.'));
-          console.log(chalk.yellow('Please create a .env file in the root directory with:'));
-          console.log(chalk.cyan('GITHUB_TOKEN=your_token_here\n'));
-          break;
-        }
+        const stages = [
+          { name: 'Linting', cmd: CMD.LINT },
+          { name: 'Testing (Angular)', cmd: CMD.KARMA },
+          { name: 'Testing (Interop)', cmd: CMD.INTEROP },
+          { name: 'Testing (KAT)', cmd: CMD.KAT },
+          { name: 'Building', cmd: CMD.BUILD },
+          { name: 'Publishing', cmd: CMD.PUBLISH, options: { clear: false } }
+        ];
 
-        const stageNameWithProgress = `[Stage ${i + 1}/${stages.length}] ${stage.name}`;
-        await runShell(stageNameWithProgress, stage.cmd, stage.options || { clear: true });
-        
-        if (i < stages.length - 1) {
-          await new Promise((r) => setTimeout(r, 2000));
-        }
-      }
-
-      console.log(chalk.bold.green('\n✨ Full Release Pipeline Completed! ✨\n'));
-    } else {
-      switch (action) {
-        case 'dev':
-          await runShell('Dev Environment', CMD.DEV);
-          break;
-        case 'lint':
-          await runShell('Linting', CMD.LINT);
-          break;
-        case 'karma':
-          await runShell('Angular Unit Testing', CMD.KARMA);
-          break;
-        case 'interop':
-          await runShell('Interop Benchmarking', CMD.INTEROP);
-          break;
-        case 'kat':
-          await runShell('KAT Verification', CMD.KAT);
-          break;
-        case 'cap:sync':
-          console.log(chalk.yellow('ℹ Building core application before sync...'));
-          await runShell('Building', CMD.BUILD);
-          await runShell('Syncing Native Platforms', CMD.CAP_SYNC, { clear: false });
-          break;
-        case 'cap:open:android':
-          await runShell('Opening Android Studio', CMD.CAP_OPEN_ANDROID);
-          break;
-        case 'cap:open:ios':
-          await runShell('Opening Xcode', CMD.CAP_OPEN_IOS);
-          break;
-        case 'build':
-          await runShell('Building', CMD.BUILD);
-          break;
-        case 'package':
-          console.log(chalk.yellow('ℹ Building before packaging...'));
-          await runShell('Building', CMD.BUILD);
-          // Preserve build log
-          await runShell('Packaging', CMD.PACKAGE, { clear: true }); // User requested clear back
-          break;
-        case 'publish':
-          if (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN) {
+        for (let i = 0; i < stages.length; i++) {
+          const stage = stages[i];
+          
+          if (stage.name === 'Publishing' && (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN)) {
             console.log(chalk.red.bold('\n⚠️  Error: GITHUB_TOKEN not found in environment.'));
+            console.log(chalk.yellow('Publishing requires a GitHub Personal Access Token.'));
             console.log(chalk.yellow('Please create a .env file in the root directory with:'));
             console.log(chalk.cyan('GITHUB_TOKEN=your_token_here\n'));
             break;
           }
-          console.log(chalk.yellow('ℹ Building before publishing...'));
-          await runShell('Building', CMD.BUILD);
-          // Preserve build log
-          await runShell('Publishing', CMD.PUBLISH, { clear: false });
-          break;
+
+          const stageNameWithProgress = `[Stage ${i + 1}/${stages.length}] ${stage.name}`;
+          await runShell(stageNameWithProgress, stage.cmd, stage.options || { clear: true });
+          
+          if (i < stages.length - 1) {
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+        }
+
+        console.log(chalk.bold.green('\n✨ Full Release Pipeline Completed! ✨\n'));
+      } else {
+        switch (action) {
+          case 'check-env':
+            await checkEnvironment(true);
+            break;
+          case 'dev':
+            await runShell('Dev Environment', CMD.DEV);
+            break;
+          case 'lint':
+            await runShell('Linting', CMD.LINT);
+            break;
+          case 'karma':
+            await runShell('Angular Unit Testing', CMD.KARMA);
+            break;
+          case 'interop':
+            await checkEnvironment(false);
+            await runShell('Interop Benchmarking', CMD.INTEROP);
+            break;
+          case 'kat':
+            await checkEnvironment(false);
+            await runShell('KAT Verification', CMD.KAT);
+            break;
+          case 'cap:sync':
+            console.log(chalk.yellow('ℹ Building core application before sync...'));
+            await runShell('Building', CMD.BUILD);
+            await runShell('Syncing Native Platforms', CMD.CAP_SYNC, { clear: false });
+            break;
+          case 'cap:open:android':
+            await runShell('Opening Android Studio', CMD.CAP_OPEN_ANDROID);
+            break;
+          case 'cap:open:ios':
+            await runShell('Opening Xcode', CMD.CAP_OPEN_IOS);
+            break;
+          case 'build':
+            await runShell('Building', CMD.BUILD);
+            break;
+          case 'package':
+            console.log(chalk.yellow('ℹ Building before packaging...'));
+            await runShell('Building', CMD.BUILD);
+            // Preserve build log
+            await runShell('Packaging', CMD.PACKAGE, { clear: true }); // User requested clear back
+            break;
+          case 'publish':
+            if (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN) {
+              console.log(chalk.red.bold('\n⚠️  Error: GITHUB_TOKEN not found in environment.'));
+              console.log(chalk.yellow('Please create a .env file in the root directory with:'));
+              console.log(chalk.cyan('GITHUB_TOKEN=your_token_here\n'));
+              break;
+            }
+            console.log(chalk.yellow('ℹ Building before publishing...'));
+            await runShell('Building', CMD.BUILD);
+            // Preserve build log
+            await runShell('Publishing', CMD.PUBLISH, { clear: false });
+            break;
+        }
+      }
+    } catch (err) {
+      console.log(chalk.red.bold('\n❌ Operation Aborted.'));
+      if (err.message) {
+        console.log(chalk.dim(err.message));
       }
     }
 
