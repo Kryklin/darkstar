@@ -141,17 +141,24 @@ const pkg = require('../package.json');
 
     for (const dep of deps) {
       try {
-        await execa(dep.cmd, dep.args, { preferLocal: true });
+        await execa(dep.cmd, dep.args, { preferLocal: true, shell: process.platform === 'win32' });
         if (interactive) console.log(chalk.green(`✔ ${dep.name} is installed.`));
       } catch (e) {
         // Try fallback for C compiler if clang fails
         if (dep.cmd === 'clang') {
           try {
-            await execa('gcc', ['--version'], { preferLocal: true });
+            await execa('gcc', ['--version'], { preferLocal: true, shell: process.platform === 'win32' });
             if (interactive) console.log(chalk.green(`✔ C Compiler (gcc) is installed.`));
             continue;
           } catch (e2) {
-            // Both failed
+            // Try explicit LLVM path fallback
+            try {
+              await execa('C:\\Program Files\\LLVM\\bin\\clang.exe', ['--version']);
+              if (interactive) console.log(chalk.green(`✔ C Compiler (clang) is installed at C:\\Program Files\\LLVM.`));
+              continue;
+            } catch (e3) {
+              // Both failed
+            }
           }
         }
         if (interactive) console.log(chalk.red(`✖ ${dep.name} is missing.`));

@@ -69,3 +69,6 @@ plans/
 /android/app/build/
 /android/app/.cxx/
 /android/captures/
+
+# D-ASP generated benchmark/test files
+d-asp/**/interop.json

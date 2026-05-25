@@ -12,6 +12,10 @@ if (squirrelStartup) {
   process.exit(0);
 }
 
+// Suppress known GPU and disk cache "Access Denied" errors on rapid restarts (especially in dev mode)
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+app.commandLine.appendSwitch('disable-http-cache');
+
 // Register custom protocol as secure/standard
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } }]);
 
@@ -200,6 +204,10 @@ app.whenReady().then(async () => {
         '.ico': 'image/x-icon',
         '.json': 'application/json',
         '.svg': 'image/svg+xml',
+        '.woff': 'font/woff',
+        '.woff2': 'font/woff2',
+        '.ttf': 'font/ttf',
+        '.eot': 'application/vnd.ms-fontobject',
       };
       return new Response(new Uint8Array(fileContent), {
         headers: {
@@ -498,9 +506,11 @@ ipcMain.handle('dasp-encrypt', async (_event, payload: string, pkHex: string, en
   
   try {
     return await runDAsPCommand(engine, args);
-  } catch (err: any) {
-    console.error(`D-ASP Engine (${engine}) failed:`, err.stderr || err.message);
-    throw new Error(`D-ASP Engine (${engine}) failed: ${err.stderr || err.message}`);
+  } catch (error: unknown) {
+    const err = error as { stderr?: string; message?: string };
+    const msg = err.stderr || err.message || String(error);
+    console.error(`D-ASP Engine (${engine}) failed:`, msg);
+    throw new Error(`D-ASP Engine (${engine}) failed: ${msg}`);
   }
 });
 
@@ -513,9 +523,11 @@ ipcMain.handle('dasp-decrypt', async (_event, data: string, rk: string, skHex: s
 
   try {
     return await runDAsPCommand(engine, args);
-  } catch (err: any) {
-    console.error(`D-ASP Engine (${engine}) failed:`, err.stderr || err.message);
-    throw new Error(`D-ASP Engine (${engine}) failed: ${err.stderr || err.message}`);
+  } catch (error: unknown) {
+    const err = error as { stderr?: string; message?: string };
+    const msg = err.stderr || err.message || String(error);
+    console.error(`D-ASP Engine (${engine}) failed:`, msg);
+    throw new Error(`D-ASP Engine (${engine}) failed: ${msg}`);
   }
 });
 

@@ -12,6 +12,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "api.h"
 #include "sha512.h"
 #include "sha256.h"
