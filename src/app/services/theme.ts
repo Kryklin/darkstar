@@ -73,6 +73,15 @@ export class Theme {
     // Add light/dark class
     document.body.classList.add('dark-theme');
     document.body.classList.remove('light-theme');
+
+    // Generate RGB version of primary color for alpha-blending in CSS
+    const hex = this.selectedTheme().primary;
+    if (hex && hex.length === 7) {
+      const r = parseInt(hex.substring(1, 3), 16);
+      const g = parseInt(hex.substring(3, 5), 16);
+      const b = parseInt(hex.substring(5, 7), 16);
+      document.documentElement.style.setProperty('--mat-sys-primary-rgb', `${r}, ${g}, ${b}`);
+    }
   }
 
   private updateLogo() {
