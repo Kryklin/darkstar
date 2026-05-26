@@ -13,9 +13,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css" />
-    <script src="assets/early-theme.js"></script>
   </head>
   <body>
+    <script>
+      try {
+        var themeClass = localStorage.getItem('selectedTheme') || 'theme-obsidian-shard';
+        document.body.classList.add('dark-theme', themeClass);
+      } catch(e) {}
+    </script>
     <app-root></app-root>
   </body>
 </html>
