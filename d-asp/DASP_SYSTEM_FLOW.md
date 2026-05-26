@@ -26,7 +26,7 @@ graph TD
     D -- "Diffusion & Network Layers" --> E[Encrypted Storage Enclave]
     end
     
-    E -- "Multi-Language Interop" --> F[Rust / Go / C / Node / Python]
+    E -- "Multi-Language Interop" --> F[Rust / Go / C / Node / Python / CUDA]
 ```
 
 ---
@@ -91,12 +91,14 @@ stateDiagram-v2
     [*] --> CNative: Reference Input
     [*] --> NodeJS: Reference Input
     [*] --> Python: Reference Input
+    [*] --> CUDAGPU: Reference Input
 
     RustRef --> JSON_Envelope: ASP Cascade 16
     GoNative --> JSON_Envelope: ASP Cascade 16
     CNative --> JSON_Envelope: ASP Cascade 16
     NodeJS --> JSON_Envelope: ASP Cascade 16
     Python --> JSON_Envelope: ASP Cascade 16
+    CUDAGPU --> JSON_Envelope: ASP Cascade 16 (Parallel)
 
     JSON_Envelope --> InteropSuccess: Bit-Perfect Match
     InteropSuccess --> [*]

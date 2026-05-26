@@ -66,6 +66,10 @@ We welcome suggestions for new features and improvements to existing functionali
     - Requires **Clang 15+** or **GCC 12+**.
     - Build locally using: `npm run build:c`.
 
+6.  **CUDA Implementation Requirements**:
+    - Requires **NVIDIA CUDA Toolkit (nvcc)**.
+    - Build locally using the batch script: `d-asp/cuda/build_cuda.bat`.
+
 ## Styleguides
 
 ### Git Commit Messages

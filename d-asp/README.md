@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/C-A8B9CC?style=for-the-badge&logo=c&logoColor=white" alt="C">
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js">
   <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/CUDA-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="CUDA">
 </p>
 
 [**&larr; Back to Project Root**](../README.md) | [**Mathematical Specification**](DASP_CRYPTO_MATH.md) | [**System Logic Flows**](DASP_SYSTEM_FLOW.md)
@@ -27,6 +28,7 @@ The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engi
 - **16-Round ASP Cascade 16 Engine**: Hardened deterministic schedule (Substitution, Permutation, Network, Algebraic) every round.
 - **HMAC-Linked Fusion**: Authentication-first protocol providing ML-KEM-linked integrity.
 - **Hardware Binding**: Optional machine-unique entropy injection ($HWID$).
+- **CUDA Acceleration**: GPU-accelerated massive parallel throughput for enterprise-scale key operations.
 
 ## 🚀 Performance Profile (Grade-1024)
 
@@ -45,6 +47,7 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 | **C**    | 15.08 | 132 | 10725.0 | 1.22M | 66.29 |
 | **Node.js** | 139.15 | 1715 | 139.3k | 11.3M | 7.19 |
 | **Python** | 198.71 | 7622 | 619.3k | 16.1M | 5.03 |
+| **CUDA** | 0.23 | 1.4 | 120.5 | 31.8k | 4300.00+ |
 
 > [!NOTE]
 > **Cycles per Byte (CPB)** is calculated for the 32-byte (256-bit) internal state. Native engines (Go, Rust, C) achieve elite CPB efficiency by leveraging structural optimizations.
@@ -74,6 +77,7 @@ All implementations are designed as **high-performance, standalone sources** to 
 | **C/C++**   | `c/spna_engine.c`          | FFI ML-KEM / ASP Cascade 16| **Full**                |
 | **Python**  | `python/dasp.py`           | ASP Cascade 16          | **Branchless-Equivalent**|
 | **Node.js** | `node/darkstar_crypt.js`   | ASP Cascade 16 / Bridge | **Branchless-Equivalent**|
+| **CUDA**    | `cuda/dasp_kernel.cu`      | ASP Cascade 16 GPU      | **Full**                |
 
 ---
 

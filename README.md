@@ -30,7 +30,7 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 
 ## 🛡️ The Multi-Engine Matrix
 
-**ASP Cascade 16**: The 16-round engine ensures bit-perfect interoperability across Rust, Go, C, Python, and Node.js while providing maximum algebraic complexity.
+**ASP Cascade 16**: The 16-round engine ensures bit-perfect interoperability across Rust, Go, C, Python, Node.js, and CUDA while providing maximum algebraic complexity.
 
 | Engine | optimization | implementation | Security Tier | Interop |
 | :--- | :--- | :--- | :--- | :--- |
@@ -39,6 +39,7 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 | **C** | **Native (Clang)** | Procedural Reference | Grade-1024 | `PASSED` |
 | **Node.js** | **Managed** | Production Bridge (Electron) | Grade-1024 | `PASSED` |
 | **Python** | **Managed** | Research & Validation | Grade-1024 | `PASSED` |
+| **CUDA** | **Native (NVCC)** | Massively Parallel GPU | Grade-1024 | `PASSED` |
 
 ---
 

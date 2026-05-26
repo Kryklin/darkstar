@@ -42,8 +42,8 @@ Operations used during local feature development and engine synchronization.
 | `dev` | **Run Dev Environment** | `ng serve` + `electron` | Launches Angular and Electron concurrently with live reload. |
 | `lint` | **Lint Code** | `ng lint` | Executes ESLint across the TypeScript/Angular source. |
 | `karma` | **Run Unit Tests** | `ng test ...` | Runs Angular unit tests in Headless Chrome. |
-| `interop`| **Interop Benchmark** | `verify_interop.py` | Verifies bit-perfect parity across all language engines. |
-| `kat` | **KAT Verification** | `verify_kat.py` | Runs the Known Answer Test suite (NIST Parity). |
+| `interop`| **Interop Benchmark** | `verify_interop.py` | Verifies bit-perfect parity across all language engines (including CUDA). |
+| `kat` | **KAT Verification** | `verify_kat.py` | Runs the Known Answer Test suite (NIST Parity) across all engines, including GPU execution. |
 
 ### Mobile (Capacitor)
 Tools for bridging the core application to Android and iOS runtimes.
