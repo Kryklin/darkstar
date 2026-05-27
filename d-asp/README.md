@@ -44,12 +44,12 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 
 | Engine | Total Time | Casca Time | Casca CPB | Total CPB | Ops/sec |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Rust** | 15.92 ms | 3 μs | 264.06 | 1.29M | 62.78 |
-| **Go** | 16.15 ms | 0 μs | 0.00 | 1.31M | 61.92 |
-| **C**    | 12.23 ms | 83 μs | 6755.94 | 0.99M | 81.72 |
-| **Node.js** | 148.42 ms | 332 μs | 26942.50 | 12.0M | 6.74 |
-| **Python** | 160.50 ms | 276 μs | 22449.38 | 13.0M | 6.23 |
-| **CUDA** | 127.63 ms | 164 μs | 13345.31 | 10.3M | 7.83 |
+| **Rust** | 12.98 ms | 3 μs | 251.88 | 1.05M | 77.03 |
+| **Go** | 12.46 ms | 0 μs | 0.00 | 1.01M | 80.21 |
+| **C**    | 11.58 ms | 66 μs | 5362.50 | 0.94M | 86.29 |
+| **Node.js** | 110.03 ms | 269 μs | 21860.31 | 8.94M | 9.09 |
+| **Python** | 113.53 ms | 236 μs | 19154.69 | 9.22M | 8.81 |
+| **CUDA** | 125.85 ms | 116 μs | 9449.38 | 10.2M | 7.95 |
 
 > [!NOTE]
 > **Cycles per Byte (CPB)** is calculated for the 32-byte (256-bit) internal state. Native engines (Go, Rust, C) achieve elite CPB efficiency by leveraging structural optimizations.
@@ -96,8 +96,8 @@ All CLI engines share a standardized argument structure for seamless integration
 ./darkstar [flags] <command> [arguments...]
 
 # Available Commands
-encrypt <payload> <pk_hex> [--hwid <hex>]    # Encrypt using D-ASP
-decrypt <json_payload> <sk_hex> [--hwid <hex>] # Decrypt using D-ASP
+encrypt <payload> <pk_hex> [--hwid <hex>] [--telemetry]    # Encrypt using D-ASP
+decrypt <json_payload> <sk_hex> [--hwid <hex>] [--telemetry] # Decrypt using D-ASP
 keygen                                       # Generate ML-KEM keypair
 test                                         # Run bit-perfect self-test
 ```
@@ -115,6 +115,19 @@ D-ASP utilizes a flattened JSON envelope for universal compatibility:
   "mac": "<HEX_ENCODED_HMAC_TAG>"
 }
 ```
+
+> [!TIP]
+> **Telemetry Output**: Use the `--telemetry` flag to re-attach verbose structural performance measurements (`timings`) and cryptographic intermediate states (`diagnostics`) into `stderr` or the primary JSON schema (depending on the engine).
+
+---
+
+## 🛑 C Engine Error Codes
+
+The optimized C Engine provides granular exit codes for debugging production environments:
+- **`2`**: Missing CLI arguments.
+- **`3`**: Input file not found or inaccessible.
+- **`4`**: Failed to parse JSON blob or extract required structural fields (`data`, `ct`, `mac`).
+- **`5`**: Decapsulation or Authentication Tag (MAC) mismatch (Integrity or KEM failure).
 
 > [!NOTE]
 > **Bit-Parity Guarantee**: For any given input and keys, every engine in this suite is mathematically guaranteed to output identical Hex/JSON byte-streams.

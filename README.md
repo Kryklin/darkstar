@@ -47,10 +47,10 @@ Darkstar is heavily optimized using vectorized SIMD (AVX2) and GPU PTX instructi
 
 | Engine | Total Time | Casca Time | Casca CPB | Ops/sec |
 | :--- | :--- | :--- | :--- | :--- |
-| **Rust** | 15.92 ms | 3 μs | 264.06 | 62.78 |
-| **Go** | 16.15 ms | 0 μs | 0.00 | 61.92 |
-| **C**    | 12.23 ms | 83 μs | 6755.94 | 81.72 |
-| **CUDA** | 127.63 ms | 164 μs | 13345.31 | 7.83 |
+| **Rust** | 12.98 ms | 3 μs | 251.88 | 77.03 |
+| **Go** | 12.46 ms | 0 μs | 0.00 | 80.21 |
+| **C**    | 11.58 ms | 66 μs | 5362.50 | 86.29 |
+| **CUDA** | 125.85 ms | 116 μs | 9449.38 | 7.95 |
 
 > [!NOTE]
 > *CUDA timing includes the total host-to-host DMA transfer pipeline. The actual unrolled Grade-1024 SPNA Cascade computes in ~164us (micro-seconds).*
