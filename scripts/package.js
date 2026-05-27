@@ -42,11 +42,15 @@ const pkg = require('../package.json');
   // --- Menu Configuration ---
   const choices = [
     new inquirer.Separator(chalk.dim('─── Development ──────────────────────────────────────────')),
+    { name: chalk.bold.cyan('  ⚙️   Run Dev Environment Check (C, Rust, Go, Python)'), value: 'check-env' },
     { name: chalk.cyan('  💻  Run Dev Environment'), value: 'dev' },
     { name: chalk.blue('  🔍  Lint Code'), value: 'lint' },
+
+    new inquirer.Separator(chalk.dim('─── Testing & Verification ───────────────────────────────')),
     { name: chalk.cyan('  🧪  Run Angular (Karma) Unit Tests'), value: 'karma' },
     { name: chalk.magenta('  📊  Run Interop Benchmark'), value: 'interop' },
     { name: chalk.hex('#A020F0')('  🤖  Run KAT Verification (Bit-Perfect Check)'), value: 'kat' },
+    { name: chalk.bold.magenta('  🐳  Run Headless Docker Test'), value: 'docker-test' },
 
     new inquirer.Separator(chalk.dim('─── Mobile (Capacitor) ───────────────────────────────────')),
     { name: chalk.cyan('  📱  Sync Mobile Assets'), value: 'cap:sync' },
@@ -62,8 +66,6 @@ const pkg = require('../package.json');
     { name: chalk.bold.white('  ⚡  Run All (Lint -> Tests -> Build -> Publish)'), value: 'all' },
 
     new inquirer.Separator(chalk.dim('─── System ───────────────────────────────────────────────')),
-    { name: chalk.bold.cyan('  ⚙️   Run Dev Environment Check (C, Rust, Go, Python)'), value: 'check-env' },
-    { name: chalk.bold.magenta('  🐳  Run Headless Docker Test'), value: 'docker-test' },
     { name: chalk.red.bold('  ❌  Exit'), value: 'exit' },
   ];
 
