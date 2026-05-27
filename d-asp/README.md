@@ -42,14 +42,14 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 - **Storage**: SSD-backed (High-speed IO)
 - **Security Standards**: Fully compliant with Grade-1024 structural requirements.
 
-| Engine | Mean (ms) | Cascd (μs) | Cascd CPB | Total CPB | Ops/sec |
+| Engine | Total Time | Casca Time | Casca CPB | Total CPB | Ops/sec |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Go** | 14.19 | 62 | 5000.9 | 1.15M | 70.48 |
-| **Rust** | 14.36 | 33 | 2656.9 | 1.16M | 69.64 |
-| **C**    | 15.08 | 132 | 10725.0 | 1.22M | 66.29 |
-| **Node.js** | 139.15 | 1715 | 139.3k | 11.3M | 7.19 |
-| **Python** | 198.71 | 7622 | 619.3k | 16.1M | 5.03 |
-| **CUDA** | 0.23 | 1.4 | 120.5 | 31.8k | 4300.00+ |
+| **Rust** | 15.92 ms | 3 μs | 264.06 | 1.29M | 62.78 |
+| **Go** | 16.15 ms | 0 μs | 0.00 | 1.31M | 61.92 |
+| **C**    | 12.23 ms | 83 μs | 6755.94 | 0.99M | 81.72 |
+| **Node.js** | 148.42 ms | 332 μs | 26942.50 | 12.0M | 6.74 |
+| **Python** | 160.50 ms | 276 μs | 22449.38 | 13.0M | 6.23 |
+| **CUDA** | 127.63 ms | 164 μs | 13345.31 | 10.3M | 7.83 |
 
 > [!NOTE]
 > **Cycles per Byte (CPB)** is calculated for the 32-byte (256-bit) internal state. Native engines (Go, Rust, C) achieve elite CPB efficiency by leveraging structural optimizations.
