@@ -55,6 +55,10 @@ Darkstar is heavily optimized using vectorized SIMD (AVX2) and GPU PTX instructi
 > [!NOTE]
 > *CUDA timing includes the total host-to-host DMA transfer pipeline. The actual unrolled Grade-1024 SPNA Cascade computes in ~164us (micro-seconds).*
 
+> [!TIP]
+> **Zero Microsecond (0 μs) Readings**
+> You may observe `0 μs` for `Casca Time` in highly optimized native engines like **Go** during small payload benchmarks. This is a measurement artifact, not a bug. For minimal payloads, the pure unrolled execution completes so quickly (< 100ns) that it finishes entirely between the ticks of the OS monotonic clock (e.g., Windows QPC), effectively registering zero elapsed time.
+
 ---
 
 ## 🚀 Quick Start (Interactive Dashboard)

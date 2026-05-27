@@ -220,12 +220,16 @@ func (dc *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte) (
 	}
 
 	totalDur := time.Since(totalStart)
+
+	finalHash := sha256.Sum256(payloadBytes)
+	fmt.Fprintf(os.Stderr, "Go-DCE-Prevent-Hash: %x\n", finalHash)
+
 	timingReport := map[string]interface{}{
 		"timings": map[string]interface{}{
-			"kem_us":     kemDur.Microseconds(),
-			"kdf_us":     kdfDur.Microseconds(),
-			"cascade_us": cascadeDur.Microseconds(),
-			"total_us":   totalDur.Microseconds(),
+			"kem_us":     float64(kemDur.Nanoseconds()) / 1000.0,
+			"kdf_us":     float64(kdfDur.Nanoseconds()) / 1000.0,
+			"cascade_us": float64(cascadeDur.Nanoseconds()) / 1000.0,
+			"total_us":   float64(totalDur.Nanoseconds()) / 1000.0,
 		},
 	}
 	tj, _ := json.Marshal(timingReport)
@@ -332,12 +336,16 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 	cascadeDur := time.Since(cascadeStart)
 
 	totalDur := time.Since(totalStart)
+
+	finalHash := sha256.Sum256(payloadBytes)
+	fmt.Fprintf(os.Stderr, "Go-DCE-Prevent-Hash: %x\n", finalHash)
+
 	timingReport := map[string]interface{}{
 		"timings": map[string]interface{}{
-			"kem_us":     kemDur.Microseconds(),
-			"kdf_us":     kdfDur.Microseconds(),
-			"cascade_us": cascadeDur.Microseconds(),
-			"total_us":   totalDur.Microseconds(),
+			"kem_us":     float64(kemDur.Nanoseconds()) / 1000.0,
+			"kdf_us":     float64(kdfDur.Nanoseconds()) / 1000.0,
+			"cascade_us": float64(cascadeDur.Nanoseconds()) / 1000.0,
+			"total_us":   float64(totalDur.Nanoseconds()) / 1000.0,
 		},
 	}
 	tj, _ := json.Marshal(timingReport)

@@ -305,7 +305,7 @@ def main():
                 
                 # Format Time dynamically
                 mean_time_str = f"{mean_ms * 1000:.1f} us" if mean_ms < 1.0 else f"{mean_ms:.3f} ms"
-                casca_time_str = f"{casca_avg_us:.0f} us" if casca_avg_us < 1000.0 else f"{casca_avg_us / 1000.0:.3f} ms"
+                casca_time_str = f"{casca_avg_us:.3f} us" if casca_avg_us < 10.0 else (f"{casca_avg_us:.0f} us" if casca_avg_us < 1000.0 else f"{casca_avg_us / 1000.0:.3f} ms")
 
                 line = f"{name:<10} | {data['status']:<7} | {mean_time_str:<12} | {casca_time_str:<12} | {casca_cpb:<10.2f} | {total_cpb:<10.2f} | {ops_sec:<10.2f}\n"
                 f.write(line)
