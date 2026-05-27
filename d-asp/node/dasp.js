@@ -136,7 +136,7 @@ export class DarkstarCrypt {
     }
   }
 
-  async encrypt(payload, keyMaterial, hwidHex = null) {
+  async encrypt(payload, keyMaterial, hwidHex = null, telemetry = false) {
     const totalStart = performance.now();
     const pkBytes = this.hex2buf(keyMaterial);
     
@@ -214,20 +214,23 @@ export class DarkstarCrypt {
 
     const totalDuration = performance.now() - totalStart;
 
-    return JSON.stringify({
+    const resObj = {
       data: this.buf2hex(payloadBytes),
       ct: ctHex,
       mac: mac_tag,
-      timings: {
+    };
+    if (telemetry) {
+      resObj.timings = {
         kem_us: Math.round(kemDuration * 1000),
         kdf_us: Math.round(kdfDuration * 1000),
         cascade_us: Math.round(cascadeDuration * 1000),
         total_us: Math.round(totalDuration * 1000),
-      }
-    });
+      };
+    }
+    return JSON.stringify(resObj);
   }
 
-  async decrypt(encryptedDataRaw, skHex, hwidHex = null) {
+  async decrypt(encryptedDataRaw, skHex, hwidHex = null, telemetry = false) {
     const totalStart = performance.now();
     const parsed = JSON.parse(encryptedDataRaw);
     const ctBytes = this.hex2buf(parsed.ct);
@@ -309,14 +312,16 @@ export class DarkstarCrypt {
     const cascadeDuration = performance.now() - cascadeStart;
 
     const totalDuration = performance.now() - totalStart;
-    console.error(JSON.stringify({
-      timings: {
-        kem_us: Math.round(kemDuration * 1000),
-        kdf_us: Math.round(kdfDuration * 1000),
-        cascade_us: Math.round(cascadeDuration * 1000),
-        total_us: Math.round(totalDuration * 1000)
-      }
-    }));
+    if (telemetry) {
+      console.error(JSON.stringify({
+        timings: {
+          kem_us: Math.round(kemDuration * 1000),
+          kdf_us: Math.round(kdfDuration * 1000),
+          cascade_us: Math.round(cascadeDuration * 1000),
+          total_us: Math.round(totalDuration * 1000)
+        }
+      }));
+    }
 
     return new TextDecoder().decode(payloadBytes);
   }
@@ -327,6 +332,7 @@ if (process.argv[1] && process.argv[1].endsWith('dasp.js')) {
   const args = process.argv.slice(2);
   let hwid = null;
   let diagnostic = false;
+  let telemetry = false;
 
   const parsedArgs = [];
   for (let i = 0; i < args.length; i++) {
@@ -341,6 +347,8 @@ if (process.argv[1] && process.argv[1].endsWith('dasp.js')) {
     } else if (args[i] === '--diagnostic') {
       process.env.DASP_DIAGNOSTIC = '1';
       diagnostic = true;
+    } else if (args[i] === '--telemetry') {
+      telemetry = true;
     } else {
       parsedArgs.push(args[i]);
     }
@@ -367,12 +375,12 @@ if (process.argv[1] && process.argv[1].endsWith('dasp.js')) {
       if (command === 'encrypt') {
         const payload = resolveArg(parsedArgs[1]);
         const pkHex = resolveArg(parsedArgs[2]);
-        const res = await crypt.encrypt(payload, pkHex, hwid);
+        const res = await crypt.encrypt(payload, pkHex, hwid, telemetry);
         console.log(res);
       } else if (command === 'decrypt') {
         const data = resolveArg(parsedArgs[1]);
         const skHex = resolveArg(parsedArgs[2]);
-        const res = await crypt.decrypt(data, skHex, hwid);
+        const res = await crypt.decrypt(data, skHex, hwid, telemetry);
         process.stdout.write(res);
       } else if (command === 'keygen') {
         const keypair = kyber.keygen();
@@ -386,9 +394,9 @@ if (process.argv[1] && process.argv[1].endsWith('dasp.js')) {
         
         console.log("--- Darkstar Node Self-Test ---");
         const payload = "apple banana cherry date elderberry fig grape honeydew";
-        const enc = await crypt.encrypt(payload, pk);
+        const enc = await crypt.encrypt(payload, pk, null, telemetry);
         console.log("Encrypted!");
-        const dec = await crypt.decrypt(enc, sk);
+        const dec = await crypt.decrypt(enc, sk, null, telemetry);
         console.log(`Decrypted: '${dec}'`);
         if (dec === payload) {
           console.log("Result: PASSED");

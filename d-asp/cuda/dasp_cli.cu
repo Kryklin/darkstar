@@ -73,6 +73,7 @@ int main(int argc, char **argv) {
 
         uint8_t hwid[32];
         int has_hwid = 0;
+        int use_telemetry = 0;
         for (int i = 4; i < argc; i++) {
             if (strcmp(argv[i], "--hwid") == 0 && i + 1 < argc) {
                 char *h = argv[i+1];
@@ -84,6 +85,9 @@ int main(int argc, char **argv) {
                 hex_decode(h, hwid, 32);
                 has_hwid = 1;
                 if(h_to_free) free(h_to_free);
+            }
+            if (strcmp(argv[i], "--telemetry") == 0) {
+                use_telemetry = 1;
             }
         }
 
@@ -252,8 +256,12 @@ int main(int argc, char **argv) {
         for(int i=0; i<32; i++) sprintf(&mac_in_hex_diagnostic[i*2], "%02x", mac_in[i]);
         for(int i=0; i<32; i++) sprintf(&mac_actual_hex[i*2], "%02x", actual_mac[i]);
         
-        fprintf(stderr, "{\"diagnostics\":{\"stage1_blended_ss\":\"%s\",\"stage2_word_key\":\"%s\",\"stage4_mac_in\":\"%s\",\"stage4_mac\":\"%s\"},\"timings\":{\"cascade_us\":%llu}}\n", 
-               blended_hex, word_key_hex, mac_in_hex_diagnostic, mac_actual_hex, cascade_us);
+        fprintf(stderr, "{\"diagnostics\":{\"stage1_blended_ss\":\"%s\",\"stage2_word_key\":\"%s\",\"stage4_mac_in\":\"%s\",\"stage4_mac\":\"%s\"}}\n", 
+               blended_hex, word_key_hex, mac_in_hex_diagnostic, mac_actual_hex);
+        
+        if (use_telemetry) {
+            fprintf(stderr, "{\"timings\":{\"cascade_us\":%llu}}\n", cascade_us);
+        }
 
         /* Cleanup */
         CUDA_CHECK(cudaEventDestroy(start_event));

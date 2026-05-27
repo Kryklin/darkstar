@@ -122,7 +122,7 @@ struct DarkstarCrypt {}
 impl DarkstarCrypt {
     fn new() -> Self { DarkstarCrypt {} }
 
-    fn encrypt(&self, payload_str: &str, pk_hex: &str, hwid: Option<Vec<u8>>) -> Result<String, Box<dyn std::error::Error>> {
+    fn encrypt(&self, payload_str: &str, pk_hex: &str, hwid: Option<Vec<u8>>, telemetry: bool) -> Result<String, Box<dyn std::error::Error>> {
         let total_start = std::time::Instant::now();
         
         let pk_bytes: [u8; 1568] = hex::decode(clean_hex(&pk_hex))?
@@ -230,22 +230,28 @@ impl DarkstarCrypt {
         }
         let total_duration = total_start.elapsed();
 
-        let res_obj = serde_json::json!({
+        let mut res_obj = serde_json::json!({
             "data": hex::encode(&payload_bytes),
             "ct": ct_hex,
             "mac": mac_tag,
-            "timings": {
-                "kem_us": kem_duration.as_micros(),
-                "kdf_us": kdf_duration.as_micros(),
-                "cascade_us": cascade_duration.as_micros(),
-                "total_us": total_duration.as_micros()
-            }
         });
+
+        if telemetry {
+            res_obj.as_object_mut().unwrap().insert(
+                "timings".to_string(),
+                serde_json::json!({
+                    "kem_us": kem_duration.as_micros(),
+                    "kdf_us": kdf_duration.as_micros(),
+                    "cascade_us": cascade_duration.as_micros(),
+                    "total_us": total_duration.as_micros()
+                })
+            );
+        }
         
         Ok(res_obj.to_string())
     }
 
-    fn decrypt(&self, encrypted_data_raw: &str, sk_hex: &str, hwid: Option<Vec<u8>>) -> Result<String, Box<dyn std::error::Error>> {
+    fn decrypt(&self, encrypted_data_raw: &str, sk_hex: &str, hwid: Option<Vec<u8>>, telemetry: bool) -> Result<String, Box<dyn std::error::Error>> {
         let total_start = std::time::Instant::now();
         let value: serde_json::Value = serde_json::from_str(encrypted_data_raw)?;
         
@@ -362,14 +368,16 @@ impl DarkstarCrypt {
         let result = String::from_utf8(payload_bytes)?;
         let total_duration = total_start.elapsed();
         
-        eprintln!("{}", serde_json::json!({
-            "timings": {
-                "kem_us": kem_duration.as_micros(),
-                "kdf_us": kdf_duration.as_micros(),
-                "cascade_us": cascade_duration.as_micros(),
-                "total_us": total_duration.as_micros()
-            }
-        }));
+        if telemetry {
+            eprintln!("{}", serde_json::json!({
+                "timings": {
+                    "kem_us": kem_duration.as_micros(),
+                    "kdf_us": kdf_duration.as_micros(),
+                    "cascade_us": cascade_duration.as_micros(),
+                    "total_us": total_duration.as_micros()
+                }
+            }));
+        }
 
         Ok(result)
     }
@@ -398,6 +406,7 @@ fn resolve_arg(arg: &str) -> String {
 fn main() {
     let mut raw_args: Vec<String> = std::env::args().skip(1).collect();
     let mut hwid: Option<Vec<u8>> = None;
+    let mut telemetry = false;
     
     let mut i = 0;
     while i < raw_args.len() {
@@ -408,6 +417,9 @@ fn main() {
         } else if raw_args[i] == "--diagnostic" {
             raw_args.remove(i);
             std::env::set_var("DASP_DIAGNOSTIC", "1");
+        } else if raw_args[i] == "--telemetry" {
+            raw_args.remove(i);
+            telemetry = true;
         } else {
             i += 1;
         }
@@ -427,7 +439,7 @@ fn main() {
             let payload = resolve_arg(&raw_args[0]);
             let pk_hex = resolve_arg(&raw_args[1]);
             
-            match dc.encrypt(&payload, &pk_hex, hwid) {
+            match dc.encrypt(&payload, &pk_hex, hwid, telemetry) {
                 Ok(res_json) => println!("{}", res_json),
                 Err(e) => {
                     eprintln!("Encryption Failed: {}", e);
@@ -440,7 +452,7 @@ fn main() {
             let data = resolve_arg(&raw_args[0]);
             let sk_hex = resolve_arg(&raw_args[1]);
 
-            match dc.decrypt(&data, &sk_hex, hwid) {
+            match dc.decrypt(&data, &sk_hex, hwid, telemetry) {
                 Ok(decrypted) => println!("{}", decrypted),
                 Err(e) => {
                     eprintln!("Decryption Failed: {}", e);
@@ -460,11 +472,11 @@ fn main() {
             let sk_hex = hex::encode(dk.as_bytes());
 
             println!("--- D-ASP Self-Test ---");
-            match dc.encrypt(payload, &pk_hex, None) {
+            match dc.encrypt(payload, &pk_hex, None, telemetry) {
                 Ok(res_json) => {
                     println!("Encrypted: {}", res_json);
 
-                    match dc.decrypt(&res_json, &sk_hex, None) {
+                    match dc.decrypt(&res_json, &sk_hex, None, telemetry) {
                         Ok(decrypted) => {
                             println!("Decrypted: '{}'", decrypted);
                             if decrypted == payload {

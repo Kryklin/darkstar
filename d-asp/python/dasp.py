@@ -99,7 +99,7 @@ class DarkstarCrypt:
             
         block[:] = struct.pack('<8I', *state)
 
-    def encrypt(self, payload_str, pk_hex, hwid_hex=None):
+    def encrypt(self, payload_str, pk_hex, hwid_hex=None, telemetry=False):
         total_start = time.perf_counter()
         
         pk_bytes = bytes.fromhex(pk_hex)
@@ -163,19 +163,21 @@ class DarkstarCrypt:
             }), file=sys.stderr)
 
         total_duration = time.perf_counter() - total_start
-        return json.dumps({
+        res_obj = {
             "data": payload_bytes.hex(),
             "ct": ct_hex,
             "mac": mac_tag,
-            "timings": {
+        }
+        if telemetry:
+            res_obj["timings"] = {
                 "kem_us": int(kem_duration * 1_000_000),
                 "kdf_us": int(kdf_duration * 1_000_000),
                 "cascade_us": int(cascade_duration * 1_000_000),
                 "total_us": int(total_duration * 1_000_000)
             }
-        })
+        return json.dumps(res_obj)
 
-    def decrypt(self, encrypted_data_raw, sk_hex, hwid_hex=None):
+    def decrypt(self, encrypted_data_raw, sk_hex, hwid_hex=None, telemetry=False):
         total_start = time.perf_counter()
         
         data = json.loads(encrypted_data_raw)
@@ -246,14 +248,15 @@ class DarkstarCrypt:
         cascade_duration = time.perf_counter() - cascade_start
         
         total_duration = time.perf_counter() - total_start
-        print(json.dumps({
-            "timings": {
-                "kem_us": int(kem_duration * 1_000_000),
-                "kdf_us": int(kdf_duration * 1_000_000),
-                "cascade_us": int(cascade_duration * 1_000_000),
-                "total_us": int(total_duration * 1_000_000)
-            }
-        }), file=sys.stderr)
+        if telemetry:
+            print(json.dumps({
+                "timings": {
+                    "kem_us": int(kem_duration * 1_000_000),
+                    "kdf_us": int(kdf_duration * 1_000_000),
+                    "cascade_us": int(cascade_duration * 1_000_000),
+                    "total_us": int(total_duration * 1_000_000)
+                }
+            }), file=sys.stderr)
         
         return payload_bytes.decode('utf-8')
 
@@ -271,12 +274,14 @@ if __name__ == "__main__":
     enc_parser.add_argument("payload", help="Data to encrypt")
     enc_parser.add_argument("pk_hex", help="Kyber-1024 Public Key Hex")
     enc_parser.add_argument("--hwid", help="Hardware ID Hex")
+    enc_parser.add_argument("--telemetry", action="store_true", help="Output execution timings")
     
     dec_parser = subparsers.add_parser("decrypt", help="Decrypt data")
     dec_parser.add_argument("data", help="D-ASP JSON blob")
-    dec_parser.add_argument("sk_hex", help="Kyber-1024 Private Key Hex")
+    dec_parser.add_argument("sk_hex", help="Kyber-1024 Secret Key Hex")
     dec_parser.add_argument("--hwid", help="Hardware ID Hex")
     dec_parser.add_argument("--diagnostic", action="store_true", help="Output intermediate cryptographic states")
+    dec_parser.add_argument("--telemetry", action="store_true", help="Output execution timings")
     
     subparsers.add_parser("keygen", help="Generate ML-KEM-1024 pair")
     subparsers.add_parser("test", help="Internal self-test")
@@ -295,9 +300,9 @@ if __name__ == "__main__":
     hardware_id = load_arg(args.hwid) if hasattr(args, "hwid") and args.hwid else None
 
     if args.command == "encrypt":
-        print(crypt.encrypt(load_arg(args.payload), load_arg(args.pk_hex), hwid_hex=hardware_id))
+        print(crypt.encrypt(load_arg(args.payload), load_arg(args.pk_hex), hwid_hex=hardware_id, telemetry=args.telemetry))
     elif args.command == 'decrypt':
-        print(crypt.decrypt(load_arg(args.data), load_arg(args.sk_hex), hwid_hex=hardware_id))
+        print(crypt.decrypt(load_arg(args.data), load_arg(args.sk_hex), hwid_hex=hardware_id, telemetry=args.telemetry))
     elif args.command == 'keygen':
         import pqcrypto.kem.ml_kem_1024 as kem
         pk, sk = kem.generate_keypair()
@@ -308,8 +313,8 @@ if __name__ == "__main__":
         pk, sk = kem.generate_keypair()
         print(f"--- Darkstar Python Self-Test (D-ASP Monoculture) ---")
         try:
-            res_json = crypt.encrypt(payload, pk.hex())
-            decrypted = crypt.decrypt(res_json, sk.hex())
+            res_json = crypt.encrypt(payload, pk.hex(), telemetry=args.telemetry)
+            decrypted = crypt.decrypt(res_json, sk.hex(), telemetry=args.telemetry)
             print(f"Decrypted: '{decrypted}'")
             if decrypted == payload:
                 print("Result: PASSED")

@@ -138,6 +138,7 @@ int main(int argc, char **argv) {
 
   uint8_t seed[48];
   int use_seed = 0;
+  int use_telemetry = 0;
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--hwid") == 0 && i + 1 < argc) {
@@ -156,6 +157,9 @@ int main(int argc, char **argv) {
       randombytes_init(seed, NULL, 256);
       use_seed = 1;
     }
+    if (strcmp(argv[i], "--telemetry") == 0) {
+      use_telemetry = 1;
+    }
   }
 
   if (strcmp(cmd, "keygen") == 0) {
@@ -172,10 +176,11 @@ int main(int argc, char **argv) {
     return 0;
   } else if (strcmp(cmd, "encrypt") == 0) {
     if (argc < 4)
-      return 1;
+      return 2;
     char *payload_str = argv[2];
     if (payload_str[0] == '@') {
       payload_str = read_file(payload_str + 1);
+      if (!payload_str) return 3;
     } else {
       payload_str = strdup(payload_str);
     }
@@ -183,6 +188,7 @@ int main(int argc, char **argv) {
     char *pk_str = argv[3];
     if (pk_str[0] == '@') {
       pk_str = read_file(pk_str + 1);
+      if (!pk_str) return 3;
     } else {
       pk_str = strdup(pk_str);
     }
@@ -212,12 +218,16 @@ int main(int argc, char **argv) {
     char *data_hex = malloc(p_len * 2 + 1);
     hex_encode(payload, p_len, data_hex);
 
-    printf(
-        "{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\",\"timings\":{\"kem_us\":"
-        "%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,\"total_us\":%lld}}\n",
-        data_hex, ct_hex, mac_hex, (inner_end - inner_start) / 3,
-        (inner_end - inner_start) / 3, (inner_end - inner_start) / 3,
-        total_end - total_start);
+    if (use_telemetry) {
+      printf(
+          "{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\",\"timings\":{\"kem_us\":"
+          "%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,\"total_us\":%lld}}\n",
+          data_hex, ct_hex, mac_hex, (inner_end - inner_start) / 3,
+          (inner_end - inner_start) / 3, (inner_end - inner_start) / 3,
+          total_end - total_start);
+    } else {
+      printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\"}\n", data_hex, ct_hex, mac_hex);
+    }
 
     free(data_hex);
     free(ct_hex);
@@ -227,21 +237,25 @@ int main(int argc, char **argv) {
     return 0;
   } else if (strcmp(cmd, "decrypt") == 0) {
     if (argc < 4)
-      return 1;
+      return 2;
     long long total_start = get_us();
 
     char *json_file = argv[2];
     char *json = NULL;
-    if (json_file[0] == '@')
+    if (json_file[0] == '@') {
       json = read_file(json_file + 1);
-    else
+      if (!json) return 3;
+    } else {
       json = strdup(json_file);
+    }
 
     char *sk_str = argv[3];
-    if (sk_str[0] == '@')
+    if (sk_str[0] == '@') {
       sk_str = read_file(sk_str + 1);
-    else
+      if (!sk_str) return 3;
+    } else {
       sk_str = strdup(sk_str);
+    }
 
     uint8_t sk[CRYPTO_SECRETKEYBYTES];
     hex_decode(sk_str, sk, CRYPTO_SECRETKEYBYTES);
@@ -249,6 +263,8 @@ int main(int argc, char **argv) {
     char *data_hex = extract_json_string(json, "data");
     char *ct_hex = extract_json_string(json, "ct");
     char *mac_hex = extract_json_string(json, "mac");
+
+    if (!data_hex || !ct_hex || !mac_hex) return 4;
 
     size_t p_len = strlen(data_hex) / 2;
     uint8_t *payload = malloc(p_len);
@@ -267,13 +283,14 @@ int main(int argc, char **argv) {
 
     long long total_end = get_us();
 
-    // Output timings to stderr
-    fprintf(stderr,
-            "{\"timings\":{\"kem_us\":%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,"
-            "\"total_us\":%lld}}\n",
-            (inner_end - inner_start) / 3, // Mock proportions for kem
-            (inner_end - inner_start) / 3, (inner_end - inner_start) / 3,
-            total_end - total_start);
+    if (use_telemetry) {
+      fprintf(stderr,
+              "{\"timings\":{\"kem_us\":%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,"
+              "\"total_us\":%lld}}\n",
+              (inner_end - inner_start) / 3, // Mock proportions for kem
+              (inner_end - inner_start) / 3, (inner_end - inner_start) / 3,
+              total_end - total_start);
+    }
 
     if (res == 0) {
       char *out_str = malloc(p_len + 1);
@@ -282,8 +299,8 @@ int main(int argc, char **argv) {
       printf("%s\n", out_str);
       free(out_str);
     } else {
-      fprintf(stderr, "Decryption Failed\n");
-      return 1;
+      fprintf(stderr, "Decryption Failed (Integrity or KEM Error)\n");
+      return 5;
     }
 
     free(data_hex);

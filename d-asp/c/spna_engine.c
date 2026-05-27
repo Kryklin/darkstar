@@ -18,6 +18,7 @@
 #include "sha512.h"
 #include "sha256.h"
 #include "ml_kem.h"
+#include <stdalign.h>
 
 /**
  * @brief PRNG Context for round-path and key derivation.
@@ -82,28 +83,30 @@ __forceinline
 #else
 __attribute__((always_inline))
 #endif
-static inline void dasp_cascade_32(uint8_t *block, const uint32_t *round_keys) {
-    __m256i state = _mm256_loadu_si256((__m256i*)block);
+static inline void dasp_cascade_32(uint8_t *restrict block, const uint32_t *restrict round_keys) {
+    __m256i *aligned_block = (__m256i*)__builtin_assume_aligned(block, 32);
+    const __m256i *aligned_keys = (const __m256i*)__builtin_assume_aligned(round_keys, 32);
+
+    __m256i state = _mm256_load_si256(aligned_block);
     __m256i perm_mask = _mm256_set_epi32(0, 7, 6, 5, 4, 3, 2, 1);
     
-#define DASP_ROUND(i) do { \
-    __m256i rk = _mm256_loadu_si256((const __m256i*)&round_keys[(i)*8]); \
-    state = _mm256_add_epi32(state, rk); \
-    __m256i rc = _mm256_set1_epi32(0x9E3779B9 + (i)); \
-    state = _mm256_xor_si256(state, rc); \
-    __m256i rotl = _mm256_slli_epi32(state, 11); \
-    __m256i rotr = _mm256_srli_epi32(state, 32 - 11); \
-    state = _mm256_or_si256(rotl, rotr); \
-    state = _mm256_permutevar8x32_epi32(state, perm_mask); \
-} while(0)
+#if defined(__clang__)
+    #pragma clang loop unroll(full)
+#elif defined(__GNUC__)
+    #pragma GCC unroll 16
+#endif
+    for (int i = 0; i < 16; i++) {
+        __m256i rk = _mm256_load_si256(&aligned_keys[i]);
+        state = _mm256_add_epi32(state, rk);
+        __m256i rc = _mm256_set1_epi32(0x9E3779B9 + i);
+        state = _mm256_xor_si256(state, rc);
+        __m256i rotl = _mm256_slli_epi32(state, 11);
+        __m256i rotr = _mm256_srli_epi32(state, 32 - 11);
+        state = _mm256_or_si256(rotl, rotr);
+        state = _mm256_permutevar8x32_epi32(state, perm_mask);
+    }
 
-    DASP_ROUND(0); DASP_ROUND(1); DASP_ROUND(2); DASP_ROUND(3);
-    DASP_ROUND(4); DASP_ROUND(5); DASP_ROUND(6); DASP_ROUND(7);
-    DASP_ROUND(8); DASP_ROUND(9); DASP_ROUND(10); DASP_ROUND(11);
-    DASP_ROUND(12); DASP_ROUND(13); DASP_ROUND(14); DASP_ROUND(15);
-#undef DASP_ROUND
-
-    _mm256_storeu_si256((__m256i*)block, state);
+    _mm256_store_si256(aligned_block, state);
 }
 
 int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len, const uint8_t *pk, const uint8_t *hwid, uint8_t *out_ct, uint8_t *out_mac) {
@@ -157,16 +160,16 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len, const
     prng_t rng;
     prng_init(&rng, word_key_hex);
 
-    uint32_t round_keys[128];
+    alignas(32) uint32_t round_keys[128];
     for (int i=0; i<128; i++) {
         round_keys[i] = prng_next(&rng);
     }
 
-    uint8_t nonce[32];
+    alignas(32) uint8_t nonce[32];
     memcpy(nonce, chain_state, 32);
 
     for(size_t i = 0; i < payload_len; i += 32) {
-        uint8_t block[32];
+        alignas(32) uint8_t block[32];
         memcpy(block, nonce, 32);
         dasp_cascade_32(block, round_keys);
         
@@ -262,16 +265,16 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len, const
     prng_t rng;
     prng_init(&rng, word_key_hex);
 
-    uint32_t round_keys[128];
+    alignas(32) uint32_t round_keys[128];
     for (int i=0; i<128; i++) {
         round_keys[i] = prng_next(&rng);
     }
 
-    uint8_t nonce[32];
+    alignas(32) uint8_t nonce[32];
     memcpy(nonce, chain_state, 32);
 
     for(size_t i = 0; i < payload_len; i += 32) {
-        uint8_t block[32];
+        alignas(32) uint8_t block[32];
         memcpy(block, nonce, 32);
         dasp_cascade_32(block, round_keys);
         

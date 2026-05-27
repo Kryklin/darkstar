@@ -168,10 +168,10 @@ def run_cmd(cmd, cwd, input_data=None):
 def benchmark_engine(name, encrypted_payload, sk_hex, hwid, use_docker=False):
     engine = ENGINES[name]
     if use_docker:
-        cmd = engine["cmd"] + ["decrypt", encrypted_payload, sk_hex, "--hwid", hwid]
+        cmd = engine["cmd"] + ["decrypt", encrypted_payload, sk_hex, "--hwid", hwid, "--telemetry"]
         cwd = BASE_DIR
     else:
-        cmd = engine["cmd"] + ["decrypt", "@interop.json", sk_hex, "--hwid", hwid]
+        cmd = engine["cmd"] + ["decrypt", "@interop.json", sk_hex, "--hwid", hwid, "--telemetry"]
         cwd = engine["cwd"]
         with open(os.path.join(cwd, "interop.json"), "w") as f:
             f.write(encrypted_payload)
@@ -235,7 +235,7 @@ def main():
     # 2. Encrypt using reference (Rust)
     log("Step 2: Creating reference ciphertext (Rust)...")
     enc_cwd = BASE_DIR if use_docker else ENGINES["Rust"]["cwd"]
-    enc_json, _, _ = run_cmd(ENGINES["Rust"]["cmd"] + ["encrypt", payload, pk, "--hwid", hwid], enc_cwd)
+    enc_json, _, _ = run_cmd(ENGINES["Rust"]["cmd"] + ["encrypt", payload, pk, "--hwid", hwid, "--telemetry"], enc_cwd)
     
     # 3. Cross-Platform Benchmark
     log("\nStep 3: Executing Cross-Platform Benchmark (20 rounds each)...")

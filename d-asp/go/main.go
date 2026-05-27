@@ -29,6 +29,7 @@ import (
 )
 
 var globalDiagnostic = false
+var globalTelemetry = false
 
 type PRNG interface {
 	Next() uint32
@@ -224,16 +225,18 @@ func (dc *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte) (
 	finalHash := sha256.Sum256(payloadBytes)
 	fmt.Fprintf(os.Stderr, "Go-DCE-Prevent-Hash: %x\n", finalHash)
 
-	timingReport := map[string]interface{}{
-		"timings": map[string]interface{}{
-			"kem_us":     float64(kemDur.Nanoseconds()) / 1000.0,
-			"kdf_us":     float64(kdfDur.Nanoseconds()) / 1000.0,
-			"cascade_us": float64(cascadeDur.Nanoseconds()) / 1000.0,
-			"total_us":   float64(totalDur.Nanoseconds()) / 1000.0,
-		},
+	if globalTelemetry {
+		timingReport := map[string]interface{}{
+			"timings": map[string]interface{}{
+				"kem_us":     float64(kemDur.Nanoseconds()) / 1000.0,
+				"kdf_us":     float64(kdfDur.Nanoseconds()) / 1000.0,
+				"cascade_us": float64(cascadeDur.Nanoseconds()) / 1000.0,
+				"total_us":   float64(totalDur.Nanoseconds()) / 1000.0,
+			},
+		}
+		tj, _ := json.Marshal(timingReport)
+		fmt.Fprintf(os.Stderr, "%s\n", tj)
 	}
-	tj, _ := json.Marshal(timingReport)
-	fmt.Fprintf(os.Stderr, "%s\n", tj)
 
 	inner := map[string]interface{}{"data": hex.EncodeToString(payloadBytes), "ct": ctHex, "mac": macTag}
 	innerJson, _ := json.Marshal(inner); return string(innerJson), nil
@@ -340,16 +343,18 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 	finalHash := sha256.Sum256(payloadBytes)
 	fmt.Fprintf(os.Stderr, "Go-DCE-Prevent-Hash: %x\n", finalHash)
 
-	timingReport := map[string]interface{}{
-		"timings": map[string]interface{}{
-			"kem_us":     float64(kemDur.Nanoseconds()) / 1000.0,
-			"kdf_us":     float64(kdfDur.Nanoseconds()) / 1000.0,
-			"cascade_us": float64(cascadeDur.Nanoseconds()) / 1000.0,
-			"total_us":   float64(totalDur.Nanoseconds()) / 1000.0,
-		},
+	if globalTelemetry {
+		timingReport := map[string]interface{}{
+			"timings": map[string]interface{}{
+				"kem_us":     float64(kemDur.Nanoseconds()) / 1000.0,
+				"kdf_us":     float64(kdfDur.Nanoseconds()) / 1000.0,
+				"cascade_us": float64(cascadeDur.Nanoseconds()) / 1000.0,
+				"total_us":   float64(totalDur.Nanoseconds()) / 1000.0,
+			},
+		}
+		tj, _ := json.Marshal(timingReport)
+		fmt.Fprintf(os.Stderr, "%s\n", tj)
 	}
-	tj, _ := json.Marshal(timingReport)
-	fmt.Fprintf(os.Stderr, "%s\n", tj)
 
 	return string(payloadBytes), nil
 }
@@ -358,11 +363,13 @@ func main() {
 	var hwid []byte
 	args := os.Args[1:]
 	
-	// Flag parsing for --diagnostic
+	// Flag parsing for --diagnostic and --telemetry
 	var filtered []string
 	for _, arg := range args {
 		if arg == "--diagnostic" {
 			globalDiagnostic = true
+		} else if arg == "--telemetry" {
+			globalTelemetry = true
 		} else {
 			filtered = append(filtered, arg)
 		}
