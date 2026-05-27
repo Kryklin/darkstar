@@ -347,10 +347,19 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	kemDur := time.Since(kemStart)
 
 	kdfStart := time.Now()
-	kHasher := sha256.New(); kHasher.Write(ss)
-	if len(finalHwid) > 0 { kHasher.Write(finalHwid) }
-	kHasher.Write([]byte("dasp-identity-v3"))
-	blendedSS := kHasher.Sum(nil)
+	var prk []byte
+	if len(finalHwid) > 0 {
+		mac := hmac.New(sha256.New, finalHwid)
+		mac.Write(ss)
+		prk = mac.Sum(nil)
+	} else {
+		mac := hmac.New(sha256.New, make([]byte, 32))
+		mac.Write(ss)
+		prk = mac.Sum(nil)
+	}
+	macExp := hmac.New(sha256.New, prk)
+	macExp.Write([]byte("dasp-identity-v3\x01"))
+	blendedSS := macExp.Sum(nil)
 	blendedSSHex := hex.EncodeToString(blendedSS)
 
 	cHasher := sha256.New(); cHasher.Write(append([]byte("cipher"), blendedSS...))
@@ -455,10 +464,19 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 	kemDur := time.Since(kemStart)
 
 	kdfStart := time.Now()
-	kHasher := sha256.New(); kHasher.Write(ss)
-	if len(finalHwid) > 0 { kHasher.Write(finalHwid) }
-	kHasher.Write([]byte("dasp-identity-v3"))
-	blendedSS := kHasher.Sum(nil); blendedSSHex := hex.EncodeToString(blendedSS)
+	var prk []byte
+	if len(finalHwid) > 0 {
+		mac := hmac.New(sha256.New, finalHwid)
+		mac.Write(ss)
+		prk = mac.Sum(nil)
+	} else {
+		mac := hmac.New(sha256.New, make([]byte, 32))
+		mac.Write(ss)
+		prk = mac.Sum(nil)
+	}
+	macExp := hmac.New(sha256.New, prk)
+	macExp.Write([]byte("dasp-identity-v3\x01"))
+	blendedSS := macExp.Sum(nil); blendedSSHex := hex.EncodeToString(blendedSS)
 
 	cHasher := sha256.New(); cHasher.Write(append([]byte("cipher"), blendedSS...))
 	cipherKey := cHasher.Sum(nil); activePasswordStr := hex.EncodeToString(cipherKey)

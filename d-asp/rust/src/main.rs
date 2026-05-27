@@ -405,15 +405,23 @@ impl DarkstarCrypt {
         let kdf_start = std::time::Instant::now();
         use sha2::Digest;
         
-        // Stage 1: Blended_SS (K_root)
-        let mut k_root_hasher = Sha256::new();
-        k_root_hasher.update(&ss_bytes);
-        if let Some(ref h) = hwid {
-            k_root_hasher.update(h);
-        }
-        k_root_hasher.update(b"dasp-identity-v3");
-        let blended_ss = k_root_hasher.finalize();
-        let blended_ss_hex = hex::encode(blended_ss);
+        use hmac::{Hmac, Mac};
+        type HmacSha256 = Hmac<Sha256>;
+        let default_salt = [0u8; 32];
+        let salt = match &hwid {
+            Some(h) => h.as_slice(),
+            None => &default_salt,
+        };
+        let mut prk_mac = <HmacSha256 as hmac::Mac>::new_from_slice(salt)
+            .map_err(|e| format!("HMAC init error: {:?}", e))?;
+        prk_mac.update(&ss_bytes);
+        let prk = prk_mac.finalize().into_bytes();
+
+        let mut expand_mac = <HmacSha256 as hmac::Mac>::new_from_slice(&prk)
+            .map_err(|e| format!("HMAC init error: {:?}", e))?;
+        expand_mac.update(b"dasp-identity-v3\x01");
+        let blended_ss = expand_mac.finalize().into_bytes();
+        let blended_ss_hex = hex::encode(&blended_ss);
 
         let mut cipher_hasher = Sha256::new();
         cipher_hasher.update(b"cipher");
@@ -437,8 +445,7 @@ impl DarkstarCrypt {
 
         let mut current_word_bytes = payload_bytes.to_vec();
 
-        use hmac::{Hmac, Mac};
-        type HmacSha256 = Hmac<sha2::Sha256>;
+        // Stage 2: word_key
         
         // Stage 2: word_key
         let word_key: Vec<u8> = {
@@ -546,15 +553,23 @@ impl DarkstarCrypt {
         let kdf_start = std::time::Instant::now();
         use sha2::Digest;
         
-        // Stage 1: Blended_SS (K_root)
-        let mut k_root_hasher = Sha256::new();
-        k_root_hasher.update(&ss_bytes);
-        if let Some(ref h) = hwid {
-            k_root_hasher.update(h);
-        }
-        k_root_hasher.update(b"dasp-identity-v3");
-        let blended_ss = k_root_hasher.finalize();
-        let blended_ss_hex = hex::encode(blended_ss);
+        use hmac::{Hmac, Mac};
+        type HmacSha256 = Hmac<Sha256>;
+        let default_salt = [0u8; 32];
+        let salt = match &hwid {
+            Some(h) => h.as_slice(),
+            None => &default_salt,
+        };
+        let mut prk_mac = <HmacSha256 as hmac::Mac>::new_from_slice(salt)
+            .map_err(|e| format!("HMAC init error: {:?}", e))?;
+        prk_mac.update(&ss_bytes);
+        let prk = prk_mac.finalize().into_bytes();
+
+        let mut expand_mac = <HmacSha256 as hmac::Mac>::new_from_slice(&prk)
+            .map_err(|e| format!("HMAC init error: {:?}", e))?;
+        expand_mac.update(b"dasp-identity-v3\x01");
+        let blended_ss = expand_mac.finalize().into_bytes();
+        let blended_ss_hex = hex::encode(&blended_ss);
 
         let mut cipher_hasher = Sha256::new();
         cipher_hasher.update(b"cipher");
@@ -571,8 +586,7 @@ impl DarkstarCrypt {
         ss.zeroize();
         let kdf_duration = kdf_start.elapsed();
 
-        use hmac::{Hmac, Mac};
-        type HmacSha256 = Hmac<sha2::Sha256>;
+        // Stage 2: word_key
 
         // Stage 2: word_key
         let word_key: Vec<u8> = {

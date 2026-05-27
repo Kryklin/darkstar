@@ -289,12 +289,17 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len, const
 
     uint8_t blended_ss[32];
     {
-        uint8_t content[32 + 64 + 16]; // ss + hwid + "dasp-identity-v3"
-        size_t c_len = 0;
-        memcpy(content, ss, 32); c_len += 32;
-        if(hwid) { memcpy(content + c_len, hwid, 32); c_len += 32; } // Using 32 from hex str config
-        memcpy(content + c_len, "dasp-identity-v3", 16); c_len += 16;
-        crypto_sha256(content, c_len, blended_ss);
+        uint8_t prk[32];
+        if (hwid) {
+            crypto_hmac_sha256(hwid, 32, ss, 32, prk);
+        } else {
+            uint8_t empty_salt[32] = {0};
+            crypto_hmac_sha256(empty_salt, 32, ss, 32, prk);
+        }
+        uint8_t expand_info[17];
+        memcpy(expand_info, "dasp-identity-v3", 16);
+        expand_info[16] = 0x01;
+        crypto_hmac_sha256(prk, 32, expand_info, 17, blended_ss);
     }
 
     uint8_t cipher_key[32];
@@ -373,12 +378,17 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len, const
 
     uint8_t blended_ss[32];
     {
-        uint8_t content[32 + 64 + 16]; 
-        size_t c_len = 0;
-        memcpy(content, ss, 32); c_len += 32;
-        if(hwid) { memcpy(content + c_len, hwid, 32); c_len += 32; } 
-        memcpy(content + c_len, "dasp-identity-v3", 16); c_len += 16;
-        crypto_sha256(content, c_len, blended_ss);
+        uint8_t prk[32];
+        if (hwid) {
+            crypto_hmac_sha256(hwid, 32, ss, 32, prk);
+        } else {
+            uint8_t empty_salt[32] = {0};
+            crypto_hmac_sha256(empty_salt, 32, ss, 32, prk);
+        }
+        uint8_t expand_info[17];
+        memcpy(expand_info, "dasp-identity-v3", 16);
+        expand_info[16] = 0x01;
+        crypto_hmac_sha256(prk, 32, expand_info, 17, blended_ss);
     }
 
     uint8_t cipher_key[32];

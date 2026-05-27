@@ -644,13 +644,9 @@ class DarkstarCrypt:
         
         kdf_start = time.perf_counter()
         
-        # Stage 1: Blended_SS (K_root)
-        k_root_hasher = hashlib.sha256()
-        k_root_hasher.update(bytes(ss_bytes))
-        if hwid_hex:
-            k_root_hasher.update(bytes.fromhex(hwid_hex))
-        k_root_hasher.update(b"dasp-identity-v3")
-        blended_ss = k_root_hasher.digest()
+        salt = bytes.fromhex(hwid_hex) if hwid_hex else b'\x00' * 32
+        prk = hmac.new(salt, bytes(ss_bytes), hashlib.sha256).digest()
+        blended_ss = hmac.new(prk, b"dasp-identity-v3\x01", hashlib.sha256).digest()
         blended_ss_hex = blended_ss.hex()
 
         cipher_key = hashlib.sha256(b"cipher" + blended_ss).digest()
@@ -758,13 +754,9 @@ class DarkstarCrypt:
         
         kdf_start = time.perf_counter()
         
-        # Stage 1: Blended_SS (K_root)
-        k_root_hasher = hashlib.sha256()
-        k_root_hasher.update(bytes(ss_bytes))
-        if hwid_hex:
-            k_root_hasher.update(bytes.fromhex(hwid_hex))
-        k_root_hasher.update(b"dasp-identity-v3")
-        blended_ss = k_root_hasher.digest()
+        salt = bytes.fromhex(hwid_hex) if hwid_hex else b'\x00' * 32
+        prk = hmac.new(salt, bytes(ss_bytes), hashlib.sha256).digest()
+        blended_ss = hmac.new(prk, b"dasp-identity-v3\x01", hashlib.sha256).digest()
         blended_ss_hex = blended_ss.hex()
 
         cipher_key = hashlib.sha256(b"cipher" + blended_ss).digest()

@@ -27,7 +27,11 @@ D-ASP utilizes **ML-KEM-1024** (Kyber-1024) as its primary asymmetric root.
 The KEM shared secret ($SS \in \{0, 1\}^{256}$) is hardened against static-key attacks through **Hardware-Unique Blending (HUB)**. The root key $K_{root}$ is derived by non-linearly binding the PQC secret to a node-specific 512-bit hardware fingerprint:
 
 $$
-K_{root} = \text{SHA256}(SS \parallel HWID \parallel \text{"dasp-identity-v3"})
+\text{PRK} = \text{HMAC-SHA256}(\text{salt}=HWID, \text{IKM}=SS)
+$$
+
+$$
+K_{root} = \text{HKDF-Expand}(\text{PRK}, \text{info}=\text{"dasp-identity-v3"}, L=32)
 $$
 
 ---

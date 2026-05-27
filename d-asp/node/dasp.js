@@ -97,11 +97,10 @@ export class DarkstarCrypt {
     const kdfStart = performance.now();
     
     // Stage 1: Blended_SS (K_root)
-    const kRootHasher = require('node:crypto').createHash('sha256');
-    kRootHasher.update(ss_bytes);
-    if (hwidHex) kRootHasher.update(this.hex2buf(hwidHex));
-    kRootHasher.update(Buffer.from('dasp-identity-v3'));
-    const blendedSS = kRootHasher.digest();
+    const salt = hwidHex ? this.hex2buf(hwidHex) : Buffer.alloc(32, 0);
+    const prk = require('node:crypto').createHmac('sha256', salt).update(ss_bytes).digest();
+    const info = Buffer.concat([Buffer.from('dasp-identity-v3'), Buffer.from([0x01])]);
+    const blendedSS = require('node:crypto').createHmac('sha256', prk).update(info).digest();
     const blendedSSHex = blendedSS.toString('hex');
 
     const cipherKey = require('node:crypto').createHash('sha256').update(Buffer.concat([Buffer.from('cipher'), blendedSS])).digest();
@@ -194,11 +193,10 @@ export class DarkstarCrypt {
     const kdfStart = performance.now();
     
     // Stage 1: Blended_SS (K_root)
-    const kRootHasher = require('node:crypto').createHash('sha256');
-    kRootHasher.update(ss_bytes);
-    if (hwidHex) kRootHasher.update(this.hex2buf(hwidHex));
-    kRootHasher.update(Buffer.from('dasp-identity-v3'));
-    const blendedSS = kRootHasher.digest();
+    const salt = hwidHex ? this.hex2buf(hwidHex) : Buffer.alloc(32, 0);
+    const prk = require('node:crypto').createHmac('sha256', salt).update(ss_bytes).digest();
+    const info = Buffer.concat([Buffer.from('dasp-identity-v3'), Buffer.from([0x01])]);
+    const blendedSS = require('node:crypto').createHmac('sha256', prk).update(info).digest();
     const blendedSSHex = blendedSS.toString('hex');
 
     const cipherKey = require('node:crypto').createHash('sha256').update(Buffer.concat([Buffer.from('cipher'), blendedSS])).digest();
