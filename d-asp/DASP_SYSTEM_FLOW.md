@@ -45,7 +45,9 @@ sequenceDiagram
     U->>K: Provide Secret + HWID
     K->>K: Decapsulate Shared Secret (SS)
     K->>H: SS (256-bit) + HWID (512-bit)
-    Note over H: SHA256(SS || HWID || salt)
+    Note over H: HKDF-Extract(salt=HWID, IKM=SS)
+    H->>H: Derive PRK
+    Note over H: HKDF-Expand(PRK, info="dasp-identity-v3")
     H->>H: Derive Root Key (K_root)
     H->>G: Inject K_root into Round 0
 ```
