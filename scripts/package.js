@@ -63,6 +63,7 @@ const pkg = require('../package.json');
 
     new inquirer.Separator(chalk.dim('─── System ───────────────────────────────────────────────')),
     { name: chalk.bold.cyan('  ⚙️   Run Dev Environment Check (C, Rust, Go, Python)'), value: 'check-env' },
+    { name: chalk.bold.magenta('  🐳  Run Headless Docker Test'), value: 'docker-test' },
     { name: chalk.red.bold('  ❌  Exit'), value: 'exit' },
   ];
 
@@ -249,6 +250,8 @@ const pkg = require('../package.json');
       CAP_SYNC: 'npx cap sync',
       CAP_OPEN_ANDROID: 'npx cap open android',
       CAP_OPEN_IOS: 'npx cap open ios',
+      // Docker: Headless environment testing
+      DOCKER_TEST: 'docker compose -f docker-compose.yml up --build --abort-on-container-exit',
     };
 
     // Execute selected action
@@ -289,6 +292,9 @@ const pkg = require('../package.json');
         switch (action) {
           case 'check-env':
             await checkEnvironment(true);
+            break;
+          case 'docker-test':
+            await runShell('Headless Docker Test', CMD.DOCKER_TEST);
             break;
           case 'dev':
             await runShell('Dev Environment', CMD.DEV);

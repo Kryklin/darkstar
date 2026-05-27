@@ -63,6 +63,14 @@ Production-grade deployment tasks.
 | `package`| **Package App** | `forge package` | Generates native bundles (Squirrel, DMG, DEB, RPM). |
 | `publish`| **Publish Release** | `forge publish` | Uploads the current build to GitHub Releases. |
 
+### System
+System-level diagnostic and headless verification utilities.
+
+| Option | Display Name | Command Executed | Description |
+| :--- | :--- | :--- | :--- |
+| `check-env` | **Dev Environment Check** | Custom Script | Verifies the installation of C, Rust, Go, and Python compilers. |
+| `docker-test` | **Headless Docker Test** | `docker compose ... up` | Orchestrates a standalone Docker Compose matrix to test language engines off-host. |
+
 ---
 
 ## ⚡ Automated Pipelines

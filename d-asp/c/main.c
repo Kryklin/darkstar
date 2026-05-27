@@ -16,17 +16,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include <time.h>
+#endif
 
 /**
  * @brief Retrieves high-resolution system time in microseconds.
  * Uses QueryPerformanceCounter on Windows for nanosecond-grade precision.
  */
 static long long get_us() {
+#ifdef _WIN32
   LARGE_INTEGER freq, val;
   QueryPerformanceFrequency(&freq);
   QueryPerformanceCounter(&val);
   return (val.QuadPart * 1000000) / freq.QuadPart;
+#else
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (long long)ts.tv_sec * 1000000LL + (long long)ts.tv_nsec / 1000LL;
+#endif
 }
 
 // Public API
