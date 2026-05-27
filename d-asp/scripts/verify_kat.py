@@ -123,6 +123,13 @@ def main():
         print(f"Error: {KAT_FILE} not found. Run gen_kat_vectors.py first.")
         sys.exit(1)
         
+    for engine_name, engine in ENGINES.items():
+        cmd_bin = engine["cmd"][0]
+        if os.path.isabs(cmd_bin) and not os.path.exists(cmd_bin):
+            print(f"\n[!] ERROR: Missing binary for {engine_name} engine -> {cmd_bin}")
+            print("Please build the native engines first using the 'Build Native Crypto Engines' option in the CLI menu.\n")
+            sys.exit(1)
+            
     with open(KAT_FILE, "r") as f:
         vectors = json.load(f)
         

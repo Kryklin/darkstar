@@ -42,6 +42,7 @@ const pkg = require('../package.json');
   // --- Menu Configuration ---
   const choices = [
     new inquirer.Separator(chalk.dim('─── Development ──────────────────────────────────────────')),
+    { name: chalk.bold.cyan('  🚀  Build Native Crypto Engines (Rust, Go, C, CUDA)'), value: 'build-engines' },
     { name: chalk.bold.cyan('  ⚙️   Run Dev Environment Check (C, Rust, Go, Python)'), value: 'check-env' },
     { name: chalk.cyan('  💻  Run Dev Environment'), value: 'dev' },
     { name: chalk.blue('  🔍  Lint Code'), value: 'lint' },
@@ -238,15 +239,17 @@ const pkg = require('../package.json');
       // Karma: Runs headless Angular unit tests
       KARMA: 'ng test --watch=false --browsers=ChromeHeadless',
       // Interop: Executes the Python interop verification script
-      INTEROP: 'python "d-asp/scripts/verify_interop.py"',
+      INTEROP: 'npm run test:interop',
       // Gen KAT: Generates the Known Answer Test vectors
-      GEN_KAT: 'python "d-asp/scripts/gen_kat_vectors.py"',
+      GEN_KAT: 'npm run test:gen-kat',
       // KAT: Runs the Known Answer Test suite for bit-perfect parity check
-      KAT: 'python "d-asp/scripts/verify_kat.py"',
+      KAT: 'npm run test:kat',
       // Build: Compiles Angular (Production) and Electron (TypeScript), then generates integrity
       BUILD: 'ng build --configuration production --base-href ./ && tsc --p tsconfig.electron.json && node scripts/build-integrity.js',
       // Dev: Runs Angular Serve and Electron Watch (via Wrapper) concurrently
       DEV: 'concurrently -k --success first "ng serve" "wait-on http://localhost:4200 && node scripts/dev-wrapper.js"',
+      // Build Native Engines: Compiles Rust, Go, C, and CUDA binaries
+      BUILD_ENGINES: 'npm run build:engines',
       // Package: Packages the Electron app using Forge
       PACKAGE: 'electron-forge package',
       // Publish: Publishes the Electron app using Forge
@@ -313,6 +316,9 @@ const pkg = require('../package.json');
           case 'interop':
             await checkEnvironment(false);
             await runShell('Interop Benchmarking', CMD.INTEROP);
+            break;
+          case 'build-engines':
+            await runShell('Building Native Engines', CMD.BUILD_ENGINES);
             break;
           case 'gen-kat':
             await checkEnvironment(false);

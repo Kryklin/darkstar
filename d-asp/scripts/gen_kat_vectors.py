@@ -43,7 +43,7 @@ def main():
         pk_file = os.path.join(C_CWD, "tmp_pk.hex")
         with open(pk_file, "w") as f: f.write(pk)
         
-        args = ["dasp.py", "--diagnostic", "--telemetry", "encrypt", tc["payload"], f"@{pk_file}"]
+        args = ["dasp.py", "--diagnostic", "encrypt", tc["payload"], f"@{pk_file}", "--telemetry"]
         if tc["hwid"]:
             hwid_file = os.path.join(C_CWD, "tmp_hwid.hex")
             with open(hwid_file, "w") as f: f.write(tc["hwid"])
