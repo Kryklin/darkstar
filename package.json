@@ -1,8 +1,8 @@
 {
   "name": "darkstar",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "productName": "Darkstar",
-  "description": "Secure Multi-Layered Encryption & Steganography Suite",
+  "description": "The Sovereign Post-Quantum Enclave for Identity & Asset Recovery.",
   "author": "Victor Kane",
   "license": "CC0-1.0",
   "private": true,
