@@ -49,6 +49,7 @@ const pkg = require('../package.json');
     new inquirer.Separator(chalk.dim('─── Testing & Verification ───────────────────────────────')),
     { name: chalk.cyan('  🧪  Run Angular (Karma) Unit Tests'), value: 'karma' },
     { name: chalk.magenta('  📊  Run Interop Benchmark'), value: 'interop' },
+    { name: chalk.hex('#00BFFF')('  📝  Generate KAT Vectors'), value: 'gen-kat' },
     { name: chalk.hex('#A020F0')('  🤖  Run KAT Verification (Bit-Perfect Check)'), value: 'kat' },
     { name: chalk.bold.magenta('  🐳  Run Headless Docker Test'), value: 'docker-test' },
 
@@ -238,6 +239,8 @@ const pkg = require('../package.json');
       KARMA: 'ng test --watch=false --browsers=ChromeHeadless',
       // Interop: Executes the Python interop verification script
       INTEROP: 'python "d-asp/scripts/verify_interop.py"',
+      // Gen KAT: Generates the Known Answer Test vectors
+      GEN_KAT: 'python "d-asp/scripts/gen_kat_vectors.py"',
       // KAT: Runs the Known Answer Test suite for bit-perfect parity check
       KAT: 'python "d-asp/scripts/verify_kat.py"',
       // Build: Compiles Angular (Production) and Electron (TypeScript), then generates integrity
@@ -311,7 +314,16 @@ const pkg = require('../package.json');
             await checkEnvironment(false);
             await runShell('Interop Benchmarking', CMD.INTEROP);
             break;
+          case 'gen-kat':
+            await checkEnvironment(false);
+            await runShell('Generate KAT Vectors', CMD.GEN_KAT);
+            break;
           case 'kat':
+            if (!fs.existsSync(path.join(__dirname, '../d-asp/scripts/kat_vectors.json'))) {
+              console.log(chalk.yellow.bold('\n⚠️  Warning: kat_vectors.json not found!'));
+              console.log(chalk.yellow('Please run "Generate KAT Vectors" from the menu first before running KAT verification.\n'));
+              break;
+            }
             await checkEnvironment(false);
             await runShell('KAT Verification', CMD.KAT);
             break;

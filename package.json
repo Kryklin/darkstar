@@ -17,6 +17,7 @@
     "build:go": "cd d-asp/go && go build -o main.exe main.go",
     "build:c": "cd d-asp/c && clang -o dasp.exe main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha512.c sha256.c aes.c rng.c poly.c poly_sampling.c -I. -lws2_32 -luserenv -ladvapi32 -lbcrypt -march=native -mtune=native -mavx2 -fno-strict-aliasing",
     "build": "npm run build:rust && npm run build:go && npm run build:c && ng build --configuration production --base-href ./ && tsc --p tsconfig.electron.json && node scripts/build-integrity.js",
+    "test:gen-kat": "npm run build:rust && npm run build:go && npm run build:c && python d-asp/scripts/gen_kat_vectors.py",
     "test:kat": "npm run build:rust && npm run build:go && npm run build:c && python d-asp/scripts/verify_kat.py",
     "test:interop": "npm run build:rust && npm run build:go && npm run build:c && python d-asp/scripts/verify_interop.py",
     "cap:sync": "npx cap sync",
