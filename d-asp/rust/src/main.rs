@@ -349,7 +349,7 @@ impl DarkstarCrypt {
     fn trans_columnar(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
         let n = input.len();
         let mut out = vec![0u8; n];
-        let cols = 4;
+        let cols = 8;
         let mut idx = 0;
         for c in 0..cols {
             let mut i = c;
@@ -364,7 +364,7 @@ impl DarkstarCrypt {
     fn inv_trans_columnar(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
         let n = input.len();
         let mut out = vec![0u8; n];
-        let cols = 4;
+        let cols = 8;
         let mut idx = 0;
         for c in 0..cols {
             let mut i = c;

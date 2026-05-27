@@ -215,7 +215,7 @@ static void t_bitflip(uint8_t *data, size_t len, const uint8_t *seed, size_t see
 
 static void t_columnar(uint8_t *data, size_t len, const uint8_t *seed, size_t seed_len, prng_t *prng, int fw) {
     uint8_t *out = malloc(len);
-    int cols = 4;
+    int cols = 8;
     size_t idx = 0;
     if(fw) {
         for(int c=0; c<cols; c++) {

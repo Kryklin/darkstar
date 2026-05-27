@@ -74,7 +74,7 @@ graph LR
 | Layer | Mathematical Operation | Purpose |
 | :--- | :--- | :--- |
 | **Substitution** | 256-entry Non-linear S-Box | Break linear correlation |
-| **Permutation** | 3-Way Columnar Transposition | Cascading diffusion |
+| **Permutation** | 8-Way Columnar Transposition | Cascading diffusion |
 | **Network** | MDS Matrix Multiplication (GF2^8) | Maximum Distance Separable diffusion |
 | **Algebraic** | ARX (Add-Rotate-XOR) | Complexity against differential analysis |
 

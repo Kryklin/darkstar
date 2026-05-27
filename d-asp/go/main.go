@@ -265,7 +265,7 @@ func (dc *DarkstarCrypt) invTransBitFlip(in []byte, s []byte, pf func(string) PR
 }
 func (dc *DarkstarCrypt) transColumnar(in []byte, s []byte, pf func(string) PRNG) []byte {
 	n := len(in); out := make([]byte, n)
-	cols := 4; idx := 0
+	cols := 8; idx := 0
 	for c := 0; c < cols; c++ {
 		for i := c; i < n; i += cols { out[idx] = in[i]; idx++ }
 	}
@@ -273,7 +273,7 @@ func (dc *DarkstarCrypt) transColumnar(in []byte, s []byte, pf func(string) PRNG
 }
 func (dc *DarkstarCrypt) invTransColumnar(in []byte, s []byte, pf func(string) PRNG) []byte {
 	n := len(in); out := make([]byte, n)
-	cols := 4; idx := 0
+	cols := 8; idx := 0
 	for c := 0; c < cols; c++ {
 		for i := c; i < n; i += cols { out[i] = in[idx]; idx++ }
 	}

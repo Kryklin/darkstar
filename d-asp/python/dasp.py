@@ -485,7 +485,7 @@ class DarkstarCrypt:
     def _obfuscate_columnar_v4(self, data, seed=None, prng_factory=None):
         n = len(data)
         out = bytearray(n)
-        cols = 4
+        cols = 8
         idx = 0
         for c in range(cols):
             for i in range(c, n, cols):
@@ -496,7 +496,7 @@ class DarkstarCrypt:
     def _deobfuscate_columnar_v4(self, data, seed=None, prng_factory=None):
         n = len(data)
         out = bytearray(n)
-        cols = 4
+        cols = 8
         idx = 0
         for c in range(cols):
             for i in range(c, n, cols):

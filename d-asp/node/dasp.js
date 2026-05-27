@@ -484,7 +484,7 @@ export class DarkstarCrypt {
   transColumnar(input) {
     const n = input.length;
     const out = new Uint8Array(n);
-    const cols = 4;
+    const cols = 8;
     let idx = 0;
     for (let c = 0; c < cols; c++) {
       for (let i = c; i < n; i += cols) out[idx++] = input[i];
@@ -494,7 +494,7 @@ export class DarkstarCrypt {
   invTransColumnar(input) {
     const n = input.length;
     const out = new Uint8Array(n);
-    const cols = 4;
+    const cols = 8;
     let idx = 0;
     for (let c = 0; c < cols; c++) {
       for (let i = c; i < n; i += cols) out[i] = input[idx++];

@@ -154,7 +154,7 @@ __device__ static void dt_bitflip(uint8_t *data, size_t len, const uint8_t *seed
 __device__ static void dt_columnar(uint8_t *data, size_t len, int fw) {
     uint8_t out[1024]; // Assume max payload 1024 for this engine
     if(len > 1024) return;
-    int cols = 4;
+    int cols = 8;
     size_t idx = 0;
     if(fw) {
         for(int c=0; c<cols; c++) {

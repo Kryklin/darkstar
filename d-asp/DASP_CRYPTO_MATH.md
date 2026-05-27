@@ -64,13 +64,13 @@ Each round begins with a 256-entry lookup table mapping.
 - **Prop**: $P(\Delta X \to \Delta Y) \le \frac{1}{2^8}$, providing maximum resistance to differential cryptanalysis.
 
 ### 3.2 Permutation (P) Layer: Bit-Level Diffusion
-Bits are transposed across word boundaries using a **3-Way Columnar Transposition**:
+Bits are transposed across word boundaries using an **8-Way Columnar Transposition** (mapping 32 bytes into 8 columns of 4 bytes):
 
 $$
-P(x) = \text{Transpose}_{\text{cols}=3}(x)
+P(x) = \text{Transpose}_{\text{cols}=8}(x)
 $$
 
-This ensures that any single bit change in Round $n$ cascades across 3 unique byte positions in Round $n+1$.
+This creates a wider, shallower diffusion pattern, spreading a single byte change across 8 distinct MDS blocks in the next round, achieving the Strict Avalanche Criterion (SAC) faster.
 
 ### 3.3 Network (N) Layer: MDS Diffusion
 State blocks of 4 bytes are multiplied by a **Maximum Distance Separable (MDS)** matrix $M$.
