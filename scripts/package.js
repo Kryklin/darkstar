@@ -251,7 +251,7 @@ const pkg = require('../package.json');
       CAP_OPEN_ANDROID: 'npx cap open android',
       CAP_OPEN_IOS: 'npx cap open ios',
       // Docker: Headless environment testing
-      DOCKER_TEST: 'docker compose -f docker-compose.yml up --build --abort-on-container-exit',
+      DOCKER_TEST: 'docker compose -f docker-compose.yml build && python "d-asp/scripts/verify_interop.py" --docker',
     };
 
     // Execute selected action

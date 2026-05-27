@@ -165,24 +165,27 @@ def run_cmd(cmd, cwd, input_data=None):
         log(f"ERROR: Command failed: {' '.join(cmd)}\nStdout: {e.stdout}\nStderr: {e.stderr}")
         raise
 
-def benchmark_engine(name, encrypted_payload, sk_hex, hwid):
+def benchmark_engine(name, encrypted_payload, sk_hex, hwid, use_docker=False):
     engine = ENGINES[name]
-    cmd = engine["cmd"] + ["decrypt", "@interop.json", sk_hex, "--hwid", hwid]
-    
-    # Setup interop.json for this engine
-    with open(os.path.join(engine["cwd"], "interop.json"), "w") as f:
-        f.write(encrypted_payload)
+    if use_docker:
+        cmd = engine["cmd"] + ["decrypt", encrypted_payload, sk_hex, "--hwid", hwid]
+        cwd = BASE_DIR
+    else:
+        cmd = engine["cmd"] + ["decrypt", "@interop.json", sk_hex, "--hwid", hwid]
+        cwd = engine["cwd"]
+        with open(os.path.join(cwd, "interop.json"), "w") as f:
+            f.write(encrypted_payload)
         
     times = []
     internal_metrics = []
     output = ""
     # Warmup
-    run_cmd(cmd, engine["cwd"])
+    run_cmd(cmd, cwd)
     
     # Benchmark Rounds
     ROUNDS = 20
     for _ in range(ROUNDS):
-        out, duration, it = run_cmd(cmd, engine["cwd"])
+        out, duration, it = run_cmd(cmd, cwd)
         times.append(duration)
         if it:
             internal_metrics.append(it)
@@ -191,16 +194,33 @@ def benchmark_engine(name, encrypted_payload, sk_hex, hwid):
     return output, times, internal_metrics
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--docker", action="store_true", help="Run benchmark using Docker containers")
+    args, _ = parser.parse_known_args()
+
+    use_docker = args.docker
+    if use_docker:
+        for name in ENGINES:
+            image_name = f"darkstar-dasp-{name.lower()}"
+            if name == "CUDA":
+                ENGINES[name]["cmd"] = ["docker", "run", "--rm", "--gpus", "all", image_name]
+            else:
+                ENGINES[name]["cmd"] = ["docker", "run", "--rm", image_name]
+
     sys_info = get_system_info()
     log(f"--- D-ASP Professional Performance Benchmark (Session: {SESSION_ID}) ---")
     log("System Telemetry Captured.")
+    if use_docker:
+        log("Mode: DOCKER CONTAINERS")
     
     # Get current frequency start
     freq_start = psutil.cpu_freq().current
     
     # 1. Setup Test Data (using Rust as reference for keygen/encrypt)
     log("Step 1: Generating standard ML-KEM-1024 test vector...")
-    keygen_out, _, _ = run_cmd(ENGINES["Rust"]["cmd"] + ["keygen"], ENGINES["Rust"]["cwd"])
+    keygen_cwd = BASE_DIR if use_docker else ENGINES["Rust"]["cwd"]
+    keygen_out, _, _ = run_cmd(ENGINES["Rust"]["cmd"] + ["keygen"], keygen_cwd)
     # Rust keygen output format: "PK: <hex>\nSK: <hex>"
     lines = keygen_out.splitlines()
     pk = lines[0].split(": ")[1]
@@ -214,7 +234,8 @@ def main():
 
     # 2. Encrypt using reference (Rust)
     log("Step 2: Creating reference ciphertext (Rust)...")
-    enc_json, _, _ = run_cmd(ENGINES["Rust"]["cmd"] + ["encrypt", payload, pk, "--hwid", hwid], ENGINES["Rust"]["cwd"])
+    enc_cwd = BASE_DIR if use_docker else ENGINES["Rust"]["cwd"]
+    enc_json, _, _ = run_cmd(ENGINES["Rust"]["cmd"] + ["encrypt", payload, pk, "--hwid", hwid], enc_cwd)
     
     # 3. Cross-Platform Benchmark
     log("\nStep 3: Executing Cross-Platform Benchmark (20 rounds each)...")
@@ -223,7 +244,7 @@ def main():
     for name in ENGINES:
         try:
             log(f"Benchmarking {name}...")
-            decrypted, durations, internals = benchmark_engine(name, enc_json, sk, hwid)
+            decrypted, durations, internals = benchmark_engine(name, enc_json, sk, hwid, use_docker=use_docker)
             
             # Verify Parity
             if decrypted.strip() == payload:
