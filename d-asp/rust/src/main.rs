@@ -14,65 +14,12 @@ use zeroize::Zeroize;
 use std::fs;
 use ml_kem::{MlKem1024, MlKem1024Params, KemCore, EncodedSizeUser};
 use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
-
-/// ASP Cascade 16 Engine Implementation
-///
-/// Definitive implementation of the Darkstar Algebraic Substitution & Permutation (D-ASP) protocol.
-///
-/// - **D**: Darkstar ecosystem origin
-/// - **ASP Cascade 16**: The 16-round core engine logic
-/// - **A**: Algebraic Substitution
-/// - **S**: Structural Permutation
-/// - **P**: Permutation-based non-linear core
 use serde_json;
 
-const SBOX: [u8; 256] = [
-    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
-    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
-    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
-    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
-    0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
-    0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
-    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
-    0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
-    0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
-    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
-    0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
-    0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
-    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
-    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
-    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,
-];
-
-fn gf_mult(mut a: u8, mut b: u8) -> u8 {
-    let mut p = 0u8;
-    for _ in 0..8 {
-        // Mask: if b & 1, add a to product p
-        p ^= a & ((b & 1).wrapping_neg());
-
-        // Mask: if hi-bit of a is set, reduce by 0x1B
-        let mask = ((a as i8) >> 7) as u8;
-        a <<= 1;
-        a ^= 0x1B & mask;
-
-        b >>= 1;
-    }
-    p
-}
-
-fn get_inv_sbox() -> [u8; 256] {
-    let mut inv = [0u8; 256];
-    for i in 0..256 { inv[SBOX[i] as usize] = i as u8; }
-    inv
-}
-
-// clean_hex moved to top
+#[cfg(target_arch = "x86_64")]
+use core::arch::x86_64::*;
 
 /// Deterministic PRNG Implementation
-///
-/// Custom ChaCha20-based PRNG for cross-language bit-perfect path selection.
-
 struct DarkstarChaChaPRNG {
     state: [u32; 16],
     block: [u32; 16],
@@ -90,10 +37,7 @@ impl DarkstarChaChaPRNG {
             let chunk = &hash[i*4..(i+1)*4];
             state[4+i] = u32::from_le_bytes(chunk.try_into().unwrap());
         }
-        state[12] = 0;
-        state[13] = 0;
-        state[14] = 0;
-        state[15] = 0;
+        state[12] = 0; state[13] = 0; state[14] = 0; state[15] = 0;
 
         let block = Self::chacha_block(&state);
         DarkstarChaChaPRNG { state, block, block_idx: 0 }
@@ -130,281 +74,69 @@ impl DarkstarChaChaPRNG {
     }
 }
 
-struct ActivePRNG {
-    inner: DarkstarChaChaPRNG,
-}
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+unsafe fn dasp_cascade_32(block: &mut [u8; 32], round_keys: &[u32; 128]) {
+    let mut state = _mm256_loadu_si256(block.as_ptr() as *const __m256i);
+    let perm_mask = _mm256_set_epi32(0, 7, 6, 5, 4, 3, 2, 1);
 
-impl ActivePRNG {
-    fn new(seed_str: &str) -> Self {
-        ActivePRNG { inner: DarkstarChaChaPRNG::new(seed_str) }
+    macro_rules! dasp_round {
+        ($i:expr) => {
+            let rk = _mm256_loadu_si256(round_keys[($i)*8..].as_ptr() as *const __m256i);
+            state = _mm256_add_epi32(state, rk);
+            let rc = _mm256_set1_epi32((0x9E3779B9u32).wrapping_add($i) as i32);
+            state = _mm256_xor_si256(state, rc);
+            let rotl = _mm256_slli_epi32(state, 11);
+            let rotr = _mm256_srli_epi32(state, 32 - 11);
+            state = _mm256_or_si256(rotl, rotr);
+            state = _mm256_permutevar8x32_epi32(state, perm_mask);
+        };
     }
-    fn next(&mut self) -> u32 { self.inner.next() }
+
+    dasp_round!(0); dasp_round!(1); dasp_round!(2); dasp_round!(3);
+    dasp_round!(4); dasp_round!(5); dasp_round!(6); dasp_round!(7);
+    dasp_round!(8); dasp_round!(9); dasp_round!(10); dasp_round!(11);
+    dasp_round!(12); dasp_round!(13); dasp_round!(14); dasp_round!(15);
+
+    _mm256_storeu_si256(block.as_mut_ptr() as *mut __m256i, state);
 }
 
-/// Core D-KASP Cryptographic Controller
-
-type TransformationResult = Result<Vec<u8>, Box<dyn std::error::Error>>;
-type TransformationFn = fn(&[u8], Option<&[u8]>, &dyn Fn(&str) -> ActivePRNG) -> TransformationResult;
-
-struct DarkstarCrypt {
-    forward_pipeline: Vec<TransformationFn>,
-    reverse_pipeline: Vec<TransformationFn>,
+// Fallback for non-x86 architectures (or just simple block execution)
+#[cfg(not(target_arch = "x86_64"))]
+fn dasp_cascade_32(block: &mut [u8; 32], round_keys: &[u32; 128]) {
+    panic!("This engine requires AVX2");
 }
+
+fn generate_checksum(numbers: &[usize]) -> usize {
+    if numbers.is_empty() { return 0; }
+    let sum: usize = numbers.iter().sum();
+    sum % 997
+}
+
+fn clean_hex(s: &str) -> String {
+    s.chars().filter(|c| c.is_ascii_hexdigit()).collect()
+}
+
+struct DarkstarCrypt {}
 
 impl DarkstarCrypt {
-    fn new() -> Self {
-        DarkstarCrypt {
-            forward_pipeline: vec![
-                Self::trans_sbox,
-                Self::trans_modmult,
-                Self::trans_pbox,
-                Self::trans_cyclicrot,
-                Self::trans_keyedxor,
-                Self::trans_feistel,
-                Self::trans_modadd,
-                Self::trans_matrixhill,
-                Self::trans_gfmult,
-                Self::trans_bitflip,
-                Self::trans_columnar,
-                Self::trans_recxor,
-                Self::trans_mds_network,
-            ],
-            reverse_pipeline: vec![
-                Self::inv_trans_sbox,
-                Self::inv_trans_modmult,
-                Self::inv_trans_pbox,
-                Self::inv_trans_cyclicrot,
-                Self::inv_trans_keyedxor,
-                Self::inv_trans_feistel,
-                Self::inv_trans_modadd,
-                Self::inv_trans_matrixhill,
-                Self::inv_trans_gfmult,
-                Self::inv_trans_bitflip,
-                Self::inv_trans_columnar,
-                Self::inv_trans_recxor,
-                Self::inv_trans_mds_network,
-            ],
-        }
-    }
+    fn new() -> Self { DarkstarCrypt {} }
 
-    fn generate_checksum(numbers: &[usize]) -> usize {
-        if numbers.is_empty() { return 0; }
-        let sum: usize = numbers.iter().sum();
-        sum % 997
-    }
-
-    /// Functional Transformation Primitives
-    fn trans_sbox(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        Ok(input.iter().map(|&b| SBOX[b as usize]).collect())
-    }
-    fn inv_trans_sbox(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let inv = get_inv_sbox();
-        Ok(input.iter().map(|&b| inv[b as usize]).collect())
-    }
-    fn trans_modmult(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        Ok(input.iter().map(|&b| ((b as u16 * 167) & 0xFF) as u8).collect())
-    }
-    fn inv_trans_modmult(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        Ok(input.iter().map(|&b| ((b as u16 * 23) & 0xFF) as u8).collect())
-    }
-    fn trans_pbox(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let mut out = vec![0u8; input.len()];
-        let len = input.len();
-        for i in 0..len {
-            let mut b = input[i];
-            b = ((b & 0xF0) >> 4) | ((b & 0x0F) << 4);
-            b = ((b & 0xCC) >> 2) | ((b & 0x33) << 2);
-            b = ((b & 0xAA) >> 1) | ((b & 0x55) << 1);
-            out[len - 1 - i] = b;
-        }
-        Ok(out)
-    }
-    fn inv_trans_pbox(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        Self::trans_pbox(input, seed, prng_factory)
-    }
-    fn trans_cyclicrot(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        Ok(input.iter().map(|&b| (b >> 3) | (b << 5)).collect())
-    }
-    fn inv_trans_cyclicrot(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        Ok(input.iter().map(|&b| (b << 3) | (b >> 5)).collect())
-    }
-    fn trans_keyedxor(input: &[u8], seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let seed = seed.unwrap_or(&[]);
-        if seed.is_empty() { return Ok(input.to_vec()); }
-        Ok(input.iter().enumerate().map(|(i, &b)| b ^ seed[i % seed.len()]).collect())
-    }
-    fn inv_trans_keyedxor(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        Self::trans_keyedxor(input, seed, prng_factory)
-    }
-    fn trans_feistel(input: &[u8], seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let mut out = input.to_vec();
-        let half = out.len() / 2;
-        if half == 0 { return Ok(out); }
-        let seed = seed.unwrap_or(&[]);
-        if seed.is_empty() { return Ok(out); }
-        for i in 0..half {
-            let f = out[half + i].wrapping_add(seed[i % seed.len()]);
-            out[i] ^= f;
-        }
-        Ok(out)
-    }
-    fn inv_trans_feistel(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        Self::trans_feistel(input, seed, prng_factory)
-    }
-    fn trans_modadd(input: &[u8], seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let seed = seed.unwrap_or(&[]);
-        if seed.is_empty() { return Ok(input.to_vec()); }
-        Ok(input.iter().enumerate().map(|(i, &b)| b.wrapping_add(seed[i % seed.len()])).collect())
-    }
-    fn inv_trans_modadd(input: &[u8], seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let seed = seed.unwrap_or(&[]);
-        if seed.is_empty() { return Ok(input.to_vec()); }
-        Ok(input.iter().enumerate().map(|(i, &b)| b.wrapping_sub(seed[i % seed.len()])).collect())
-    }
-    fn trans_matrixhill(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let mut out = input.to_vec();
-        if out.is_empty() { return Ok(out); }
-        for i in 1..out.len() { out[i] = out[i].wrapping_add(out[i - 1]); }
-        Ok(out)
-    }
-    fn inv_trans_matrixhill(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let mut out = input.to_vec();
-        if out.is_empty() { return Ok(out); }
-        for i in (1..out.len()).rev() { out[i] = out[i].wrapping_sub(out[i - 1]); }
-        Ok(out)
-    }
-
-    const MDS_MATRIX: [[u8; 4]; 4] = [
-        [0x02, 0x03, 0x01, 0x01],
-        [0x01, 0x02, 0x03, 0x01],
-        [0x01, 0x01, 0x02, 0x03],
-        [0x03, 0x01, 0x01, 0x02]
-    ];
-
-    const INV_MDS_MATRIX: [[u8; 4]; 4] = [
-        [0x0E, 0x0B, 0x0D, 0x09],
-        [0x09, 0x0E, 0x0B, 0x0D],
-        [0x0D, 0x09, 0x0E, 0x0B],
-        [0x0B, 0x0D, 0x09, 0x0E]
-    ];
-
-    fn trans_mds_network(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        if input.len() < 4 { return Self::trans_matrixhill(input, _seed, _prng_factory); }
-        let mut out = vec![0u8; input.len()];
-        for i in (0..input.len()).step_by(4) {
-            let end = (i + 4).min(input.len());
-            let block = &input[i..end];
-            if block.len() < 4 {
-                for j in 0..block.len() { out[i+j] = block[j]; }
-                continue;
-            }
-            for row in 0..4 {
-                let mut sum = 0u8;
-                for col in 0..4 {
-                    sum ^= gf_mult(block[col], Self::MDS_MATRIX[row][col]);
-                }
-                out[i + row] = sum;
-            }
-        }
-        Ok(out)
-    }
-
-    fn inv_trans_mds_network(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        if input.len() < 4 { return Self::inv_trans_matrixhill(input, _seed, _prng_factory); }
-        let mut out = vec![0u8; input.len()];
-        for i in (0..input.len()).step_by(4) {
-            let end = (i + 4).min(input.len());
-            let block = &input[i..end];
-            if block.len() < 4 {
-                for j in 0..block.len() { out[i+j] = block[j]; }
-                continue;
-            }
-            for row in 0..4 {
-                let mut sum = 0u8;
-                for col in 0..4 {
-                    sum ^= gf_mult(block[col], Self::INV_MDS_MATRIX[row][col]);
-                }
-                out[i + row] = sum;
-            }
-        }
-        Ok(out)
-    }
-    fn trans_gfmult(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        Ok(input.iter().map(|&b| gf_mult(b, 0x02)).collect())
-    }
-    fn inv_trans_gfmult(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        Ok(input.iter().map(|&b| gf_mult(b, 0x8D)).collect())
-    }
-    fn trans_bitflip(input: &[u8], seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let seed = seed.unwrap_or(&[]);
-        if seed.is_empty() { return Ok(input.to_vec()); }
-        Ok(input.iter().enumerate().map(|(i, &b)| {
-            let mask = seed[i % seed.len()];
-            b ^ ((mask & 0xAA) | (!mask & 0x55))
-        }).collect())
-    }
-    fn inv_trans_bitflip(input: &[u8], seed: Option<&[u8]>, prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        Self::trans_bitflip(input, seed, prng_factory)
-    }
-    fn trans_columnar(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let n = input.len();
-        let mut out = vec![0u8; n];
-        let cols = 8;
-        let mut idx = 0;
-        for c in 0..cols {
-            let mut i = c;
-            while i < n {
-                out[idx] = input[i];
-                idx += 1;
-                i += cols;
-            }
-        }
-        Ok(out)
-    }
-    fn inv_trans_columnar(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let n = input.len();
-        let mut out = vec![0u8; n];
-        let cols = 8;
-        let mut idx = 0;
-        for c in 0..cols {
-            let mut i = c;
-            while i < n {
-                out[i] = input[idx];
-                idx += 1;
-                i += cols;
-            }
-        }
-        Ok(out)
-    }
-    fn trans_recxor(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let mut out = input.to_vec();
-        if out.is_empty() { return Ok(out); }
-        for i in 1..out.len() { out[i] = out[i - 1] ^ out[i]; }
-        Ok(out)
-    }
-    fn inv_trans_recxor(input: &[u8], _seed: Option<&[u8]>, _prng_factory: &dyn Fn(&str) -> ActivePRNG) -> TransformationResult {
-        let mut out = input.to_vec();
-        if out.is_empty() { return Ok(out); }
-        for i in (1..out.len()).rev() { out[i] = out[i] ^ out[i - 1]; }
-        Ok(out)
-    }
-
-    fn encrypt(&self, payload: &str, pk_hex: &str, hwid: Option<Vec<u8>>) -> Result<String, Box<dyn std::error::Error>> {        let total_start = std::time::Instant::now();
-        let payload_bytes = payload.as_bytes();
-        let pk_bytes: [u8; 1568] = hex::decode(clean_hex(pk_hex))?
+    fn encrypt(&self, payload_str: &str, pk_hex: &str, hwid: Option<Vec<u8>>) -> Result<String, Box<dyn std::error::Error>> {
+        let total_start = std::time::Instant::now();
+        
+        let pk_bytes: [u8; 1568] = hex::decode(clean_hex(&pk_hex))?
             .try_into().map_err(|_| format!("Invalid public key length (Arg length: {})", pk_hex.len()))?;
 
         let kem_start = std::time::Instant::now();
         let ek = EncapsulationKey::<MlKem1024Params>::from_bytes(&pk_bytes.into());
         let (ct, mut ss) = ek.encapsulate(&mut rand::thread_rng())
-            .map_err(|e| format!("KEM encapsulation failed: {:?}", e))?;
+            .map_err(|e| format!("KEM failed: {:?}", e))?;
         let ct_hex = hex::encode(&ct[..]);
         let ss_bytes = &ss[..];
         let kem_duration = kem_start.elapsed();
 
         let kdf_start = std::time::Instant::now();
-        use sha2::Digest;
-        
         use hmac::{Hmac, Mac};
         type HmacSha256 = Hmac<Sha256>;
         let default_salt = [0u8; 32];
@@ -432,22 +164,11 @@ impl DarkstarCrypt {
         hmac_hasher.update(b"hmac");
         hmac_hasher.update(&blended_ss);
         let hmac_key = hmac_hasher.finalize();
-        
+
         let active_password_str = hex::encode(cipher_key);
-        let active_hmac_key = hmac_key.to_vec();
         ss.zeroize();
         let kdf_duration = kdf_start.elapsed();
 
-        let prng_factory = |s: &str| ActivePRNG::new(s);
-        let mut chain_hasher = Sha256::new();
-        chain_hasher.update(format!("dasp-chain-{}", active_password_str).as_bytes());
-        let chain_state = chain_hasher.finalize().to_vec();
-
-        let mut current_word_bytes = payload_bytes.to_vec();
-
-        // Stage 2: word_key
-        
-        // Stage 2: word_key
         let word_key: Vec<u8> = {
             let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(active_password_str.as_bytes())
                 .map_err(|e| format!("HMAC init error: {:?}", e))?;
@@ -456,51 +177,46 @@ impl DarkstarCrypt {
         };
         let word_key_hex = hex::encode(&word_key);
 
-        for (i, b) in current_word_bytes.iter_mut().enumerate() {
-            *b ^= chain_state[i % 32];
+        let mut chain_hasher = Sha256::new();
+        chain_hasher.update(format!("dasp-chain-{}", active_password_str).as_bytes());
+        let chain_state = chain_hasher.finalize().to_vec();
+
+        let mut rng = DarkstarChaChaPRNG::new(&word_key_hex);
+        let mut round_keys = [0u32; 128];
+        for i in 0..128 {
+            round_keys[i] = rng.next();
         }
 
-        let checksum = Self::generate_checksum(&(0..12).collect::<Vec<_>>());
-        let func_key: Vec<u8> = {
-            let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&word_key)
-                .map_err(|e| format!("HMAC init error: {:?}", e))?;
-            mac.update(format!("keyed-{}", checksum).as_bytes());
-            mac.finalize().into_bytes().to_vec()
-        };
-
-        let mut rng_path = prng_factory(&word_key_hex);
-        let group_s = [0usize, 1, 5];
-        let group_p = [2usize, 3, 10];
-        let group_n = [12usize, 12, 11];
-        let group_a = [4usize, 6, 9];
-
-        // Stage 3: Round Indices
-        let mut round_indices = Vec::with_capacity(16);
+        let mut payload_bytes = payload_str.as_bytes().to_vec();
         let cascade_start = std::time::Instant::now();
-        for i in 0..16 {
-            let s_idx = if i % 4 == 0 { 0 } else if i % 4 == 2 { 1 } else { group_s[(rng_path.next() as usize) % group_s.len()] };
-            current_word_bytes = (self.forward_pipeline[s_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
+        
+        // CTR Mode Encryption
+        let mut nonce = chain_state.clone();
+        for chunk in payload_bytes.chunks_mut(32) {
+            let mut block = [0u8; 32];
+            block.copy_from_slice(&nonce);
+            
+            #[cfg(target_arch = "x86_64")]
+            unsafe { dasp_cascade_32(&mut block, &round_keys); }
+            #[cfg(not(target_arch = "x86_64"))]
+            dasp_cascade_32(&mut block, &round_keys);
 
-            let p_idx = group_p[(rng_path.next() as usize) % group_p.len()];
-            let n_idx = group_n[(rng_path.next() as usize) % group_n.len()];
-            let a_idx = group_a[(rng_path.next() as usize) % group_a.len()];
-            
-            current_word_bytes = (self.forward_pipeline[p_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
-            current_word_bytes = (self.forward_pipeline[n_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
-            current_word_bytes = (self.forward_pipeline[a_idx])(&current_word_bytes, Some(&func_key), &prng_factory)?;
-            
-            round_indices.push(vec![s_idx, p_idx, n_idx, a_idx]);
+            for (i, b) in chunk.iter_mut().enumerate() {
+                *b ^= block[i];
+            }
+
+            // Increment nonce
+            for b in nonce.iter_mut() {
+                *b = b.wrapping_add(1);
+                if *b != 0 { break; }
+            }
         }
         let cascade_duration = cascade_start.elapsed();
 
-        let active_hmac_key = hmac_key.clone();
-        
-        let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&active_hmac_key)
+        let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&hmac_key)
             .map_err(|e| format!("HMAC error: {:?}", e))?;
-        mac.update(&ct);
-        mac.update(&current_word_bytes);
-        
-        // Stage 4: final mac
+        mac.update(&ct[..]);
+        mac.update(&payload_bytes);
         let mac_tag = hex::encode(mac.finalize().into_bytes());
 
         if std::env::var("DASP_DIAGNOSTIC").is_ok() {
@@ -508,7 +224,6 @@ impl DarkstarCrypt {
                 "diagnostics": {
                     "stage1_blended_ss": blended_ss_hex,
                     "stage2_word_key": word_key_hex,
-                    "stage3_round_indices": round_indices,
                     "stage4_mac": mac_tag
                 }
             }));
@@ -516,7 +231,7 @@ impl DarkstarCrypt {
         let total_duration = total_start.elapsed();
 
         let res_obj = serde_json::json!({
-            "data": hex::encode(&current_word_bytes),
+            "data": hex::encode(&payload_bytes),
             "ct": ct_hex,
             "mac": mac_tag,
             "timings": {
@@ -551,8 +266,6 @@ impl DarkstarCrypt {
         let kem_duration = kem_start.elapsed();
 
         let kdf_start = std::time::Instant::now();
-        use sha2::Digest;
-        
         use hmac::{Hmac, Mac};
         type HmacSha256 = Hmac<Sha256>;
         let default_salt = [0u8; 32];
@@ -582,13 +295,9 @@ impl DarkstarCrypt {
         let hmac_key = hmac_hasher.finalize();
         
         let active_password_str = hex::encode(cipher_key);
-        let active_hmac_key = hmac_key.to_vec();
         ss.zeroize();
         let kdf_duration = kdf_start.elapsed();
 
-        // Stage 2: word_key
-
-        // Stage 2: word_key
         let word_key: Vec<u8> = {
             let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(active_password_str.as_bytes())
                 .map_err(|e| format!("HMAC error: {:?}", e))?;
@@ -597,30 +306,11 @@ impl DarkstarCrypt {
         };
         let word_key_hex = hex::encode(&word_key);
 
-        let prng_factory = |s: &str| ActivePRNG::new(s);
-        let mut rng_path = prng_factory(&word_key_hex);
-        let group_s = [0usize, 1, 5];
-        let group_p = [2usize, 3, 10];
-        let group_n = [12usize, 12, 11];
-        let group_a = [4usize, 6, 9];
-
-        // Stage 3: Round Indices
-        let mut round_indices = Vec::with_capacity(16);
-        let mut round_paths = Vec::with_capacity(16);
-        for i in 0..16 {
-            let s = if i % 4 == 0 { 0 } else if i % 4 == 2 { 1 } else { group_s[(rng_path.next() as usize) % group_s.len()] };
-            let p = group_p[(rng_path.next() as usize) % group_p.len()];
-            let n = group_n[(rng_path.next() as usize) % group_n.len()];
-            let a = group_a[(rng_path.next() as usize) % group_a.len()];
-            round_paths.push((s, p, n, a));
-            round_indices.push(vec![s, p, n, a]);
-        }
-        let payload_bytes = hex::decode(encrypted_content)?;
-        let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&active_hmac_key)
+        let mut payload_bytes = hex::decode(encrypted_content)?;
+        let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&hmac_key)
             .map_err(|e| format!("HMAC error: {:?}", e))?;
         mac.update(&ct_bytes);
         mac.update(&payload_bytes);
-        
         let mac_tag_actual = hex::encode(mac.clone().finalize().into_bytes());
 
         if std::env::var("DASP_DIAGNOSTIC").is_ok() {
@@ -628,7 +318,6 @@ impl DarkstarCrypt {
                 "diagnostics": {
                     "stage1_blended_ss": blended_ss_hex,
                     "stage2_word_key": word_key_hex,
-                    "stage3_round_indices": round_indices,
                     "stage4_mac": mac_tag_actual
                 }
             }));
@@ -637,34 +326,40 @@ impl DarkstarCrypt {
         mac.verify_slice(&hex::decode(mac_tag_hex)?)
             .map_err(|_| "Integrity Check Failed")?;
 
-        let checksum = Self::generate_checksum(&(0..12).collect::<Vec<_>>());
-        let func_key: Vec<u8> = {
-            let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&word_key)
-                .map_err(|e| format!("HMAC error: {:?}", e))?;
-            mac.update(format!("keyed-{}", checksum).as_bytes());
-            mac.finalize().into_bytes().to_vec()
-        };
-
         let mut chain_hasher = Sha256::new();
         chain_hasher.update(format!("dasp-chain-{}", active_password_str).as_bytes());
         let chain_state = chain_hasher.finalize().to_vec();
 
+        let mut rng = DarkstarChaChaPRNG::new(&word_key_hex);
+        let mut round_keys = [0u32; 128];
+        for i in 0..128 {
+            round_keys[i] = rng.next();
+        }
+
         let cascade_start = std::time::Instant::now();
-        let mut current_word_bytes = payload_bytes;
-        for j in (0..16).rev() {
-            let (s, p, n, a) = round_paths[j];
-            current_word_bytes = (self.reverse_pipeline[a])(&current_word_bytes, Some(&func_key), &prng_factory)?;
-            current_word_bytes = (self.reverse_pipeline[n])(&current_word_bytes, Some(&func_key), &prng_factory)?;
-            current_word_bytes = (self.reverse_pipeline[p])(&current_word_bytes, Some(&func_key), &prng_factory)?;
-            current_word_bytes = (self.reverse_pipeline[s])(&current_word_bytes, Some(&func_key), &prng_factory)?;
+        let mut nonce = chain_state.clone();
+        for chunk in payload_bytes.chunks_mut(32) {
+            let mut block = [0u8; 32];
+            block.copy_from_slice(&nonce);
+            
+            #[cfg(target_arch = "x86_64")]
+            unsafe { dasp_cascade_32(&mut block, &round_keys); }
+            #[cfg(not(target_arch = "x86_64"))]
+            dasp_cascade_32(&mut block, &round_keys);
+
+            for (i, b) in chunk.iter_mut().enumerate() {
+                *b ^= block[i];
+            }
+
+            // Increment nonce
+            for b in nonce.iter_mut() {
+                *b = b.wrapping_add(1);
+                if *b != 0 { break; }
+            }
         }
         let cascade_duration = cascade_start.elapsed();
 
-        for (i, b) in current_word_bytes.iter_mut().enumerate() {
-            *b ^= chain_state[i % 32];
-        }
-
-        let result = String::from_utf8(current_word_bytes)?;
+        let result = String::from_utf8(payload_bytes)?;
         let total_duration = total_start.elapsed();
         
         eprintln!("{}", serde_json::json!({
@@ -698,10 +393,6 @@ fn resolve_arg(arg: &str) -> String {
     } else {
         arg.to_string()
     }
-}
-
-fn clean_hex(s: &str) -> String {
-    s.chars().filter(|c| c.is_ascii_hexdigit()).collect()
 }
 
 fn main() {

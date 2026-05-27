@@ -2,13 +2,7 @@
 #include <stdint.h>
 #include "dasp_cuda.h"
 
-/* --- Constant Memory for S-Boxes and Matrices --- */
-__constant__ unsigned char d_SBOX[256];
-__constant__ unsigned char d_INV_SBOX[256];
-__constant__ uint8_t d_MDS_MATRIX[4][4];
-__constant__ uint8_t d_INV_MDS_MATRIX[4][4];
-
-/* --- Device Utility Functions --- */
+__device__ uint32_t d_round_keys[128];
 
 __device__ static inline uint32_t d_rotl32(uint32_t x, int n) {
     return (x << n) | (x >> (32 - n));
@@ -61,265 +55,109 @@ __device__ static uint32_t d_prng_next(d_prng_t *ctx) {
     return ctx->block[ctx->block_idx++];
 }
 
-__device__ static uint8_t d_gf_mult(uint8_t a, uint8_t b) {
-    uint8_t p = 0;
-    for (int i = 0; i < 8; i++) {
-        p ^= (-(b & 1)) & a;
-        uint8_t mask = -(a >> 7);
-        a = (a << 1) ^ (0x1B & mask);
-        b >>= 1;
-    }
-    return p;
-}
-
-/* --- Round Transformations (Device Functions) --- */
-
-__device__ static void dt_sbox(uint8_t *data, size_t len, int fw) {
-    for(size_t i=0; i<len; i++) {
-        data[i] = fw ? d_SBOX[data[i]] : d_INV_SBOX[data[i]];
-    }
-}
-
-__device__ static void dt_modmult(uint8_t *data, size_t len, int fw) {
-    for(size_t i=0; i<len; i++) {
-        data[i] = (uint8_t)(((uint16_t)data[i] * (fw ? 167 : 23)) & 0xFF);
-    }
-}
-
-__device__ static void dt_pbox_bitrev(uint8_t *data, size_t len) {
-    for(size_t i=0; i<len; i++) {
-        uint8_t b = data[i];
-        b = ((b & 0xF0) >> 4) | ((b & 0x0F) << 4);
-        b = ((b & 0xCC) >> 2) | ((b & 0x33) << 2);
-        b = ((b & 0xAA) >> 1) | ((b & 0x55) << 1);
-        data[i] = b;
-    }
-    // Reverse the entire array (simple swap loop)
-    for(size_t i=0; i < len/2; i++) {
-        uint8_t tmp = data[i];
-        data[i] = data[len-1-i];
-        data[len-1-i] = tmp;
-    }
-}
-
-__device__ static void dt_cyclicrot(uint8_t *data, size_t len, int fw) {
-    for(size_t i=0; i<len; i++) {
-        uint8_t b = data[i];
-        if(fw) data[i] = (b >> 3) | (b << 5);
-        else data[i] = (b << 3) | (b >> 5);
-    }
-}
-
-__device__ static void dt_keyedxor(uint8_t *data, size_t len, const uint8_t *seed, int fw) {
-    for(size_t i=0; i<len; i++) data[i] ^= seed[i % 32];
-}
-
-__device__ static void dt_feistel(uint8_t *data, size_t len, const uint8_t *seed, int fw) {
-    size_t half = len / 2;
-    if(half == 0) return;
-    for(size_t i=0; i<half; i++) {
-        uint8_t f = (uint8_t)((data[half + i] + seed[i % 32]) & 0xFF);
-        data[i] ^= f;
-    }
-}
-
-__device__ static void dt_modadd(uint8_t *data, size_t len, const uint8_t *seed, int fw) {
-    for(size_t i=0; i<len; i++) {
-        if(fw) data[i] = (uint8_t)((data[i] + seed[i % 32]) & 0xFF);
-        else data[i] = (uint8_t)((data[i] - seed[i % 32]) & 0xFF);
-    }
-}
-
-__device__ static void dt_matrixhill(uint8_t *data, size_t len, int fw) {
-    if(len == 0) return;
-    if(fw) {
-        for(size_t i=1; i<len; i++) data[i] = (uint8_t)((data[i] + data[i-1]) & 0xFF);
-    } else {
-        for(size_t i=len-1; i > 0; i--) data[i] = (uint8_t)((data[i] - data[i-1]) & 0xFF);
-    }
-}
-
-__device__ static void dt_gfmult(uint8_t *data, size_t len, int fw) {
-    uint8_t factor = fw ? 0x02 : 0x8D;
-    for(size_t i=0; i<len; i++) data[i] = d_gf_mult(data[i], factor);
-}
-
-__device__ static void dt_bitflip(uint8_t *data, size_t len, const uint8_t *seed) {
-    for(size_t i=0; i<len; i++) {
-        uint8_t mask = seed[i % 32];
-        data[i] ^= ((mask & 0xAA) | (~mask & 0x55));
-    }
-}
-
-__device__ static void dt_columnar(uint8_t *data, size_t len, int fw) {
-    uint8_t out[1024]; // Assume max payload 1024 for this engine
-    if(len > 1024) return;
-    int cols = 8;
-    size_t idx = 0;
-    if(fw) {
-        for(int c=0; c<cols; c++) {
-            for(size_t i=c; i<len; i+=cols) out[idx++] = data[i];
-        }
-    } else {
-        for(int c=0; c<cols; c++) {
-            for(size_t i=c; i<len; i+=cols) out[i] = data[idx++];
-        }
-    }
-    for(size_t i=0; i<len; i++) data[i] = out[i];
-}
-
-__device__ static void dt_recxor(uint8_t *data, size_t len, int fw) {
-    if(len == 0) return;
-    if(fw) {
-        for(size_t i=1; i<len; i++) data[i] ^= data[i-1];
-    } else {
-        for(size_t i=len-1; i > 0; i--) data[i] ^= data[i-1];
-    }
-}
-
-__device__ static void dt_mds(uint8_t *data, size_t len, int fw) {
-    if (len < 4) return;
-    for(size_t i=0; i<=len-4; i+=4) {
-        uint8_t temp[4];
-        for(int r=0; r<4; r++) {
-            temp[r] = 0;
-            for(int c=0; c<4; c++) {
-                uint8_t factor = fw ? d_MDS_MATRIX[r][c] : d_INV_MDS_MATRIX[r][c];
-                temp[r] ^= d_gf_mult(data[i+c], factor);
-            }
-        }
-        for(int r=0; r<4; r++) data[i+r] = temp[r];
-    }
-}
-
-/* --- MAIN KERNEL --- */
-
-__global__ void dasp_spna_kernel(uint8_t *payloads, size_t payload_len, const uint8_t *keys_128, int is_forward) {
-    size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-    // Current Block Strategy: Each thread processes the ENTIRE payload (Wide-Block approach)
-    if (tid > 0) return; 
-
-    uint8_t *local_data = payloads;
-    size_t len = payload_len;
-
-    const uint8_t *func_key = keys_128;
-    const uint8_t *prng_seed = keys_128 + 64;
-
+__global__ void init_keys_kernel(const uint8_t *prng_seed) {
+    if (threadIdx.x != 0 || blockIdx.x != 0) return;
     d_prng_t prng;
     d_prng_init(&prng, prng_seed);
-
-    int groupS[] = {0, 1, 5};
-    int groupP[] = {2, 3, 10};
-    int groupN[] = {12, 12, 11};
-    int groupA[] = {4, 6, 9};
-
-    uint8_t paths[16][4];
-    for(int r=0; r<16; r++) {
-        paths[r][0] = (r % 4 == 0) ? 0 : ((r % 4 == 2) ? 1 : groupS[d_prng_next(&prng) % 3]);
-        paths[r][1] = groupP[d_prng_next(&prng) % 3];
-        paths[r][2] = groupN[d_prng_next(&prng) % 3];
-        paths[r][3] = groupA[d_prng_next(&prng) % 3];
-    }
-
-    if(is_forward) {
-        for(int r=0; r<16; r++) {
-            // S-Layer
-            int s = paths[r][0];
-            if(s==0) dt_sbox(local_data, len, 1);
-            else if(s==1) dt_modmult(local_data, len, 1);
-            else if(s==5) dt_feistel(local_data, len, func_key, 1);
-            
-            // P-Layer
-            int p = paths[r][1];
-            if(p==2) dt_pbox_bitrev(local_data, len);
-            else if(p==3) dt_cyclicrot(local_data, len, 1);
-            else if(p==10) dt_columnar(local_data, len, 1);
-            
-            // N-Layer
-            int n = paths[r][2];
-            if(n==11) dt_recxor(local_data, len, 1);
-            else if(n==12) dt_mds(local_data, len, 1);
-
-            // A-Layer
-            int a = paths[r][3];
-            if(a==4) dt_keyedxor(local_data, len, func_key, 1);
-            else if(a==6) dt_modadd(local_data, len, func_key, 1);
-            else if(a==9) dt_bitflip(local_data, len, func_key);
-        }
-    } else {
-        for(int r=15; r>=0; r--) {
-            // Inverse A-Layer
-            int a = paths[r][3];
-            if(a==4) dt_keyedxor(local_data, len, func_key, 0);
-            else if(a==6) dt_modadd(local_data, len, func_key, 0);
-            else if(a==9) dt_bitflip(local_data, len, func_key);
-
-            // Inverse N-Layer
-            int n = paths[r][2];
-            if(n==11) dt_recxor(local_data, len, 0);
-            else if(n==12) dt_mds(local_data, len, 0);
-
-            // Inverse P-Layer
-            int p = paths[r][1];
-            if(p==2) dt_pbox_bitrev(local_data, len);
-            else if(p==3) dt_cyclicrot(local_data, len, 0);
-            else if(p==10) dt_columnar(local_data, len, 0);
-
-            // Inverse S-Layer
-            int s = paths[r][0];
-            if(s==0) dt_sbox(local_data, len, 0);
-            else if(s==1) dt_modmult(local_data, len, 0);
-            else if(s==5) dt_feistel(local_data, len, func_key, 0);
-        }
+    for (int i=0; i<128; i++) {
+        d_round_keys[i] = d_prng_next(&prng);
     }
 }
 
-/* --- Host Wrapper --- */
+__global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, size_t payload_len, const uint8_t *nonce_base, uint64_t block_offset) {
+    size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t byte_offset = tid * 32;
+    if (byte_offset >= payload_len) return;
+    
+    uint64_t global_block_idx = block_offset + tid;
 
-extern "C" void dasp_cuda_process_blocks(uint8_t *d_payload, size_t payload_len, const uint8_t *d_keys_128, const uint8_t *d_hwid, size_t num_blocks, int is_forward) {
-    // Current simplified implementation: 1 thread processes the whole payload buffer
-    dasp_spna_kernel<<<1, 1>>>(d_payload, payload_len, d_keys_128, is_forward);
+    // Load nonce (chain_state)
+    // Nonce is 32 bytes = two uint4s. 
+    // We do not assume it is aligned to 16 bytes for uint4 loading, so we load as uint32
+    uint32_t n[8];
+    for(int i=0; i<8; i++) {
+        n[i] = ((uint32_t*)nonce_base)[i];
+    }
+    
+    // Add global_block_idx to the nonce. Little endian addition on the first 32 bits
+    uint64_t n_low = (uint64_t)n[0] + global_block_idx;
+    n[0] = (uint32_t)n_low;
+    // Simple carry propagation (sufficient for reasonable payloads)
+    if (n_low > 0xFFFFFFFF) {
+        uint64_t n1 = (uint64_t)n[1] + (n_low >> 32);
+        n[1] = (uint32_t)n1;
+    }
+
+    uint4 s0, s1;
+    s0.x = n[0]; s0.y = n[1]; s0.z = n[2]; s0.w = n[3];
+    s1.x = n[4]; s1.y = n[5]; s1.z = n[6]; s1.w = n[7];
+
+#define DASP_ROUND_CUDA(i) do { \
+    s0.x += d_round_keys[(i)*8 + 0]; \
+    s0.y += d_round_keys[(i)*8 + 1]; \
+    s0.z += d_round_keys[(i)*8 + 2]; \
+    s0.w += d_round_keys[(i)*8 + 3]; \
+    s1.x += d_round_keys[(i)*8 + 4]; \
+    s1.y += d_round_keys[(i)*8 + 5]; \
+    s1.z += d_round_keys[(i)*8 + 6]; \
+    s1.w += d_round_keys[(i)*8 + 7]; \
+    \
+    uint32_t rc = 0x9E3779B9 + (i); \
+    s0.x ^= rc; s0.y ^= rc; s0.z ^= rc; s0.w ^= rc; \
+    s1.x ^= rc; s1.y ^= rc; s1.z ^= rc; s1.w ^= rc; \
+    \
+    s0.x = __funnelshift_l(s0.x, s0.x, 11); \
+    s0.y = __funnelshift_l(s0.y, s0.y, 11); \
+    s0.z = __funnelshift_l(s0.z, s0.z, 11); \
+    s0.w = __funnelshift_l(s0.w, s0.w, 11); \
+    s1.x = __funnelshift_l(s1.x, s1.x, 11); \
+    s1.y = __funnelshift_l(s1.y, s1.y, 11); \
+    s1.z = __funnelshift_l(s1.z, s1.z, 11); \
+    s1.w = __funnelshift_l(s1.w, s1.w, 11); \
+    \
+    uint32_t t = s0.x; \
+    s0.x = s0.y; s0.y = s0.z; s0.z = s0.w; s0.w = s1.x; \
+    s1.x = s1.y; s1.y = s1.z; s1.z = s1.w; s1.w = t; \
+} while(0)
+
+    DASP_ROUND_CUDA(0);  DASP_ROUND_CUDA(1);  DASP_ROUND_CUDA(2);  DASP_ROUND_CUDA(3);
+    DASP_ROUND_CUDA(4);  DASP_ROUND_CUDA(5);  DASP_ROUND_CUDA(6);  DASP_ROUND_CUDA(7);
+    DASP_ROUND_CUDA(8);  DASP_ROUND_CUDA(9);  DASP_ROUND_CUDA(10); DASP_ROUND_CUDA(11);
+    DASP_ROUND_CUDA(12); DASP_ROUND_CUDA(13); DASP_ROUND_CUDA(14); DASP_ROUND_CUDA(15);
+#undef DASP_ROUND_CUDA
+
+    size_t remaining = payload_len - byte_offset;
+    if (remaining >= 32) {
+        // Can read/write 32 bytes safely
+        // Just write 8 ints
+        uint32_t *p32 = (uint32_t*)(payloads + byte_offset);
+        p32[0] ^= s0.x; p32[1] ^= s0.y; p32[2] ^= s0.z; p32[3] ^= s0.w;
+        p32[4] ^= s1.x; p32[5] ^= s1.y; p32[6] ^= s1.z; p32[7] ^= s1.w;
+    } else {
+        uint32_t temp[8];
+        temp[0] = s0.x; temp[1] = s0.y; temp[2] = s0.z; temp[3] = s0.w;
+        temp[4] = s1.x; temp[5] = s1.y; temp[6] = s1.z; temp[7] = s1.w;
+        uint8_t *t8 = (uint8_t*)temp;
+        for(size_t i=0; i<remaining; i++) payloads[byte_offset + i] ^= t8[i];
+    }
+}
+
+extern "C" void dasp_cuda_init_keys(const uint8_t *d_keys_128) {
+    const uint8_t *prng_seed = d_keys_128 + 64;
+    init_keys_kernel<<<1, 1>>>(prng_seed);
     cudaDeviceSynchronize();
 }
 
-/* --- Initialization --- */
+extern "C" void dasp_cuda_process_chunk(uint8_t *d_payload, size_t chunk_len, const uint8_t *d_nonce, uint64_t block_offset, cudaStream_t stream) {
+    if (chunk_len == 0) return;
+
+    size_t real_num_blocks = (chunk_len + 31) / 32;
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (real_num_blocks + threadsPerBlock - 1) / threadsPerBlock;
+    
+    dasp_ctr_kernel<<<blocksPerGrid, threadsPerBlock, 0, stream>>>(d_payload, chunk_len, d_nonce, block_offset);
+}
 
 extern "C" void dasp_cuda_init() {
-    static const uint8_t MDS_REF[4][4] = {
-        {0x02, 0x03, 0x01, 0x01},
-        {0x01, 0x02, 0x03, 0x01},
-        {0x01, 0x01, 0x02, 0x03},
-        {0x03, 0x01, 0x01, 0x02}
-    };
-    static const uint8_t INV_MDS_REF[4][4] = {
-        {0x0E, 0x0B, 0x0D, 0x09},
-        {0x09, 0x0E, 0x0B, 0x0D},
-        {0x0D, 0x09, 0x0E, 0x0B},
-        {0x0B, 0x0D, 0x09, 0x0E}
-    };
-    static const unsigned char SBOX_REF[256] = {
-        0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
-        0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
-        0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
-        0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
-        0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
-        0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
-        0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
-        0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
-        0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
-        0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
-        0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
-        0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
-        0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
-        0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
-        0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-        0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
-    };
-    static unsigned char INV_SBOX_REF[256];
-    for(int i=0; i<256; i++) INV_SBOX_REF[SBOX_REF[i]] = i;
-
-    cudaMemcpyToSymbol(d_SBOX, SBOX_REF, 256);
-    cudaMemcpyToSymbol(d_INV_SBOX, INV_SBOX_REF, 256);
-    cudaMemcpyToSymbol(d_MDS_MATRIX, MDS_REF, 16);
-    cudaMemcpyToSymbol(d_INV_MDS_MATRIX, INV_MDS_REF, 16);
+    // No constant init needed anymore
 }

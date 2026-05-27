@@ -280,7 +280,7 @@ def main():
         f.write(f"Rustc:     {sys_info['rust_v']}\n")
         f.write(f"{'-'*60}\n\n")
         
-        headers = f"{'Engine':<10} | {'Status':<7} | {'Mean (ms)':<10} | {'Casca (us)':<10} | {'Casca CPB':<10} | {'Total CPB':<10} | {'Ops/sec'}"
+        headers = f"{'Engine':<10} | {'Status':<7} | {'Total Time':<12} | {'Casca Time':<12} | {'Casca CPB':<10} | {'Total CPB':<10} | {'Ops/sec'}"
         f.write(headers + "\n")
         f.write("-" * 100 + "\n")
         print("\n" + headers)
@@ -303,7 +303,11 @@ def main():
                 casca_cpb = (casca_avg_us * 1000 * avg_freq_ghz) / 32
                 total_cpb = (mean_ms * 1_000_000 * avg_freq_ghz) / 32
                 
-                line = f"{name:<10} | {data['status']:<7} | {mean_ms:<10.3f} | {casca_avg_us:<10.0f} | {casca_cpb:<10.2f} | {total_cpb:<10.2f} | {ops_sec:<10.2f}\n"
+                # Format Time dynamically
+                mean_time_str = f"{mean_ms * 1000:.1f} us" if mean_ms < 1.0 else f"{mean_ms:.3f} ms"
+                casca_time_str = f"{casca_avg_us:.0f} us" if casca_avg_us < 1000.0 else f"{casca_avg_us / 1000.0:.3f} ms"
+
+                line = f"{name:<10} | {data['status']:<7} | {mean_time_str:<12} | {casca_time_str:<12} | {casca_cpb:<10.2f} | {total_cpb:<10.2f} | {ops_sec:<10.2f}\n"
                 f.write(line)
                 print(line.strip())
             else:

@@ -58,46 +58,25 @@ $$
 
 ---
 
-## 3. The ASP Cascade 16 Engine
+## 3. The ASP Cascade 16 Engine (32-Bit Vectorized)
 
-The ASP Cascade structure utilizes a cascade of Substitution, Permutation, Network, and Algebraic layers to achieve rapid avalanche.
+The ASP Cascade has been structurally upgraded to an **Intrinsic-Forced Execution Model**. It operates as a strict **256-bit (32-byte) Block Cipher** in **Counter (CTR) Mode**.
 
-### 3.1 Substitution (S) Layer: Non-Linearity
-Each round begins with a 256-entry lookup table mapping.
-- **Transformation**: $y = \text{SBOX}[x \oplus K_{round}]$.
-- **Prop**: $P(\Delta X \to \Delta Y) \le \frac{1}{2^8}$, providing maximum resistance to differential cryptanalysis.
+The internal state $S$ is defined as eight 32-bit words: $S \in \mathbb{Z}_{2^{32}}^8$.
 
-### 3.2 Permutation (P) Layer: Bit-Level Diffusion
-Bits are transposed across word boundaries using an **8-Way Columnar Transposition** (mapping 32 bytes into 8 columns of 4 bytes):
+To eliminate branching and loop overhead, D-ASP uses a **Static Deterministic Unrolled Schedule** consisting of a pure 32-bit ARX/SPNA sequence.
 
-$$
-P(x) = \text{Transpose}_{\text{cols}=8}(x)
-$$
+### 3.1 Substitution & Algebraic (S/A) Layer: 32-Bit ARX
+State words are modified using 32-bit modular addition and bitwise XOR, combining incompatible algebraic groups to neutralize differential approximations.
+- **Addition**: $S = (S + K_{round}) \pmod{2^{32}}$
+- **XOR**: $S = S \oplus C_{round}$
 
-This creates a wider, shallower diffusion pattern, spreading a single byte change across 8 distinct MDS blocks in the next round, achieving the Strict Avalanche Criterion (SAC) faster.
+### 3.2 Permutation (P) Layer: 32-Bit Rotation
+Bit-level diffusion is achieved via hardware-native 32-bit funnel shifts.
+- **Transformation**: $S = (S \ll k) \mid (S \gg (32 - k))$
 
-### 3.3 Network (N) Layer: MDS Diffusion
-State blocks of 4 bytes are multiplied by a **Maximum Distance Separable (MDS)** matrix $M$.
-
-$$
-M = \begin{bmatrix}
-02 & 03 & 01 & 01 \\
-01 & 02 & 03 & 01 \\
-01 & 01 & 02 & 03 \\
-03 & 01 & 01 & 02
-\end{bmatrix}
-$$
-
-The branch weight of $M$ is 5, ensuring that if $w$ bytes of the input block change, at least $5-w$ bytes of the output block will change.
-
-### 3.4 Algebraic (A) Layer: ARX Mixing
-Mixing bitwise XOR with modular addition ($+$) in $\mathbb{Z}_{256}$.
-
-$$
-Z_{i} = (Y_i + K_{word}) \pmod{256} \oplus C_{round}
-$$
-
-The non-commutativity of these operations prevents linear approximation attacks.
+### 3.3 Network (N) Layer: Word Shuffle
+Blocks of 32-bit words are structurally shuffled using hardware vector permutation instructions (e.g., AVX2 `_mm256_permutevar8x32_epi32`), achieving instant complete-state diffusion without scalar loop penalties.
 
 ---
 
@@ -108,14 +87,14 @@ The non-commutativity of these operations prevents linear approximation attacks.
 > **Full Constant-Time (CT) Enforcement**. Rust, Go, and C engines utilize architecture-specific primitives (`wrapping_sub`, `atomic` masks, native bitwise logic) to ensure execution time is independent of the secret permutation state.
 
 ### 4.2 Managed Compliance (NodeJS/Python)
-While high-level runtimes introduce jitter (jitter != side-channel), the **D-ASP V3 reference code** for Node.js and Python has been refactored to be **Branchless-Equivalent**.
-- **No conditional jumps** based on bit-values in $GF(2^8)$ multiplication.
-- **No secret-dependent branching** in the ASP Cascade 16 round selections.
+While high-level runtimes introduce jitter (jitter != side-channel), the **D-ASP V3 reference code** for Node.js and Python mirrors the 32-bit ARX mathematical operations natively.
+- **No conditional jumps** based on bit-values.
+- **No secret-dependent branching** in the cascade.
 
-### 4.3 Entropy Cascade Verification
-- **Strict Avalanche Criterion (SAC)**: Tested at >49.98% bitflip probability per round.
-- **Bit Independence Criterion (BIC)**: No statistically significant correlation observed between input/output bit pairs after 8 rounds.
-- **Interop**: All five engines (Rust, Go, C, Node, Python) achieve bit-perfect parity for the **ASP Cascade 16** deterministic engine.
+### 4.3 Hardware Intrinsics & Entropy Cascade
+- **AVX2 SIMD**: C and Rust map the 32-byte state directly to `__m256i` registers, processing 8 words per clock cycle.
+- **CUDA PTX**: GPUs utilize `uint4` memory transactions and `__funnelshift_l` for pure silicon efficiency.
+- **Interop**: All six engines (Rust, Go, C, Node, Python, CUDA) maintain exact bit-perfect parity through CTR mode.
 
 ---
 

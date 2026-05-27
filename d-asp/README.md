@@ -8,6 +8,7 @@
 # D-ASP: Multi-Language Cryptographic Engine Suite
 
 <p align="left">
+  <img src="https://img.shields.io/badge/Version-3.0.3-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Rust-black?style=for-the-badge&logo=rust&logoColor=white" alt="Rust">
   <img src="https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go">
   <img src="https://img.shields.io/badge/C-A8B9CC?style=for-the-badge&logo=c&logoColor=white" alt="C">
@@ -18,18 +19,18 @@
 
 [**&larr; Back to Project Root**](../README.md) | [**Mathematical Specification**](DASP_CRYPTO_MATH.md) | [**System Logic Flows**](DASP_SYSTEM_FLOW.md)
 
-The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **C**, **Python**, and **Node.js**.
+The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **C**, **Python**, **Node.js**, and **CUDA**.
 
 ---
 
 ## 🛠️ Core Capabilities
 
 - **ML-KEM-1024 (Kyber)**: Grade-1024 High-Security root of trust.
-- **16-Round ASP Cascade 16 Engine**: Hardened deterministic schedule (Substitution, Permutation, Network, Algebraic) every round.
+- **16-Round ASP Cascade 16 Engine**: Hardened deterministic schedule (ARX, CTR Mode, SIMD Vectorized) every round.
 - **HKDF Root Expansion**: Secure key derivation and multi-factor hardware identity binding.
 - **HMAC-Linked Fusion**: Authentication-first protocol providing ML-KEM-linked integrity.
 - **Hardware Binding**: Optional machine-unique entropy injection ($HWID$).
-- **CUDA Acceleration**: GPU-accelerated massive parallel throughput for enterprise-scale key operations.
+- **CUDA Acceleration**: GPU-accelerated massive parallel throughput using PTX native structures.
 
 ## 🚀 Performance Profile (Grade-1024)
 

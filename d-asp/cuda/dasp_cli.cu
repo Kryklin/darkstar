@@ -92,7 +92,8 @@ int main(int argc, char **argv) {
         char *mac_hex = extract_json_string(json_raw, "mac");
 
         size_t p_len = strlen(data_hex) / 2;
-        uint8_t *h_payload = (uint8_t*)malloc(p_len);
+        uint8_t *h_payload;
+        CUDA_CHECK(cudaMallocHost((void**)&h_payload, p_len + 1));
         hex_decode(data_hex, h_payload, p_len);
 
         uint8_t sk[CRYPTO_SECRETKEYBYTES];
@@ -175,30 +176,68 @@ int main(int argc, char **argv) {
             return -1;
         }
 
-        /* --- CUDA Launch --- */
-        uint8_t *d_payload, *d_keys;
-        CUDA_CHECK(cudaMalloc(&d_payload, p_len));
-        CUDA_CHECK(cudaMalloc(&d_keys, 128));
-        CUDA_CHECK(cudaMemcpy(d_payload, h_payload, p_len, cudaMemcpyHostToDevice));
-        CUDA_CHECK(cudaMemcpy(d_keys, h_keys, 128, cudaMemcpyHostToDevice));
-
-        if (p_len > 0) {
-            dasp_cuda_process_blocks(d_payload, p_len, d_keys, NULL, 1, 0);
-        } else {
-            // [Fallback for partial blocks omitted or handled on host]
-        }
-
-        CUDA_CHECK(cudaMemcpy(h_payload, d_payload, p_len, cudaMemcpyDeviceToHost));
-        
-        /* Final XOR Chain (Host-side for simplicity, matching spna_engine.c) */
+        /* Generate Nonce (chain_state) for CTR Mode */
         uint8_t chain_state[32];
         {
             char buf[256];
             sprintf(buf, "dasp-chain-%s", cipher_key_hex);
             crypto_sha256((uint8_t*)buf, strlen(buf), chain_state);
         }
-        for(size_t i=0; i<p_len; i++) h_payload[i] ^= chain_state[i % 32];
 
+        /* Initialize CUDA Context explicitly to bypass WDDM cold-start in benchmark */
+        CUDA_CHECK(cudaFree(0));
+
+        /* --- CUDA Launch with Streams --- */
+        cudaEvent_t start_event, stop_event;
+        CUDA_CHECK(cudaEventCreate(&start_event));
+        CUDA_CHECK(cudaEventCreate(&stop_event));
+
+        int num_streams = 2;
+        cudaStream_t streams[2];
+        for (int i = 0; i < num_streams; i++) {
+            CUDA_CHECK(cudaStreamCreate(&streams[i]));
+        }
+
+        uint8_t *d_payload, *d_keys, *d_nonce;
+        CUDA_CHECK(cudaMalloc(&d_payload, p_len));
+        CUDA_CHECK(cudaMalloc(&d_keys, 128));
+        CUDA_CHECK(cudaMalloc(&d_nonce, 32));
+        
+        CUDA_CHECK(cudaMemcpy(d_keys, h_keys, 128, cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpy(d_nonce, chain_state, 32, cudaMemcpyHostToDevice));
+        
+        dasp_cuda_init_keys(d_keys);
+
+        CUDA_CHECK(cudaEventRecord(start_event, 0));
+
+        if (p_len > 0) {
+            size_t chunk_size = (p_len + num_streams - 1) / num_streams;
+            chunk_size = (chunk_size + 31) & ~31; // Align to 32 bytes
+
+            for (int i = 0; i < num_streams; i++) {
+                size_t offset = i * chunk_size;
+                if (offset >= p_len) break;
+                
+                size_t current_chunk_size = p_len - offset;
+                if (current_chunk_size > chunk_size) current_chunk_size = chunk_size;
+
+                CUDA_CHECK(cudaMemcpyAsync(d_payload + offset, h_payload + offset, current_chunk_size, cudaMemcpyHostToDevice, streams[i]));
+                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i]);
+                CUDA_CHECK(cudaMemcpyAsync(h_payload + offset, d_payload + offset, current_chunk_size, cudaMemcpyDeviceToHost, streams[i]));
+            }
+
+            for (int i = 0; i < num_streams; i++) {
+                CUDA_CHECK(cudaStreamSynchronize(streams[i]));
+            }
+        }
+        
+        CUDA_CHECK(cudaEventRecord(stop_event, 0));
+        CUDA_CHECK(cudaEventSynchronize(stop_event));
+        
+        float cascade_ms = 0;
+        CUDA_CHECK(cudaEventElapsedTime(&cascade_ms, start_event, stop_event));
+        uint64_t cascade_us = (uint64_t)(cascade_ms * 1000.0f);
+        
         /* Output Result */
         char *final_plaintext = (char*)malloc(p_len + 1);
         memcpy(final_plaintext, h_payload, p_len);
@@ -213,14 +252,20 @@ int main(int argc, char **argv) {
         for(int i=0; i<32; i++) sprintf(&mac_in_hex_diagnostic[i*2], "%02x", mac_in[i]);
         for(int i=0; i<32; i++) sprintf(&mac_actual_hex[i*2], "%02x", actual_mac[i]);
         
-        fprintf(stderr, "{\"diagnostics\":{\"stage1_blended_ss\":\"%s\",\"stage2_word_key\":\"%s\",\"stage4_mac_in\":\"%s\",\"stage4_mac\":\"%s\"},\"timings\":{\"cascade_us\":100}}\n", 
-               blended_hex, word_key_hex, mac_in_hex_diagnostic, mac_actual_hex);
+        fprintf(stderr, "{\"diagnostics\":{\"stage1_blended_ss\":\"%s\",\"stage2_word_key\":\"%s\",\"stage4_mac_in\":\"%s\",\"stage4_mac\":\"%s\"},\"timings\":{\"cascade_us\":%llu}}\n", 
+               blended_hex, word_key_hex, mac_in_hex_diagnostic, mac_actual_hex, cascade_us);
 
         /* Cleanup */
+        CUDA_CHECK(cudaEventDestroy(start_event));
+        CUDA_CHECK(cudaEventDestroy(stop_event));
+        for (int i = 0; i < num_streams; i++) {
+            CUDA_CHECK(cudaStreamDestroy(streams[i]));
+        }
         CUDA_CHECK(cudaFree(d_payload));
         CUDA_CHECK(cudaFree(d_keys));
+        CUDA_CHECK(cudaFree(d_nonce));
         free(data_hex); free(ct_hex); free(mac_hex);
-        free(h_payload);
+        CUDA_CHECK(cudaFreeHost(h_payload));
         if (argv[2][0] == '@') free(json_raw);
         if (argv[3][0] == '@') free(sk_raw);
     }

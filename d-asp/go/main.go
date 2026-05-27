@@ -16,13 +16,12 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
-	"runtime"
 	"strings"
 	"time"
 
@@ -31,7 +30,6 @@ import (
 
 var globalDiagnostic = false
 
-// PRNG defines the interface for deterministic random number generation.
 type PRNG interface {
 	Next() uint32
 }
@@ -86,270 +84,68 @@ func (c *DarkstarChaChaPRNG) Next() uint32 {
 	return val
 }
 
-type TransformationFn func([]byte, []byte, func(string) PRNG) []byte
-
-type DarkstarCrypt struct {
-	forwardPipeline []TransformationFn
-	reversePipeline []TransformationFn
-}
+type DarkstarCrypt struct {}
 
 func NewDarkstarCrypt() *DarkstarCrypt {
-	dc := &DarkstarCrypt{}
-	dc.forwardPipeline = []TransformationFn{
-		dc.transSBox, dc.transModMult, dc.transPBox, dc.transCyclicRot,
-		dc.transKeyedXOR, dc.transFeistel, dc.transModAdd, dc.transMatrixHill,
-		dc.transGFMult, dc.transBitFlip, dc.transColumnar, dc.transRecXOR, dc.transMDSNetwork,
-	}
-	dc.reversePipeline = []TransformationFn{
-		dc.invTransSBox, dc.invTransModMult, dc.invTransPBox, dc.invTransCyclicRot,
-		dc.invTransKeyedXOR, dc.invTransFeistel, dc.invTransModAdd, dc.invTransMatrixHill,
-		dc.invTransGFMult, dc.invTransBitFlip, dc.invTransColumnar, dc.invTransRecXOR, dc.invTransMDSNetwork,
-	}
-	return dc
+	return &DarkstarCrypt{}
 }
 
 func cleanHex(s string) string {
-	re := regexp.MustCompile("[^a-fA-F0-9]")
-	return re.ReplaceAllString(s, "")
+	var b strings.Builder
+	for _, c := range s {
+		if (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') {
+			b.WriteRune(c)
+		}
+	}
+	return b.String()
 }
 
-func generateChecksum(numbers []int) int {
-	sum := 0
-	for _, n := range numbers { sum += n }
-	return sum % 997
-}
-
-var SBOX = []byte{
-	0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
-	0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
-	0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
-	0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
-	0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
-	0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
-	0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
-	0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
-	0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
-	0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
-	0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
-	0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
-	0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
-	0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
-	0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-	0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,
-}
-var INV_SBOX []byte
-
-func init() {
-	INV_SBOX = make([]byte, 256)
-	for i := 0; i < 256; i++ { INV_SBOX[SBOX[i]] = byte(i) }
-}
-
-func gfMult(a, b byte) byte {
-	p := byte(0)
+func daspCascade32(block []byte, roundKeys []uint32) {
+	var state [8]uint32
 	for i := 0; i < 8; i++ {
-		if (b & 1) != 0 { p ^= a }
-		hi := a & 0x80
-		a = a << 1
-		if hi != 0 { a ^= 0x1b }
-		b >>= 1
+		state[i] = binary.LittleEndian.Uint32(block[i*4 : (i+1)*4])
 	}
-	return p
+
+	rotate := func(v, n uint32) uint32 { return (v << n) | (v >> (32 - n)) }
+
+	for r := uint32(0); r < 16; r++ {
+		rk := roundKeys[r*8 : (r+1)*8]
+		for j := 0; j < 8; j++ { state[j] += rk[j] }
+		rc := 0x9E3779B9 + r
+		for j := 0; j < 8; j++ { state[j] ^= rc }
+		for j := 0; j < 8; j++ { state[j] = rotate(state[j], 11) }
+		
+		t := state[0]
+		state[0] = state[1]
+		state[1] = state[2]
+		state[2] = state[3]
+		state[3] = state[4]
+		state[4] = state[5]
+		state[5] = state[6]
+		state[6] = state[7]
+		state[7] = t
+	}
+
+	for i := 0; i < 8; i++ {
+		binary.LittleEndian.PutUint32(block[i*4:(i+1)*4], state[i])
+	}
 }
 
-func (dc *DarkstarCrypt) transSBox(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	for i, b := range in { out[i] = SBOX[b] }
-	return out
-}
-func (dc *DarkstarCrypt) invTransSBox(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	for i, b := range in { out[i] = INV_SBOX[b] }
-	return out
-}
-func (dc *DarkstarCrypt) transModMult(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	for i, b := range in { out[i] = byte((uint16(b) * 167) & 0xFF) }
-	return out
-}
-func (dc *DarkstarCrypt) invTransModMult(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	for i, b := range in { out[i] = byte((uint16(b) * 23) & 0xFF) }
-	return out
-}
-func (dc *DarkstarCrypt) transPBox(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	n := len(in)
-	for i := 0; i < n; i++ {
-		b := in[i]
-		b = ((b & 0xF0) >> 4) | ((b & 0x0F) << 4)
-		b = ((b & 0xCC) >> 2) | ((b & 0x33) << 2)
-		b = ((b & 0xAA) >> 1) | ((b & 0x55) << 1)
-		out[n-1-i] = b
-	}
-	return out
-}
-func (dc *DarkstarCrypt) invTransPBox(in []byte, s []byte, pf func(string) PRNG) []byte {
-	return dc.transPBox(in, s, pf)
-}
-func (dc *DarkstarCrypt) transCyclicRot(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	for i, b := range in { out[i] = (b >> 3) | (b << 5) }
-	return out
-}
-func (dc *DarkstarCrypt) invTransCyclicRot(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	for i, b := range in { out[i] = (b << 3) | (b >> 5) }
-	return out
-}
-func (dc *DarkstarCrypt) transKeyedXOR(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	for i, b := range in { out[i] = b ^ s[i%len(s)] }
-	return out
-}
-func (dc *DarkstarCrypt) invTransKeyedXOR(in []byte, s []byte, pf func(string) PRNG) []byte {
-	return dc.transKeyedXOR(in, s, pf)
-}
-func (dc *DarkstarCrypt) transFeistel(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	copy(out, in)
-	half := len(out) / 2
-	if half == 0 { return out }
-	for i := 0; i < half; i++ { out[i] ^= (out[half+i] + s[i%len(s)]) }
-	return out
-}
-func (dc *DarkstarCrypt) invTransFeistel(in []byte, s []byte, pf func(string) PRNG) []byte {
-	return dc.transFeistel(in, s, pf)
-}
-func (dc *DarkstarCrypt) transModAdd(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	for i, b := range in { out[i] = b + s[i%len(s)] }
-	return out
-}
-func (dc *DarkstarCrypt) invTransModAdd(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	for i, b := range in { out[i] = b - s[i%len(s)] }
-	return out
-}
-func (dc *DarkstarCrypt) transMatrixHill(in []byte, s []byte, pf func(string) PRNG) []byte {
-	if len(in) == 0 { return make([]byte, 0) }
-	out := make([]byte, len(in)); out[0] = in[0]
-	for i := 1; i < len(in); i++ { out[i] = in[i] + out[i-1] }
-	return out
-}
-func (dc *DarkstarCrypt) invTransMatrixHill(in []byte, s []byte, pf func(string) PRNG) []byte {
-	if len(in) == 0 { return make([]byte, 0) }
-	out := make([]byte, len(in)); out[0] = in[0]
-	for i := len(in) - 1; i > 0; i-- { out[i] = in[i] - in[i-1] }
-	return out
-}
-func (dc *DarkstarCrypt) transGFMult(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	for i, b := range in { out[i] = gfMult(b, 0x02) }
-	return out
-}
-func (dc *DarkstarCrypt) invTransGFMult(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	for i, b := range in { out[i] = gfMult(b, 0x8d) }
-	return out
-}
-func (dc *DarkstarCrypt) transBitFlip(in []byte, s []byte, pf func(string) PRNG) []byte {
-	out := make([]byte, len(in))
-	for i, b := range in {
-		mask := s[i%len(s)]
-		out[i] = b ^ ((mask & 0xAA) | (^mask & 0x55))
-	}
-	return out
-}
-func (dc *DarkstarCrypt) invTransBitFlip(in []byte, s []byte, pf func(string) PRNG) []byte {
-	return dc.transBitFlip(in, s, pf)
-}
-func (dc *DarkstarCrypt) transColumnar(in []byte, s []byte, pf func(string) PRNG) []byte {
-	n := len(in); out := make([]byte, n)
-	cols := 8; idx := 0
-	for c := 0; c < cols; c++ {
-		for i := c; i < n; i += cols { out[idx] = in[i]; idx++ }
-	}
-	return out
-}
-func (dc *DarkstarCrypt) invTransColumnar(in []byte, s []byte, pf func(string) PRNG) []byte {
-	n := len(in); out := make([]byte, n)
-	cols := 8; idx := 0
-	for c := 0; c < cols; c++ {
-		for i := c; i < n; i += cols { out[i] = in[idx]; idx++ }
-	}
-	return out
-}
-func (dc *DarkstarCrypt) transRecXOR(in []byte, s []byte, pf func(string) PRNG) []byte {
-	if len(in) == 0 { return make([]byte, 0) }
-	out := make([]byte, len(in)); out[0] = in[0]
-	for i := 1; i < len(in); i++ { out[i] = out[i-1] ^ in[i] }
-	return out
-}
-func (dc *DarkstarCrypt) invTransRecXOR(in []byte, s []byte, pf func(string) PRNG) []byte {
-	if len(in) == 0 { return make([]byte, 0) }
-	out := make([]byte, len(in)); out[0] = in[0]
-	for i := len(in) - 1; i > 0; i-- { out[i] = in[i] ^ in[i-1] }
-	return out
-}
-
-var MDS = [4][4]byte{
-	{0x02, 0x03, 0x01, 0x01}, {0x01, 0x02, 0x03, 0x01},
-	{0x01, 0x01, 0x02, 0x03}, {0x03, 0x01, 0x01, 0x02},
-}
-var INV_MDS = [4][4]byte{
-	{0x0E, 0x0B, 0x0D, 0x09}, {0x09, 0x0E, 0x0B, 0x0D},
-	{0x0D, 0x09, 0x0E, 0x0B}, {0x0B, 0x0D, 0x09, 0x0E},
-}
-
-func (dc *DarkstarCrypt) transMDSNetwork(in []byte, s []byte, pf func(string) PRNG) []byte {
-	if len(in) < 4 { return dc.transMatrixHill(in, s, pf) }
-	out := make([]byte, len(in))
-	for i := 0; i < len(in); i += 4 {
-		end := i + 4
-		if end > len(in) { copy(out[i:], in[i:]); continue }
-		block := in[i:end]
-		for row := 0; row < 4; row++ {
-			var sum byte = 0
-			for col := 0; col < 4; col++ { sum ^= gfMult(block[col], MDS[row][col]) }
-			out[i+row] = sum
-		}
-	}
-	return out
-}
-func (dc *DarkstarCrypt) invTransMDSNetwork(in []byte, s []byte, pf func(string) PRNG) []byte {
-	if len(in) < 4 { return dc.invTransMatrixHill(in, s, pf) }
-	out := make([]byte, len(in))
-	for i := 0; i < len(in); i += 4 {
-		end := i + 4
-		if end > len(in) { copy(out[i:], in[i:]); continue }
-		block := in[i:end]
-		for row := 0; row < 4; row++ {
-			var sum byte = 0
-			for col := 0; col < 4; col++ { sum ^= gfMult(block[col], INV_MDS[row][col]) }
-			out[i+row] = sum
-		}
-	}
-	return out
-}
-
-func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (string, error) {
+func (dc *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte) (string, error) {
 	totalStart := time.Now()
 	pkBytes, _ := hex.DecodeString(cleanHex(pkHex))
-	var finalHwid []byte = hwid
-	if len(pkBytes) == 1600 && len(finalHwid) == 0 {
-		finalHwid = pkBytes[1568:]; pkBytes = pkBytes[:1568]
-	}
-
+	
 	sch := mlkem1024.Scheme()
 	kemStart := time.Now()
 	pk, err := sch.UnmarshalBinaryPublicKey(pkBytes); if err != nil { return "", err }
-	ct, ss, err := sch.Encapsulate(pk); if err != nil { return "", err }
+	ctBytes, ss, err := sch.Encapsulate(pk); if err != nil { return "", err }
 	kemDur := time.Since(kemStart)
+	ctHex := hex.EncodeToString(ctBytes)
 
 	kdfStart := time.Now()
 	var prk []byte
-	if len(finalHwid) > 0 {
-		mac := hmac.New(sha256.New, finalHwid)
+	if len(hwid) > 0 {
+		mac := hmac.New(sha256.New, hwid)
 		mac.Write(ss)
 		prk = mac.Sum(nil)
 	} else {
@@ -359,8 +155,7 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	}
 	macExp := hmac.New(sha256.New, prk)
 	macExp.Write([]byte("dasp-identity-v3\x01"))
-	blendedSS := macExp.Sum(nil)
-	blendedSSHex := hex.EncodeToString(blendedSS)
+	blendedSS := macExp.Sum(nil); blendedSSHex := hex.EncodeToString(blendedSS)
 
 	cHasher := sha256.New(); cHasher.Write(append([]byte("cipher"), blendedSS...))
 	cipherKey := cHasher.Sum(nil); activePasswordStr := hex.EncodeToString(cipherKey)
@@ -370,49 +165,47 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 
 	macGen := hmac.New(sha256.New, []byte(activePasswordStr)); macGen.Write([]byte("dasp-word-0"))
 	wordKey := macGen.Sum(nil); wordKeyHex := hex.EncodeToString(wordKey)
+
+	for i := range ss { ss[i] = 0 }
 	kdfDur := time.Since(kdfStart)
 
-	prngFactory := func(s string) PRNG { return NewDarkstarChaChaPRNG(s) }
 	chainInit := sha256.Sum256([]byte("dasp-chain-" + activePasswordStr))
 	chainState := chainInit[:]
 
-	currentWordBytes := []byte(payload)
-	for i := range currentWordBytes { currentWordBytes[i] ^= chainState[i%32] }
-
-	chk := generateChecksum([]int{0,1,2,3,4,5,6,7,8,9,10,11})
-	mac2 := hmac.New(sha256.New, wordKey); mac2.Write([]byte(fmt.Sprintf("keyed-%d", chk)))
-	funcKey := mac2.Sum(nil)
-
-	rngPath := prngFactory(wordKeyHex)
-	groupS := []int{0, 1, 5}; groupP := []int{2, 3, 10}
-	groupN := []int{12, 12, 11}; groupA := []int{4, 6, 9}
-
-	var roundIndices [][]int
-	cascadeStart := time.Now()
-	for i := 0; i < 16; i++ {
-		sIdx := 0
-		switch i % 4 {
-		case 0:
-			sIdx = 0
-		case 2:
-			sIdx = 1
-		default:
-			sIdx = groupS[int(rngPath.Next()%uint32(len(groupS)))]
-		}
-		pIdx := groupP[int(rngPath.Next()%uint32(len(groupP)))]
-		nIdx := groupN[int(rngPath.Next()%uint32(len(groupN)))]
-		aIdx := groupA[int(rngPath.Next()%uint32(len(groupA)))]
-		
-		currentWordBytes = dc.forwardPipeline[sIdx](currentWordBytes, funcKey, prngFactory)
-		currentWordBytes = dc.forwardPipeline[pIdx](currentWordBytes, funcKey, prngFactory)
-		currentWordBytes = dc.forwardPipeline[nIdx](currentWordBytes, funcKey, prngFactory)
-		currentWordBytes = dc.forwardPipeline[aIdx](currentWordBytes, funcKey, prngFactory)
-		roundIndices = append(roundIndices, []int{sIdx, pIdx, nIdx, aIdx})
+	rngPath := NewDarkstarChaChaPRNG(wordKeyHex)
+	var roundKeys [128]uint32
+	for i := 0; i < 128; i++ {
+		roundKeys[i] = rngPath.Next()
 	}
-	cascadeDur := time.Since(cascadeStart)
-	runtime.KeepAlive(currentWordBytes)
 
-	h := hmac.New(sha256.New, activeHmacKey); h.Write(ct); h.Write(currentWordBytes)
+	payloadBytes := []byte(payloadStr)
+	cascadeStart := time.Now()
+	
+	nonce := make([]byte, 32)
+	copy(nonce, chainState)
+	
+	for i := 0; i < len(payloadBytes); i += 32 {
+		chunkLen := 32
+		if i+chunkLen > len(payloadBytes) { chunkLen = len(payloadBytes) - i }
+		
+		block := make([]byte, 32)
+		copy(block, nonce)
+		
+		daspCascade32(block, roundKeys[:])
+		
+		for j := 0; j < chunkLen; j++ {
+			payloadBytes[i+j] ^= block[j]
+		}
+		
+		for j := 0; j < 32; j++ {
+			nonce[j]++
+			if nonce[j] != 0 { break }
+		}
+	}
+	
+	cascadeDur := time.Since(cascadeStart)
+
+	h := hmac.New(sha256.New, activeHmacKey); h.Write(ctBytes); h.Write(payloadBytes)
 	macTag := hex.EncodeToString(h.Sum(nil))
 
 	if globalDiagnostic || os.Getenv("DASP_DIAGNOSTIC") == "1" {
@@ -420,7 +213,6 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 			"diagnostics": map[string]interface{}{
 				"stage1_blended_ss": blendedSSHex,
 				"stage2_word_key":   wordKeyHex,
-				"stage3_round_indices": roundIndices,
 				"stage4_mac":        macTag,
 			},
 		}
@@ -439,7 +231,7 @@ func (dc *DarkstarCrypt) Encrypt(payload string, pkHex string, hwid []byte) (str
 	tj, _ := json.Marshal(timingReport)
 	fmt.Fprintf(os.Stderr, "%s\n", tj)
 
-	inner := map[string]interface{}{"data": hex.EncodeToString(currentWordBytes), "ct": hex.EncodeToString(ct), "mac": macTag}
+	inner := map[string]interface{}{"data": hex.EncodeToString(payloadBytes), "ct": ctHex, "mac": macTag}
 	innerJson, _ := json.Marshal(inner); return string(innerJson), nil
 }
 
@@ -452,9 +244,6 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 
 	skBytes, _ := hex.DecodeString(cleanHex(skHex))
 	var finalHwid []byte = hwid
-	if len(skBytes) == 3200 && len(finalHwid) == 0 {
-		finalHwid = skBytes[3168:]; skBytes = skBytes[:3168]
-	}
 
 	ctBytes, _ := hex.DecodeString(ctHex); payloadBytes, _ := hex.DecodeString(dataHex)
 	sch := mlkem1024.Scheme()
@@ -488,39 +277,17 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 	wordKey := macGen.Sum(nil); wordKeyHex := hex.EncodeToString(wordKey)
 	kdfDur := time.Since(kdfStart)
 
-	prngFactory := func(s string) PRNG { return NewDarkstarChaChaPRNG(s) }
-	rngPath := prngFactory(wordKeyHex)
-	type stp struct{ s, p, n, a int }
-	roundPaths := make([]stp, 16); var roundIndices [][]int
-	groupS := []int{0, 1, 5}; groupP := []int{2, 3, 10}
-	groupN := []int{12, 12, 11}; groupA := []int{4, 6, 9}
-
-	for i := 0; i < 16; i++ {
-		sIdx := 0
-		switch i % 4 {
-		case 0:
-			sIdx = 0
-		case 2:
-			sIdx = 1
-		default:
-			sIdx = groupS[int(rngPath.Next()%uint32(len(groupS)))]
-		}
-		pIdx := groupP[int(rngPath.Next()%uint32(len(groupP)))]
-		nIdx := groupN[int(rngPath.Next()%uint32(len(groupN)))]
-		aIdx := groupA[int(rngPath.Next()%uint32(len(groupA)))]
-		roundPaths[i] = stp{sIdx, pIdx, nIdx, aIdx}
-		roundIndices = append(roundIndices, []int{sIdx, pIdx, nIdx, aIdx})
-	}
-
 	h := hmac.New(sha256.New, activeHmacKey); h.Write(ctBytes); h.Write(payloadBytes)
 	macActual := hex.EncodeToString(h.Sum(nil))
+
+
 
 	if globalDiagnostic || os.Getenv("DASP_DIAGNOSTIC") == "1" {
 		diag := map[string]interface{}{
 			"diagnostics": map[string]interface{}{
 				"stage1_raw_ss": hex.EncodeToString(ss),
 				"stage1_blended_ss": blendedSSHex,
-				"stage2_word_key": wordKeyHex, "stage3_round_indices": roundIndices,
+				"stage2_word_key": wordKeyHex,
 				"stage4_mac": macActual,
 			},
 		}
@@ -530,26 +297,39 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 	tag, _ := hex.DecodeString(macHex)
 	if !hmac.Equal(h.Sum(nil), tag) { return "", errors.New("Integrity Check Failed") }
 
-	chk := generateChecksum([]int{0,1,2,3,4,5,6,7,8,9,10,11})
-	mac2 := hmac.New(sha256.New, wordKey); mac2.Write([]byte(fmt.Sprintf("keyed-%d", chk)))
-	funcKey := mac2.Sum(nil)
-
 	chainInit := sha256.Sum256([]byte("dasp-chain-" + activePasswordStr))
 	chainState := chainInit[:]
 
+	rngPath := NewDarkstarChaChaPRNG(wordKeyHex)
+	var roundKeys [128]uint32
+	for i := 0; i < 128; i++ {
+		roundKeys[i] = rngPath.Next()
+	}
+
 	cascadeStart := time.Now()
-	currentWordBytes := payloadBytes
-	for j := 15; j >= 0; j-- {
-		r := roundPaths[j]
-		currentWordBytes = dc.reversePipeline[r.a](currentWordBytes, funcKey, prngFactory)
-		currentWordBytes = dc.reversePipeline[r.n](currentWordBytes, funcKey, prngFactory)
-		currentWordBytes = dc.reversePipeline[r.p](currentWordBytes, funcKey, prngFactory)
-		currentWordBytes = dc.reversePipeline[r.s](currentWordBytes, funcKey, prngFactory)
+	
+	nonce := make([]byte, 32)
+	copy(nonce, chainState)
+	
+	for i := 0; i < len(payloadBytes); i += 32 {
+		chunkLen := 32
+		if i+chunkLen > len(payloadBytes) { chunkLen = len(payloadBytes) - i }
+		
+		block := make([]byte, 32)
+		copy(block, nonce)
+		
+		daspCascade32(block, roundKeys[:])
+		
+		for j := 0; j < chunkLen; j++ {
+			payloadBytes[i+j] ^= block[j]
+		}
+		
+		for j := 0; j < 32; j++ {
+			nonce[j]++
+			if nonce[j] != 0 { break }
+		}
 	}
 	cascadeDur := time.Since(cascadeStart)
-	runtime.KeepAlive(currentWordBytes)
-
-	for i := range currentWordBytes { currentWordBytes[i] ^= chainState[i%32] }
 
 	totalDur := time.Since(totalStart)
 	timingReport := map[string]interface{}{
@@ -563,7 +343,7 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 	tj, _ := json.Marshal(timingReport)
 	fmt.Fprintf(os.Stderr, "%s\n", tj)
 
-	return string(currentWordBytes), nil
+	return string(payloadBytes), nil
 }
 
 func main() {

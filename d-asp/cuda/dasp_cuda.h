@@ -36,21 +36,26 @@ extern "C" {
 void dasp_cuda_init();
 
 /**
- * @brief Launches the D-ASP bulk encryption kernel on the GPU.
+ * @brief Initializes the round keys in device memory.
  * 
- * @param d_payload     Device pointer to payload buffer.
- * @param payload_len   Total length of payloads to process.
  * @param d_keys_128    Device pointer to the 128-byte key buffer (func_key + prng_seed).
- * @param d_hwid        Device pointer to the hardware ID.
- * @param num_blocks    For bulk mode (not yet used, set to 1).
- * @param is_forward    1 for encryption, 0 for decryption.
  */
-void dasp_cuda_process_blocks(uint8_t *d_payload, 
-                             size_t payload_len, 
-                             const uint8_t *d_keys_128, 
-                             const uint8_t *d_hwid, 
-                             size_t num_blocks, 
-                             int is_forward);
+void dasp_cuda_init_keys(const uint8_t *d_keys_128);
+
+/**
+ * @brief Launches the D-ASP bulk encryption kernel on the GPU using a specific stream.
+ * 
+ * @param d_payload     Device pointer to payload buffer chunk.
+ * @param chunk_len     Length of the chunk to process.
+ * @param d_nonce       Device pointer to the base nonce.
+ * @param block_offset  Global block index offset for CTR mode.
+ * @param stream        CUDA stream to use for asynchronous execution.
+ */
+void dasp_cuda_process_chunk(uint8_t *d_payload, 
+                             size_t chunk_len, 
+                             const uint8_t *d_nonce, 
+                             uint64_t block_offset, 
+                             cudaStream_t stream);
 
 #ifdef __cplusplus
 }

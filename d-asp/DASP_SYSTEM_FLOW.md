@@ -22,8 +22,9 @@ graph TD
     subgraph "The Security Enclave"
     A[User Input / Secrets] --> B{Hardware-Unique Blending}
     B -- "HWID + OS Entropy" --> C[ML-KEM-1024 Root Key]
-    C --> D[ASP Cascade 16 Engine]
-    D -- "Diffusion & Network Layers" --> E[Encrypted Storage Enclave]
+    C --> D[CTR Mode Generator]
+    D -- "32-byte blocks" --> E[ASP Cascade 16 Engine (Static)]
+    E -- "XOR with Payload" --> F[Encrypted Storage Enclave]
     end
     
     E -- "Multi-Language Interop" --> F[Rust / Go / C / Node / Python / CUDA]
@@ -54,31 +55,31 @@ sequenceDiagram
 
 ---
 
-## 3. The ASP Cascade 16 Loop
+## 3. The ASP Cascade 16 Loop (Static Unrolled)
 
-The core cryptographic engine applies 16 rounds of deterministic transformation. Each round cascades through four distinct mathematical layers to achieve maximum entropy and bit-diffusion.
+The core cryptographic engine applies 16 rounds of deterministic transformation on a 256-bit (32-byte) state. It is fully unrolled into an intrinsic-forced execution model.
 
 ```mermaid
 graph LR
-    subgraph "ASP Cascade Round Logic (Repeats x16)"
-    S[S-Box Layer] --> P[Permutation Layer]
-    P --> N[MDS Network Layer]
-    N --> A[Algebraic ARX Mixing]
+    subgraph "ASP Cascade Round Logic (Static x16)"
+    S[Add Round Key] --> P[XOR Round Constant]
+    P --> N[Funnel Shift Rotation]
+    N --> A[Network Word Shuffle]
     end
     
-    Start((K_root)) --> S
+    Start((State Block)) --> S
     A --> Loop{Round < 16?}
     Loop -- Yes --> S
-    Loop -- No --> End((Ciphertext))
+    Loop -- No --> End((Keystream Block))
 ```
 
 ### Round Component Details
-| Layer | Mathematical Operation | Purpose |
+| Layer | Operation | Purpose |
 | :--- | :--- | :--- |
-| **Substitution** | 256-entry Non-linear S-Box | Break linear correlation |
-| **Permutation** | 8-Way Columnar Transposition | Cascading diffusion |
-| **Network** | MDS Matrix Multiplication (GF2^8) | Maximum Distance Separable diffusion |
-| **Algebraic** | ARX (Add-Rotate-XOR) | Complexity against differential analysis |
+| **Addition** | 32-bit modular addition | Destroy linear correlation |
+| **Substitution** | 32-bit bitwise XOR | Algebraic non-linearity |
+| **Permutation** | 32-bit Funnel Shift | Bit-level cascading diffusion |
+| **Network** | SIMD Word Shuffle | Cross-word diffusion |
 
 ---
 
