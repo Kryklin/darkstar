@@ -12,6 +12,7 @@
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const crypto = globalThis.crypto || require('node:crypto').webcrypto;
+const nodeCrypto = require('node:crypto');
 const { ml_kem1024: kyber } = require('@noble/post-quantum/ml-kem.js');
 
 export class DarkstarCrypt {
@@ -116,19 +117,20 @@ export class DarkstarCrypt {
       for (let j = 0; j < 8; j++) {
         state[j] ^= rc;
       }
-      for (let j = 0; j < 8; j++) {
-        state[j] = rotate(state[j], 11);
-      }
+      const distArr = [4, 2, 1];
+      const rotArr = [16, 12, 8, 7];
+      const dist = distArr[r % 3];
+      const rot = rotArr[r % 4];
       
-      const t = state[0];
-      state[0] = state[1];
-      state[1] = state[2];
-      state[2] = state[3];
-      state[3] = state[4];
-      state[4] = state[5];
-      state[5] = state[6];
-      state[6] = state[7];
-      state[7] = t;
+      for (let i = 0; i < 8; i += dist * 2) {
+        for (let j = 0; j < dist; j++) {
+          const a = i + j;
+          const b = i + j + dist;
+          state[a] = (state[a] + state[b]) >>> 0;
+          state[b] ^= state[a];
+          state[b] = rotate(state[b], rot);
+        }
+      }
     }
 
     for(let i=0; i<8; i++) {
@@ -214,6 +216,14 @@ export class DarkstarCrypt {
 
     const totalDuration = performance.now() - totalStart;
 
+    prk.fill(0);
+    blended_ss.fill(0);
+    cipher_key.fill(0);
+    hmac_key.fill(0);
+    word_key.fill(0);
+    chain_state.fill(0);
+    roundKeys.fill(0);
+
     const resObj = {
       data: this.buf2hex(payloadBytes),
       ct: ctHex,
@@ -278,7 +288,11 @@ export class DarkstarCrypt {
       }));
     }
 
-    if (mac_tag_actual !== macHex) {
+    if (macActualBuf.length !== (macHex.length / 2)) {
+      throw new Error("Integrity Check Failed");
+    }
+    const macHexBuf = Buffer.from(macHex, 'hex');
+    if (!nodeCrypto.timingSafeEqual(Buffer.from(macActualBuf), macHexBuf)) {
       throw new Error("Integrity Check Failed");
     }
 
@@ -312,6 +326,15 @@ export class DarkstarCrypt {
     const cascadeDuration = performance.now() - cascadeStart;
 
     const totalDuration = performance.now() - totalStart;
+
+    ss_bytes.fill(0);
+    prk.fill(0);
+    blended_ss.fill(0);
+    cipher_key.fill(0);
+    hmac_key.fill(0);
+    word_key.fill(0);
+    chain_state.fill(0);
+    roundKeys.fill(0);
     if (telemetry) {
       console.error(JSON.stringify({
         timings: {

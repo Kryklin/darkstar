@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -108,23 +109,27 @@ func daspCascade32(block []byte, roundKeys []uint32) {
 	}
 
 	rotate := func(v, n uint32) uint32 { return (v << n) | (v >> (32 - n)) }
+	distArr := [3]int{4, 2, 1}
+	rotArr := [4]uint32{16, 12, 8, 7}
 
 	for r := uint32(0); r < 16; r++ {
 		rk := roundKeys[r*8 : (r+1)*8]
 		for j := 0; j < 8; j++ { state[j] += rk[j] }
 		rc := 0x9E3779B9 + r
 		for j := 0; j < 8; j++ { state[j] ^= rc }
-		for j := 0; j < 8; j++ { state[j] = rotate(state[j], 11) }
 		
-		t := state[0]
-		state[0] = state[1]
-		state[1] = state[2]
-		state[2] = state[3]
-		state[3] = state[4]
-		state[4] = state[5]
-		state[5] = state[6]
-		state[6] = state[7]
-		state[7] = t
+		dist := distArr[r % 3]
+		rot := rotArr[r % 4]
+		
+		for i := 0; i < 8; i += dist * 2 {
+			for j := 0; j < dist; j++ {
+				a := i + j
+				b := i + j + dist
+				state[a] += state[b]
+				state[b] ^= state[a]
+				state[b] = rotate(state[b], rot)
+			}
+		}
 	}
 
 	for i := 0; i < 8; i++ {
@@ -168,6 +173,7 @@ func (dc *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte) (
 	wordKey := macGen.Sum(nil); wordKeyHex := hex.EncodeToString(wordKey)
 
 	for i := range ss { ss[i] = 0 }
+	runtime.KeepAlive(ss)
 	kdfDur := time.Since(kdfStart)
 
 	chainInit := sha256.Sum256([]byte("dasp-chain-" + activePasswordStr))
@@ -221,6 +227,23 @@ func (dc *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte) (
 	}
 
 	totalDur := time.Since(totalStart)
+
+	for i := range prk { prk[i] = 0 }
+	runtime.KeepAlive(prk)
+	for i := range blendedSS { blendedSS[i] = 0 }
+	runtime.KeepAlive(blendedSS)
+	for i := range cipherKey { cipherKey[i] = 0 }
+	runtime.KeepAlive(cipherKey)
+	for i := range activeHmacKey { activeHmacKey[i] = 0 }
+	runtime.KeepAlive(activeHmacKey)
+	for i := range wordKey { wordKey[i] = 0 }
+	runtime.KeepAlive(wordKey)
+	for i := range chainInit { chainInit[i] = 0 }
+	runtime.KeepAlive(chainInit)
+	for i := range chainState { chainState[i] = 0 }
+	runtime.KeepAlive(chainState)
+	for i := range roundKeys { roundKeys[i] = 0 }
+	runtime.KeepAlive(roundKeys)
 
 	finalHash := sha256.Sum256(payloadBytes)
 	fmt.Fprintf(os.Stderr, "Go-DCE-Prevent-Hash: %x\n", finalHash)
@@ -339,6 +362,25 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 	cascadeDur := time.Since(cascadeStart)
 
 	totalDur := time.Since(totalStart)
+
+	for i := range ss { ss[i] = 0 }
+	runtime.KeepAlive(ss)
+	for i := range prk { prk[i] = 0 }
+	runtime.KeepAlive(prk)
+	for i := range blendedSS { blendedSS[i] = 0 }
+	runtime.KeepAlive(blendedSS)
+	for i := range cipherKey { cipherKey[i] = 0 }
+	runtime.KeepAlive(cipherKey)
+	for i := range activeHmacKey { activeHmacKey[i] = 0 }
+	runtime.KeepAlive(activeHmacKey)
+	for i := range wordKey { wordKey[i] = 0 }
+	runtime.KeepAlive(wordKey)
+	for i := range chainInit { chainInit[i] = 0 }
+	runtime.KeepAlive(chainInit)
+	for i := range chainState { chainState[i] = 0 }
+	runtime.KeepAlive(chainState)
+	for i := range roundKeys { roundKeys[i] = 0 }
+	runtime.KeepAlive(roundKeys)
 
 	finalHash := sha256.Sum256(payloadBytes)
 	fmt.Fprintf(os.Stderr, "Go-DCE-Prevent-Hash: %x\n", finalHash)

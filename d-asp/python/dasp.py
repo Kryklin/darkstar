@@ -15,6 +15,12 @@ import json
 import struct
 import hashlib
 import hmac
+import ctypes
+
+def secure_wipe(buf):
+    if not isinstance(buf, bytearray): return
+    ptr = (ctypes.c_char * len(buf)).from_buffer(buf)
+    ctypes.memset(ctypes.addressof(ptr), 0, len(buf))
 import time
 try:
     import pqcrypto.kem.ml_kem_1024 as kem
@@ -77,22 +83,16 @@ class DarkstarCrypt:
             rc = (0x9E3779B9 + i) & 0xFFFFFFFF
             for j in range(8):
                 state[j] ^= rc
-            for j in range(8):
-                state[j] = rotate(state[j], 11)
+            dist = [4, 2, 1][i % 3]
+            rot = [16, 12, 8, 7][i % 4]
             
-            # Permutation: [0, 7, 6, 5, 4, 3, 2, 1] means
-            # state[0] gets old state[1]
-            # state[1] gets old state[2]
-            # ... state[7] gets old state[0]
-            t = state[0]
-            state[0] = state[1]
-            state[1] = state[2]
-            state[2] = state[3]
-            state[3] = state[4]
-            state[4] = state[5]
-            state[5] = state[6]
-            state[6] = state[7]
-            state[7] = t
+            for idx in range(0, 8, dist * 2):
+                for j in range(dist):
+                    a = idx + j
+                    b = idx + j + dist
+                    state[a] = (state[a] + state[b]) & 0xFFFFFFFF
+                    state[b] ^= state[a]
+                    state[b] = rotate(state[b], rot)
             
         for r in range(16):
             dasp_round(r)
@@ -112,18 +112,18 @@ class DarkstarCrypt:
         
         kdf_start = time.perf_counter()
         salt = bytes.fromhex(hwid_hex) if hwid_hex else b'\x00' * 32
-        prk = hmac.new(salt, bytes(ss_bytes), hashlib.sha256).digest()
-        blended_ss = hmac.new(prk, b"dasp-identity-v3\x01", hashlib.sha256).digest()
+        prk = bytearray(hmac.new(salt, bytes(ss_bytes), hashlib.sha256).digest())
+        blended_ss = bytearray(hmac.new(prk, b"dasp-identity-v3\x01", hashlib.sha256).digest())
         blended_ss_hex = blended_ss.hex()
 
-        cipher_key = hashlib.sha256(b"cipher" + blended_ss).digest()
-        hmac_key = hashlib.sha256(b"hmac" + blended_ss).digest()
+        cipher_key = bytearray(hashlib.sha256(b"cipher" + blended_ss).digest())
+        hmac_key = bytearray(hashlib.sha256(b"hmac" + blended_ss).digest())
         active_password_str = cipher_key.hex()
         
-        for i in range(len(ss_bytes)): ss_bytes[i] = 0 
+        secure_wipe(ss_bytes)
         kdf_duration = time.perf_counter() - kdf_start
         
-        word_key = hmac.new(active_password_str.encode('utf-8'), b"dasp-word-0", hashlib.sha256).digest()
+        word_key = bytearray(hmac.new(active_password_str.encode('utf-8'), b"dasp-word-0", hashlib.sha256).digest())
         word_key_hex = word_key.hex()
         
         chain_state = bytearray(hashlib.sha256(f"dasp-chain-{active_password_str}".encode('utf-8')).digest())
@@ -175,6 +175,9 @@ class DarkstarCrypt:
                 "cascade_us": int(cascade_duration * 1_000_000),
                 "total_us": int(total_duration * 1_000_000)
             }
+        for arr in (prk, blended_ss, cipher_key, hmac_key, word_key, chain_state):
+            secure_wipe(arr)
+
         return json.dumps(res_obj)
 
     def decrypt(self, encrypted_data_raw, sk_hex, hwid_hex=None, telemetry=False):
@@ -195,21 +198,21 @@ class DarkstarCrypt:
         
         kdf_start = time.perf_counter()
         salt = bytes.fromhex(hwid_hex) if hwid_hex else b'\x00' * 32
-        prk = hmac.new(salt, bytes(ss_bytes), hashlib.sha256).digest()
-        blended_ss = hmac.new(prk, b"dasp-identity-v3\x01", hashlib.sha256).digest()
+        prk = bytearray(hmac.new(salt, bytes(ss_bytes), hashlib.sha256).digest())
+        blended_ss = bytearray(hmac.new(prk, b"dasp-identity-v3\x01", hashlib.sha256).digest())
         blended_ss_hex = blended_ss.hex()
 
-        cipher_key = hashlib.sha256(b"cipher" + blended_ss).digest()
-        hmac_key = hashlib.sha256(b"hmac" + blended_ss).digest()
+        cipher_key = bytearray(hashlib.sha256(b"cipher" + blended_ss).digest())
+        hmac_key = bytearray(hashlib.sha256(b"hmac" + blended_ss).digest())
         active_password_str = cipher_key.hex()
         
-        for i in range(len(ss_bytes)): ss_bytes[i] = 0 
+        secure_wipe(ss_bytes)
         kdf_duration = time.perf_counter() - kdf_start
         
         h = hmac.new(hmac_key, ct_bytes + payload_bytes, hashlib.sha256)
         mac_tag_actual = h.hexdigest()
         
-        word_key = hmac.new(active_password_str.encode('utf-8'), b"dasp-word-0", hashlib.sha256).digest()
+        word_key = bytearray(hmac.new(active_password_str.encode('utf-8'), b"dasp-word-0", hashlib.sha256).digest())
         word_key_hex = word_key.hex()
 
         if os.environ.get("DASP_DIAGNOSTIC") == "1":
@@ -258,6 +261,9 @@ class DarkstarCrypt:
                 }
             }), file=sys.stderr)
         
+        for arr in (prk, blended_ss, cipher_key, hmac_key, word_key, chain_state):
+            secure_wipe(arr)
+
         return payload_bytes.decode('utf-8')
 
 if __name__ == "__main__":

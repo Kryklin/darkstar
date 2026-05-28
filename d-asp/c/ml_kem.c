@@ -17,6 +17,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#define dasp_secure_wipe(ptr, len) SecureZeroMemory(ptr, len)
+#else
+static void dasp_secure_wipe(void *v, size_t n) {
+    volatile uint8_t *p = (volatile uint8_t *)v;
+    while(n--) *p++ = 0;
+}
+#endif
+
 /** NIST ML-KEM-1024 Parameters (FIPS 203) */
 #define MLKEM_ETA1 2
 #define MLKEM_ETA2 2
@@ -251,8 +261,13 @@ int crypto_kem_dec(uint8_t *ss, const uint8_t *ct, const uint8_t *sk) {
 
     crypto_pke_enc(ct_prime, m, sk + MLKEM_POLYVECBYTES, r);
 
-    uint32_t fail = 0;
-    for(i=0; i<CRYPTO_CIPHERTEXTBYTES; i++) fail |= (ct[i] ^ ct_prime[i]);
+    uint32_t fail1 = 0;
+    for(i=0; i<CRYPTO_CIPHERTEXTBYTES; i++) fail1 |= (ct[i] ^ ct_prime[i]);
+    
+    uint32_t fail2 = 0;
+    for(i=CRYPTO_CIPHERTEXTBYTES-1; i>=0; i--) fail2 |= (ct[i] ^ ct_prime[i]);
+    
+    uint32_t fail = fail1 | fail2;
     
     // Constant-time mask
     int32_t fail_mask = (int32_t)((int32_t)(fail | -fail) >> 31);
@@ -272,6 +287,13 @@ int crypto_kem_dec(uint8_t *ss, const uint8_t *ct, const uint8_t *sk) {
     fprintf(stderr, "\",\"stage0_fail\":%u}}\n", (unsigned)fail);
     fflush(stderr);
 #endif
+
+    dasp_secure_wipe(m, 32);
+    dasp_secure_wipe(r, 32);
+    dasp_secure_wipe(Kr, 64);
+    dasp_secure_wipe(K_pre, 64);
+    dasp_secure_wipe(z, 32);
+    dasp_secure_wipe(Jz_c, 32);
 
     return 0;
 }

@@ -106,18 +106,23 @@ __global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, siz
     s0.x ^= rc; s0.y ^= rc; s0.z ^= rc; s0.w ^= rc; \
     s1.x ^= rc; s1.y ^= rc; s1.z ^= rc; s1.w ^= rc; \
     \
-    s0.x = __funnelshift_l(s0.x, s0.x, 11); \
-    s0.y = __funnelshift_l(s0.y, s0.y, 11); \
-    s0.z = __funnelshift_l(s0.z, s0.z, 11); \
-    s0.w = __funnelshift_l(s0.w, s0.w, 11); \
-    s1.x = __funnelshift_l(s1.x, s1.x, 11); \
-    s1.y = __funnelshift_l(s1.y, s1.y, 11); \
-    s1.z = __funnelshift_l(s1.z, s1.z, 11); \
-    s1.w = __funnelshift_l(s1.w, s1.w, 11); \
-    \
-    uint32_t t = s0.x; \
-    s0.x = s0.y; s0.y = s0.z; s0.z = s0.w; s0.w = s1.x; \
-    s1.x = s1.y; s1.y = s1.z; s1.z = s1.w; s1.w = t; \
+    int rot = (((i) % 4) == 0) ? 16 : ((((i) % 4) == 1) ? 12 : ((((i) % 4) == 2) ? 8 : 7)); \
+    if (((i) % 3) == 0) { \
+        s0.x += s1.x; s1.x ^= s0.x; s1.x = __funnelshift_l(s1.x, s1.x, rot); \
+        s0.y += s1.y; s1.y ^= s0.y; s1.y = __funnelshift_l(s1.y, s1.y, rot); \
+        s0.z += s1.z; s1.z ^= s0.z; s1.z = __funnelshift_l(s1.z, s1.z, rot); \
+        s0.w += s1.w; s1.w ^= s0.w; s1.w = __funnelshift_l(s1.w, s1.w, rot); \
+    } else if (((i) % 3) == 1) { \
+        s0.x += s0.z; s0.z ^= s0.x; s0.z = __funnelshift_l(s0.z, s0.z, rot); \
+        s0.y += s0.w; s0.w ^= s0.y; s0.w = __funnelshift_l(s0.w, s0.w, rot); \
+        s1.x += s1.z; s1.z ^= s1.x; s1.z = __funnelshift_l(s1.z, s1.z, rot); \
+        s1.y += s1.w; s1.w ^= s1.y; s1.w = __funnelshift_l(s1.w, s1.w, rot); \
+    } else { \
+        s0.x += s0.y; s0.y ^= s0.x; s0.y = __funnelshift_l(s0.y, s0.y, rot); \
+        s0.z += s0.w; s0.w ^= s0.z; s0.w = __funnelshift_l(s0.w, s0.w, rot); \
+        s1.x += s1.y; s1.y ^= s1.x; s1.y = __funnelshift_l(s1.y, s1.y, rot); \
+        s1.z += s1.w; s1.w ^= s1.z; s1.w = __funnelshift_l(s1.w, s1.w, rot); \
+    } \
 } while(0)
 
     DASP_ROUND_CUDA(0);  DASP_ROUND_CUDA(1);  DASP_ROUND_CUDA(2);  DASP_ROUND_CUDA(3);

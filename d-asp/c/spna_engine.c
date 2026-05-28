@@ -13,6 +13,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#define dasp_secure_wipe(ptr, len) SecureZeroMemory(ptr, len)
+#else
+static void dasp_secure_wipe(void *v, size_t n) {
+    volatile uint8_t *p = (volatile uint8_t *)v;
+    while(n--) *p++ = 0;
+}
+#endif
+
 #include <immintrin.h>
 #include "api.h"
 #include "sha512.h"
@@ -88,23 +99,36 @@ static inline void dasp_cascade_32(uint8_t *restrict block, const uint32_t *rest
     const __m256i *aligned_keys = (const __m256i*)__builtin_assume_aligned(round_keys, 32);
 
     __m256i state = _mm256_load_si256(aligned_block);
-    __m256i perm_mask = _mm256_set_epi32(0, 7, 6, 5, 4, 3, 2, 1);
     
-#if defined(__clang__)
-    #pragma clang loop unroll(full)
-#elif defined(__GNUC__)
-    #pragma GCC unroll 16
-#endif
-    for (int i = 0; i < 16; i++) {
-        __m256i rk = _mm256_load_si256(&aligned_keys[i]);
-        state = _mm256_add_epi32(state, rk);
-        __m256i rc = _mm256_set1_epi32(0x9E3779B9 + i);
-        state = _mm256_xor_si256(state, rc);
-        __m256i rotl = _mm256_slli_epi32(state, 11);
-        __m256i rotr = _mm256_srli_epi32(state, 32 - 11);
-        state = _mm256_or_si256(rotl, rotr);
-        state = _mm256_permutevar8x32_epi32(state, perm_mask);
-    }
+#define DASP_ROUND_AVX2(r) do { \
+        __m256i rk = _mm256_load_si256(&aligned_keys[r]); \
+        state = _mm256_add_epi32(state, rk); \
+        __m256i rc = _mm256_set1_epi32(0x9E3779B9 + (r)); \
+        state = _mm256_xor_si256(state, rc); \
+        \
+        __m256i swapped; \
+        if (((r) % 3) == 0) swapped = _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(3,2,1,0, 7,6,5,4)); \
+        else if (((r) % 3) == 1) swapped = _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(5,4,7,6, 1,0,3,2)); \
+        else swapped = _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(6,7,4,5, 2,3,0,1)); \
+        \
+        __m256i A_new = _mm256_add_epi32(state, swapped); \
+        __m256i B_new = _mm256_xor_si256(state, A_new); \
+        \
+        int rot = (((r) % 4) == 0) ? 16 : ((((r) % 4) == 1) ? 12 : ((((r) % 4) == 2) ? 8 : 7)); \
+        __m256i rotl = _mm256_slli_epi32(B_new, rot); \
+        __m256i rotr = _mm256_srli_epi32(B_new, 32 - rot); \
+        B_new = _mm256_or_si256(rotl, rotr); \
+        \
+        if (((r) % 3) == 0) state = _mm256_blend_epi32(A_new, B_new, 0xF0); \
+        else if (((r) % 3) == 1) state = _mm256_blend_epi32(A_new, B_new, 0xCC); \
+        else state = _mm256_blend_epi32(A_new, B_new, 0xAA); \
+    } while(0)
+
+    DASP_ROUND_AVX2(0);  DASP_ROUND_AVX2(1);  DASP_ROUND_AVX2(2);  DASP_ROUND_AVX2(3);
+    DASP_ROUND_AVX2(4);  DASP_ROUND_AVX2(5);  DASP_ROUND_AVX2(6);  DASP_ROUND_AVX2(7);
+    DASP_ROUND_AVX2(8);  DASP_ROUND_AVX2(9);  DASP_ROUND_AVX2(10); DASP_ROUND_AVX2(11);
+    DASP_ROUND_AVX2(12); DASP_ROUND_AVX2(13); DASP_ROUND_AVX2(14); DASP_ROUND_AVX2(15);
+#undef DASP_ROUND_AVX2
 
     _mm256_store_si256(aligned_block, state);
 }
@@ -188,6 +212,15 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len, const
     memcpy(mac_content + CRYPTO_CIPHERTEXTBYTES, base_payload, payload_len);
     crypto_hmac_sha256(hmac_key, 32, mac_content, CRYPTO_CIPHERTEXTBYTES + payload_len, out_mac);
     free(mac_content);
+
+    dasp_secure_wipe(blended_ss, 32);
+    dasp_secure_wipe(cipher_key, 32);
+    dasp_secure_wipe(hmac_key, 32);
+    dasp_secure_wipe(chain_state, 32);
+    dasp_secure_wipe(word_key, 32);
+    dasp_secure_wipe(active_password_str, 65);
+    dasp_secure_wipe(word_key_hex, 65);
+    dasp_secure_wipe(round_keys, sizeof(round_keys));
 
     return 0;
 }
@@ -287,6 +320,15 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len, const
             if(++nonce[j]) break;
         }
     }
+
+    dasp_secure_wipe(blended_ss, 32);
+    dasp_secure_wipe(cipher_key, 32);
+    dasp_secure_wipe(hmac_key, 32);
+    dasp_secure_wipe(chain_state, 32);
+    dasp_secure_wipe(word_key, 32);
+    dasp_secure_wipe(active_password_str, 65);
+    dasp_secure_wipe(word_key_hex, 65);
+    dasp_secure_wipe(round_keys, sizeof(round_keys));
 
     return 0;
 }
