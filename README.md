@@ -26,6 +26,9 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 > [!NOTE]
 > **Grade-1024 Compliance**: Every byte processed by Darkstar undergoes a 16-round algebraic transformation (ASP Cascade 16), providing maximum resistance to standard and differential cryptanalysis.
 
+> [!IMPORTANT]
+> **Fault Injection & RAM Scraping Countermeasures**: Darkstar implements redundant temporal parity looping to neutralize VCC glitching / instruction skipping during decapsulation, and utilizes aggressive runtime-specific post-execution memory zeroization (`SecureZeroMemory`, `KeepAlive` pinning, native `ctypes` overrides) to prevent OS-level side-channel leakage.
+
 ---
 
 ## 🛡️ The Multi-Engine Matrix

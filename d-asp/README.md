@@ -28,8 +28,10 @@ The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engi
 - **ML-KEM-1024 (Kyber)**: Grade-1024 High-Security root of trust.
 - **16-Round ASP Cascade 16 Engine**: Hardened deterministic schedule (ARX, CTR Mode, SIMD Vectorized) every round.
 - **HKDF Root Expansion**: Secure key derivation and multi-factor hardware identity binding.
-- **HMAC-Linked Fusion**: Authentication-first protocol providing ML-KEM-linked integrity.
+- **HMAC-Linked Fusion**: Encrypt-then-MAC authentication protocol providing constant-time verified ML-KEM-linked integrity.
 - **Hardware Binding**: Optional machine-unique entropy injection ($HWID$).
+- **Fault-Injection Mitigation**: Redundant implicit-rejection temporal parity bounds neutralizing instruction skips and VCC glitching.
+- **Aggressive Memory Zeroization**: Native-level buffer wiping via compiler optimization overrides.
 - **CUDA Acceleration**: GPU-accelerated massive parallel throughput using PTX native structures.
 
 ## 🚀 Performance Profile (Grade-1024)

@@ -75,30 +75,45 @@ State words are modified using 32-bit modular addition and bitwise XOR, combinin
 Bit-level diffusion is achieved via hardware-native 32-bit funnel shifts.
 - **Transformation**: $S = (S \ll k) \mid (S \gg (32 - k))$
 
-### 3.3 Network (N) Layer: Word Shuffle
-Blocks of 32-bit words are structurally shuffled using hardware vector permutation instructions (e.g., AVX2 `_mm256_permutevar8x32_epi32`), achieving instant complete-state diffusion without scalar loop penalties.
+### 3.3 Network (N) Layer: 3-Cycle Butterfly Mixing
+The internal state is aggressively mixed using an adjacent index butterfly mixing topology: $S_a = (S_a + S_b) \pmod{2^{32}}$, $S_b = S_b \oplus S_a$. This sequential diffusion matrix achieves instant complete-state cross-lane dependency across all 8 indices. To counteract sequential linear delay, the topology employs ChaCha20-inspired rotation constants dynamically alternating over a 3-cycle sequence (16, 12, 8, 7), maximizing the non-linear algebraic complexity inside the 16-round bounded schedule.
 
 ---
 
-## 4. Constant-Time Analysis & Security Posture
+## 4. Hardware Fault Injection Mitigation (FI)
+D-ASP mitigates physical hardware attacks such as VCC voltage glitching and targeted CPU instruction skipping.
 
-### 4.1 Native Compliance (Rust/Go/C)
+### 4.1 Bidirectional Temporal Parity 
+During the implicit-rejection Fujisaki-Okamoto (FO) transform decapsulation inside ML-KEM, the recovered ciphertext array parity is verified via two independent linear accumulations (`fail1` mapping forward, `fail2` mapping backward). The results are deterministically merged `fail1 | fail2`. This forces secondary latency execution dependencies, completely neutralizing standard single-loop fault injection instruction skips.
+
+### 4.2 Aggressive Post-Execution Memory Zeroization
+To combat OS-level RAM scraping and Side-Channel leakage:
+- **Go**: Bypasses SSA Dead-Store Elimination utilizing `runtime.KeepAlive()` pinning over loop-reset arrays.
+- **Python**: Bypasses Pymalloc caching by forcing `bytearray` addresses through native `ctypes.memset` for direct OS-level execution.
+- **Rust**: Uses `.zeroize()` trait integration across all dynamic heaps.
+- **C Native**: Defeats Clang/GCC optimizations via `SecureZeroMemory` and explicitly unrolled `volatile` pointer iterators.
+
+---
+
+## 5. Constant-Time Analysis & Security Posture
+
+### 5.1 Native Compliance (Rust/Go/C)
 > [!IMPORTANT]
 > **Full Constant-Time (CT) Enforcement**. Rust, Go, and C engines utilize architecture-specific primitives (`wrapping_sub`, `atomic` masks, native bitwise logic) to ensure execution time is independent of the secret permutation state.
 
-### 4.2 Managed Compliance (NodeJS/Python)
+### 5.2 Managed Compliance (NodeJS/Python)
 While high-level runtimes introduce jitter (jitter != side-channel), the **D-ASP V3 reference code** for Node.js and Python mirrors the 32-bit ARX mathematical operations natively.
 - **No conditional jumps** based on bit-values.
 - **No secret-dependent branching** in the cascade.
 
-### 4.3 Hardware Intrinsics & Entropy Cascade
+### 5.3 Hardware Intrinsics & Entropy Cascade
 - **AVX2 SIMD**: C and Rust map the 32-byte state directly to `__m256i` registers, processing 8 words per clock cycle.
 - **CUDA PTX**: GPUs utilize `uint4` memory transactions and `__funnelshift_l` for pure silicon efficiency.
 - **Interop**: All six engines (Rust, Go, C, Node, Python, CUDA) maintain exact bit-perfect parity through CTR mode.
 
 ---
 
-## 5. Implementation Standards
+## 6. Implementation Standards
 All compliant D-ASP implementations MUST return a standardized JSON payload:
 ```json
 {
