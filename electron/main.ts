@@ -213,7 +213,7 @@ app.whenReady().then(async () => {
         headers: {
           'content-type': mimeTypes[extension] || 'application/octet-stream',
           'Content-Security-Policy':
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net;",
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' ws://localhost:4200 http://localhost:4200 https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net;",
           'X-Content-Type-Options': 'nosniff',
           'X-Frame-Options': 'DENY',
         },
@@ -225,7 +225,7 @@ app.whenReady().then(async () => {
           headers: {
             'content-type': 'text/html',
             'Content-Security-Policy':
-              "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net;",
+              "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' ws://localhost:4200 http://localhost:4200 https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net;",
             'X-Content-Type-Options': 'nosniff',
             'X-Frame-Options': 'DENY',
           },
