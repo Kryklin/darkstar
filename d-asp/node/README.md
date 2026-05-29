@@ -28,21 +28,25 @@ The Node.js implementation acts as the primary bridge for web applications and E
 ## 🚀 Usage
 
 ### Install Dependencies
+
 ```bash
 npm install
 ```
 
 ### Key Generation
+
 ```bash
 node dasp.js keygen
 ```
 
 ### Encryption
+
 ```bash
 node dasp.js encrypt "your payload" <PUBLIC_KEY_HEX>
 ```
 
 ### Decryption
+
 ```bash
 node dasp.js decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ```
@@ -50,6 +54,7 @@ node dasp.js decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ---
 
 ## 🏗️ Architecture Alignment
+
 This implementation strictly follows the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification. It utilizes the same 16-round **ASP Cascade** engine and MDS matrix constants as the reference.
 
 [**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)

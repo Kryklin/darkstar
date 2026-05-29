@@ -29,12 +29,7 @@
 
           <mat-form-field appearance="fill" class="full-width" [class.hidden-input]="inputType === 'file'">
             <mat-label>{{ inputType === 'file' ? 'Extracted Data' : 'Encrypted Data' }}</mat-label>
-            <textarea
-              matInput
-              formControlName="encryptedData"
-              rows="4"
-              [placeholder]="inputType === 'file' ? 'Data extracted from file will appear here' : 'Paste the encrypted data here'"
-            ></textarea>
+            <textarea matInput formControlName="encryptedData" rows="4" [placeholder]="inputType === 'file' ? 'Data extracted from file will appear here' : 'Paste the encrypted data here'"></textarea>
             <button mat-icon-button matSuffix (click)="copyFromClipboard('encryptedData')" matTooltip="Paste from clipboard" [disabled]="inputType === 'file'">
               <mat-icon>content_paste</mat-icon>
             </button>

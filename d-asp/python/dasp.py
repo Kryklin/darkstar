@@ -2,8 +2,8 @@
 D-ASP (ASP Cascade 16)
 Implementation: Python (Reference)
 
-To the extent possible under law, the author(s) have dedicated all copyright 
-and related and neighboring rights to this software to the public domain 
+To the extent possible under law, the author(s) have dedicated all copyright
+and related and neighboring rights to this software to the public domain
 worldwide. This software is distributed without any warranty.
 
 See <http://creativecommons.org/publicdomain/zero/1.0/>
@@ -18,48 +18,71 @@ import typing
 import hmac
 import ctypes
 
+
 def secure_wipe(buf):
-    if not isinstance(buf, bytearray): return
+    if not isinstance(buf, bytearray):
+        return
     ptr = (ctypes.c_char * len(buf)).from_buffer(buf)
     ctypes.memset(ctypes.addressof(ptr), 0, len(buf))
+
+
 import time
+
 try:
     import pqcrypto.kem.ml_kem_1024 as kem
 except ImportError:
     kem = None
 
+
 class DarkstarCrypt:
     class DarkstarChaChaPRNG:
         def __init__(self, seed_str):
-            self.hash = hashlib.sha512(seed_str.encode('utf-8')).digest()
-            self.state = [0]*16
+            self.hash = hashlib.sha512(seed_str.encode("utf-8")).digest()
+            self.state = [0] * 16
             self.state[0] = 0x61707865
-            self.state[1] = 0x3320646e
-            self.state[2] = 0x79622d32
-            self.state[3] = 0x6b206574
+            self.state[1] = 0x3320646E
+            self.state[2] = 0x79622D32
+            self.state[3] = 0x6B206574
             for i in range(8):
-                self.state[4+i] = struct.unpack('<I', self.hash[i*4:(i+1)*4])[0]
-            self.state[12] = 0 
-            self.state[13] = 0 
-            self.state[14] = 0 
-            self.state[15] = 0 
+                self.state[4 + i] = struct.unpack("<I", self.hash[i * 4 : (i + 1) * 4])[
+                    0
+                ]
+            self.state[12] = 0
+            self.state[13] = 0
+            self.state[14] = 0
+            self.state[15] = 0
             self.block = self._chacha_block(self.state)
             self.block_idx = 0
 
         def _chacha_block(self, st):
             x = list(st)
-            def rotate(v, n): return ((v << n) & 0xFFFFFFFF) | (v >> (32 - n))
+
+            def rotate(v, n):
+                return ((v << n) & 0xFFFFFFFF) | (v >> (32 - n))
+
             def quarter_round(a, b, c, d):
-                x[a] = (x[a] + x[b]) & 0xFFFFFFFF; x[d] ^= x[a]; x[d] = rotate(x[d], 16)
-                x[c] = (x[c] + x[d]) & 0xFFFFFFFF; x[b] ^= x[c]; x[b] = rotate(x[b], 12)
-                x[a] = (x[a] + x[b]) & 0xFFFFFFFF; x[d] ^= x[a]; x[d] = rotate(x[d], 8)
-                x[c] = (x[c] + x[d]) & 0xFFFFFFFF; x[b] ^= x[c]; x[b] = rotate(x[b], 7)
-            
+                x[a] = (x[a] + x[b]) & 0xFFFFFFFF
+                x[d] ^= x[a]
+                x[d] = rotate(x[d], 16)
+                x[c] = (x[c] + x[d]) & 0xFFFFFFFF
+                x[b] ^= x[c]
+                x[b] = rotate(x[b], 12)
+                x[a] = (x[a] + x[b]) & 0xFFFFFFFF
+                x[d] ^= x[a]
+                x[d] = rotate(x[d], 8)
+                x[c] = (x[c] + x[d]) & 0xFFFFFFFF
+                x[b] ^= x[c]
+                x[b] = rotate(x[b], 7)
+
             for _ in range(10):
-                quarter_round(0, 4, 8, 12); quarter_round(1, 5, 9, 13)
-                quarter_round(2, 6, 10, 14); quarter_round(3, 7, 11, 15)
-                quarter_round(0, 5, 10, 15); quarter_round(1, 6, 11, 12)
-                quarter_round(2, 7, 8, 13); quarter_round(3, 4, 9, 14)
+                quarter_round(0, 4, 8, 12)
+                quarter_round(1, 5, 9, 13)
+                quarter_round(2, 6, 10, 14)
+                quarter_round(3, 7, 11, 15)
+                quarter_round(0, 5, 10, 15)
+                quarter_round(1, 6, 11, 12)
+                quarter_round(2, 7, 8, 13)
+                quarter_round(3, 4, 9, 14)
             return [(x[i] + st[i]) & 0xFFFFFFFF for i in range(16)]
 
         def next(self):
@@ -73,12 +96,13 @@ class DarkstarCrypt:
 
     def _dasp_cascade_32(self, block: bytearray, round_keys: list):
         # 32-byte block = 8x uint32 words
-        state = list(struct.unpack('<8I', block))
-        
-        def rotate(v, n): return ((v << n) & 0xFFFFFFFF) | (v >> (32 - n))
+        state = list(struct.unpack("<8I", block))
+
+        def rotate(v, n):
+            return ((v << n) & 0xFFFFFFFF) | (v >> (32 - n))
 
         def dasp_round(i):
-            rk = round_keys[i*8:(i+1)*8]
+            rk = round_keys[i * 8 : (i + 1) * 8]
             for j in range(8):
                 state[j] = (state[j] + rk[j]) & 0xFFFFFFFF
             rc = (0x9E3779B9 + i) & 0xFFFFFFFF
@@ -86,7 +110,7 @@ class DarkstarCrypt:
                 state[j] ^= rc
             dist = [4, 2, 1][i % 3]
             rot = [16, 12, 8, 7][i % 4]
-            
+
             for idx in range(0, 8, dist * 2):
                 for j in range(dist):
                     a = idx + j
@@ -94,48 +118,56 @@ class DarkstarCrypt:
                     state[a] = (state[a] + state[b]) & 0xFFFFFFFF
                     state[b] ^= state[a]
                     state[b] = rotate(state[b], rot)
-            
+
         for r in range(16):
             dasp_round(r)
-            
-        block[:] = struct.pack('<8I', *state)
+
+        block[:] = struct.pack("<8I", *state)
 
     def encrypt(self, payload_str, pk_hex, hwid_hex=None, telemetry=False):
         total_start = time.perf_counter()
-        
+
         pk_bytes = bytes.fromhex(pk_hex)
         kem_start = time.perf_counter()
         assert kem is not None, "ml_kem_1024 module is required"
         ct_bytes, ss_bytes_tup = kem.encrypt(pk_bytes)
         kem_duration = time.perf_counter() - kem_start
-        
+
         ss_bytes = bytearray(ss_bytes_tup)
         ct_hex = ct_bytes.hex()
-        
+
         kdf_start = time.perf_counter()
-        salt = bytes.fromhex(hwid_hex) if hwid_hex else b'\x00' * 32
+        salt = bytes.fromhex(hwid_hex) if hwid_hex else b"\x00" * 32
         prk = bytearray(hmac.new(salt, bytes(ss_bytes), hashlib.sha256).digest())
-        blended_ss = bytearray(hmac.new(prk, b"dasp-identity-v3\x01", hashlib.sha256).digest())
+        blended_ss = bytearray(
+            hmac.new(prk, b"dasp-identity-v3\x01", hashlib.sha256).digest()
+        )
         blended_ss_hex = blended_ss.hex()
 
         cipher_key = bytearray(hashlib.sha256(b"cipher" + blended_ss).digest())
         hmac_key = bytearray(hashlib.sha256(b"hmac" + blended_ss).digest())
         active_password_str = cipher_key.hex()
-        
+
         secure_wipe(ss_bytes)
         kdf_duration = time.perf_counter() - kdf_start
-        
-        word_key = bytearray(hmac.new(active_password_str.encode('utf-8'), b"dasp-word-0", hashlib.sha256).digest())
+
+        word_key = bytearray(
+            hmac.new(
+                active_password_str.encode("utf-8"), b"dasp-word-0", hashlib.sha256
+            ).digest()
+        )
         word_key_hex = word_key.hex()
-        
-        chain_state = bytearray(hashlib.sha256(f"dasp-chain-{active_password_str}".encode('utf-8')).digest())
-        
+
+        chain_state = bytearray(
+            hashlib.sha256(f"dasp-chain-{active_password_str}".encode("utf-8")).digest()
+        )
+
         rng = self.DarkstarChaChaPRNG(word_key_hex)
         round_keys = [rng.next() for _ in range(128)]
 
-        payload_bytes = bytearray(payload_str.encode('utf-8'))
+        payload_bytes = bytearray(payload_str.encode("utf-8"))
         cascade_start = time.perf_counter()
-        
+
         # CTR Mode
         nonce = chain_state
         for i in range(0, len(payload_bytes), 32):
@@ -143,26 +175,32 @@ class DarkstarCrypt:
             block = bytearray(nonce)
             self._dasp_cascade_32(block, round_keys)
             for j in range(chunk_len):
-                payload_bytes[i+j] ^= block[j]
-            
+                payload_bytes[i + j] ^= block[j]
+
             # Increment nonce
             for j in range(32):
                 nonce[j] = (nonce[j] + 1) & 0xFF
-                if nonce[j] != 0: break
+                if nonce[j] != 0:
+                    break
 
         cascade_duration = time.perf_counter() - cascade_start
-        
+
         h = hmac.new(hmac_key, ct_bytes + payload_bytes, hashlib.sha256)
         mac_tag = h.hexdigest()
-        
+
         if os.environ.get("DASP_DIAGNOSTIC") == "1":
-            print(json.dumps({
-                "diagnostics": {
-                    "stage1_blended_ss": blended_ss_hex,
-                    "stage2_word_key": word_key_hex,
-                    "stage4_mac": mac_tag
-                }
-            }), file=sys.stderr)
+            print(
+                json.dumps(
+                    {
+                        "diagnostics": {
+                            "stage1_blended_ss": blended_ss_hex,
+                            "stage2_word_key": word_key_hex,
+                            "stage4_mac": mac_tag,
+                        }
+                    }
+                ),
+                file=sys.stderr,
+            )
 
         total_duration = time.perf_counter() - total_start
         res_obj: typing.Dict[str, typing.Any] = {
@@ -175,7 +213,7 @@ class DarkstarCrypt:
                 "kem_us": int(kem_duration * 1_000_000),
                 "kdf_us": int(kdf_duration * 1_000_000),
                 "cascade_us": int(cascade_duration * 1_000_000),
-                "total_us": int(total_duration * 1_000_000)
+                "total_us": int(total_duration * 1_000_000),
             }
         for arr in (prk, blended_ss, cipher_key, hmac_key, word_key, chain_state):
             secure_wipe(arr)
@@ -184,59 +222,72 @@ class DarkstarCrypt:
 
     def decrypt(self, encrypted_data_raw, sk_hex, hwid_hex=None, telemetry=False):
         total_start = time.perf_counter()
-        
+
         data = json.loads(encrypted_data_raw)
         ct_bytes = bytes.fromhex(data["ct"])
         payload_bytes = bytearray.fromhex(data["data"])
         mac_tag = data["mac"]
-        
+
         sk_bytes = bytes.fromhex(sk_hex)
-        
+
         kem_start = time.perf_counter()
         assert kem is not None, "ml_kem_1024 module is required"
         ss_bytes_tup = kem.decrypt(sk_bytes, ct_bytes)
         kem_duration = time.perf_counter() - kem_start
-        
+
         ss_bytes = bytearray(ss_bytes_tup)
-        
+
         kdf_start = time.perf_counter()
-        salt = bytes.fromhex(hwid_hex) if hwid_hex else b'\x00' * 32
+        salt = bytes.fromhex(hwid_hex) if hwid_hex else b"\x00" * 32
         prk = bytearray(hmac.new(salt, bytes(ss_bytes), hashlib.sha256).digest())
-        blended_ss = bytearray(hmac.new(prk, b"dasp-identity-v3\x01", hashlib.sha256).digest())
+        blended_ss = bytearray(
+            hmac.new(prk, b"dasp-identity-v3\x01", hashlib.sha256).digest()
+        )
         blended_ss_hex = blended_ss.hex()
 
         cipher_key = bytearray(hashlib.sha256(b"cipher" + blended_ss).digest())
         hmac_key = bytearray(hashlib.sha256(b"hmac" + blended_ss).digest())
         active_password_str = cipher_key.hex()
-        
+
         secure_wipe(ss_bytes)
         kdf_duration = time.perf_counter() - kdf_start
-        
+
         h = hmac.new(hmac_key, ct_bytes + payload_bytes, hashlib.sha256)
         mac_tag_actual = h.hexdigest()
-        
-        word_key = bytearray(hmac.new(active_password_str.encode('utf-8'), b"dasp-word-0", hashlib.sha256).digest())
+
+        word_key = bytearray(
+            hmac.new(
+                active_password_str.encode("utf-8"), b"dasp-word-0", hashlib.sha256
+            ).digest()
+        )
         word_key_hex = word_key.hex()
 
         if os.environ.get("DASP_DIAGNOSTIC") == "1":
-            print(json.dumps({
-                "diagnostics": {
-                    "stage1_blended_ss": blended_ss_hex,
-                    "stage2_word_key": word_key_hex,
-                    "stage4_mac": mac_tag_actual
-                }
-            }), file=sys.stderr)
+            print(
+                json.dumps(
+                    {
+                        "diagnostics": {
+                            "stage1_blended_ss": blended_ss_hex,
+                            "stage2_word_key": word_key_hex,
+                            "stage4_mac": mac_tag_actual,
+                        }
+                    }
+                ),
+                file=sys.stderr,
+            )
 
         if not hmac.compare_digest(mac_tag_actual, mac_tag):
             raise ValueError("Integrity Check Failed")
-            
-        chain_state = bytearray(hashlib.sha256(f"dasp-chain-{active_password_str}".encode('utf-8')).digest())
-        
+
+        chain_state = bytearray(
+            hashlib.sha256(f"dasp-chain-{active_password_str}".encode("utf-8")).digest()
+        )
+
         rng = self.DarkstarChaChaPRNG(word_key_hex)
         round_keys = [rng.next() for _ in range(128)]
 
         cascade_start = time.perf_counter()
-        
+
         # CTR Mode
         nonce = chain_state
         for i in range(0, len(payload_bytes), 32):
@@ -244,63 +295,87 @@ class DarkstarCrypt:
             block = bytearray(nonce)
             self._dasp_cascade_32(block, round_keys)
             for j in range(chunk_len):
-                payload_bytes[i+j] ^= block[j]
-            
+                payload_bytes[i + j] ^= block[j]
+
             # Increment nonce
             for j in range(32):
                 nonce[j] = (nonce[j] + 1) & 0xFF
-                if nonce[j] != 0: break
+                if nonce[j] != 0:
+                    break
 
         cascade_duration = time.perf_counter() - cascade_start
-        
+
         total_duration = time.perf_counter() - total_start
         if telemetry:
-            print(json.dumps({
-                "timings": {
-                    "kem_us": int(kem_duration * 1_000_000),
-                    "kdf_us": int(kdf_duration * 1_000_000),
-                    "cascade_us": int(cascade_duration * 1_000_000),
-                    "total_us": int(total_duration * 1_000_000)
-                }
-            }), file=sys.stderr)
-        
+            print(
+                json.dumps(
+                    {
+                        "timings": {
+                            "kem_us": int(kem_duration * 1_000_000),
+                            "kdf_us": int(kdf_duration * 1_000_000),
+                            "cascade_us": int(cascade_duration * 1_000_000),
+                            "total_us": int(total_duration * 1_000_000),
+                        }
+                    }
+                ),
+                file=sys.stderr,
+            )
+
         for arr in (prk, blended_ss, cipher_key, hmac_key, word_key, chain_state):
             secure_wipe(arr)
 
-        return payload_bytes.decode('utf-8')
+        return payload_bytes.decode("utf-8")
+
 
 if __name__ == "__main__":
     import argparse
     import sys
 
-    parser = argparse.ArgumentParser(description="Darkstar D-ASP V9 Monoculture (Python)")
-    parser.add_argument("-f", "--format", choices=["json", "text"], default="json", help="Output format")
-    parser.add_argument("--diagnostic", action="store_true", help="Output intermediate cryptographic states")
-    
+    parser = argparse.ArgumentParser(
+        description="Darkstar D-ASP V9 Monoculture (Python)"
+    )
+    parser.add_argument(
+        "-f", "--format", choices=["json", "text"], default="json", help="Output format"
+    )
+    parser.add_argument(
+        "--diagnostic",
+        action="store_true",
+        help="Output intermediate cryptographic states",
+    )
+
     subparsers = parser.add_subparsers(dest="command", help="Commands")
-    
+
     enc_parser = subparsers.add_parser("encrypt", help="Encrypt payload")
     enc_parser.add_argument("payload", help="Data to encrypt")
     enc_parser.add_argument("pk_hex", help="Kyber-1024 Public Key Hex")
     enc_parser.add_argument("--hwid", help="Hardware ID Hex")
-    enc_parser.add_argument("--telemetry", action="store_true", help="Output execution timings")
-    
+    enc_parser.add_argument(
+        "--telemetry", action="store_true", help="Output execution timings"
+    )
+
     dec_parser = subparsers.add_parser("decrypt", help="Decrypt data")
     dec_parser.add_argument("data", help="D-ASP JSON blob")
     dec_parser.add_argument("sk_hex", help="Kyber-1024 Secret Key Hex")
     dec_parser.add_argument("--hwid", help="Hardware ID Hex")
-    dec_parser.add_argument("--diagnostic", action="store_true", help="Output intermediate cryptographic states")
-    dec_parser.add_argument("--telemetry", action="store_true", help="Output execution timings")
-    
+    dec_parser.add_argument(
+        "--diagnostic",
+        action="store_true",
+        help="Output intermediate cryptographic states",
+    )
+    dec_parser.add_argument(
+        "--telemetry", action="store_true", help="Output execution timings"
+    )
+
     subparsers.add_parser("keygen", help="Generate ML-KEM-1024 pair")
     subparsers.add_parser("test", help="Internal self-test")
-    
+
     args = parser.parse_args()
     crypt = DarkstarCrypt()
-    
+
     def load_arg(val):
         if val and val.startswith("@"):
-            with open(val[1:], "r", encoding="utf-8") as f: return f.read().strip()
+            with open(val[1:], "r", encoding="utf-8") as f:
+                return f.read().strip()
         return val
 
     if args.diagnostic:
@@ -309,16 +384,32 @@ if __name__ == "__main__":
     hardware_id = load_arg(args.hwid) if hasattr(args, "hwid") and args.hwid else None
 
     if args.command == "encrypt":
-        print(crypt.encrypt(load_arg(args.payload), load_arg(args.pk_hex), hwid_hex=hardware_id, telemetry=args.telemetry))
-    elif args.command == 'decrypt':
-        print(crypt.decrypt(load_arg(args.data), load_arg(args.sk_hex), hwid_hex=hardware_id, telemetry=args.telemetry))
-    elif args.command == 'keygen':
+        print(
+            crypt.encrypt(
+                load_arg(args.payload),
+                load_arg(args.pk_hex),
+                hwid_hex=hardware_id,
+                telemetry=args.telemetry,
+            )
+        )
+    elif args.command == "decrypt":
+        print(
+            crypt.decrypt(
+                load_arg(args.data),
+                load_arg(args.sk_hex),
+                hwid_hex=hardware_id,
+                telemetry=args.telemetry,
+            )
+        )
+    elif args.command == "keygen":
         import pqcrypto.kem.ml_kem_1024 as kem
+
         pk, sk = kem.generate_keypair()
         print(json.dumps({"pk": pk.hex(), "sk": sk.hex()}))
-    elif args.command == 'test':
+    elif args.command == "test":
         payload = "apple banana cherry date"
         import pqcrypto.kem.ml_kem_1024 as kem
+
         pk, sk = kem.generate_keypair()
         print(f"--- Darkstar Python Self-Test (D-ASP Monoculture) ---")
         try:

@@ -57,6 +57,22 @@ module.exports = {
       [FuseV1Options.OnlyLoadAppFromAsar]: true,
     }),
   ],
+  hooks: {
+    postMake: async (config, makeResults) => {
+      const { execSync } = require('child_process');
+      const fs = require('fs');
+      
+      console.log('Running checksums hook...');
+      execSync('npm run checksums', { stdio: 'inherit' });
+      
+      const checksumPath = path.join(__dirname, 'checksums.txt');
+      if (fs.existsSync(checksumPath) && makeResults.length > 0) {
+        // Inject checksums.txt into the artifacts of the first makeResult
+        makeResults[0].artifacts.push(checksumPath);
+      }
+      return makeResults;
+    }
+  },
   publishers: [
     {
       name: '@electron-forge/publisher-github',

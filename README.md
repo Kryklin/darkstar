@@ -10,7 +10,8 @@
 </p>
 
 # Darkstar Security Suite
-### *The Sovereign Post-Quantum Enclave for Identity & Asset Recovery.*
+
+### _The Sovereign Post-Quantum Enclave for Identity & Asset Recovery._
 
 Darkstar is a defense-grade client-side security enclave. It provides a hardened, air-gapped-ready environment for safeguarding recovery phrases, cryptographic identities, and sensitive records using next-generation post-quantum primitives.
 
@@ -35,28 +36,28 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 
 **ASP Cascade 16**: The 16-round engine ensures bit-perfect interoperability across Rust, Go, C, Python, Node.js, and CUDA while providing maximum algebraic complexity.
 
-| Engine | optimization | implementation | Security Tier | Interop |
-| :--- | :--- | :--- | :--- | :--- |
-| **Rust** | **Native (LTO)** | Reference implementation | Grade-1024 | `PASSED` |
-| **Go** | **Native (SSA)** | High-performance bridge | Grade-1024 | `PASSED` |
-| **C** | **Native (Clang)** | Procedural Reference | Grade-1024 | `PASSED` |
-| **Node.js** | **Managed** | Production Bridge (Electron) | Grade-1024 | `PASSED` |
-| **Python** | **Managed** | Research & Validation | Grade-1024 | `PASSED` |
-| **CUDA** | **Native (NVCC)** | Massively Parallel GPU | Grade-1024 | `PASSED` |
+| Engine      | optimization       | implementation               | Security Tier | Interop  |
+| :---------- | :----------------- | :--------------------------- | :------------ | :------- |
+| **Rust**    | **Native (LTO)**   | Reference implementation     | Grade-1024    | `PASSED` |
+| **Go**      | **Native (SSA)**   | High-performance bridge      | Grade-1024    | `PASSED` |
+| **C**       | **Native (Clang)** | Procedural Reference         | Grade-1024    | `PASSED` |
+| **Node.js** | **Managed**        | Production Bridge (Electron) | Grade-1024    | `PASSED` |
+| **Python**  | **Managed**        | Research & Validation        | Grade-1024    | `PASSED` |
+| **CUDA**    | **Native (NVCC)**  | Massively Parallel GPU       | Grade-1024    | `PASSED` |
 
 ### 🚀 Extreme Performance (Grade-1024)
 
-Darkstar is heavily optimized using vectorized SIMD (AVX2) and GPU PTX instructions, pipelining PCIe transfers and maintaining exact register bounds to achieve sub-millisecond cascading. 
+Darkstar is heavily optimized using vectorized SIMD (AVX2) and GPU PTX instructions, pipelining PCIe transfers and maintaining exact register bounds to achieve sub-millisecond cascading.
 
-| Engine | Total Time | Casca Time | Casca CPB | Ops/sec |
-| :--- | :--- | :--- | :--- | :--- |
-| **Rust** | 12.98 ms | 3 μs | 251.88 | 77.03 |
-| **Go** | 12.46 ms | 0 μs | 0.00 | 80.21 |
-| **C**    | 11.58 ms | 66 μs | 5362.50 | 86.29 |
-| **CUDA** | 125.85 ms | 116 μs | 9449.38 | 7.95 |
+| Engine   | Total Time | Casca Time | Casca CPB | Ops/sec |
+| :------- | :--------- | :--------- | :-------- | :------ |
+| **Rust** | 12.98 ms   | 3 μs       | 251.88    | 77.03   |
+| **Go**   | 12.46 ms   | 0 μs       | 0.00      | 80.21   |
+| **C**    | 11.58 ms   | 66 μs      | 5362.50   | 86.29   |
+| **CUDA** | 125.85 ms  | 116 μs     | 9449.38   | 7.95    |
 
 > [!NOTE]
-> *CUDA timing includes the total host-to-host DMA transfer pipeline. The actual unrolled Grade-1024 SPNA Cascade computes in ~164us (micro-seconds).*
+> _CUDA timing includes the total host-to-host DMA transfer pipeline. The actual unrolled Grade-1024 SPNA Cascade computes in ~164us (micro-seconds)._
 
 > [!TIP]
 > **Zero Microsecond (0 μs) Readings**
@@ -85,14 +86,14 @@ For a detailed breakdown of all dashboard options, see the [**Darkstar CLI Guide
 
 ## 🏗️ Technical Resources
 
-| Resource | Scope | Link |
-| :--- | :--- | :--- |
-| **D-ASP Specification** | Formal Math & Logic | [**DASP_CRYPTO_MATH.md**](d-asp/DASP_CRYPTO_MATH.md) |
-| **Interactive CLI** | Dev & Release Dashboard | [**DARKSTAR_CLI_GUIDE.md**](DARKSTAR_CLI_GUIDE.md) |
-| **App Guide** | Desktop & Mobile Setup | [**DARKSTAR_APP_GUIDE.md**](DARKSTAR_APP_GUIDE.md) |
-| **Multi-Language Docs** | Integration & Usage | [**D-ASP Suite**](d-asp/README.md) |
-| **Security Policy** | Disclosure & Auditing | [**SECURITY.md**](SECURITY.md) |
-| **Contribution Guide** | Standards & Workflows | [**CONTRIBUTING.md**](CONTRIBUTING.md) |
+| Resource                | Scope                   | Link                                                 |
+| :---------------------- | :---------------------- | :--------------------------------------------------- |
+| **D-ASP Specification** | Formal Math & Logic     | [**DASP_CRYPTO_MATH.md**](d-asp/DASP_CRYPTO_MATH.md) |
+| **Interactive CLI**     | Dev & Release Dashboard | [**DARKSTAR_CLI_GUIDE.md**](DARKSTAR_CLI_GUIDE.md)   |
+| **App Guide**           | Desktop & Mobile Setup  | [**DARKSTAR_APP_GUIDE.md**](DARKSTAR_APP_GUIDE.md)   |
+| **Multi-Language Docs** | Integration & Usage     | [**D-ASP Suite**](d-asp/README.md)                   |
+| **Security Policy**     | Disclosure & Auditing   | [**SECURITY.md**](SECURITY.md)                       |
+| **Contribution Guide**  | Standards & Workflows   | [**CONTRIBUTING.md**](CONTRIBUTING.md)               |
 
 ---
 

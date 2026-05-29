@@ -19,11 +19,11 @@ The Darkstar ecosystem leverages the **D-ASP** (ASP Cascade 16) protocol with **
 
 ## Supported Versions
 
-| Version   | Supported      | Security Standard                  |
-| :-------- | :------------- | :--------------------------------- |
+| Version   | Supported      | Security Standard                    |
+| :-------- | :------------- | :----------------------------------- |
 | **3.0.x** | ✅ Active      | D-ASP (ASP Cascade 16) / ML-KEM-1024 |
-| **2.1.x** | ✅ Maintenance | D-KASP V5 / Kyber-1024             |
-| **< 2.1** | ❌ End of Life | Legacy RSA/AES                     |
+| **2.1.x** | ✅ Maintenance | D-KASP V5 / Kyber-1024               |
+| **< 2.1** | ❌ End of Life | Legacy RSA/AES                       |
 
 ## Reporting a Vulnerability
 

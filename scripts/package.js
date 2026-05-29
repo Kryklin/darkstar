@@ -46,8 +46,10 @@ const pkg = require('../package.json');
     { name: chalk.bold.cyan('  ⚙️   Run Dev Environment Check (C, Rust, Go, Python)'), value: 'check-env' },
     { name: chalk.cyan('  💻  Run Dev Environment'), value: 'dev' },
     { name: chalk.blue('  🔍  Lint Code'), value: 'lint' },
+    { name: chalk.yellow('  ✨  Format Code'), value: 'format' },
 
     new inquirer.Separator(chalk.dim('─── Testing & Verification ───────────────────────────────')),
+    { name: chalk.red.bold('  🛡️   Security Audit'), value: 'audit' },
     { name: chalk.cyan('  🧪  Run Angular (Karma) Unit Tests'), value: 'karma' },
     { name: chalk.magenta('  📊  Run Interop Benchmark'), value: 'interop' },
     { name: chalk.hex('#00BFFF')('  📝  Generate KAT Vectors'), value: 'gen-kat' },
@@ -62,12 +64,14 @@ const pkg = require('../package.json');
     new inquirer.Separator(chalk.dim('─── Release ──────────────────────────────────────────────')),
     { name: chalk.yellow('  🏗️   Build Production'), value: 'build' },
     { name: chalk.hex('#FFA500')('  📦  Package Application'), value: 'package' },
+    { name: chalk.hex('#00ADD8')('  🔐  Generate Checksums'), value: 'checksums' },
     { name: chalk.green('  🚀  Publish Release'), value: 'publish' },
 
     new inquirer.Separator(chalk.dim('─── Pipelines ────────────────────────────────────────────')),
     { name: chalk.bold.white('  ⚡  Run All (Lint -> Tests -> Build -> Publish)'), value: 'all' },
 
     new inquirer.Separator(chalk.dim('─── System ───────────────────────────────────────────────')),
+    { name: chalk.magenta('  🧹  Deep Clean Workspace'), value: 'clean' },
     { name: chalk.red.bold('  ❌  Exit'), value: 'exit' },
   ];
 
@@ -116,25 +120,21 @@ const pkg = require('../package.json');
   /**
    * Environment Checker
    * Checks for required development dependencies and offers to install them via winget.
-   * 
+   *
    * @param {boolean} interactive - Whether to prompt for installation via winget
    */
   async function checkEnvironment(interactive = false) {
     if (interactive) printHeader();
     const spinner = ora(chalk.blue('Checking development environment...')).start();
-    
+
     // Inject common installation paths into process.env.PATH so newly installed tools are detected without a terminal restart
-    const commonPaths = [
-      'C:\\Program Files\\LLVM\\bin',
-      'C:\\Program Files\\Go\\bin',
-      path.join(process.env.USERPROFILE || '', '.cargo', 'bin')
-    ];
+    const commonPaths = ['C:\\Program Files\\LLVM\\bin', 'C:\\Program Files\\Go\\bin', path.join(process.env.USERPROFILE || '', '.cargo', 'bin')];
     for (const p of commonPaths) {
       if (!process.env.PATH.includes(p) && fs.existsSync(p)) {
         process.env.PATH = `${p}${path.delimiter}${process.env.PATH}`;
       }
     }
-    
+
     const deps = [
       { name: 'C Compiler (clang/gcc)', cmd: 'clang', args: ['--version'], pkg: 'LLVM.LLVM' },
       { name: 'Rust (cargo)', cmd: 'cargo', args: ['--version'], pkg: 'Rustlang.Rustup' },
@@ -179,17 +179,17 @@ const pkg = require('../package.json');
     }
 
     if (!interactive) {
-      throw new Error(`Missing required development tools: ${missing.map(m => m.name).join(', ')}.\nPlease run the "Run Dev Environment Check" from the main menu to install them.`);
+      throw new Error(`Missing required development tools: ${missing.map((m) => m.name).join(', ')}.\nPlease run the "Run Dev Environment Check" from the main menu to install them.`);
     }
 
-    console.log(chalk.yellow(`\nMissing tools detected: ${missing.map(m => m.name).join(', ')}`));
+    console.log(chalk.yellow(`\nMissing tools detected: ${missing.map((m) => m.name).join(', ')}`));
     const { install } = await inquirer.prompt([
       {
         type: 'confirm',
         name: 'install',
         message: 'Would you like to install the missing dependencies via winget? (Requires UAC Administrator privileges)',
-        default: true
-      }
+        default: true,
+      },
     ]);
 
     if (install) {
@@ -207,7 +207,7 @@ const pkg = require('../package.json');
       }
       console.log(chalk.yellow.bold('\nℹ Note: You may need to restart your terminal or PC for the newly installed tools to be available in your PATH.'));
     }
-    
+
     return false;
   }
 
@@ -260,26 +260,34 @@ const pkg = require('../package.json');
       CAP_OPEN_IOS: 'npx cap open ios',
       // Docker: Headless environment testing
       DOCKER_TEST: 'docker compose -f docker-compose.yml build && python "d-asp/scripts/verify_interop.py" --docker',
+      // Format: Runs polyglot code formatters
+      FORMAT: 'npm run format',
+      // Audit: Runs polyglot security audits
+      AUDIT: 'npm run audit',
+      // Clean: Purges the workspace
+      CLEAN: 'npm run clean',
+      // Checksums: Generates SHA-256 artifact hashes
+      CHECKSUMS: 'npm run checksums',
     };
 
     // Execute selected action
     try {
       if (action === 'all') {
         await checkEnvironment(false); // Fail-safe dependency check
-        
+
         const stages = [
           { name: 'Linting', cmd: CMD.LINT },
           { name: 'Testing (Angular)', cmd: CMD.KARMA },
           { name: 'Testing (Interop)', cmd: CMD.INTEROP },
           { name: 'Testing (KAT)', cmd: CMD.KAT },
           { name: 'Building', cmd: CMD.BUILD },
-          { name: 'Publishing', cmd: CMD.PUBLISH, options: { clear: false } }
+          { name: 'Publishing', cmd: CMD.PUBLISH, options: { clear: false } },
         ];
 
         for (let i = 0; i < stages.length; i++) {
           const stage = stages[i];
-          
-          if (stage.name === 'Publishing' && (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN)) {
+
+          if (stage.name === 'Publishing' && !process.env.GITHUB_TOKEN && !process.env.GH_TOKEN) {
             console.log(chalk.red.bold('\n⚠️  Error: GITHUB_TOKEN not found in environment.'));
             console.log(chalk.yellow('Publishing requires a GitHub Personal Access Token.'));
             console.log(chalk.yellow('Please create a .env file in the root directory with:'));
@@ -289,7 +297,7 @@ const pkg = require('../package.json');
 
           const stageNameWithProgress = `[Stage ${i + 1}/${stages.length}] ${stage.name}`;
           await runShell(stageNameWithProgress, stage.cmd, stage.options || { clear: true });
-          
+
           if (i < stages.length - 1) {
             await new Promise((r) => setTimeout(r, 2000));
           }
@@ -309,6 +317,18 @@ const pkg = require('../package.json');
             break;
           case 'lint':
             await runShell('Linting', CMD.LINT);
+            break;
+          case 'format':
+            await runShell('Formatting', CMD.FORMAT);
+            break;
+          case 'audit':
+            await runShell('Security Audit', CMD.AUDIT, { clear: false });
+            break;
+          case 'clean':
+            await runShell('Cleaning Workspace', CMD.CLEAN, { clear: false });
+            break;
+          case 'checksums':
+            await runShell('Checksum Generation', CMD.CHECKSUMS, { clear: false });
             break;
           case 'karma':
             await runShell('Angular Unit Testing', CMD.KARMA);

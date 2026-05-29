@@ -26,7 +26,7 @@ graph TD
     D -- "32-byte blocks" --> E[ASP Cascade 16 Engine (Static)]
     E -- "XOR with Payload" --> F[Encrypted Storage Enclave]
     end
-    
+
     E -- "Multi-Language Interop" --> F[Rust / Go / C / Node / Python / CUDA]
 ```
 
@@ -66,7 +66,7 @@ graph LR
     P --> N[Funnel Shift Rotation]
     N --> A[Network Word Shuffle]
     end
-    
+
     Start((State Block)) --> S
     A --> Loop{Round < 16?}
     Loop -- Yes --> S
@@ -74,12 +74,13 @@ graph LR
 ```
 
 ### Round Component Details
-| Layer | Operation | Purpose |
-| :--- | :--- | :--- |
-| **Addition** | 32-bit modular addition | Destroy linear correlation |
-| **Substitution** | 32-bit bitwise XOR | Algebraic non-linearity |
-| **Permutation** | 32-bit Funnel Shift | Bit-level cascading diffusion |
-| **Network** | SIMD Word Shuffle | Cross-word diffusion |
+
+| Layer            | Operation               | Purpose                       |
+| :--------------- | :---------------------- | :---------------------------- |
+| **Addition**     | 32-bit modular addition | Destroy linear correlation    |
+| **Substitution** | 32-bit bitwise XOR      | Algebraic non-linearity       |
+| **Permutation**  | 32-bit Funnel Shift     | Bit-level cascading diffusion |
+| **Network**      | SIMD Word Shuffle       | Cross-word diffusion          |
 
 ---
 
@@ -111,8 +112,8 @@ stateDiagram-v2
 
 ## 🏗️ Technical Navigation
 
-| Scope | Resource |
-| :--- | :--- |
-| **Formal Specification** | [**DASP_CRYPTO_MATH.md**](DASP_CRYPTO_MATH.md) |
-| **Implementation Details** | [**D-ASP README**](README.md) |
-| **Security Guarantees** | [**SECURITY.md**](../SECURITY.md) |
+| Scope                      | Resource                                       |
+| :------------------------- | :--------------------------------------------- |
+| **Formal Specification**   | [**DASP_CRYPTO_MATH.md**](DASP_CRYPTO_MATH.md) |
+| **Implementation Details** | [**D-ASP README**](README.md)                  |
+| **Security Guarantees**    | [**SECURITY.md**](../SECURITY.md)              |

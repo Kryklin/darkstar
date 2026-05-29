@@ -1,8 +1,8 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
-use ml_kem::{MlKem1024, MlKem1024Params, KemCore, EncodedSizeUser};
-use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
-use sha2::{Sha256, Sha512, Digest};
 use hmac::{Hmac, Mac};
+use ml_kem::kem::{Decapsulate, DecapsulationKey, Encapsulate, EncapsulationKey};
+use ml_kem::{EncodedSizeUser, KemCore, MlKem1024, MlKem1024Params};
+use sha2::{Digest, Sha256, Sha512};
 use std::slice;
 
 type HmacSha512 = Hmac<Sha512>;
@@ -54,7 +54,13 @@ pub extern "C" fn crypto_sha512(data: *const u8, len: usize, out: *mut u8) {
 }
 
 #[no_mangle]
-pub extern "C" fn crypto_hmac_sha512(key: *const u8, key_len: usize, data: *const u8, data_len: usize, out: *mut u8) {
+pub extern "C" fn crypto_hmac_sha512(
+    key: *const u8,
+    key_len: usize,
+    data: *const u8,
+    data_len: usize,
+    out: *mut u8,
+) {
     let key_slice = unsafe { slice::from_raw_parts(key, key_len) };
     let data_slice = unsafe { slice::from_raw_parts(data, data_len) };
     let mut mac = HmacSha512::new_from_slice(key_slice).unwrap();
@@ -77,7 +83,13 @@ pub extern "C" fn crypto_sha256(data: *const u8, len: usize, out: *mut u8) {
 }
 
 #[no_mangle]
-pub extern "C" fn crypto_hmac_sha256(key: *const u8, key_len: usize, data: *const u8, data_len: usize, out: *mut u8) {
+pub extern "C" fn crypto_hmac_sha256(
+    key: *const u8,
+    key_len: usize,
+    data: *const u8,
+    data_len: usize,
+    out: *mut u8,
+) {
     let key_slice = unsafe { slice::from_raw_parts(key, key_len) };
     let data_slice = unsafe { slice::from_raw_parts(data, data_len) };
     let mut mac = HmacSha256::new_from_slice(key_slice).unwrap();

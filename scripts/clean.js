@@ -1,0 +1,23 @@
+const fs = require('fs');
+const path = require('path');
+
+const targets = ['node_modules', 'dist', 'out', 'd-asp/rust/target', 'd-asp/python/__pycache__', 'd-asp/c/dasp.exe', 'd-asp/go/main.exe'];
+
+console.log('🧹 Purging workspace artifacts...');
+
+targets.forEach((target) => {
+  const fullPath = path.join(__dirname, '..', target);
+  if (fs.existsSync(fullPath)) {
+    try {
+      fs.rmSync(fullPath, { recursive: true, force: true });
+      console.log(`✔ Deleted: ${target}`);
+    } catch (err) {
+      console.error(`✖ Failed to delete: ${target}`);
+      console.error(err);
+    }
+  } else {
+    console.log(`- Skipped: ${target} (Not found)`);
+  }
+});
+
+console.log('✨ Workspace clean complete!');

@@ -2,18 +2,17 @@
  * D-ASP (ASP Cascade 16)
  * Implementation: Rust (Reference "Gold" Implementation)
  *
- * To the extent possible under law, the author(s) have dedicated all copyright 
- * and related and neighboring rights to this software to the public domain 
+ * To the extent possible under law, the author(s) have dedicated all copyright
+ * and related and neighboring rights to this software to the public domain
  * worldwide. This software is distributed without any warranty.
- * 
+ *
  * See <http://creativecommons.org/publicdomain/zero/1.0/>
  */
 
-use sha2::{Sha256, Sha512, Digest};
+use ml_kem::kem::{Decapsulate, DecapsulationKey, Encapsulate, EncapsulationKey};
+use ml_kem::{EncodedSizeUser, KemCore, MlKem1024, MlKem1024Params};
+use sha2::{Digest, Sha256, Sha512};
 use zeroize::Zeroize;
-use ml_kem::{MlKem1024, MlKem1024Params, KemCore, EncodedSizeUser};
-use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
-
 
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::*;
@@ -31,33 +30,59 @@ impl DarkstarChaChaPRNG {
         hasher.update(seed_str.as_bytes());
         let hash = hasher.finalize();
         let mut state = [0u32; 16];
-        state[0] = 0x61707865; state[1] = 0x3320646e; state[2] = 0x79622d32; state[3] = 0x6b206574;
+        state[0] = 0x61707865;
+        state[1] = 0x3320646e;
+        state[2] = 0x79622d32;
+        state[3] = 0x6b206574;
         for i in 0..8 {
-            let chunk = &hash[i*4..(i+1)*4];
-            state[4+i] = u32::from_le_bytes(chunk.try_into().unwrap());
+            let chunk = &hash[i * 4..(i + 1) * 4];
+            state[4 + i] = u32::from_le_bytes(chunk.try_into().unwrap());
         }
-        state[12] = 0; state[13] = 0; state[14] = 0; state[15] = 0;
+        state[12] = 0;
+        state[13] = 0;
+        state[14] = 0;
+        state[15] = 0;
 
         let block = Self::chacha_block(&state);
-        DarkstarChaChaPRNG { state, block, block_idx: 0 }
+        DarkstarChaChaPRNG {
+            state,
+            block,
+            block_idx: 0,
+        }
     }
 
     fn chacha_block(st: &[u32; 16]) -> [u32; 16] {
         let mut x = *st;
-        fn rotate(v: u32, n: u32) -> u32 { v.rotate_left(n) }
+        fn rotate(v: u32, n: u32) -> u32 {
+            v.rotate_left(n)
+        }
         fn quarter_round(x: &mut [u32; 16], a: usize, b: usize, c: usize, d: usize) {
-            x[a] = x[a].wrapping_add(x[b]); x[d] ^= x[a]; x[d] = rotate(x[d], 16);
-            x[c] = x[c].wrapping_add(x[d]); x[b] ^= x[c]; x[b] = rotate(x[b], 12);
-            x[a] = x[a].wrapping_add(x[b]); x[d] ^= x[a]; x[d] = rotate(x[d], 8);
-            x[c] = x[c].wrapping_add(x[d]); x[b] ^= x[c]; x[b] = rotate(x[b], 7);
+            x[a] = x[a].wrapping_add(x[b]);
+            x[d] ^= x[a];
+            x[d] = rotate(x[d], 16);
+            x[c] = x[c].wrapping_add(x[d]);
+            x[b] ^= x[c];
+            x[b] = rotate(x[b], 12);
+            x[a] = x[a].wrapping_add(x[b]);
+            x[d] ^= x[a];
+            x[d] = rotate(x[d], 8);
+            x[c] = x[c].wrapping_add(x[d]);
+            x[b] ^= x[c];
+            x[b] = rotate(x[b], 7);
         }
         for _ in 0..10 {
-            quarter_round(&mut x, 0, 4, 8, 12); quarter_round(&mut x, 1, 5, 9, 13);
-            quarter_round(&mut x, 2, 6, 10, 14); quarter_round(&mut x, 3, 7, 11, 15);
-            quarter_round(&mut x, 0, 5, 10, 15); quarter_round(&mut x, 1, 6, 11, 12);
-            quarter_round(&mut x, 2, 7, 8, 13); quarter_round(&mut x, 3, 4, 9, 14);
+            quarter_round(&mut x, 0, 4, 8, 12);
+            quarter_round(&mut x, 1, 5, 9, 13);
+            quarter_round(&mut x, 2, 6, 10, 14);
+            quarter_round(&mut x, 3, 7, 11, 15);
+            quarter_round(&mut x, 0, 5, 10, 15);
+            quarter_round(&mut x, 1, 6, 11, 12);
+            quarter_round(&mut x, 2, 7, 8, 13);
+            quarter_round(&mut x, 3, 4, 9, 14);
         }
-        for i in 0..16 { x[i] = x[i].wrapping_add(st[i]); }
+        for i in 0..16 {
+            x[i] = x[i].wrapping_add(st[i]);
+        }
         x
     }
 
@@ -80,27 +105,35 @@ unsafe fn dasp_cascade_32(block: &mut [u8; 32], round_keys: &[u32; 128]) {
 
     macro_rules! dasp_round {
         ($r:expr) => {{
-            let rk = _mm256_loadu_si256(round_keys[($r)*8..].as_ptr() as *const __m256i);
+            let rk = _mm256_loadu_si256(round_keys[($r) * 8..].as_ptr() as *const __m256i);
             state = _mm256_add_epi32(state, rk);
             let rc = _mm256_set1_epi32((0x9E3779B9u32).wrapping_add($r) as i32);
             state = _mm256_xor_si256(state, rc);
-            
+
             let swapped = if (($r) % 3) == 0 {
-                _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(3,2,1,0, 7,6,5,4))
+                _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(3, 2, 1, 0, 7, 6, 5, 4))
             } else if (($r) % 3) == 1 {
-                _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(5,4,7,6, 1,0,3,2))
+                _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(5, 4, 7, 6, 1, 0, 3, 2))
             } else {
-                _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(6,7,4,5, 2,3,0,1))
+                _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(6, 7, 4, 5, 2, 3, 0, 1))
             };
-            
+
             let a_new = _mm256_add_epi32(state, swapped);
             let mut b_new = _mm256_xor_si256(state, a_new);
-            
-            const ROT: i32 = if ($r) % 4 == 0 { 16 } else if ($r) % 4 == 1 { 12 } else if ($r) % 4 == 2 { 8 } else { 7 };
+
+            const ROT: i32 = if ($r) % 4 == 0 {
+                16
+            } else if ($r) % 4 == 1 {
+                12
+            } else if ($r) % 4 == 2 {
+                8
+            } else {
+                7
+            };
             let rotl = _mm256_slli_epi32(b_new, ROT);
             let rotr = _mm256_srli_epi32(b_new, 32 - ROT);
             b_new = _mm256_or_si256(rotl, rotr);
-            
+
             if (($r) % 3) == 0 {
                 state = _mm256_blend_epi32(a_new, b_new, 0xF0);
             } else if (($r) % 3) == 1 {
@@ -111,10 +144,22 @@ unsafe fn dasp_cascade_32(block: &mut [u8; 32], round_keys: &[u32; 128]) {
         }};
     }
 
-    dasp_round!(0); dasp_round!(1); dasp_round!(2); dasp_round!(3);
-    dasp_round!(4); dasp_round!(5); dasp_round!(6); dasp_round!(7);
-    dasp_round!(8); dasp_round!(9); dasp_round!(10); dasp_round!(11);
-    dasp_round!(12); dasp_round!(13); dasp_round!(14); dasp_round!(15);
+    dasp_round!(0);
+    dasp_round!(1);
+    dasp_round!(2);
+    dasp_round!(3);
+    dasp_round!(4);
+    dasp_round!(5);
+    dasp_round!(6);
+    dasp_round!(7);
+    dasp_round!(8);
+    dasp_round!(9);
+    dasp_round!(10);
+    dasp_round!(11);
+    dasp_round!(12);
+    dasp_round!(13);
+    dasp_round!(14);
+    dasp_round!(15);
 
     _mm256_storeu_si256(block.as_mut_ptr() as *mut __m256i, state);
 }
@@ -124,22 +169,26 @@ unsafe fn dasp_cascade_32(block: &mut [u8; 32], round_keys: &[u32; 128]) {
 fn dasp_cascade_32(block: &mut [u8; 32], round_keys: &[u32; 128]) {
     let mut state = [0u32; 8];
     for i in 0..8 {
-        let chunk = &block[i*4..(i+1)*4];
+        let chunk = &block[i * 4..(i + 1) * 4];
         state[i] = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
     }
-    
+
     let dist_arr = [4, 2, 1];
     let rot_arr = [16, 12, 8, 7];
-    
+
     for r in 0..16 {
-        let rk = &round_keys[r*8..(r+1)*8];
-        for j in 0..8 { state[j] = state[j].wrapping_add(rk[j]); }
+        let rk = &round_keys[r * 8..(r + 1) * 8];
+        for j in 0..8 {
+            state[j] = state[j].wrapping_add(rk[j]);
+        }
         let rc = 0x9E3779B9u32.wrapping_add(r as u32);
-        for j in 0..8 { state[j] ^= rc; }
-        
+        for j in 0..8 {
+            state[j] ^= rc;
+        }
+
         let dist = dist_arr[r % 3];
         let rot = rot_arr[r % 4];
-        
+
         let mut i = 0;
         while i < 8 {
             for j in 0..dist {
@@ -152,16 +201,18 @@ fn dasp_cascade_32(block: &mut [u8; 32], round_keys: &[u32; 128]) {
             i += dist * 2;
         }
     }
-    
+
     for i in 0..8 {
         let bytes = state[i].to_le_bytes();
-        block[i*4..(i+1)*4].copy_from_slice(&bytes);
+        block[i * 4..(i + 1) * 4].copy_from_slice(&bytes);
     }
 }
 
 #[allow(dead_code)]
 fn generate_checksum(numbers: &[usize]) -> usize {
-    if numbers.is_empty() { return 0; }
+    if numbers.is_empty() {
+        return 0;
+    }
     let sum: usize = numbers.iter().sum();
     sum % 997
 }
@@ -173,17 +224,27 @@ fn clean_hex(s: &str) -> String {
 struct DarkstarCrypt {}
 
 impl DarkstarCrypt {
-    fn new() -> Self { DarkstarCrypt {} }
+    fn new() -> Self {
+        DarkstarCrypt {}
+    }
 
-    fn encrypt(&self, payload_str: &str, pk_hex: &str, hwid: Option<Vec<u8>>, telemetry: bool) -> Result<String, Box<dyn std::error::Error>> {
+    fn encrypt(
+        &self,
+        payload_str: &str,
+        pk_hex: &str,
+        hwid: Option<Vec<u8>>,
+        telemetry: bool,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let total_start = std::time::Instant::now();
-        
+
         let pk_bytes: [u8; 1568] = hex::decode(clean_hex(pk_hex))?
-            .try_into().map_err(|_| format!("Invalid public key length (Arg length: {})", pk_hex.len()))?;
+            .try_into()
+            .map_err(|_| format!("Invalid public key length (Arg length: {})", pk_hex.len()))?;
 
         let kem_start = std::time::Instant::now();
         let ek = EncapsulationKey::<MlKem1024Params>::from_bytes(&pk_bytes.into());
-        let (ct, mut ss) = ek.encapsulate(&mut rand::thread_rng())
+        let (ct, mut ss) = ek
+            .encapsulate(&mut rand::thread_rng())
             .map_err(|e| format!("KEM failed: {:?}", e))?;
         let ct_hex = hex::encode(&ct[..]);
         let ss_bytes = &ss[..];
@@ -242,15 +303,17 @@ impl DarkstarCrypt {
 
         let mut payload_bytes = payload_str.as_bytes().to_vec();
         let cascade_start = std::time::Instant::now();
-        
+
         // CTR Mode Encryption
         let mut nonce = chain_state.clone();
         for chunk in payload_bytes.chunks_mut(32) {
             let mut block = [0u8; 32];
             block.copy_from_slice(&nonce);
-            
+
             #[cfg(target_arch = "x86_64")]
-            unsafe { dasp_cascade_32(&mut block, &round_keys); }
+            unsafe {
+                dasp_cascade_32(&mut block, &round_keys);
+            }
             #[cfg(not(target_arch = "x86_64"))]
             dasp_cascade_32(&mut block, &round_keys);
 
@@ -261,7 +324,9 @@ impl DarkstarCrypt {
             // Increment nonce
             for b in nonce.iter_mut() {
                 *b = b.wrapping_add(1);
-                if *b != 0 { break; }
+                if *b != 0 {
+                    break;
+                }
             }
         }
         let cascade_duration = cascade_start.elapsed();
@@ -282,13 +347,16 @@ impl DarkstarCrypt {
         round_keys.zeroize();
 
         if std::env::var("DASP_DIAGNOSTIC").is_ok() {
-            eprintln!("{}", serde_json::json!({
-                "diagnostics": {
-                    "stage1_blended_ss": blended_ss_hex,
-                    "stage2_word_key": word_key_hex,
-                    "stage4_mac": mac_tag
-                }
-            }));
+            eprintln!(
+                "{}",
+                serde_json::json!({
+                    "diagnostics": {
+                        "stage1_blended_ss": blended_ss_hex,
+                        "stage2_word_key": word_key_hex,
+                        "stage4_mac": mac_tag
+                    }
+                })
+            );
         }
         let total_duration = total_start.elapsed();
 
@@ -315,29 +383,38 @@ impl DarkstarCrypt {
                     "kdf_us": kdf_duration.as_micros(),
                     "cascade_us": cascade_duration.as_micros(),
                     "total_us": total_duration.as_micros()
-                })
+                }),
             );
         }
-        
+
         Ok(res_obj.to_string())
     }
 
-    fn decrypt(&self, encrypted_data_raw: &str, sk_hex: &str, hwid: Option<Vec<u8>>, telemetry: bool) -> Result<String, Box<dyn std::error::Error>> {
+    fn decrypt(
+        &self,
+        encrypted_data_raw: &str,
+        sk_hex: &str,
+        hwid: Option<Vec<u8>>,
+        telemetry: bool,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let total_start = std::time::Instant::now();
         let value: serde_json::Value = serde_json::from_str(encrypted_data_raw)?;
-        
+
         let ct_hex = value["ct"].as_str().ok_or("Missing CT")?;
         let encrypted_content = value["data"].as_str().ok_or("Missing data")?;
         let mac_tag_hex = value["mac"].as_str().ok_or("Missing MAC")?;
 
         let sk_bytes: [u8; 3168] = hex::decode(clean_hex(sk_hex))?
-            .try_into().map_err(|_| format!("Invalid secret key length (Arg length: {})", sk_hex.len()))?;
+            .try_into()
+            .map_err(|_| format!("Invalid secret key length (Arg length: {})", sk_hex.len()))?;
         let ct_bytes: [u8; 1568] = hex::decode(clean_hex(ct_hex))?
-            .try_into().map_err(|_| format!("Invalid ciphertext length (Arg length: {})", ct_hex.len()))?;
+            .try_into()
+            .map_err(|_| format!("Invalid ciphertext length (Arg length: {})", ct_hex.len()))?;
 
         let kem_start = std::time::Instant::now();
         let dk = DecapsulationKey::<MlKem1024Params>::from_bytes(&sk_bytes.into());
-        let mut ss = dk.decapsulate(&ct_bytes.into())
+        let mut ss = dk
+            .decapsulate(&ct_bytes.into())
             .map_err(|e| format!("KEM decapsulation failed: {:?}", e))?;
         let ss_bytes = &ss[..];
         let kem_duration = kem_start.elapsed();
@@ -370,7 +447,7 @@ impl DarkstarCrypt {
         hmac_hasher.update(b"hmac");
         hmac_hasher.update(blended_ss);
         let mut hmac_key = hmac_hasher.finalize();
-        
+
         let mut active_password_str = hex::encode(cipher_key);
         ss.zeroize();
         let kdf_duration = kdf_start.elapsed();
@@ -391,13 +468,16 @@ impl DarkstarCrypt {
         let mac_tag_actual = hex::encode(mac.clone().finalize().into_bytes());
 
         if std::env::var("DASP_DIAGNOSTIC").is_ok() {
-            eprintln!("{}", serde_json::json!({
-                "diagnostics": {
-                    "stage1_blended_ss": blended_ss_hex,
-                    "stage2_word_key": word_key_hex,
-                    "stage4_mac": mac_tag_actual
-                }
-            }));
+            eprintln!(
+                "{}",
+                serde_json::json!({
+                    "diagnostics": {
+                        "stage1_blended_ss": blended_ss_hex,
+                        "stage2_word_key": word_key_hex,
+                        "stage4_mac": mac_tag_actual
+                    }
+                })
+            );
         }
 
         mac.verify_slice(&hex::decode(mac_tag_hex)?)
@@ -418,9 +498,11 @@ impl DarkstarCrypt {
         for chunk in payload_bytes.chunks_mut(32) {
             let mut block = [0u8; 32];
             block.copy_from_slice(&nonce);
-            
+
             #[cfg(target_arch = "x86_64")]
-            unsafe { dasp_cascade_32(&mut block, &round_keys); }
+            unsafe {
+                dasp_cascade_32(&mut block, &round_keys);
+            }
             #[cfg(not(target_arch = "x86_64"))]
             dasp_cascade_32(&mut block, &round_keys);
 
@@ -431,7 +513,9 @@ impl DarkstarCrypt {
             // Increment nonce
             for b in nonce.iter_mut() {
                 *b = b.wrapping_add(1);
-                if *b != 0 { break; }
+                if *b != 0 {
+                    break;
+                }
             }
         }
         let cascade_duration = cascade_start.elapsed();
@@ -447,16 +531,19 @@ impl DarkstarCrypt {
         chain_state.zeroize();
         active_password_str.zeroize();
         round_keys.zeroize();
-        
+
         if telemetry {
-            eprintln!("{}", serde_json::json!({
-                "timings": {
-                    "kem_us": kem_duration.as_micros(),
-                    "kdf_us": kdf_duration.as_micros(),
-                    "cascade_us": cascade_duration.as_micros(),
-                    "total_us": total_duration.as_micros()
-                }
-            }));
+            eprintln!(
+                "{}",
+                serde_json::json!({
+                    "timings": {
+                        "kem_us": kem_duration.as_micros(),
+                        "kdf_us": kdf_duration.as_micros(),
+                        "cascade_us": cascade_duration.as_micros(),
+                        "total_us": total_duration.as_micros()
+                    }
+                })
+            );
         }
 
         Ok(result)
@@ -487,7 +574,7 @@ fn main() {
     let mut raw_args: Vec<String> = std::env::args().skip(1).collect();
     let mut hwid: Option<Vec<u8>> = None;
     let mut telemetry = false;
-    
+
     let mut i = 0;
     while i < raw_args.len() {
         if raw_args[i] == "--hwid" && i + 1 < raw_args.len() {
@@ -515,10 +602,13 @@ fn main() {
 
     match command.as_str() {
         "encrypt" => {
-            if raw_args.len() < 2 { print_usage(); return; }
+            if raw_args.len() < 2 {
+                print_usage();
+                return;
+            }
             let payload = resolve_arg(&raw_args[0]);
             let pk_hex = resolve_arg(&raw_args[1]);
-            
+
             match dc.encrypt(&payload, &pk_hex, hwid, telemetry) {
                 Ok(res_json) => println!("{}", res_json),
                 Err(e) => {
@@ -526,9 +616,12 @@ fn main() {
                     std::process::exit(1);
                 }
             }
-        },
+        }
         "decrypt" => {
-            if raw_args.len() < 2 { print_usage(); return; }
+            if raw_args.len() < 2 {
+                print_usage();
+                return;
+            }
             let data = resolve_arg(&raw_args[0]);
             let sk_hex = resolve_arg(&raw_args[1]);
 
@@ -539,12 +632,12 @@ fn main() {
                     std::process::exit(1);
                 }
             }
-        },
+        }
         "keygen" => {
             let (dk, ek) = MlKem1024::generate(&mut rand::thread_rng());
             println!("PK: {}", hex::encode(ek.as_bytes()));
             println!("SK: {}", hex::encode(dk.as_bytes()));
-        },
+        }
         "test" => {
             let payload = "apple banana cherry date elderberry fig grape honeydew";
             let (dk, ek) = MlKem1024::generate(&mut rand::thread_rng());
@@ -565,19 +658,19 @@ fn main() {
                                 println!("Result: FAILED (mismatch)");
                                 std::process::exit(1);
                             }
-                        },
+                        }
                         Err(e) => {
                             eprintln!("Test Decryption Failed: {}", e);
                             std::process::exit(1);
                         }
                     }
-                },
+                }
                 Err(e) => {
                     eprintln!("Test Encryption Failed: {}", e);
                     std::process::exit(1);
                 }
             }
-        },
+        }
         _ => {
             eprintln!("Error: Unknown command '{}'", command);
             print_usage();

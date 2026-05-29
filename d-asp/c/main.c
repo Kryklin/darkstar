@@ -1,12 +1,12 @@
 /**
  * @file main.c
  * @brief CLI Interface for the D-ASP Cryptographic Suite.
- * 
+ *
  * Part of the D-ASP (ASP Cascade 16) Cryptographic Suite.
- * To the extent possible under law, the author(s) have dedicated all copyright 
- * and related and neighboring rights to this software to the public domain 
+ * To the extent possible under law, the author(s) have dedicated all copyright
+ * and related and neighboring rights to this software to the public domain
  * worldwide. This software is distributed without any warranty.
- * 
+ *
  * See <http://creativecommons.org/publicdomain/zero/1.0/>
  */
 
@@ -58,9 +58,9 @@ extern int dasp_decapsulate_data_inner(uint8_t *base_payload,
  * @brief Decodes a hexadecimal string into a byte array.
  */
 static void hex_decode(const char *in, uint8_t *out, size_t out_len) {
-    for (size_t i = 0; i < out_len; i++) {
-        sscanf(in + i * 2, "%2hhx", &out[i]);
-    }
+  for (size_t i = 0; i < out_len; i++) {
+    sscanf(in + i * 2, "%2hhx", &out[i]);
+  }
 }
 
 /**
@@ -96,7 +96,7 @@ static char *read_file(const char *path) {
 /**
  * @brief Extracts a string value from a simple JSON-formatted string.
  * Optimized for the D-ASP benchmark telemetry format.
- * 
+ *
  * @param json The JSON string to parse.
  * @param key The key to look for.
  * @return Heap-allocated value string or NULL if not found.
@@ -178,7 +178,8 @@ int main(int argc, char **argv) {
     char *payload_str = argv[2];
     if (payload_str[0] == '@') {
       payload_str = read_file(payload_str + 1);
-      if (!payload_str) return 3;
+      if (!payload_str)
+        return 3;
     } else {
       payload_str = strdup(payload_str);
     }
@@ -186,7 +187,8 @@ int main(int argc, char **argv) {
     char *pk_str = argv[3];
     if (pk_str[0] == '@') {
       pk_str = read_file(pk_str + 1);
-      if (!pk_str) return 3;
+      if (!pk_str)
+        return 3;
     } else {
       pk_str = strdup(pk_str);
     }
@@ -217,14 +219,15 @@ int main(int argc, char **argv) {
     hex_encode(payload, p_len, data_hex);
 
     if (telemetry) {
-      printf(
-          "{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\",\"timings\":{\"kem_us\":"
-          "%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,\"total_us\":%lld}}\n",
-          data_hex, ct_hex, mac_hex, (inner_end - inner_start) / 3,
-          (inner_end - inner_start) / 3, (inner_end - inner_start) / 3,
-          total_end - total_start);
+      printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\",\"timings\":{\"kem_"
+             "us\":"
+             "%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,\"total_us\":%lld}}\n",
+             data_hex, ct_hex, mac_hex, (inner_end - inner_start) / 3,
+             (inner_end - inner_start) / 3, (inner_end - inner_start) / 3,
+             total_end - total_start);
     } else {
-      printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\"}\n", data_hex, ct_hex, mac_hex);
+      printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\"}\n", data_hex,
+             ct_hex, mac_hex);
     }
 
     free(data_hex);
@@ -242,7 +245,8 @@ int main(int argc, char **argv) {
     char *json = NULL;
     if (json_file[0] == '@') {
       json = read_file(json_file + 1);
-      if (!json) return 3;
+      if (!json)
+        return 3;
     } else {
       json = strdup(json_file);
     }
@@ -250,7 +254,8 @@ int main(int argc, char **argv) {
     char *sk_str = argv[3];
     if (sk_str[0] == '@') {
       sk_str = read_file(sk_str + 1);
-      if (!sk_str) return 3;
+      if (!sk_str)
+        return 3;
     } else {
       sk_str = strdup(sk_str);
     }
@@ -262,7 +267,8 @@ int main(int argc, char **argv) {
     char *ct_hex = extract_json_string(json, "ct");
     char *mac_hex = extract_json_string(json, "mac");
 
-    if (!data_hex || !ct_hex || !mac_hex) return 4;
+    if (!data_hex || !ct_hex || !mac_hex)
+      return 4;
 
     size_t p_len = strlen(data_hex) / 2;
     uint8_t *payload = malloc(p_len);
@@ -282,12 +288,13 @@ int main(int argc, char **argv) {
     long long total_end = get_us();
 
     if (telemetry) {
-      fprintf(stderr,
-              "{\"timings\":{\"kem_us\":%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,"
-              "\"total_us\":%lld}}\n",
-              (inner_end - inner_start) / 3, // Mock proportions for kem
-              (inner_end - inner_start) / 3, (inner_end - inner_start) / 3,
-              total_end - total_start);
+      fprintf(
+          stderr,
+          "{\"timings\":{\"kem_us\":%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,"
+          "\"total_us\":%lld}}\n",
+          (inner_end - inner_start) / 3, // Mock proportions for kem
+          (inner_end - inner_start) / 3, (inner_end - inner_start) / 3,
+          total_end - total_start);
     }
 
     if (res == 0) {

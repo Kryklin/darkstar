@@ -5,42 +5,42 @@ services:
     build:
       context: d-asp/rust
       dockerfile: Dockerfile
-    command: ["test"]
+    command: ['test']
     container_name: dasp-rust
 
   dasp-go:
     build:
       context: d-asp/go
       dockerfile: Dockerfile
-    command: ["test"]
+    command: ['test']
     container_name: dasp-go
 
   dasp-node:
     build:
       context: d-asp/node
       dockerfile: Dockerfile
-    command: ["test"]
+    command: ['test']
     container_name: dasp-node
 
   dasp-python:
     build:
       context: d-asp/python
       dockerfile: Dockerfile
-    command: ["test"]
+    command: ['test']
     container_name: dasp-python
 
   dasp-c:
     build:
       context: d-asp/c
       dockerfile: Dockerfile
-    command: ["test"]
+    command: ['test']
     container_name: dasp-c
 
   dasp-cuda:
     build:
       context: d-asp
       dockerfile: cuda/Dockerfile
-    command: ["test"]
+    command: ['test']
     deploy:
       resources:
         reservations:

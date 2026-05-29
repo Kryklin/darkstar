@@ -503,7 +503,7 @@ ipcMain.handle('dasp-encrypt', async (_event, payload: string, pkHex: string, en
     args.push('--hwid', hwid);
   }
   args.push('encrypt', payload, pkHex);
-  
+
   try {
     return await runDAsPCommand(engine, args);
   } catch (error: unknown) {

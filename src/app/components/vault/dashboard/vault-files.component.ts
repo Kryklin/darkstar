@@ -13,16 +13,7 @@ import { FormsModule } from '@angular/forms';
 @Component({
   selector: 'app-vault-files',
   standalone: true,
-  imports: [
-    CommonModule, 
-    FormsModule,
-    MatIconModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatTooltipModule,
-    MatSnackBarModule
-  ],
+  imports: [CommonModule, FormsModule, MatIconModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatTooltipModule, MatSnackBarModule],
   templateUrl: './vault-files.component.html',
   styleUrls: ['./vault-files.component.scss'],
 })

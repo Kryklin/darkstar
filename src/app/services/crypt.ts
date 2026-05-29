@@ -74,8 +74,6 @@ export class CryptService {
     }
   }
 
-
-
   /**
    * Encrypts binary data (Uint8Array) using D-ASP hardened key derivation and AES-256-GCM.
    */
@@ -130,28 +128,20 @@ export class CryptService {
     // 1. Initial PBKDF2 to get a stable seed for D-KASP engine
     const enc = new TextEncoder();
     const keyMaterial = await window.crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']);
-    const seed = await window.crypto.subtle.deriveBits(
-      { name: 'PBKDF2', salt: salt as BufferSource, iterations: this.PBKDF2_ITERATIONS / 10, hash: 'SHA-256' },
-      keyMaterial,
-      256,
-    );
+    const seed = await window.crypto.subtle.deriveBits({ name: 'PBKDF2', salt: salt as BufferSource, iterations: this.PBKDF2_ITERATIONS / 10, hash: 'SHA-256' }, keyMaterial, 256);
     const seedHex = this.buf2hex(seed);
 
     // 2. Pass the label through the ASP Cascade engine (16-round structural permutation)
-    // If recipientPqcPublicKey is provided, we use it for post-quantum hardening. 
+    // If recipientPqcPublicKey is provided, we use it for post-quantum hardening.
     // Otherwise, we fallback to our derived symmetric seed.
     const keyToUse = recipientPqcPublicKey || seedHex;
-    
+
     const { encryptedData } = await this.encrypt(label, keyToUse);
 
     // 3. Hash the hardened output to get the final 256-bit symmetric key
     const finalHash = await window.crypto.subtle.digest('SHA-256', enc.encode(encryptedData));
     return new Uint8Array(finalHash);
   }
-
-
-
-
 
   private buf2hex(buffer: ArrayBuffer | Uint8Array): string {
     return Array.from(new Uint8Array(buffer))

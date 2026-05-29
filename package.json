@@ -31,7 +31,20 @@
     "lint:python": "npx pyright d-asp/python/dasp.py",
     "lint:ts": "npx tsc --noEmit",
     "lint:engines": "npm run lint:rust && npm run lint:go && npm run lint:c && npm run lint:python",
-    "lint": "npm run lint:engines && npm run lint:ts"
+    "lint": "npm run lint:engines && npm run lint:ts",
+    "format:ts": "npx prettier --write .",
+    "format:rust": "cd d-asp/rust && cargo fmt",
+    "format:go": "cd d-asp/go && gofmt -w .",
+    "format:c": "cd d-asp/c && \"C:\\Program Files\\LLVM\\bin\\clang-format.exe\" -i *.c *.h",
+    "format:python": "python -m pip install black && python -m black d-asp/python/dasp.py",
+    "format": "npm run format:ts && npm run format:rust && npm run format:go && npm run format:c && npm run format:python",
+    "audit:npm": "npm audit",
+    "audit:rust": "cd d-asp/rust && cargo audit",
+    "audit:go": "cd d-asp/go && govulncheck ./...",
+    "audit:python": "python -m pip-audit",
+    "audit": "npm run audit:npm && npm run audit:rust && npm run audit:go && npm run audit:python",
+    "clean": "node scripts/clean.js",
+    "checksums": "node scripts/checksums.js"
   },
   "prettier": {
     "printWidth": 200,

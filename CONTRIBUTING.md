@@ -40,33 +40,34 @@ We welcome suggestions for new features and improvements to existing functionali
 6.  Issue that pull request!
 
 ## Development Setup
- 
- 1.  **Install dependencies**:
- 
-     ```bash
-     npm install
-     ```
- 
- 2.  **Launch the Interactive CLI (Strongly Recommended)**:
- 
-     Darkstar utilizes a terminal-based dashboard for all developer operations. This tool automates engine synchronization, environment setup, and testing.
- 
-     ```bash
-     npm start
-     ```
- 
-     See the [**Darkstar CLI Guide**](DARKSTAR_CLI_GUIDE.md) for a full breakdown of options (Dev Env, Lint, Interop, Release).
 
-4.  **Formatting**:
+1.  **Install dependencies**:
+
+    ```bash
+    npm install
+    ```
+
+2.  **Launch the Interactive CLI (Strongly Recommended)**:
+
+    Darkstar utilizes a terminal-based dashboard for all developer operations. This tool automates engine synchronization, environment setup, and testing.
+
+    ```bash
+    npm start
+    ```
+
+    See the [**Darkstar CLI Guide**](DARKSTAR_CLI_GUIDE.md) for a full breakdown of options (Dev Env, Lint, Interop, Release).
+
+3.  **Formatting**:
+
     ```bash
     npx prettier --write .
     ```
 
-5.  **C Implementation Requirements**:
+4.  **C Implementation Requirements**:
     - Requires **Clang 15+** or **GCC 12+**.
     - Build locally using: `npm run build:c`.
 
-6.  **CUDA Implementation Requirements**:
+5.  **CUDA Implementation Requirements**:
     - Requires **NVIDIA CUDA Toolkit (nvcc)**.
     - Build locally using the batch script: `d-asp/cuda/build_cuda.bat`.
 

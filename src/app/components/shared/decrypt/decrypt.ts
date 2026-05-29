@@ -29,7 +29,6 @@ export class SharedDecryptComponent {
   decryptedMnemonic = '';
   error = '';
 
-
   inputType: 'text' | 'file' = 'text';
   fileName = '';
   isFileProcessing = false;
@@ -155,8 +154,6 @@ export class SharedDecryptComponent {
       }
       passwordOrSk = skHex;
 
-
-
       let hwid: string | undefined = undefined;
 
       if (this.useHardwareId) {
@@ -200,6 +197,4 @@ export class SharedDecryptComponent {
     this.showQrReceiver = false;
     this.useHardwareId = false;
   }
-
-
 }

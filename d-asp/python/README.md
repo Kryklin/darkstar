@@ -28,22 +28,27 @@ The Python implementation is provided primarily for cross-platform validation, r
 ## 🚀 Usage
 
 ### Install Dependencies
+
 Requires Python 3.9+.
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### Key Generation
+
 ```bash
 python dasp.py keygen
 ```
 
 ### Encryption
+
 ```bash
 python dasp.py encrypt "your payload" <PUBLIC_KEY_HEX>
 ```
 
 ### Decryption
+
 ```bash
 python dasp.py decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ```
@@ -51,6 +56,7 @@ python dasp.py decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ---
 
 ## 🏗️ Architecture Alignment
+
 This implementation adheres to the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification, implementing the full 16-round **ASP Cascade** engine to ensure bit-perfect ciphertext parity with Rust, Go, C, and Node.js.
 
 [**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)

@@ -28,14 +28,7 @@
               }
             ],
             "styles": ["src/styles.scss"],
-            "allowedCommonJsDependencies": [
-              "crypto-js",
-              "qrcode",
-              "canvg",
-              "html2canvas",
-              "raf",
-              "rgbcolor"
-            ]
+            "allowedCommonJsDependencies": ["crypto-js", "qrcode", "canvg", "html2canvas", "raf", "rgbcolor"]
           },
           "configurations": {
             "production": {

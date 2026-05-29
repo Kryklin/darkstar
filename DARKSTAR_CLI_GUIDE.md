@@ -27,6 +27,7 @@ npm start
 ```
 
 ### Prerequisites
+
 - **Node.js**: v19.0.0+ (required for ESM dynamic imports used in the CLI).
 - **GitHub Token**: Required for external releases (see [Environment Configuration](#environment-configuration)).
 
@@ -35,46 +36,52 @@ npm start
 ## 🛠️ Operations Breakdown
 
 ### Development
+
 Operations used during local feature development and engine synchronization.
 
-| Option | Display Name | Command Executed | Description |
-| :--- | :--- | :--- | :--- |
-| `dev` | **Run Dev Environment** | `ng serve` + `electron` | Launches Angular and Electron concurrently with live reload. |
-| `lint` | **Lint Code** | `ng lint` | Executes ESLint across the TypeScript/Angular source. |
-| `karma` | **Run Unit Tests** | `ng test ...` | Runs Angular unit tests in Headless Chrome. |
-| `interop`| **Interop Benchmark** | `verify_interop.py` | Verifies bit-perfect parity across all language engines (including CUDA). |
-| `kat` | **KAT Verification** | `verify_kat.py` | Runs the Known Answer Test suite (NIST Parity) across all engines, including GPU execution. |
+| Option    | Display Name            | Command Executed        | Description                                                                                 |
+| :-------- | :---------------------- | :---------------------- | :------------------------------------------------------------------------------------------ |
+| `dev`     | **Run Dev Environment** | `ng serve` + `electron` | Launches Angular and Electron concurrently with live reload.                                |
+| `lint`    | **Lint Code**           | `ng lint`               | Executes ESLint across the TypeScript/Angular source.                                       |
+| `karma`   | **Run Unit Tests**      | `ng test ...`           | Runs Angular unit tests in Headless Chrome.                                                 |
+| `interop` | **Interop Benchmark**   | `verify_interop.py`     | Verifies bit-perfect parity across all language engines (including CUDA).                   |
+| `kat`     | **KAT Verification**    | `verify_kat.py`         | Runs the Known Answer Test suite (NIST Parity) across all engines, including GPU execution. |
 
 ### Mobile (Capacitor)
+
 Tools for bridging the core application to Android and iOS runtimes.
 
-| Option | Display Name | Command Executed | Description |
-| :--- | :--- | :--- | :--- |
-| `cap:sync` | **Sync Mobile Assets** | `npx cap sync` | Builds the web bundle and syncs it to native mobile activities. |
-| `cap:open:android` | **Open Android** | `npx cap open android` | Launches the current project in Android Studio. |
-| `cap:open:ios` | **Open Xcode** | `npx cap open ios` | Launches the current project in Xcode. |
+| Option             | Display Name           | Command Executed       | Description                                                     |
+| :----------------- | :--------------------- | :--------------------- | :-------------------------------------------------------------- |
+| `cap:sync`         | **Sync Mobile Assets** | `npx cap sync`         | Builds the web bundle and syncs it to native mobile activities. |
+| `cap:open:android` | **Open Android**       | `npx cap open android` | Launches the current project in Android Studio.                 |
+| `cap:open:ios`     | **Open Xcode**         | `npx cap open ios`     | Launches the current project in Xcode.                          |
 
 ### Release & Packaging
+
 Production-grade deployment tasks.
 
-| Option | Display Name | Command Executed | Description |
-| :--- | :--- | :--- | :--- |
-| `build` | **Build Production** | `ng build ...` | Compiles a production-hardened web and electron bundle. |
-| `package`| **Package App** | `forge package` | Generates native bundles (Squirrel, DMG, DEB, RPM). |
-| `publish`| **Publish Release** | `forge publish` | Uploads the current build to GitHub Releases. |
+| Option    | Display Name         | Command Executed | Description                                             |
+| :-------- | :------------------- | :--------------- | :------------------------------------------------------ |
+| `build`   | **Build Production** | `ng build ...`   | Compiles a production-hardened web and electron bundle. |
+| `package` | **Package App**      | `forge package`  | Generates native bundles (Squirrel, DMG, DEB, RPM).     |
+| `publish` | **Publish Release**  | `forge publish`  | Uploads the current build to GitHub Releases.           |
 
 ### System
+
 System-level diagnostic and headless verification utilities.
 
-| Option | Display Name | Command Executed | Description |
-| :--- | :--- | :--- | :--- |
-| `check-env` | **Dev Environment Check** | Custom Script | Verifies the installation of C, Rust, Go, and Python compilers. |
-| `docker-test` | **Headless Docker Test** | `docker compose ... up` | Orchestrates a standalone Docker Compose matrix to test language engines off-host. |
+| Option        | Display Name              | Command Executed        | Description                                                                        |
+| :------------ | :------------------------ | :---------------------- | :--------------------------------------------------------------------------------- |
+| `check-env`   | **Dev Environment Check** | Custom Script           | Verifies the installation of C, Rust, Go, and Python compilers.                    |
+| `docker-test` | **Headless Docker Test**  | `docker compose ... up` | Orchestrates a standalone Docker Compose matrix to test language engines off-host. |
 
 ---
 
 ## ⚡ Automated Pipelines
+
 The **"Run All"** option executes the full release sequence in a single automation loop:
+
 1.  **Lint** (Security & Style)
 2.  **Angular Tests** (Headless Unit Tests)
 3.  **Interop Tests** (Cross-Language Parity)

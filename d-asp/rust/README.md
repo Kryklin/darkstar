@@ -28,23 +28,29 @@ The Rust implementation serves as the definitive source of truth for bit-perfect
 ## 🚀 Usage
 
 ### Build
+
 Requires Rust 1.70+.
+
 ```bash
 cargo build --release
 ```
 
 ### Key Generation
+
 Generate a new post-quantum identity.
+
 ```bash
 ./target/release/d-asp keygen
 ```
 
 ### Encryption
+
 ```bash
 ./target/release/d-asp encrypt "your payload" <PUBLIC_KEY_HEX>
 ```
 
 ### Decryption
+
 ```bash
 ./target/release/d-asp decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ```
@@ -52,6 +58,7 @@ Generate a new post-quantum identity.
 ---
 
 ## 🏗️ Architecture Alignment
+
 This implementation strictly follows the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification, implementing all 16 rounds of the **ASP Cascade** engine with deterministic ChaCha20-based path logic to ensure bit-perfect ciphertext parity with Go, C, Node.js, and Python.
 
 [**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)

@@ -33,9 +33,9 @@ export type VaultTab = 'notes' | 'files' | 'settings';
   selector: 'app-vault-dashboard',
   standalone: true,
   imports: [
-    CommonModule, 
-    FormsModule, 
-    MarkdownModule, 
+    CommonModule,
+    FormsModule,
+    MarkdownModule,
     VaultFilesComponent,
     MatSidenavModule,
     MatListModule,
@@ -50,7 +50,7 @@ export type VaultTab = 'notes' | 'files' | 'settings';
     MatSnackBarModule,
     MatDialogModule,
     MatCardModule,
-    MatExpansionModule
+    MatExpansionModule,
   ],
   templateUrl: './vault-dashboard.component.html',
   styleUrls: ['./vault-dashboard.component.scss'],
@@ -78,13 +78,8 @@ export class VaultDashboardComponent {
     const n = this.notes();
 
     if (!term) return n;
-    return n.filter((note) => 
-      note.title.toLowerCase().includes(term) || 
-      note.content.toLowerCase().includes(term) || 
-      note.tags?.some((t) => t.toLowerCase().includes(term))
-    );
+    return n.filter((note) => note.title.toLowerCase().includes(term) || note.content.toLowerCase().includes(term) || note.tags?.some((t) => t.toLowerCase().includes(term)));
   });
-
 
   @ViewChild('editorArea') editorArea?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('imageInput') imageInput?: ElementRef<HTMLInputElement>;
@@ -217,12 +212,7 @@ export class VaultDashboardComponent {
 
   onContentChange() {
     if (this.selectedNote()) {
-      this.vaultService.updateNote(
-        this.selectedNote()!.id,
-        this.currentTitle,
-        this.currentContent,
-        this.currentTags
-      );
+      this.vaultService.updateNote(this.selectedNote()!.id, this.currentTitle, this.currentContent, this.currentTags);
     }
   }
 
@@ -254,13 +244,7 @@ export class VaultDashboardComponent {
       const decrypted = await this.timeLockService.unlockNoteContent(this.currentContent, note.timeLock, (p) => this.lockProgress.set(p));
       this.currentContent = decrypted;
       note.timeLock.isLocked = false;
-      this.vaultService.updateNote(
-        note.id,
-        this.currentTitle,
-        this.currentContent,
-        this.currentTags,
-        note.timeLock
-      );
+      this.vaultService.updateNote(note.id, this.currentTitle, this.currentContent, this.currentTags, note.timeLock);
     } catch (e) {
       console.error(e);
       alert('Failed to unlock. Ensure computation completes.');

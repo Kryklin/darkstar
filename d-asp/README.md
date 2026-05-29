@@ -39,19 +39,20 @@ The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engi
 The suite is instrumented for exhaustive telemetry across all cryptographic and architectural layers.
 
 ### System Telemetry
+
 - **CPU**: Intel Core i7-based (6 Phys / 12 Log Cores) @ 2.60 GHz
 - **Cache**: 1.5MB L2 / 12MB L3
 - **Storage**: SSD-backed (High-speed IO)
 - **Security Standards**: Fully compliant with Grade-1024 structural requirements.
 
-| Engine | Total Time | Casca Time | Casca CPB | Total CPB | Ops/sec |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Rust** | 12.98 ms | 3 μs | 251.88 | 1.05M | 77.03 |
-| **Go** | 12.46 ms | 0 μs | 0.00 | 1.01M | 80.21 |
-| **C**    | 11.58 ms | 66 μs | 5362.50 | 0.94M | 86.29 |
-| **Node.js** | 110.03 ms | 269 μs | 21860.31 | 8.94M | 9.09 |
-| **Python** | 113.53 ms | 236 μs | 19154.69 | 9.22M | 8.81 |
-| **CUDA** | 125.85 ms | 116 μs | 9449.38 | 10.2M | 7.95 |
+| Engine      | Total Time | Casca Time | Casca CPB | Total CPB | Ops/sec |
+| :---------- | :--------- | :--------- | :-------- | :-------- | :------ |
+| **Rust**    | 12.98 ms   | 3 μs       | 251.88    | 1.05M     | 77.03   |
+| **Go**      | 12.46 ms   | 0 μs       | 0.00      | 1.01M     | 80.21   |
+| **C**       | 11.58 ms   | 66 μs      | 5362.50   | 0.94M     | 86.29   |
+| **Node.js** | 110.03 ms  | 269 μs     | 21860.31  | 8.94M     | 9.09    |
+| **Python**  | 113.53 ms  | 236 μs     | 19154.69  | 9.22M     | 8.81    |
+| **CUDA**    | 125.85 ms  | 116 μs     | 9449.38   | 10.2M     | 7.95    |
 
 > [!NOTE]
 > **Cycles per Byte (CPB)** is calculated for the 32-byte (256-bit) internal state. Native engines (Go, Rust, C) achieve elite CPB efficiency by leveraging structural optimizations.
@@ -64,10 +65,10 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 
 D-ASP is subject to rigorous **Known Answer Tests (KAT)** to ensure bit-perfect deterministic behavior across all implementation languages.
 
-| Test Case | Description | Status | Parity |
-| :--- | :--- | :--- | :--- |
-| **V1_STD** | Standard Payload (32-byte) | `PASSED` | Bit-Perfect |
-| **V2_IDB** | Identity Bound (HWID) | `PASSED` | Bit-Perfect |
+| Test Case  | Description                    | Status   | Parity      |
+| :--------- | :----------------------------- | :------- | :---------- |
+| **V1_STD** | Standard Payload (32-byte)     | `PASSED` | Bit-Perfect |
+| **V2_IDB** | Identity Bound (HWID)          | `PASSED` | Bit-Perfect |
 | **V3_LNG** | Long-form Payload (>128 bytes) | `PASSED` | Bit-Perfect |
 
 > **Audit Result**: All engines (Rust, Go, C, Node, Python) produced a bit-for-bit match with the Grade-1024 reference vectors.
@@ -78,14 +79,14 @@ D-ASP is subject to rigorous **Known Answer Tests (KAT)** to ensure bit-perfect 
 
 All implementations are designed as **high-performance, standalone sources** to ensure maximum portability and zero external cryptographic dependencies (where possible).
 
-| Language    | Engine Path                | Core Implementation    | Constant-Time           |
-| :---------- | :------------------------- | :--------------------- | :---------------------- |
-| **Rust**    | `rust/src/main.rs`         | ML-KEM / ASP Cascade 16 | **Full**                |
-| **Go**      | `go/main.go`               | ML-KEM / ASP Cascade 16 | **Full**                |
-| **C/C++**   | `c/spna_engine.c`          | FFI ML-KEM / ASP Cascade 16| **Full**                |
-| **Python**  | `python/dasp.py`           | ASP Cascade 16          | **Branchless-Equivalent**|
-| **Node.js** | `node/darkstar_crypt.js`   | ASP Cascade 16 / Bridge | **Branchless-Equivalent**|
-| **CUDA**    | `cuda/dasp_kernel.cu`      | ASP Cascade 16 GPU      | **Full**                |
+| Language    | Engine Path              | Core Implementation         | Constant-Time             |
+| :---------- | :----------------------- | :-------------------------- | :------------------------ |
+| **Rust**    | `rust/src/main.rs`       | ML-KEM / ASP Cascade 16     | **Full**                  |
+| **Go**      | `go/main.go`             | ML-KEM / ASP Cascade 16     | **Full**                  |
+| **C/C++**   | `c/spna_engine.c`        | FFI ML-KEM / ASP Cascade 16 | **Full**                  |
+| **Python**  | `python/dasp.py`         | ASP Cascade 16              | **Branchless-Equivalent** |
+| **Node.js** | `node/darkstar_crypt.js` | ASP Cascade 16 / Bridge     | **Branchless-Equivalent** |
+| **CUDA**    | `cuda/dasp_kernel.cu`    | ASP Cascade 16 GPU          | **Full**                  |
 
 ---
 
@@ -126,6 +127,7 @@ D-ASP utilizes a flattened JSON envelope for universal compatibility:
 ## 🛑 C Engine Error Codes
 
 The optimized C Engine provides granular exit codes for debugging production environments:
+
 - **`2`**: Missing CLI arguments.
 - **`3`**: Input file not found or inaccessible.
 - **`4`**: Failed to parse JSON blob or extract required structural fields (`data`, `ct`, `mac`).

@@ -28,22 +28,27 @@ The C implementation is designed to serve as the exact procedural specification 
 ## 🚀 Usage
 
 ### Build (NIST Reference Implementation)
+
 Requires `clang` natively installed. Build the core engine using the following command:
+
 ```bash
 clang -o dasp.exe main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha256.c aes.c rng.c -I. -lws2_32 -luserenv -ladvapi32 -lbcrypt
 ```
 
 ### Key Generation
+
 ```bash
 ./dasp.exe keygen
 ```
 
 ### Encryption (NIST KEM-DEM Hybrid)
+
 ```bash
 ./dasp.exe encrypt "your payload" <PK_HEX> [--hwid <HWID_HEX>]
 ```
 
 ### Decryption
+
 ```bash
 ./dasp.exe decrypt '{"data":"...","ct":"...","mac":"..."}' <SK_HEX> [--hwid <HWID_HEX>]
 ```
@@ -51,6 +56,7 @@ clang -o dasp.exe main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha256.c aes
 ---
 
 ## 🏗️ Architecture Alignment
-This implementation closely shadows the design intent outlined in [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md). All substitution and permutation network logic directly models the NIST-compliant structure. 
+
+This implementation closely shadows the design intent outlined in [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md). All substitution and permutation network logic directly models the NIST-compliant structure.
 
 [**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)

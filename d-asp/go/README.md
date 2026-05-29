@@ -28,22 +28,27 @@ The Go implementation is designed for systems integration and high-velocity cryp
 ## 🚀 Usage
 
 ### Build
+
 Requires Go 1.25+.
+
 ```bash
 go build -o main.exe main.go
 ```
 
 ### Key Generation
+
 ```bash
 ./main.exe keygen
 ```
 
 ### Encryption
+
 ```bash
 ./main.exe encrypt "your payload" <PUBLIC_KEY_HEX>
 ```
 
 ### Decryption
+
 ```bash
 ./main.exe decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
 ```
@@ -51,6 +56,7 @@ go build -o main.exe main.go
 ---
 
 ## 🏗️ Architecture Alignment
+
 This implementation strictly follows the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification. It utilizes the same 16-round **ASP Cascade** engine and MDS matrix constants as the reference.
 
 [**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)

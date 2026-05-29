@@ -7,7 +7,6 @@ describe('CryptService', () => {
   const testPassword = 'mysecretpassword';
   let mockWin: { electronAPI: { dAsPEncrypt: jasmine.Spy; dAsPDecrypt: jasmine.Spy } };
 
-
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [CryptService],
