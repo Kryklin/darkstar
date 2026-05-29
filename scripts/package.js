@@ -149,10 +149,14 @@ const pkg = require('../package.json');
     }
 
     const deps = [
-      { name: 'C Compiler (clang/gcc)', cmd: 'clang', args: ['--version'], pkg: 'LLVM.LLVM' },
-      { name: 'Rust (cargo)', cmd: 'cargo', args: ['--version'], pkg: 'Rustlang.Rustup' },
-      { name: 'Go', cmd: 'go', args: ['version'], pkg: 'GoLang.Go' },
-      { name: 'Python', cmd: 'python', args: ['--version'], pkg: 'Python.Python.3.11' },
+      { name: 'C Compiler (clang/gcc)', cmd: 'clang', args: ['--version'], pkg: 'LLVM.LLVM', installer: 'winget' },
+      { name: 'Rust (cargo)', cmd: 'cargo', args: ['--version'], pkg: 'Rustlang.Rustup', installer: 'winget' },
+      { name: 'Go', cmd: 'go', args: ['version'], pkg: 'GoLang.Go', installer: 'winget' },
+      { name: 'Python', cmd: 'python', args: ['--version'], pkg: 'Python.Python.3.11', installer: 'winget' },
+      { name: 'Rust Audit (cargo-audit)', cmd: 'cargo-audit', args: ['--version'], pkg: 'cargo-audit', installer: 'cargo' },
+      { name: 'Go Audit (govulncheck)', cmd: 'govulncheck', args: ['-version'], pkg: 'golang.org/x/vuln/cmd/govulncheck@latest', installer: 'go' },
+      { name: 'Python Audit (pip-audit)', cmd: 'python', args: ['-m', 'pip_audit', '--version'], pkg: 'pip-audit', installer: 'pip' },
+      { name: 'Python Formatter (black)', cmd: 'python', args: ['-m', 'black', '--version'], pkg: 'black', installer: 'pip' }
     ];
 
     const missing = [];
@@ -207,11 +211,19 @@ const pkg = require('../package.json');
 
     if (install) {
       for (const dep of missing) {
-        const installSpinner = ora(chalk.blue(`Installing ${dep.name} via winget...`)).start();
+        const installSpinner = ora(chalk.blue(`Installing ${dep.name}...`)).start();
         try {
-          // Elevated powershell process for winget installation
-          const psCommand = `Start-Process -Wait -Verb RunAs "winget" -ArgumentList "install", "${dep.pkg}", "--silent", "--accept-package-agreements", "--accept-source-agreements"`;
-          await execa('powershell', ['-NoProfile', '-Command', psCommand]);
+          if (dep.installer === 'winget') {
+            // Elevated powershell process for winget installation
+            const psCommand = `Start-Process -Wait -Verb RunAs "winget" -ArgumentList "install", "${dep.pkg}", "--silent", "--accept-package-agreements", "--accept-source-agreements"`;
+            await execa('powershell', ['-NoProfile', '-Command', psCommand]);
+          } else if (dep.installer === 'cargo') {
+            await execa('cargo', ['install', dep.pkg], { preferLocal: true });
+          } else if (dep.installer === 'go') {
+            await execa('go', ['install', dep.pkg], { preferLocal: true });
+          } else if (dep.installer === 'pip') {
+            await execa('python', ['-m', 'pip', 'install', dep.pkg], { preferLocal: true });
+          }
           installSpinner.succeed(chalk.green(`Successfully installed ${dep.name}!`));
         } catch (err) {
           installSpinner.fail(chalk.red(`Failed to install ${dep.name}.`));
