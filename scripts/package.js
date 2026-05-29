@@ -85,7 +85,7 @@ const pkg = require('../package.json');
    */
   async function runStep(stepName, command, args = [], options = {}) {
     // Extract custom options from execa options
-    const { clear = true, ...execaOptions } = options;
+    const { clear = true, showOutput = false, ...execaOptions } = options;
 
     if (clear) {
       printHeader(); // Refresh header for unified UI
@@ -93,15 +93,28 @@ const pkg = require('../package.json');
 
     const spinner = ora(chalk.blue(`Running ${stepName}...`)).start();
     try {
-      spinner.stop(); // Stop spinner to stream output to console directly
-      console.log(chalk.dim(`\n> Executing: ${command} ${args.join(' ')}\n`));
+      if (showOutput) {
+        spinner.stop(); // Stop spinner to stream output to console directly
+        console.log(chalk.dim(`\n> Executing: ${command} ${args.join(' ')}\n`));
+      }
 
-      // Execute command, inheriting stdio to show real-time output
-      await execa(command, args, { stdio: 'inherit', preferLocal: true, ...execaOptions });
+      // Execute command, inheriting stdio only if showOutput is true
+      const stdioMode = showOutput ? 'inherit' : 'pipe';
+      await execa(command, args, { stdio: stdioMode, preferLocal: true, ...execaOptions });
 
-      console.log(chalk.green.bold(`\n✔ ${stepName} Completed Successfully!\n`));
+      if (showOutput) {
+        console.log(chalk.green.bold(`\n✔ ${stepName} Completed Successfully!\n`));
+      } else {
+        spinner.succeed(chalk.green.bold(`${stepName} Completed Successfully!`));
+      }
     } catch (error) {
-      console.log(chalk.red.bold(`\n✖ ${stepName} Failed!`));
+      if (!showOutput) {
+        spinner.fail(chalk.red.bold(`${stepName} Failed!`));
+        if (error.stdout) console.log(error.stdout);
+        if (error.stderr) console.error(chalk.red(error.stderr));
+      } else {
+        console.log(chalk.red.bold(`\n✖ ${stepName} Failed!`));
+      }
       throw error;
     }
   }
@@ -313,7 +326,7 @@ const pkg = require('../package.json');
             await runShell('Headless Docker Test', CMD.DOCKER_TEST);
             break;
           case 'dev':
-            await runShell('Dev Environment', CMD.DEV);
+            await runShell('Dev Environment', CMD.DEV, { showOutput: true });
             break;
           case 'lint':
             await runShell('Linting', CMD.LINT);

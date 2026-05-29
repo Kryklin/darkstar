@@ -9,27 +9,29 @@ const destDir = path.join(process.env.USERPROFILE, '.cargo', 'bin');
 
 console.log('Downloading cargo-audit...');
 const file = fs.createWriteStream(tempZip);
-https.get(url, (response) => {
-  if (response.statusCode === 301 || response.statusCode === 302) {
-    https.get(response.headers.location, (res) => {
-      res.pipe(file);
-      file.on('finish', () => {
-        file.close(() => {
-          console.log('Download complete. Extracting...');
-          try {
-            execSync(`powershell -Command "Expand-Archive -Path '${tempZip}' -DestinationPath '${process.env.TEMP}\\cargo-audit-ext' -Force"`);
-            const exePath = path.join(process.env.TEMP, 'cargo-audit-ext', 'cargo-audit-x86_64-pc-windows-msvc', 'cargo-audit.exe');
-            if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-            fs.copyFileSync(exePath, path.join(destDir, 'cargo-audit.exe'));
-            console.log('cargo-audit installed successfully to .cargo/bin!');
-          } catch (e) {
-            console.error('Failed to extract:', e.message);
-          }
+https
+  .get(url, (response) => {
+    if (response.statusCode === 301 || response.statusCode === 302) {
+      https.get(response.headers.location, (res) => {
+        res.pipe(file);
+        file.on('finish', () => {
+          file.close(() => {
+            console.log('Download complete. Extracting...');
+            try {
+              execSync(`powershell -Command "Expand-Archive -Path '${tempZip}' -DestinationPath '${process.env.TEMP}\\cargo-audit-ext' -Force"`);
+              const exePath = path.join(process.env.TEMP, 'cargo-audit-ext', 'cargo-audit-x86_64-pc-windows-msvc', 'cargo-audit.exe');
+              if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+              fs.copyFileSync(exePath, path.join(destDir, 'cargo-audit.exe'));
+              console.log('cargo-audit installed successfully to .cargo/bin!');
+            } catch (e) {
+              console.error('Failed to extract:', e.message);
+            }
+          });
         });
       });
-    });
-  }
-}).on('error', (err) => {
-  fs.unlink(tempZip, () => {});
-  console.error('Error downloading:', err.message);
-});
+    }
+  })
+  .on('error', (err) => {
+    fs.unlink(tempZip, () => {});
+    console.error('Error downloading:', err.message);
+  });
