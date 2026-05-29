@@ -49,12 +49,16 @@ const pkg = require('../package.json');
     { name: chalk.yellow('  ✨  Format Code'), value: 'format' },
 
     new inquirer.Separator(chalk.dim('─── Testing & Verification ───────────────────────────────')),
-    { name: chalk.red.bold('  🛡️   Security Audit'), value: 'audit' },
     { name: chalk.cyan('  🧪  Run Angular (Karma) Unit Tests'), value: 'karma' },
     { name: chalk.magenta('  📊  Run Interop Benchmark'), value: 'interop' },
     { name: chalk.hex('#00BFFF')('  📝  Generate KAT Vectors'), value: 'gen-kat' },
     { name: chalk.hex('#A020F0')('  🤖  Run KAT Verification (Bit-Perfect Check)'), value: 'kat' },
     { name: chalk.bold.magenta('  🐳  Run Headless Docker Test'), value: 'docker-test' },
+
+    new inquirer.Separator(chalk.dim('─── Advanced Security & Auditing ─────────────────────────')),
+    { name: chalk.red.bold('  🛡️   Run Memory Sanitizers (C/Rust)'), value: 'asan' },
+    { name: chalk.green('  ⚖️   Run License Compliance Audit'), value: 'license-audit' },
+    { name: chalk.yellow('  🕵️   Run Full Security Audit'), value: 'audit' },
 
     new inquirer.Separator(chalk.dim('─── Mobile (Capacitor) ───────────────────────────────────')),
     { name: chalk.cyan('  📱  Sync Mobile Assets'), value: 'cap:sync' },
@@ -347,7 +351,13 @@ const pkg = require('../package.json');
             await runShell('Formatting', CMD.FORMAT);
             break;
           case 'audit':
-            await runShell('Security Audit', CMD.AUDIT, { clear: false });
+            await runShell('Security Audit', CMD.AUDIT, { showOutput: true });
+            break;
+          case 'asan':
+            await runShell('Memory Sanitizers', 'node scripts/asan.js', { showOutput: true });
+            break;
+          case 'license-audit':
+            await runShell('License Audit', 'node scripts/license-audit.js', { showOutput: true });
             break;
           case 'clean':
             await runShell('Cleaning Workspace', CMD.CLEAN, { clear: false });

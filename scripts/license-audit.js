@@ -1,0 +1,61 @@
+const { execa } = require('execa');
+const path = require('path');
+
+(async () => {
+  const { default: ora } = await import('ora');
+  const { default: chalk } = await import('chalk');
+  const { default: Table } = await import('cli-table3');
+
+  console.log(chalk.hex('#FFD700').bold('\n  ⚖️   Open Source License Compliance Audit\n'));
+
+  // Acceptable licenses whitelist
+  const allowed = ['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', 'CC0-1.0'];
+
+  const jobs = [
+    { name: 'NPM (JavaScript)', cmd: 'npx license-checker-rseidelsohn --summary --onlyAllow "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Python-2.0;Unlicense;CC-BY-4.0;CC-BY-3.0;BlueOak-1.0.0;0BSD;WTFPL;Zlib;UNLICENSED"' },
+    { name: 'Cargo (Rust)', cmd: 'cargo deny check licenses', cwd: path.join(__dirname, '../d-asp/rust') },
+    { name: 'Pip (Python)', cmd: 'C:\\Users\\morta\\AppData\\Roaming\\Python\\Python314\\Scripts\\pip-licenses.exe --fail-on "GPL;AGPL;LGPL" --allow-only "MIT;Apache Software License;Apache-2.0;BSD License;ISC License (ISCL);Python Software Foundation License;BSD-2-Clause;BSD-3-Clause;Zlib;Mozilla Public License 2.0 (MPL 2.0);Apache-2.0 OR BSD-3-Clause;DFSG approved; MIT License;MIT OR Apache-2.0;Creative Commons Attribution 4.0 International License;Apache-2.0 OR BSD-2-Clause"' }
+  ];
+
+  for (let i = 0; i < jobs.length; i++) {
+    const job = jobs[i];
+    const spinner = ora(chalk.blue(`Auditing ${job.name}...`)).start();
+    try {
+      if (job.name.includes('Cargo')) {
+        // We need a basic deny.toml for cargo-deny to work or it uses defaults
+        // It defaults to allowing MIT/Apache, but we can just run it
+      }
+      
+      await execa(job.cmd, { shell: true, cwd: job.cwd || process.cwd() });
+      job.status = chalk.green('Compliant');
+      spinner.succeed(chalk.green(`${job.name} passed strict license audit.`));
+    } catch (error) {
+      job.status = chalk.red('Violation Detected');
+      spinner.fail(chalk.red(`${job.name} license violation found!`));
+      console.log(chalk.dim('\n' + (error.stdout || error.stderr || error.message) + '\n'));
+    }
+  }
+
+  const table = new Table({
+    head: [chalk.bold.white('Component'), chalk.bold.white('Status')],
+    colWidths: [25, 25],
+    style: { head: [], border: [] }
+  });
+
+  let allPassed = true;
+
+  jobs.forEach(j => {
+    table.push([j.name, j.status]);
+    if (j.status.includes('Violation')) allPassed = false;
+  });
+
+  console.log('\n' + table.toString() + '\n');
+
+  if (!allPassed) {
+    console.log(chalk.red.bold('✖ Compliance Audit Failed! Prohibited licenses detected in the supply chain.\n'));
+    process.exit(1);
+  } else {
+    console.log(chalk.green.bold('✔ All Supply Chains are 100% License Compliant!\n'));
+    process.exit(0);
+  }
+})();

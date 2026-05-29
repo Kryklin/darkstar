@@ -34,7 +34,7 @@ ENGINES = {
     },
     "C": {
         "cwd": os.path.join(BASE_DIR, "c"),
-        "cmd": [os.path.join(BASE_DIR, "c", "dasp.exe")],
+        "cmd": [os.path.join(BASE_DIR, "c", os.environ.get("DASP_C_BINARY", "dasp.exe"))],
     },
     "CUDA": {
         "cwd": os.path.join(BASE_DIR, "cuda"),
