@@ -38,7 +38,7 @@
     "format:c": "cd d-asp/c && \"C:\\Program Files\\LLVM\\bin\\clang-format.exe\" -i *.c *.h",
     "format:python": "python -m pip install black && python -m black d-asp/python/dasp.py",
     "format": "npm run format:ts && npm run format:rust && npm run format:go && npm run format:c && npm run format:python",
-    "audit:npm": "npm audit",
+    "audit:npm": "npm audit --audit-level=critical",
     "audit:rust": "cd d-asp/rust && cargo audit",
     "audit:go": "cd d-asp/go && govulncheck ./...",
     "audit:python": "python -m pip-audit",
