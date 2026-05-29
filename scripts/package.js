@@ -235,7 +235,7 @@ const pkg = require('../package.json');
      * Centralized configuration for all build/test/release commands.
      */
     const CMD = {
-      LINT: 'ng lint',
+      LINT: 'npm run lint',
       // Karma: Runs headless Angular unit tests
       KARMA: 'ng test --watch=false --browsers=ChromeHeadless',
       // Interop: Executes the Python interop verification script

@@ -21,9 +21,7 @@ static uint64_t load64(const uint8_t *x) {
     return r;
 }
 
-static void store64(uint8_t *x, uint64_t u) {
-    for (int i = 0; i < 8; i++) x[i] = (uint8_t)(u >> (8 * i));
-}
+
 
 /**
  * @brief Keccak-f[1600] state permutation.

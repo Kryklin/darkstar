@@ -57,6 +57,9 @@ static void AES256_CTR_DRBG_Update(unsigned char *provided_data, unsigned char *
  * @param security_strength Ignored (fixed at 256 bits).
  */
 void randombytes_init(unsigned char *entropy_input, unsigned char *personalization_string, int security_strength) {
+    (void)entropy_input;
+    (void)personalization_string;
+    (void)security_strength;
     unsigned char seed_material[48];
     memcpy(seed_material, entropy_input, 48);
     if (personalization_string) {

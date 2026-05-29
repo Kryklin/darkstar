@@ -11,10 +11,9 @@
 
 use sha2::{Sha256, Sha512, Digest};
 use zeroize::Zeroize;
-use std::fs;
 use ml_kem::{MlKem1024, MlKem1024Params, KemCore, EncodedSizeUser};
 use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
-use serde_json;
+
 
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::*;
@@ -45,7 +44,7 @@ impl DarkstarChaChaPRNG {
 
     fn chacha_block(st: &[u32; 16]) -> [u32; 16] {
         let mut x = *st;
-        fn rotate(v: u32, n: u32) -> u32 { (v << n) | (v >> (32 - n)) }
+        fn rotate(v: u32, n: u32) -> u32 { v.rotate_left(n) }
         fn quarter_round(x: &mut [u32; 16], a: usize, b: usize, c: usize, d: usize) {
             x[a] = x[a].wrapping_add(x[b]); x[d] ^= x[a]; x[d] = rotate(x[d], 16);
             x[c] = x[c].wrapping_add(x[d]); x[b] ^= x[c]; x[b] = rotate(x[b], 12);
@@ -97,9 +96,9 @@ unsafe fn dasp_cascade_32(block: &mut [u8; 32], round_keys: &[u32; 128]) {
             let a_new = _mm256_add_epi32(state, swapped);
             let mut b_new = _mm256_xor_si256(state, a_new);
             
-            const rot: i32 = if ($r) % 4 == 0 { 16 } else if ($r) % 4 == 1 { 12 } else if ($r) % 4 == 2 { 8 } else { 7 };
-            let rotl = _mm256_slli_epi32(b_new, rot);
-            let rotr = _mm256_srli_epi32(b_new, 32 - rot);
+            const ROT: i32 = if ($r) % 4 == 0 { 16 } else if ($r) % 4 == 1 { 12 } else if ($r) % 4 == 2 { 8 } else { 7 };
+            let rotl = _mm256_slli_epi32(b_new, ROT);
+            let rotr = _mm256_srli_epi32(b_new, 32 - ROT);
             b_new = _mm256_or_si256(rotl, rotr);
             
             if (($r) % 3) == 0 {
@@ -160,6 +159,7 @@ fn dasp_cascade_32(block: &mut [u8; 32], round_keys: &[u32; 128]) {
     }
 }
 
+#[allow(dead_code)]
 fn generate_checksum(numbers: &[usize]) -> usize {
     if numbers.is_empty() { return 0; }
     let sum: usize = numbers.iter().sum();
@@ -178,7 +178,7 @@ impl DarkstarCrypt {
     fn encrypt(&self, payload_str: &str, pk_hex: &str, hwid: Option<Vec<u8>>, telemetry: bool) -> Result<String, Box<dyn std::error::Error>> {
         let total_start = std::time::Instant::now();
         
-        let pk_bytes: [u8; 1568] = hex::decode(clean_hex(&pk_hex))?
+        let pk_bytes: [u8; 1568] = hex::decode(clean_hex(pk_hex))?
             .try_into().map_err(|_| format!("Invalid public key length (Arg length: {})", pk_hex.len()))?;
 
         let kem_start = std::time::Instant::now();
@@ -199,26 +199,26 @@ impl DarkstarCrypt {
         };
         let mut prk_mac = <HmacSha256 as hmac::Mac>::new_from_slice(salt)
             .map_err(|e| format!("HMAC init error: {:?}", e))?;
-        prk_mac.update(&ss_bytes);
+        prk_mac.update(ss_bytes);
         let mut prk = prk_mac.finalize().into_bytes();
 
         let mut expand_mac = <HmacSha256 as hmac::Mac>::new_from_slice(&prk)
             .map_err(|e| format!("HMAC init error: {:?}", e))?;
         expand_mac.update(b"dasp-identity-v3\x01");
         let mut blended_ss = expand_mac.finalize().into_bytes();
-        let blended_ss_hex = hex::encode(&blended_ss);
+        let blended_ss_hex = hex::encode(blended_ss);
 
         let mut cipher_hasher = Sha256::new();
         cipher_hasher.update(b"cipher");
-        cipher_hasher.update(&blended_ss);
+        cipher_hasher.update(blended_ss);
         let mut cipher_key = cipher_hasher.finalize();
 
         let mut hmac_hasher = Sha256::new();
         hmac_hasher.update(b"hmac");
-        hmac_hasher.update(&blended_ss);
+        hmac_hasher.update(blended_ss);
         let mut hmac_key = hmac_hasher.finalize();
 
-        let mut active_password_str = hex::encode(&cipher_key);
+        let mut active_password_str = hex::encode(cipher_key);
         ss.zeroize();
         let kdf_duration = kdf_start.elapsed();
 
@@ -236,8 +236,8 @@ impl DarkstarCrypt {
 
         let mut rng = DarkstarChaChaPRNG::new(&word_key_hex);
         let mut round_keys = [0u32; 128];
-        for i in 0..128 {
-            round_keys[i] = rng.next();
+        for key in round_keys.iter_mut() {
+            *key = rng.next();
         }
 
         let mut payload_bytes = payload_str.as_bytes().to_vec();
@@ -330,7 +330,7 @@ impl DarkstarCrypt {
         let encrypted_content = value["data"].as_str().ok_or("Missing data")?;
         let mac_tag_hex = value["mac"].as_str().ok_or("Missing MAC")?;
 
-        let sk_bytes: [u8; 3168] = hex::decode(clean_hex(&sk_hex))?
+        let sk_bytes: [u8; 3168] = hex::decode(clean_hex(sk_hex))?
             .try_into().map_err(|_| format!("Invalid secret key length (Arg length: {})", sk_hex.len()))?;
         let ct_bytes: [u8; 1568] = hex::decode(clean_hex(ct_hex))?
             .try_into().map_err(|_| format!("Invalid ciphertext length (Arg length: {})", ct_hex.len()))?;
@@ -352,26 +352,26 @@ impl DarkstarCrypt {
         };
         let mut prk_mac = <HmacSha256 as hmac::Mac>::new_from_slice(salt)
             .map_err(|e| format!("HMAC init error: {:?}", e))?;
-        prk_mac.update(&ss_bytes);
+        prk_mac.update(ss_bytes);
         let mut prk = prk_mac.finalize().into_bytes();
 
         let mut expand_mac = <HmacSha256 as hmac::Mac>::new_from_slice(&prk)
             .map_err(|e| format!("HMAC init error: {:?}", e))?;
         expand_mac.update(b"dasp-identity-v3\x01");
         let mut blended_ss = expand_mac.finalize().into_bytes();
-        let blended_ss_hex = hex::encode(&blended_ss);
+        let blended_ss_hex = hex::encode(blended_ss);
 
         let mut cipher_hasher = Sha256::new();
         cipher_hasher.update(b"cipher");
-        cipher_hasher.update(&blended_ss);
+        cipher_hasher.update(blended_ss);
         let mut cipher_key = cipher_hasher.finalize();
 
         let mut hmac_hasher = Sha256::new();
         hmac_hasher.update(b"hmac");
-        hmac_hasher.update(&blended_ss);
+        hmac_hasher.update(blended_ss);
         let mut hmac_key = hmac_hasher.finalize();
         
-        let mut active_password_str = hex::encode(&cipher_key);
+        let mut active_password_str = hex::encode(cipher_key);
         ss.zeroize();
         let kdf_duration = kdf_start.elapsed();
 
@@ -409,8 +409,8 @@ impl DarkstarCrypt {
 
         let mut rng = DarkstarChaChaPRNG::new(&word_key_hex);
         let mut round_keys = [0u32; 128];
-        for i in 0..128 {
-            round_keys[i] = rng.next();
+        for key in round_keys.iter_mut() {
+            *key = rng.next();
         }
 
         let cascade_start = std::time::Instant::now();
@@ -473,8 +473,8 @@ fn print_usage() {
 }
 
 fn resolve_arg(arg: &str) -> String {
-    if arg.starts_with('@') {
-        let path = std::path::Path::new(&arg[1..]);
+    if let Some(stripped) = arg.strip_prefix('@') {
+        let path = std::path::Path::new(stripped);
         let content = std::fs::read_to_string(path)
             .unwrap_or_else(|e| panic!("Error reading argument @file '{}': {}", path.display(), e));
         content.trim().to_string()

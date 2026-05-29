@@ -220,7 +220,7 @@ int crypto_kem_dec(uint8_t *ss, const uint8_t *ct, const uint8_t *sk) {
     uint8_t ct_prime[CRYPTO_CIPHERTEXTBYTES];
     uint8_t h_pk[32];
     int i;
-    polyvec s, b, skpv;
+    polyvec b, skpv;
     poly v, mp;
 
     // unpack_ciphertext and sk

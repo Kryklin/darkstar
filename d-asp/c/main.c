@@ -137,8 +137,7 @@ int main(int argc, char **argv) {
   int use_hwid = 0;
 
   uint8_t seed[48];
-  int use_seed = 0;
-  int use_telemetry = 0;
+  int telemetry = 0;
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--hwid") == 0 && i + 1 < argc) {
@@ -155,10 +154,9 @@ int main(int argc, char **argv) {
     if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
       hex_decode(argv[i + 1], seed, 48);
       randombytes_init(seed, NULL, 256);
-      use_seed = 1;
     }
     if (strcmp(argv[i], "--telemetry") == 0) {
-      use_telemetry = 1;
+      telemetry = 1;
     }
   }
 
@@ -218,7 +216,7 @@ int main(int argc, char **argv) {
     char *data_hex = malloc(p_len * 2 + 1);
     hex_encode(payload, p_len, data_hex);
 
-    if (use_telemetry) {
+    if (telemetry) {
       printf(
           "{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\",\"timings\":{\"kem_us\":"
           "%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,\"total_us\":%lld}}\n",
@@ -283,7 +281,7 @@ int main(int argc, char **argv) {
 
     long long total_end = get_us();
 
-    if (use_telemetry) {
+    if (telemetry) {
       fprintf(stderr,
               "{\"timings\":{\"kem_us\":%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,"
               "\"total_us\":%lld}}\n",

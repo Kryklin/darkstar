@@ -24,7 +24,14 @@
     "test:interop": "python d-asp/scripts/verify_interop.py",
     "cap:sync": "npx cap sync",
     "cap:open:android": "npx cap open android",
-    "cap:open:ios": "npx cap open ios"
+    "cap:open:ios": "npx cap open ios",
+    "lint:rust": "cd d-asp/rust && cargo clippy -- -D warnings",
+    "lint:go": "cd d-asp/go && go vet ./...",
+    "lint:c": "cd d-asp/c && \"C:\\Program Files\\LLVM\\bin\\clang.exe\" -fsyntax-only -Wall -Wextra -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha512.c sha256.c aes.c rng.c poly.c poly_sampling.c -I.",
+    "lint:python": "npx pyright d-asp/python/dasp.py",
+    "lint:ts": "npx tsc --noEmit",
+    "lint:engines": "npm run lint:rust && npm run lint:go && npm run lint:c && npm run lint:python",
+    "lint": "npm run lint:engines && npm run lint:ts"
   },
   "prettier": {
     "printWidth": 200,

@@ -14,6 +14,7 @@ import sys
 import json
 import struct
 import hashlib
+import typing
 import hmac
 import ctypes
 
@@ -104,6 +105,7 @@ class DarkstarCrypt:
         
         pk_bytes = bytes.fromhex(pk_hex)
         kem_start = time.perf_counter()
+        assert kem is not None, "ml_kem_1024 module is required"
         ct_bytes, ss_bytes_tup = kem.encrypt(pk_bytes)
         kem_duration = time.perf_counter() - kem_start
         
@@ -163,7 +165,7 @@ class DarkstarCrypt:
             }), file=sys.stderr)
 
         total_duration = time.perf_counter() - total_start
-        res_obj = {
+        res_obj: typing.Dict[str, typing.Any] = {
             "data": payload_bytes.hex(),
             "ct": ct_hex,
             "mac": mac_tag,
@@ -191,6 +193,7 @@ class DarkstarCrypt:
         sk_bytes = bytes.fromhex(sk_hex)
         
         kem_start = time.perf_counter()
+        assert kem is not None, "ml_kem_1024 module is required"
         ss_bytes_tup = kem.decrypt(sk_bytes, ct_bytes)
         kem_duration = time.perf_counter() - kem_start
         
