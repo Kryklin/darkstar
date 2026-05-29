@@ -290,11 +290,11 @@ const pkg = require('../package.json');
 
         const stages = [
           { name: 'Linting', cmd: CMD.LINT },
-          { name: 'Testing (Angular)', cmd: CMD.KARMA },
-          { name: 'Testing (Interop)', cmd: CMD.INTEROP },
-          { name: 'Testing (KAT)', cmd: CMD.KAT },
-          { name: 'Building', cmd: CMD.BUILD },
-          { name: 'Publishing', cmd: CMD.PUBLISH, options: { clear: false } },
+          { name: 'Testing (Angular)', cmd: CMD.KARMA, options: { showOutput: true } },
+          { name: 'Testing (Interop)', cmd: CMD.INTEROP, options: { showOutput: true } },
+          { name: 'Testing (KAT)', cmd: CMD.KAT, options: { showOutput: true } },
+          { name: 'Building', cmd: CMD.BUILD, options: { showOutput: true } },
+          { name: 'Publishing', cmd: CMD.PUBLISH, options: { clear: false, showOutput: true } },
         ];
 
         for (let i = 0; i < stages.length; i++) {
@@ -323,7 +323,7 @@ const pkg = require('../package.json');
             await checkEnvironment(true);
             break;
           case 'docker-test':
-            await runShell('Headless Docker Test', CMD.DOCKER_TEST);
+            await runShell('Headless Docker Test', CMD.DOCKER_TEST, { showOutput: true });
             break;
           case 'dev':
             await runShell('Dev Environment', CMD.DEV, { showOutput: true });
@@ -344,18 +344,18 @@ const pkg = require('../package.json');
             await runShell('Checksum Generation', CMD.CHECKSUMS, { clear: false });
             break;
           case 'karma':
-            await runShell('Angular Unit Testing', CMD.KARMA);
+            await runShell('Angular Unit Testing', CMD.KARMA, { showOutput: true });
             break;
           case 'interop':
             await checkEnvironment(false);
-            await runShell('Interop Benchmarking', CMD.INTEROP);
+            await runShell('Interop Benchmarking', CMD.INTEROP, { showOutput: true });
             break;
           case 'build-engines':
-            await runShell('Building Native Engines', CMD.BUILD_ENGINES);
+            await runShell('Building Native Engines', CMD.BUILD_ENGINES, { showOutput: true });
             break;
           case 'gen-kat':
             await checkEnvironment(false);
-            await runShell('Generate KAT Vectors', CMD.GEN_KAT);
+            await runShell('Generate KAT Vectors', CMD.GEN_KAT, { showOutput: true });
             break;
           case 'kat':
             if (!fs.existsSync(path.join(__dirname, '../d-asp/scripts/kat_vectors.json'))) {
@@ -364,12 +364,12 @@ const pkg = require('../package.json');
               break;
             }
             await checkEnvironment(false);
-            await runShell('KAT Verification', CMD.KAT);
+            await runShell('KAT Verification', CMD.KAT, { showOutput: true });
             break;
           case 'cap:sync':
             console.log(chalk.yellow('ℹ Building core application before sync...'));
-            await runShell('Building', CMD.BUILD);
-            await runShell('Syncing Native Platforms', CMD.CAP_SYNC, { clear: false });
+            await runShell('Building', CMD.BUILD, { showOutput: true });
+            await runShell('Syncing Native Platforms', CMD.CAP_SYNC, { clear: false, showOutput: true });
             break;
           case 'cap:open:android':
             await runShell('Opening Android Studio', CMD.CAP_OPEN_ANDROID);
@@ -378,13 +378,13 @@ const pkg = require('../package.json');
             await runShell('Opening Xcode', CMD.CAP_OPEN_IOS);
             break;
           case 'build':
-            await runShell('Building', CMD.BUILD);
+            await runShell('Building', CMD.BUILD, { showOutput: true });
             break;
           case 'package':
             console.log(chalk.yellow('ℹ Building before packaging...'));
-            await runShell('Building', CMD.BUILD);
+            await runShell('Building', CMD.BUILD, { showOutput: true });
             // Preserve build log
-            await runShell('Packaging', CMD.PACKAGE, { clear: true }); // User requested clear back
+            await runShell('Packaging', CMD.PACKAGE, { clear: true, showOutput: true }); // User requested clear back
             break;
           case 'publish':
             if (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN) {
@@ -394,9 +394,9 @@ const pkg = require('../package.json');
               break;
             }
             console.log(chalk.yellow('ℹ Building before publishing...'));
-            await runShell('Building', CMD.BUILD);
+            await runShell('Building', CMD.BUILD, { showOutput: true });
             // Preserve build log
-            await runShell('Publishing', CMD.PUBLISH, { clear: false });
+            await runShell('Publishing', CMD.PUBLISH, { clear: false, showOutput: true });
             break;
         }
       }
