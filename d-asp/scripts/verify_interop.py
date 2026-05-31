@@ -112,7 +112,7 @@ ENGINES = {
     },
     "Python": {
         "cwd": os.path.join(BASE_DIR, "python"),
-        "cmd": ["python", os.path.join(BASE_DIR, "python", "dasp.py")],
+        "cmd": ["python", os.path.join(BASE_DIR, "python", "dist", "dasp.py")],
         "type": "managed"
     },
     "C": {

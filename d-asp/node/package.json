@@ -8,7 +8,7 @@
     "darkstar-crypt": "dist/main.js"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "node build.js"
   },
   "author": "Victor Kane",
   "license": "CC0-1.0",
@@ -16,7 +16,8 @@
     "@noble/post-quantum": "^0.5.4"
   },
   "devDependencies": {
-    "typescript": "~5.9.2",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "javascript-obfuscator": "^5.4.3",
+    "typescript": "~5.9.2"
   }
 }

@@ -17,15 +17,15 @@ services:
 
   dasp-node:
     build:
-      context: d-asp/node
-      dockerfile: Dockerfile
+      context: d-asp
+      dockerfile: node/Dockerfile
     command: ['test']
     container_name: dasp-node
 
   dasp-python:
     build:
-      context: d-asp/python
-      dockerfile: Dockerfile
+      context: d-asp
+      dockerfile: python/Dockerfile
     command: ['test']
     container_name: dasp-python
 

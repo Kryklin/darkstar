@@ -1,10 +1,19 @@
-FROM node:20-slim
+FROM node:20-slim AS builder
 
 WORKDIR /app
+COPY node/package*.json node/tsconfig.json node/build.js ./
+RUN npm install
 
-COPY package*.json ./
+COPY node/src/ ./src/
+COPY wasm/ ./wasm/
+RUN npm run build
+
+FROM node:20-slim
+WORKDIR /app
+
+COPY node/package*.json ./
 RUN npm install --production
 
-COPY dasp.js ./
+COPY --from=builder /app/dist ./dist
 
-ENTRYPOINT ["node", "dasp.js"]
+ENTRYPOINT ["node", "dist/main.js"]

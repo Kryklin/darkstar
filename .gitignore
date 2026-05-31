@@ -140,6 +140,7 @@ d-asp/python/*.pyc
 d-asp/python/*.pyo
 d-asp/python/.venv/
 d-asp/python/venv/
+d-asp/python/dist/
 
 # -----------------------------------------------------------------------------
 # C# / .NET engine  (d-asp/csharp)

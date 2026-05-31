@@ -48,8 +48,8 @@ const pkg = require('../package.json');
   // --- Menu Configuration ---
   const choices = [
     new inquirer.Separator(chalk.dim('─── Development ──────────────────────────────────────────')),
-    { name: chalk.bold.cyan('  🚀  Build Native Crypto Engines (Rust, Go, C, CUDA)'), value: 'build-engines' },
-    { name: chalk.bold.cyan('  ⚙️   Run Dev Environment Check (C, Rust, Go, Python)'), value: 'check-env' },
+    { name: chalk.bold.cyan('  🚀  Build Crypto Engines (Rust, Go, C, CUDA, Node, Python, C#, Zig)'), value: 'build-engines' },
+    { name: chalk.bold.cyan('  ⚙️   Run Dev Environment Check (C, Rust, Go, Python, C#, Zig)'), value: 'check-env' },
     { name: chalk.cyan('  💻  Run Dev Environment'), value: 'dev' },
     { name: chalk.blue('  🔍  Lint Code'), value: 'lint' },
     { name: chalk.yellow('  ✨  Format Code'), value: 'format' },
@@ -379,7 +379,7 @@ const pkg = require('../package.json');
             await runShell('Interop Benchmarking', CMD.INTEROP, { showOutput: true });
             break;
           case 'build-engines':
-            await runShell('Building Native Engines', CMD.BUILD_ENGINES, { showOutput: true });
+            await runShell('Building Crypto Engines', CMD.BUILD_ENGINES, { showOutput: true });
             break;
           case 'gen-kat':
             await checkEnvironment(false);

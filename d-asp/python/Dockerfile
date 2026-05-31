@@ -1,10 +1,17 @@
-FROM python:3.11-slim
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
+COPY python/requirements.txt python/build.py python/dasp.py ./
+COPY wasm/ ./wasm/
+RUN pip install --no-cache-dir -r requirements.txt
+RUN python build.py
 
-COPY requirements.txt .
+FROM python:3.11-slim
+WORKDIR /app
+
+COPY python/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY dasp.py .
+COPY --from=builder /app/dist ./dist
 
-ENTRYPOINT ["python", "dasp.py"]
+ENTRYPOINT ["python", "dist/dasp.py"]
