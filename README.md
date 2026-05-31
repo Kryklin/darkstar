@@ -34,30 +34,36 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 
 ## 🛡️ The Multi-Engine Matrix
 
-**ASP Cascade 16**: The 16-round engine ensures bit-perfect interoperability across Rust, Go, C, Python, Node.js, and CUDA while providing maximum algebraic complexity.
+**ASP Cascade 16**: The 16-round engine ensures bit-perfect interoperability across Rust, Go, C, Python, Node.js, CUDA, C# (.NET), and Zig while providing maximum algebraic complexity.
 
-| Engine      | optimization               | implementation               | Security Tier | Interop  |
+| Engine      | Optimization               | Implementation               | Security Tier | Interop  |
 | :---------- | :------------------------- | :--------------------------- | :------------ | :------- |
 | **Rust**    | **Native (LTO)**           | Reference implementation     | Grade-1024    | `PASSED` |
 | **Go**      | **Native (SSA)**           | High-performance bridge      | Grade-1024    | `PASSED` |
-| **C**       | **Native (Clang)**         | Procedural Reference         | Grade-1024    | `PASSED` |
+| **C**       | **Native (Clang AVX2)**    | Procedural Reference         | Grade-1024    | `PASSED` |
 | **Node.js** | **Managed (WASM)**         | Production Bridge (Electron) | Grade-1024    | `PASSED` |
 | **Python**  | **Managed (WASM)**         | Research & Validation        | Grade-1024    | `PASSED` |
-| **CUDA**    | **Native (NVCC)**          | Massively Parallel GPU       | Grade-1024    | `PASSED` |
+| **CUDA**    | **Native (NVCC PTX)**      | Massively Parallel GPU       | Grade-1024    | `PASSED` |
+| **C# (.NET)** | **Managed (AVX2)**       | High-Performance .NET Bridge | Grade-1024    | `PASSED` |
+| **Zig**     | **Native (ReleaseFast)**   | SIMD-vectorized Engine       | Grade-1024    | `PASSED` |
 
 ### 🚀 Extreme Performance (Grade-1024)
 
-Darkstar is heavily optimized using vectorized SIMD (AVX2) and GPU PTX instructions, pipelining PCIe transfers and maintaining exact register bounds to achieve sub-millisecond cascading.
+Darkstar is heavily optimized using vectorized SIMD (AVX2), `comptime`-unrolled Zig vectors, .NET AVX2 intrinsics, and GPU PTX instructions — pipelining PCIe transfers and maintaining exact register bounds to achieve sub-millisecond cascading.
 
-| Engine   | Total Time | Casca Time | Casca CPB | Ops/sec |
-| :------- | :--------- | :--------- | :-------- | :------ |
-| **Rust** | 12.98 ms   | 3 μs       | 251.88    | 77.03   |
-| **Go**   | 12.46 ms   | 0 μs       | 0.00      | 80.21   |
-| **C**    | 11.58 ms   | 66 μs      | 5362.50   | 86.29   |
-| **CUDA**    | 125.85 ms  | 116 μs     | 9449.38   | 7.95    |
+| Engine       | Total Time  | Casca Time | Casca CPB | Ops/sec |
+| :----------- | :---------- | :--------- | :-------- | :------ |
+| **Zig**      | **12.54 ms**| 0 μs       | 0.00      | **79.74** |
+| **Rust**     | 14.22 ms    | 6.25 μs    | 507.81    | 70.31   |
+| **Go**       | 14.67 ms    | 0 μs       | 0.00      | 68.17   |
+| **C**        | 14.44 ms    | 111 μs     | 9010.62   | 69.27   |
+| **Node.js**  | 100.94 ms   | 0 μs       | 0.00      | 9.91    |
+| **CUDA**     | 139.08 ms   | 139 μs     | 11310.00  | 7.19    |
+| **C# (.NET)**| 151.43 ms   | 0 μs       | 0.00      | 6.60    |
+| **Python**   | 363.38 ms   | 0 μs       | 0.00      | 2.75    |
 
 > [!NOTE]
-> _CUDA timing includes the total host-to-host DMA transfer pipeline. The actual unrolled Grade-1024 SPNA Cascade computes in ~164us (micro-seconds)._
+> _CUDA timing includes the total host-to-host DMA transfer pipeline. The actual unrolled Grade-1024 SPNA Cascade computes in ~139μs. C# and Node.js times include JIT/CLR warm-up overhead; raw cascade execution is sub-microsecond._
 
 ### 🏎️ High-Throughput Streaming (CUDA)
 
@@ -68,7 +74,7 @@ The CUDA engine features an advanced VRAM-optimized kernel leveraging `__constan
 
 > [!TIP]
 > **Zero Microsecond (0 μs) Readings**
-> You may observe `0 μs` for `Casca Time` in highly optimized native engines like **Go** during small payload benchmarks. This is a measurement artifact, not a bug. For minimal payloads, the pure unrolled execution completes so quickly (< 100ns) that it finishes entirely between the ticks of the OS monotonic clock (e.g., Windows QPC), effectively registering zero elapsed time.
+> You may observe `0 μs` for `Casca Time` in highly optimized native engines like **Zig** and **Go** during small payload benchmarks. This is a measurement artifact, not a bug. For minimal payloads, the pure unrolled execution completes so quickly (< 100ns) that it finishes entirely between the ticks of the OS monotonic clock (e.g., Windows QPC), effectively registering zero elapsed time.
 
 ---
 

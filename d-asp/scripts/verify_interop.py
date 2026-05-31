@@ -124,6 +124,16 @@ ENGINES = {
         "cwd": os.path.join(BASE_DIR, "cuda"),
         "cmd": [os.path.join(BASE_DIR, "cuda", "d-asp_cuda.exe")],
         "type": "native"
+    },
+    "C#": {
+        "cwd": os.path.join(BASE_DIR, "csharp"),
+        "cmd": [os.path.join(BASE_DIR, "csharp", "bin", "Release", "net8.0", "d-asp_csharp.exe")],
+        "type": "managed"
+    },
+    "Zig": {
+        "cwd": os.path.join(BASE_DIR, "zig"),
+        "cmd": [os.path.join(BASE_DIR, "zig", "zig-out", "bin", "d-asp_zig.exe")],
+        "type": "native"
     }
 }
 

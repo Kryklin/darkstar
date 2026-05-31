@@ -15,6 +15,12 @@
 
 #include <stddef.h>
 
+#ifdef _WIN32
+  #define DASP_EXPORT __declspec(dllexport)
+#else
+  #define DASP_EXPORT
+#endif
+
 /** @brief Algorithm Name in NIST format */
 #define CRYPTO_ALGNAME "ASP_Cascade_16_D_ASP"
 
@@ -30,20 +36,20 @@
  * @param sk Output 3168-byte Secret Key.
  * @return 0 on success.
  */
-int crypto_kem_keypair(unsigned char *pk, unsigned char *sk);
+DASP_EXPORT int crypto_kem_keypair(unsigned char *pk, unsigned char *sk);
 
 /**
  * @brief Standard NIST PQC Encapsulation.
  * Produces a 1568-byte ciphertext and a 32-byte shared secret.
  */
-int crypto_kem_enc(unsigned char *ct, unsigned char *ss,
-                   const unsigned char *pk);
+DASP_EXPORT int crypto_kem_enc(unsigned char *ct, unsigned char *ss,
+                               const unsigned char *pk);
 
 /**
  * @brief Standard NIST PQC Decapsulation.
  * Recovers the 32-byte shared secret from the ciphertext.
  */
-int crypto_kem_dec(unsigned char *ss, const unsigned char *ct,
-                   const unsigned char *sk);
+DASP_EXPORT int crypto_kem_dec(unsigned char *ss, const unsigned char *ct,
+                               const unsigned char *sk);
 
 #endif // API_H

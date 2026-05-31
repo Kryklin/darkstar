@@ -134,7 +134,7 @@ static void crypto_pke_enc(uint8_t *ct, const uint8_t *m, const uint8_t *pk,
  * @param sk Output buffer for the secret key.
  * @return 0 on success.
  */
-int crypto_kem_keypair(uint8_t *pk, uint8_t *sk) {
+DASP_EXPORT int crypto_kem_keypair(uint8_t *pk, uint8_t *sk) {
   uint8_t d[32], z[32], rho[32], sigma[32];
   uint8_t Kr[64];
   polyvec a[MLKEM_K], s, e, pkvec;
@@ -193,7 +193,7 @@ int crypto_kem_keypair(uint8_t *pk, uint8_t *sk) {
  * @param pk The public key to encapsulate against.
  * @return 0 on success.
  */
-int crypto_kem_enc(uint8_t *ct, uint8_t *ss, const uint8_t *pk) {
+DASP_EXPORT int crypto_kem_enc(uint8_t *ct, uint8_t *ss, const uint8_t *pk) {
   uint8_t m[32], Kr[64], h_pk[32];
   uint8_t K_pre[64];
 
@@ -221,7 +221,7 @@ int crypto_kem_enc(uint8_t *ct, uint8_t *ss, const uint8_t *pk) {
  * @param sk The secret key.
  * @return 0 on success.
  */
-int crypto_kem_dec(uint8_t *ss, const uint8_t *ct, const uint8_t *sk) {
+DASP_EXPORT int crypto_kem_dec(uint8_t *ss, const uint8_t *ct, const uint8_t *sk) {
   uint8_t m[32], r[32], Kr[64], K_pre[64];
   uint8_t ct_prime[CRYPTO_CIPHERTEXTBYTES];
   uint8_t h_pk[32];

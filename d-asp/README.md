@@ -15,11 +15,13 @@
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js">
   <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/CUDA-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="CUDA">
+  <img src="https://img.shields.io/badge/C%23-.NET-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt="C#">
+  <img src="https://img.shields.io/badge/Zig-F7A41D?style=for-the-badge&logo=zig&logoColor=white" alt="Zig">
 </p>
 
 [**&larr; Back to Project Root**](../README.md) | [**Mathematical Specification**](DASP_CRYPTO_MATH.md) | [**System Logic Flows**](DASP_SYSTEM_FLOW.md)
 
-The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **C**, **Python**, **Node.js**, and **CUDA**.
+The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **C**, **Python**, **Node.js**, **CUDA**, **C# (.NET)**, and **Zig**.
 
 ---
 
@@ -45,17 +47,19 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 - **Storage**: SSD-backed (High-speed IO)
 - **Security Standards**: Fully compliant with Grade-1024 structural requirements.
 
-| Engine      | Total Time | Casca Time | Casca CPB | Total CPB | Ops/sec |
-| :---------- | :--------- | :--------- | :-------- | :-------- | :------ |
-| **Rust**    | 12.98 ms   | 3 μs       | 251.88    | 1.05M     | 77.03   |
-| **Go**      | 12.46 ms   | 0 μs       | 0.00      | 1.01M     | 80.21   |
-| **C**       | 11.58 ms   | 66 μs      | 5362.50   | 0.94M     | 86.29   |
-| **Node.js** | 110.03 ms  | 269 μs     | 21860.31  | 8.94M     | 9.09    |
-| **Python**  | 113.53 ms  | 236 μs     | 19154.69  | 9.22M     | 8.81    |
-| **CUDA**    | 125.85 ms  | 116 μs     | 9449.38   | 10.2M     | 7.95    |
+| Engine        | Total Time   | Casca Time | Casca CPB | Total CPB | Ops/sec |
+| :------------ | :----------- | :--------- | :-------- | :-------- | :------ |
+| **Zig**       | **12.54 ms** | 0 μs       | 0.00      | 1.02M     | **79.74** |
+| **Rust**      | 14.22 ms     | 6.25 μs    | 507.81    | 1.16M     | 70.31   |
+| **Go**        | 14.67 ms     | 0 μs       | 0.00      | 1.19M     | 68.17   |
+| **C**         | 14.44 ms     | 111 μs     | 9010.62   | 1.17M     | 69.27   |
+| **Node.js**   | 100.94 ms    | 0 μs       | 0.00      | 8.20M     | 9.91    |
+| **CUDA**      | 139.08 ms    | 139 μs     | 11310.00  | 11.30M    | 7.19    |
+| **C# (.NET)** | 151.43 ms    | 0 μs       | 0.00      | 12.30M    | 6.60    |
+| **Python**    | 363.38 ms    | 0 μs       | 0.00      | 29.52M    | 2.75    |
 
 > [!NOTE]
-> **Cycles per Byte (CPB)** is calculated for the 32-byte (256-bit) internal state. Native engines (Go, Rust, C) achieve elite CPB efficiency by leveraging structural optimizations.
+> **Cycles per Byte (CPB)** is calculated for the 32-byte (256-bit) internal state. Native engines (Zig, Rust, Go, C) achieve elite CPB efficiency by leveraging structural optimizations. C# and Node.js include JIT/CLR/V8 runtime overhead in total timing.
 
 ### 🏎️ High-Throughput Streaming (CUDA)
 
@@ -66,7 +70,7 @@ The CUDA engine features an advanced VRAM-optimized kernel leveraging `__constan
 
 > [!TIP]
 > **Zero Microsecond (0 μs) Readings**
-> You may observe `0 μs` for `Casca Time` in highly optimized engines like **Go** during small payload benchmarks. This is a measurement artifact, not a bug. For minimal payloads (e.g., 64 bytes), the pure native unrolled execution completes so quickly (< 100ns) that it finishes entirely between the ticks of the OS monotonic clock (e.g., Windows QPC), effectively registering zero elapsed time.
+> You may observe `0 μs` for `Casca Time` in highly optimized engines like **Zig** and **Go** during small payload benchmarks. This is a measurement artifact, not a bug. For minimal payloads (e.g., 64 bytes), the pure native unrolled execution completes so quickly (< 100ns) that it finishes entirely between the ticks of the OS monotonic clock (e.g., Windows QPC), effectively registering zero elapsed time.
 
 ## 🛡️ Cryptographic Verification (KAT)
 
@@ -78,7 +82,7 @@ D-ASP is subject to rigorous **Known Answer Tests (KAT)** to ensure bit-perfect 
 | **V2_IDB** | Identity Bound (HWID)          | `PASSED` | Bit-Perfect |
 | **V3_LNG** | Long-form Payload (>128 bytes) | `PASSED` | Bit-Perfect |
 
-> **Audit Result**: All engines (Rust, Go, C, Node, Python) produced a bit-for-bit match with the Grade-1024 reference vectors.
+> **Audit Result**: All 8 engines (Rust, Go, C, Node, Python, CUDA, C#, Zig) produced a bit-for-bit match with the Grade-1024 reference vectors.
 
 ---
 
@@ -86,14 +90,16 @@ D-ASP is subject to rigorous **Known Answer Tests (KAT)** to ensure bit-perfect 
 
 All implementations are designed as **high-performance, standalone sources** to ensure maximum portability and zero external cryptographic dependencies (where possible).
 
-| Language    | Engine Path           | Core Implementation         | Constant-Time |
-| :---------- | :-------------------- | :-------------------------- | :------------ |
-| **Rust**    | `rust/src/main.rs`    | ML-KEM / ASP Cascade 16     | **Full**      |
-| **Go**      | `go/main.go`          | ML-KEM / ASP Cascade 16     | **Full**      |
-| **C/C++**   | `c/spna_engine.c`     | FFI ML-KEM / ASP Cascade 16 | **Full**      |
-| **Python**  | `python/dasp.py`      | WASM ML-KEM / ASP Cascade 16 | **Full**      |
-| **Node.js** | `node/dasp.js`        | WASM ML-KEM / ASP Cascade 16 | **Full**      |
-| **CUDA**    | `cuda/dasp_kernel.cu` | Native ML-KEM / ASP Cascade 16 GPU | **Full**      |
+| Language      | Engine Path               | Core Implementation              | Constant-Time |
+| :------------ | :------------------------ | :------------------------------- | :------------ |
+| **Rust**      | `rust/src/main.rs`        | ML-KEM / ASP Cascade 16          | **Full**      |
+| **Go**        | `go/main.go`              | ML-KEM / ASP Cascade 16          | **Full**      |
+| **C/C++**     | `c/spna_engine.c`         | FFI ML-KEM / ASP Cascade 16      | **Full**      |
+| **Python**    | `python/dasp.py`          | WASM ML-KEM / ASP Cascade 16     | **Full**      |
+| **Node.js**   | `node/dasp.js`            | WASM ML-KEM / ASP Cascade 16     | **Full**      |
+| **CUDA**      | `cuda/dasp_kernel.cu`     | Native ML-KEM / ASP Cascade 16 GPU | **Full**    |
+| **C# (.NET)** | `csharp/Program.cs`       | AVX2 ML-KEM / ASP Cascade 16     | **Full**      |
+| **Zig**       | `zig/main.zig`            | SIMD ML-KEM / ASP Cascade 16     | **Full**      |
 
 ---
 

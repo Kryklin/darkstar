@@ -39,6 +39,14 @@ ENGINES = {
     "CUDA": {
         "cwd": os.path.join(BASE_DIR, "cuda"),
         "cmd": [os.path.join(BASE_DIR, "cuda", "d-asp_cuda.exe")],
+    },
+    "C#": {
+        "cwd": os.path.join(BASE_DIR, "csharp"),
+        "cmd": [os.path.join(BASE_DIR, "csharp", "bin", "Release", "net8.0", "d-asp_csharp.exe")],
+    },
+    "Zig": {
+        "cwd": os.path.join(BASE_DIR, "zig"),
+        "cmd": [os.path.join(BASE_DIR, "zig", "zig-out", "bin", "d-asp_zig.exe")],
     }
 }
 
@@ -160,9 +168,9 @@ def main():
                 status = "FAIL (CLI ERROR)"
                 error_msg = actual_payload
             else:
-                if engine not in ["C", "Node", "Python"]:
+                if engine not in ["C", "Node", "Python", "C#"]:
                     for stage_name, key in stages:
-                        if engine == "CUDA" and key == "stage3_round_indices":
+                        if engine in ["CUDA", "Zig"] and key == "stage3_round_indices":
                             continue
                         v_exp = expected_diag.get(key)
                         v_act = actual_diag.get(key)

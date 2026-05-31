@@ -1,11 +1,10 @@
-# Darkstar Encryption Suite - Global Gitignore
+# Darkstar Encryption Suite - d-asp Gitignore
 
 # Node.js
 node/node_modules/
 node/dist/
 
 # Rust
-# Binaries
 *.exe
 *.obj
 *.o
@@ -26,6 +25,15 @@ python/env/
 python/venv/
 python/ENV/
 
+# C# / .NET
+csharp/bin/
+csharp/obj/
+csharp/dasp_kem.dll
+
+# Zig
+zig/.zig-cache/
+zig/zig-out/
+
 # General Exclusions
 .env
 *.log
@@ -41,6 +49,10 @@ key.json
 diag_*.txt
 scripts/log/
 logs/
+
+# Generated / sensitive script outputs
+scripts/master_keys.txt
+scripts/nist_kat.rsp
 
 # OS Specific
 .DS_Store

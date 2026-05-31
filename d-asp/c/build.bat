@@ -10,4 +10,11 @@ if %errorlevel% neq 0 (
     echo Build failed.
     exit /b %errorlevel%
 )
-echo Build successful: dasp.exe
+echo Building DLL for C# Interoperability...
+cl /LD /Ox /W3 /std:c11 /Fe:dasp_kem.dll ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c aes.c gf_math.c
+if %errorlevel% neq 0 (
+    echo DLL Build failed.
+    exit /b %errorlevel%
+)
+
+echo Build successful: dasp.exe and dasp_kem.dll
