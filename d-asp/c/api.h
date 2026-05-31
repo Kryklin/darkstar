@@ -16,9 +16,9 @@
 #include <stddef.h>
 
 #ifdef _WIN32
-  #define DASP_EXPORT __declspec(dllexport)
+#define DASP_EXPORT __declspec(dllexport)
 #else
-  #define DASP_EXPORT
+#define DASP_EXPORT
 #endif
 
 /** @brief Algorithm Name in NIST format */

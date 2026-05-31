@@ -38,6 +38,7 @@ pub extern "C" fn wasm_encrypt(
     pk_len: usize,
     hwid_ptr: *const u8,
     hwid_len: usize,
+    telemetry: u32,
 ) -> *mut u8 {
     let payload = unsafe {
         std::str::from_utf8_unchecked(std::slice::from_raw_parts(payload_ptr, payload_len))
@@ -52,7 +53,7 @@ pub extern "C" fn wasm_encrypt(
     };
 
     let dc = DarkstarCrypt::new();
-    let result = match dc.encrypt(payload, pk_hex, hwid, false) {
+    let result = match dc.encrypt(payload, pk_hex, hwid, telemetry != 0) {
         Ok(json) => json,
         Err(e) => format!("{{\"error\":\"{}\"}}", e),
     };
@@ -73,6 +74,7 @@ pub extern "C" fn wasm_decrypt(
     sk_len: usize,
     hwid_ptr: *const u8,
     hwid_len: usize,
+    telemetry: u32,
 ) -> *mut u8 {
     let payload =
         unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(data_ptr, data_len)) };
@@ -86,7 +88,7 @@ pub extern "C" fn wasm_decrypt(
     };
 
     let dc = DarkstarCrypt::new();
-    let result = match dc.decrypt(payload, sk_hex, hwid, false) {
+    let result = match dc.decrypt(payload, sk_hex, hwid, telemetry != 0) {
         Ok(res) => res,
         Err(e) => format!("{{\"error\":\"{}\"}}", e),
     };

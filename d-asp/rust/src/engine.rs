@@ -14,17 +14,32 @@ use ml_kem::{EncodedSizeUser, MlKem1024Params};
 use sha2::{Digest, Sha256, Sha512};
 use zeroize::Zeroize;
 
+extern "C" {
+    fn host_gettime_us() -> f64;
+}
+
 #[cfg(target_arch = "wasm32")]
 #[derive(Clone, Copy)]
-pub struct Instant {}
+pub struct Instant {
+    start_us: f64,
+}
 
 #[cfg(target_arch = "wasm32")]
 impl Instant {
     pub fn now() -> Self {
-        Instant {}
+        let mut us = 0.0;
+        unsafe {
+            us = host_gettime_us();
+        }
+        Instant { start_us: us }
     }
     pub fn elapsed(&self) -> core::time::Duration {
-        core::time::Duration::from_micros(0)
+        let mut us = 0.0;
+        unsafe {
+            us = host_gettime_us();
+        }
+        let diff = us - self.start_us;
+        core::time::Duration::from_micros(diff as u64)
     }
 }
 
@@ -556,19 +571,18 @@ impl DarkstarCrypt {
         round_keys.zeroize();
 
         if telemetry {
-            eprintln!(
-                "{}",
-                serde_json::json!({
-                    "timings": {
-                        "kem_us": kem_duration.as_micros(),
-                        "kdf_us": kdf_duration.as_micros(),
-                        "cascade_us": cascade_duration.as_micros(),
-                        "total_us": total_duration.as_micros()
-                    }
-                })
-            );
+            let res_obj = serde_json::json!({
+                "data": result,
+                "timings": {
+                    "kem_us": kem_duration.as_micros(),
+                    "kdf_us": kdf_duration.as_micros(),
+                    "cascade_us": cascade_duration.as_micros(),
+                    "total_us": total_duration.as_micros()
+                }
+            });
+            Ok(res_obj.to_string())
+        } else {
+            Ok(result)
         }
-
-        Ok(result)
     }
 }

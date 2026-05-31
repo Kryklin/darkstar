@@ -28,6 +28,9 @@ export class DarkstarCrypt {
 
     const importObject = {
       env: {
+        host_gettime_us: () => {
+          return Number(process.hrtime.bigint()) / 1000.0;
+        },
         host_getrandom: (ptr: number, len: number) => {
           if (!this.wasmInstance) return;
           const mem = new Uint8Array((this.wasmInstance.exports.memory as WebAssembly.Memory).buffer);
@@ -100,7 +103,7 @@ export class DarkstarCrypt {
     }
 
     const wasm_encrypt = this.wasmInstance.exports.wasm_encrypt as CallableFunction;
-    const outPtr = wasm_encrypt(payloadWasm.ptr, payloadWasm.len, pkWasm.ptr, pkWasm.len, hwidWasm.ptr, hwidWasm.len) as number;
+    const outPtr = wasm_encrypt(payloadWasm.ptr, payloadWasm.len, pkWasm.ptr, pkWasm.len, hwidWasm.ptr, hwidWasm.len, telemetry ? 1 : 0) as number;
 
     const wasm_dealloc = this.wasmInstance.exports.wasm_dealloc as CallableFunction;
     wasm_dealloc(payloadWasm.ptr, payloadWasm.len);
@@ -137,7 +140,7 @@ export class DarkstarCrypt {
     }
 
     const wasm_decrypt = this.wasmInstance.exports.wasm_decrypt as CallableFunction;
-    const outPtr = wasm_decrypt(dataWasm.ptr, dataWasm.len, skWasm.ptr, skWasm.len, hwidWasm.ptr, hwidWasm.len) as number;
+    const outPtr = wasm_decrypt(dataWasm.ptr, dataWasm.len, skWasm.ptr, skWasm.len, hwidWasm.ptr, hwidWasm.len, telemetry ? 1 : 0) as number;
 
     const wasm_dealloc = this.wasmInstance.exports.wasm_dealloc as CallableFunction;
     wasm_dealloc(dataWasm.ptr, dataWasm.len);
@@ -147,6 +150,19 @@ export class DarkstarCrypt {
     }
 
     const resultStr = this._readStringFromWasm(outPtr);
+
+    if (telemetry) {
+      try {
+        const obj = JSON.parse(resultStr);
+        if (obj.timings) {
+          process.stderr.write(JSON.stringify({ timings: obj.timings }) + '\n');
+          return obj.data;
+        }
+      } catch (e) {
+        // ignore parse error if it's not telemetry format
+      }
+    }
+
     if (resultStr.startsWith('{"error"')) {
       const errObj = JSON.parse(resultStr);
       throw new Error(errObj.error);

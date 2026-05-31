@@ -244,16 +244,21 @@ def main():
     pk = lines[0].split(": ")[1]
     sk = lines[1].split(": ")[1]
     
-    payload = "Professional Grade Benchmark Payload: 0123456789ABCDEF0123456789ABCDEF"
+    payload = "Professional Grade Benchmark Payload: 0123456789ABCDEF0123456789ABCDEF" * 1024
     hwid = "11223344556677889900AABBCCDDEEFF11223344556677889900AABBCCDDEEFF"
     
-    log(f"Payload: '{payload}'")
+    log(f"Payload: '{payload[:64]}... ({len(payload)} bytes)'")
     log(f"Identity Binding (HWID): {hwid[:16]}...")
 
     # 2. Encrypt using reference (Rust)
     log("Step 2: Creating reference ciphertext (Rust)...")
     enc_cwd = BASE_DIR if use_docker else ENGINES["Rust"]["cwd"]
-    enc_json, _, _ = run_cmd(ENGINES["Rust"]["cmd"] + ["encrypt", payload, pk, "--hwid", hwid, "--telemetry"], enc_cwd)
+    
+    payload_file = os.path.join(enc_cwd, "payload.txt")
+    with open(payload_file, "w") as f:
+        f.write(payload)
+        
+    enc_json, _, _ = run_cmd(ENGINES["Rust"]["cmd"] + ["encrypt", "@payload.txt", pk, "--hwid", hwid, "--telemetry"], enc_cwd)
     
     # 3. Cross-Platform Benchmark
     log("\nStep 3: Executing Cross-Platform Benchmark (20 rounds each)...")
@@ -337,10 +342,10 @@ def main():
                 except KeyError as e:
                     print(f"CRITICAL ERROR in {name}: internals missing {e}. Internals: {data['internals']}")
                     raise
-                # CPB Calculation (for 32-byte state)
-                # CPB = (ns * freq_ghz) / 32
-                casca_cpb = (casca_avg_us * 1000 * avg_freq_ghz) / 32
-                total_cpb = (mean_ms * 1_000_000 * avg_freq_ghz) / 32
+                # CPB Calculation (for actual payload size)
+                # CPB = (ns * freq_ghz) / len
+                casca_cpb = (casca_avg_us * 1000 * avg_freq_ghz) / len(payload)
+                total_cpb = (mean_ms * 1_000_000 * avg_freq_ghz) / len(payload)
                 
                 # Format Time dynamically
                 mean_time_str = f"{mean_ms * 1000:.1f} us" if mean_ms < 1.0 else f"{mean_ms:.3f} ms"

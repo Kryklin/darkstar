@@ -325,7 +325,11 @@ pub fn main() !void {
         defer allocator.free(expectedMac);
 
         var ss: [32]u8 = undefined;
+        var timer_kem = try std.time.Timer.start();
         if (c.crypto_kem_dec(&ss, ct.ptr, sk.ptr) != 0) return error.DecapsulationFailed;
+        const kem_us = timer_kem.read() / 1000;
+
+        var timer_kdf = try std.time.Timer.start();
 
         var prk: [32]u8 = undefined;
         c.crypto_hmac_sha256(hwid.ptr, hwid.len, &ss, ss.len, &prk);
@@ -351,6 +355,7 @@ pub fn main() !void {
 
         var wordKey: [32]u8 = undefined;
         c.crypto_hmac_sha256(&cipherKeyHex, 64, "dasp-word-0", 11, &wordKey);
+        const kdf_us = timer_kdf.read() / 1000;
 
         var hmacInput = try allocator.alloc(u8, ct.len + payloadBytes.len);
         defer allocator.free(hmacInput);
@@ -379,6 +384,7 @@ pub fn main() !void {
 
         var nonce = chainState;
         var i: usize = 0;
+        var timer_cascade = try std.time.Timer.start();
         while (i < payloadBytes.len) : (i += 32) {
             var chunkLen: usize = 32;
             if (i + chunkLen > payloadBytes.len) {
@@ -394,6 +400,7 @@ pub fn main() !void {
                 if (nonce[j] != 0) break;
             }
         }
+        const cascade_us = timer_cascade.read() / 1000;
 
         const stdout = std.io.getStdOut().writer();
         if (diagnostic) {
@@ -404,7 +411,7 @@ pub fn main() !void {
         }
         if (telemetry) {
             const stderr = std.io.getStdErr().writer();
-            try stderr.print("{{\"timings\":{{\"kem_us\":0,\"kdf_us\":0,\"cascade_us\":0,\"mac_us\":0}}}}\n", .{});
+            try stderr.print("{{\"timings\":{{\"kem_us\":{d},\"kdf_us\":{d},\"cascade_us\":{d},\"mac_us\":0}}}}\n", .{ kem_us, kdf_us, cascade_us });
         }
         try stdout.print("{s}", .{payloadBytes});
     } else if (std.mem.eql(u8, command, "test")) {

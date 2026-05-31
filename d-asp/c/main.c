@@ -288,13 +288,12 @@ int main(int argc, char **argv) {
     long long total_end = get_us();
 
     if (telemetry) {
-      fprintf(
-          stderr,
-          "{\"timings\":{\"kem_us\":%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,"
-          "\"total_us\":%lld}}\n",
-          (inner_end - inner_start) / 3, // Mock proportions for kem
-          (inner_end - inner_start) / 3, (inner_end - inner_start) / 3,
-          total_end - total_start);
+      fprintf(stderr,
+              "{\"timings\":{\"kem_us\":%lld,\"kdf_us\":%lld,\"cascade_us\":%"
+              "lld,\"total_us\":%lld}}\n",
+              (inner_end - inner_start) / 3, // Mock proportions for kem
+              (inner_end - inner_start) / 3, (inner_end - inner_start) / 3,
+              total_end - total_start);
     }
 
     if (res == 0) {

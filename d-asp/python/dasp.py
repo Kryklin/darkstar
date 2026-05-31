@@ -38,7 +38,17 @@ class DarkstarCrypt:
             self.store, getrandom_type, host_getrandom, access_caller=True
         )
 
-        self.instance = wasmtime.Instance(self.store, self.module, [getrandom_func])
+        def host_gettime_us():
+            import time
+
+            return float(time.perf_counter() * 1_000_000)
+
+        gettime_type = wasmtime.FuncType([], [wasmtime.ValType.f64()])
+        gettime_func = wasmtime.Func(self.store, gettime_type, host_gettime_us)
+
+        self.instance = wasmtime.Instance(
+            self.store, self.module, [gettime_func, getrandom_func]
+        )
         self.exports = self.instance.exports(self.store)
 
         self.memory = self.exports["memory"]
@@ -90,7 +100,14 @@ class DarkstarCrypt:
             hwid_ptr, hwid_len = 0, 0
 
         out_ptr = self.wasm_encrypt(
-            self.store, payload_ptr, payload_len, pk_ptr, pk_len, hwid_ptr, hwid_len
+            self.store,
+            payload_ptr,
+            payload_len,
+            pk_ptr,
+            pk_len,
+            hwid_ptr,
+            hwid_len,
+            1 if telemetry else 0,
         )
 
         self.wasm_dealloc(self.store, payload_ptr, payload_len)
@@ -125,7 +142,14 @@ class DarkstarCrypt:
             hwid_ptr, hwid_len = 0, 0
 
         out_ptr = self.wasm_decrypt(
-            self.store, data_ptr, data_len, sk_ptr, sk_len, hwid_ptr, hwid_len
+            self.store,
+            data_ptr,
+            data_len,
+            sk_ptr,
+            sk_len,
+            hwid_ptr,
+            hwid_len,
+            1 if telemetry else 0,
         )
 
         self.wasm_dealloc(self.store, data_ptr, data_len)
@@ -134,6 +158,19 @@ class DarkstarCrypt:
             self.wasm_dealloc(self.store, hwid_ptr, hwid_len)
 
         res_str = self._read_string_from_wasm(out_ptr)
+
+        if telemetry:
+            import json
+            import sys
+
+            try:
+                obj = json.loads(res_str)
+                if "timings" in obj:
+                    sys.stderr.write(json.dumps({"timings": obj["timings"]}) + "\n")
+                    sys.stderr.flush()
+                    return obj["data"]
+            except Exception:
+                pass
 
         if res_str.startswith('{"error"'):
             err_obj = json.loads(res_str)

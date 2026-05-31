@@ -227,6 +227,7 @@ namespace DarkstarCSharp
 
         static string Decrypt(string encDataRaw, string skHex, byte[] hwid)
         {
+            var totalWatch = Stopwatch.StartNew();
             var env = JsonSerializer.Deserialize<Envelope>(encDataRaw);
             byte[] ct = CleanHex(env.ct);
             byte[] payloadBytes = CleanHex(env.data);
@@ -234,8 +235,11 @@ namespace DarkstarCSharp
             byte[] sk = CleanHex(skHex);
             byte[] ss = new byte[32];
 
+            var kemWatch = Stopwatch.StartNew();
             if (crypto_kem_dec(ss, ct, sk) != 0) throw new Exception("KEM Decapsulation failed");
+            kemWatch.Stop();
 
+            var kdfWatch = Stopwatch.StartNew();
             byte[] prk = HMACSHA256.HashData(hwid != null && hwid.Length > 0 ? hwid : new byte[32], ss);
             byte[] blendedSS = HMACSHA256.HashData(prk, Encoding.UTF8.GetBytes("dasp-identity-v3\x01"));
 
@@ -251,6 +255,7 @@ namespace DarkstarCSharp
             byte[] activeHmacKey = SHA256.HashData(hInput);
 
             byte[] wordKey = HMACSHA256.HashData(Encoding.UTF8.GetBytes(activePasswordStr), Encoding.UTF8.GetBytes("dasp-word-0"));
+            kdfWatch.Stop();
 
             byte[] hmacInput = new byte[ct.Length + payloadBytes.Length];
             ct.CopyTo(hmacInput, 0);
@@ -267,6 +272,8 @@ namespace DarkstarCSharp
 
             byte[] nonce = new byte[32];
             Array.Copy(chainState, nonce, 32);
+
+            var cascadeWatch = Stopwatch.StartNew();
 
             unsafe
             {
@@ -285,6 +292,20 @@ namespace DarkstarCSharp
                         for (int j = 0; j < 32; j++) if (++nonce[j] != 0) break;
                     }
                 }
+            }
+            cascadeWatch.Stop();
+            totalWatch.Stop();
+
+            if (Environment.GetEnvironmentVariable("DASP_TELEMETRY") == "1")
+            {
+                Console.Error.WriteLine(JsonSerializer.Serialize(new {
+                    timings = new {
+                        kem_us = kemWatch.Elapsed.TotalMicroseconds,
+                        kdf_us = kdfWatch.Elapsed.TotalMicroseconds,
+                        cascade_us = cascadeWatch.Elapsed.TotalMicroseconds,
+                        total_us = totalWatch.Elapsed.TotalMicroseconds
+                    }
+                }));
             }
 
             return Encoding.UTF8.GetString(payloadBytes);

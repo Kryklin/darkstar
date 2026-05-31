@@ -221,7 +221,8 @@ DASP_EXPORT int crypto_kem_enc(uint8_t *ct, uint8_t *ss, const uint8_t *pk) {
  * @param sk The secret key.
  * @return 0 on success.
  */
-DASP_EXPORT int crypto_kem_dec(uint8_t *ss, const uint8_t *ct, const uint8_t *sk) {
+DASP_EXPORT int crypto_kem_dec(uint8_t *ss, const uint8_t *ct,
+                               const uint8_t *sk) {
   uint8_t m[32], r[32], Kr[64], K_pre[64];
   uint8_t ct_prime[CRYPTO_CIPHERTEXTBYTES];
   uint8_t h_pk[32];

@@ -36,31 +36,31 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 
 **ASP Cascade 16**: The 16-round engine ensures bit-perfect interoperability across Rust, Go, C, Python, Node.js, CUDA, C# (.NET), and Zig while providing maximum algebraic complexity.
 
-| Engine      | Optimization               | Implementation               | Security Tier | Interop  |
-| :---------- | :------------------------- | :--------------------------- | :------------ | :------- |
-| **Rust**    | **Native (LTO)**           | Reference implementation     | Grade-1024    | `PASSED` |
-| **Go**      | **Native (SSA)**           | High-performance bridge      | Grade-1024    | `PASSED` |
-| **C**       | **Native (Clang AVX2)**    | Procedural Reference         | Grade-1024    | `PASSED` |
-| **Node.js** | **Managed (WASM)**         | Production Bridge (Electron) | Grade-1024    | `PASSED` |
-| **Python**  | **Managed (WASM)**         | Research & Validation        | Grade-1024    | `PASSED` |
-| **CUDA**    | **Native (NVCC PTX)**      | Massively Parallel GPU       | Grade-1024    | `PASSED` |
+| Engine        | Optimization             | Implementation               | Security Tier | Interop  |
+| :------------ | :----------------------- | :--------------------------- | :------------ | :------- |
+| **Rust**      | **Native (LTO)**         | Reference implementation     | Grade-1024    | `PASSED` |
+| **Go**        | **Native (SSA)**         | High-performance bridge      | Grade-1024    | `PASSED` |
+| **C**         | **Native (Clang AVX2)**  | Procedural Reference         | Grade-1024    | `PASSED` |
+| **Node.js**   | **Managed (WASM)**       | Production Bridge (Electron) | Grade-1024    | `PASSED` |
+| **Python**    | **Managed (WASM)**       | Research & Validation        | Grade-1024    | `PASSED` |
+| **CUDA**      | **Native (NVCC PTX)**    | Massively Parallel GPU       | Grade-1024    | `PASSED` |
 | **C# (.NET)** | **Managed (AVX2)**       | High-Performance .NET Bridge | Grade-1024    | `PASSED` |
-| **Zig**     | **Native (ReleaseFast)**   | SIMD-vectorized Engine       | Grade-1024    | `PASSED` |
+| **Zig**       | **Native (ReleaseFast)** | SIMD-vectorized Engine       | Grade-1024    | `PASSED` |
 
 ### 🚀 Extreme Performance (Grade-1024)
 
 Darkstar is heavily optimized using vectorized SIMD (AVX2), `comptime`-unrolled Zig vectors, .NET AVX2 intrinsics, and GPU PTX instructions — pipelining PCIe transfers and maintaining exact register bounds to achieve sub-millisecond cascading.
 
-| Engine       | Total Time   | Casca Time | Casca CPB | Ops/sec |
-| :----------- | :----------- | :--------- | :-------- | :------ |
-| **C**        | **12.65 ms** | 85 μs      | 6890.00   | **79.02** |
-| **Go**       | 15.56 ms     | 0 μs       | 0.00      | 64.28   |
-| **Rust**     | 16.17 ms     | 7.35 μs    | 597.19    | 61.84   |
-| **Zig**      | 17.18 ms     | 0 μs       | 0.00      | 58.21   |
-| **Node.js**  | 136.58 ms    | 0 μs       | 0.00      | 7.32    |
-| **C# (.NET)**| 145.44 ms    | 0 μs       | 0.00      | 6.88    |
-| **CUDA**     | 158.46 ms    | 145 μs     | 11765.00  | 6.31    |
-| **Python**   | 361.84 ms    | 0 μs       | 0.00      | 2.76    |
+| Engine        | Total Time   | Casca Time | Casca CPB | Ops/sec   |
+| :------------ | :----------- | :--------- | :-------- | :-------- |
+| **CUDA**      | 309.10 ms    | **160 μs** | **5.80**  | 3.24      |
+| **Zig**       | **17.30 ms** | 239 μs     | 8.67      | **57.81** |
+| **C**         | 256.44 ms    | 380 μs     | 13.79     | 3.90      |
+| **Python**    | 546.19 ms    | 998 μs     | 36.19     | 1.83      |
+| **Go**        | 25.28 ms     | 1.23 ms    | 44.63     | 39.56     |
+| **Node.js**   | 213.16 ms    | 2.56 ms    | 92.90     | 4.69      |
+| **Rust**      | 25.75 ms     | 2.81 ms    | 101.77    | 38.84     |
+| **C# (.NET)** | 155.12 ms    | 4.70 ms    | 170.51    | 6.45      |
 
 > [!NOTE]
 > _CUDA timing includes the total host-to-host DMA transfer pipeline. The actual unrolled Grade-1024 SPNA Cascade computes in ~139μs. C# and Node.js times include JIT/CLR warm-up overhead; raw cascade execution is sub-microsecond._
