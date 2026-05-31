@@ -79,14 +79,14 @@ D-ASP is subject to rigorous **Known Answer Tests (KAT)** to ensure bit-perfect 
 
 All implementations are designed as **high-performance, standalone sources** to ensure maximum portability and zero external cryptographic dependencies (where possible).
 
-| Language    | Engine Path              | Core Implementation         | Constant-Time             |
-| :---------- | :----------------------- | :-------------------------- | :------------------------ |
-| **Rust**    | `rust/src/main.rs`       | ML-KEM / ASP Cascade 16     | **Full**                  |
-| **Go**      | `go/main.go`             | ML-KEM / ASP Cascade 16     | **Full**                  |
-| **C/C++**   | `c/spna_engine.c`        | FFI ML-KEM / ASP Cascade 16 | **Full**                  |
-| **Python**  | `python/dasp.py`         | WASM ML-KEM / Cascade 16    | **Full**                  |
-| **Node.js** | `node/dasp.js`           | WASM ML-KEM / Cascade 16    | **Full**                  |
-| **CUDA**    | `cuda/dasp_kernel.cu`    | ASP Cascade 16 GPU          | **Full**                  |
+| Language    | Engine Path           | Core Implementation         | Constant-Time |
+| :---------- | :-------------------- | :-------------------------- | :------------ |
+| **Rust**    | `rust/src/main.rs`    | ML-KEM / ASP Cascade 16     | **Full**      |
+| **Go**      | `go/main.go`          | ML-KEM / ASP Cascade 16     | **Full**      |
+| **C/C++**   | `c/spna_engine.c`     | FFI ML-KEM / ASP Cascade 16 | **Full**      |
+| **Python**  | `python/dasp.py`      | WASM ML-KEM / ASP Cascade 16 | **Full**      |
+| **Node.js** | `node/dasp.js`        | WASM ML-KEM / ASP Cascade 16 | **Full**      |
+| **CUDA**    | `cuda/dasp_kernel.cu` | Native ML-KEM / ASP Cascade 16 GPU | **Full**      |
 
 ---
 

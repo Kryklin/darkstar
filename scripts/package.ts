@@ -166,7 +166,7 @@ const pkg = require('../package.json');
       { name: 'Rust Audit (cargo-audit)', cmd: 'cargo-audit', args: ['--version'], pkg: 'cargo-audit', installer: 'cargo' },
       { name: 'Go Audit (govulncheck)', cmd: 'govulncheck', args: ['-version'], pkg: 'golang.org/x/vuln/cmd/govulncheck@latest', installer: 'go' },
       { name: 'Python Audit (pip-audit)', cmd: 'python', args: ['-m', 'pip_audit', '--version'], pkg: 'pip-audit', installer: 'pip' },
-      { name: 'Python Formatter (black)', cmd: 'python', args: ['-m', 'black', '--version'], pkg: 'black', installer: 'pip' }
+      { name: 'Python Formatter (black)', cmd: 'python', args: ['-m', 'black', '--version'], pkg: 'black', installer: 'pip' },
     ];
 
     const missing = [];
@@ -446,4 +446,3 @@ const pkg = require('../package.json');
     ]);
   }
 })();
-

@@ -59,4 +59,3 @@ import { execa } from 'execa';
     process.exit(0);
   }
 })();
-

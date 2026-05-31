@@ -39,9 +39,12 @@ pub extern "C" fn wasm_encrypt(
     hwid_ptr: *const u8,
     hwid_len: usize,
 ) -> *mut u8 {
-    let payload = unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(payload_ptr, payload_len)) };
-    let pk_hex = unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(pk_ptr, pk_len)) };
-    
+    let payload = unsafe {
+        std::str::from_utf8_unchecked(std::slice::from_raw_parts(payload_ptr, payload_len))
+    };
+    let pk_hex =
+        unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(pk_ptr, pk_len)) };
+
     let hwid = if hwid_len > 0 {
         Some(unsafe { std::slice::from_raw_parts(hwid_ptr, hwid_len) }.to_vec())
     } else {
@@ -71,9 +74,11 @@ pub extern "C" fn wasm_decrypt(
     hwid_ptr: *const u8,
     hwid_len: usize,
 ) -> *mut u8 {
-    let payload = unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(data_ptr, data_len)) };
-    let sk_hex = unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(sk_ptr, sk_len)) };
-    
+    let payload =
+        unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(data_ptr, data_len)) };
+    let sk_hex =
+        unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(sk_ptr, sk_len)) };
+
     let hwid = if hwid_len > 0 {
         Some(unsafe { std::slice::from_raw_parts(hwid_ptr, hwid_len) }.to_vec())
     } else {

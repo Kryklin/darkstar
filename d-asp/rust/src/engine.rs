@@ -20,8 +20,12 @@ pub struct Instant {}
 
 #[cfg(target_arch = "wasm32")]
 impl Instant {
-    pub fn now() -> Self { Instant {} }
-    pub fn elapsed(&self) -> core::time::Duration { core::time::Duration::from_micros(0) }
+    pub fn now() -> Self {
+        Instant {}
+    }
+    pub fn elapsed(&self) -> core::time::Duration {
+        core::time::Duration::from_micros(0)
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -568,5 +572,3 @@ impl DarkstarCrypt {
         Ok(result)
     }
 }
-
-

@@ -18,9 +18,15 @@ const path = require('path');
   const allowed = ['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', 'CC0-1.0'];
 
   const jobs = [
-    { name: 'NPM (JavaScript)', cmd: 'npx license-checker-rseidelsohn --summary --onlyAllow "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Python-2.0;Unlicense;CC-BY-4.0;CC-BY-3.0;BlueOak-1.0.0;0BSD;WTFPL;Zlib;UNLICENSED"' },
+    {
+      name: 'NPM (JavaScript)',
+      cmd: 'npx license-checker-rseidelsohn --summary --onlyAllow "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Python-2.0;Unlicense;CC-BY-4.0;CC-BY-3.0;BlueOak-1.0.0;0BSD;WTFPL;Zlib;UNLICENSED"',
+    },
     { name: 'Cargo (Rust)', cmd: 'cargo deny check licenses', cwd: path.join(__dirname, '../d-asp/rust') },
-    { name: 'Pip (Python)', cmd: 'C:\\Users\\morta\\AppData\\Roaming\\Python\\Python314\\Scripts\\pip-licenses.exe --fail-on "GPL;AGPL;LGPL" --allow-only "MIT;Apache Software License;Apache-2.0;BSD License;ISC License (ISCL);Python Software Foundation License;BSD-2-Clause;BSD-3-Clause;Zlib;Mozilla Public License 2.0 (MPL 2.0);Apache-2.0 OR BSD-3-Clause;DFSG approved; MIT License;MIT OR Apache-2.0;Creative Commons Attribution 4.0 International License;Apache-2.0 OR BSD-2-Clause"' }
+    {
+      name: 'Pip (Python)',
+      cmd: 'C:\\Users\\morta\\AppData\\Roaming\\Python\\Python314\\Scripts\\pip-licenses.exe --fail-on "GPL;AGPL;LGPL" --allow-only "MIT;Apache Software License;Apache-2.0;BSD License;ISC License (ISCL);Python Software Foundation License;BSD-2-Clause;BSD-3-Clause;Zlib;Mozilla Public License 2.0 (MPL 2.0);Apache-2.0 OR BSD-3-Clause;DFSG approved; MIT License;MIT OR Apache-2.0;Creative Commons Attribution 4.0 International License;Apache-2.0 OR BSD-2-Clause"',
+    },
   ];
 
   for (let i = 0; i < jobs.length; i++) {
@@ -31,7 +37,7 @@ const path = require('path');
         // We need a basic deny.toml for cargo-deny to work or it uses defaults
         // It defaults to allowing MIT/Apache, but we can just run it
       }
-      
+
       await execa(job.cmd, { shell: true, cwd: job.cwd || process.cwd() });
       job.status = chalk.green('Compliant');
       spinner.succeed(chalk.green(`${job.name} passed strict license audit.`));
@@ -45,12 +51,12 @@ const path = require('path');
   const table = new Table({
     head: [chalk.bold.white('Component'), chalk.bold.white('Status')],
     colWidths: [25, 25],
-    style: { head: [], border: [] }
+    style: { head: [], border: [] },
   });
 
   let allPassed = true;
 
-  jobs.forEach(j => {
+  jobs.forEach((j) => {
     table.push([j.name, j.status]);
     if (j.status.includes('Violation')) allPassed = false;
   });
@@ -65,4 +71,3 @@ const path = require('path');
     process.exit(0);
   }
 })();
-

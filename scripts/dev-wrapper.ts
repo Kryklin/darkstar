@@ -35,4 +35,3 @@ const { spawn } = require('child_process');
     process.exit(code);
   });
 })();
-

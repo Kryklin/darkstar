@@ -27,4 +27,3 @@ filesToHash.forEach((file) => {
 
 fs.writeFileSync(path.join(electronDistPath, 'integrity.json'), JSON.stringify(integrity, null, 2));
 console.log('Integrity signatures generated successfully.');
-

@@ -15,4 +15,3 @@ data.overrides['dompurify'] = '^3.3.4';
 data.overrides['ip-address'] = '^10.1.1';
 
 fs.writeFileSync('package.json', JSON.stringify(data, null, 2) + '\n');
-

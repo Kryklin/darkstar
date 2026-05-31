@@ -43,18 +43,18 @@ const path = require('path');
   }
 
   const spinner = ora(chalk.blue('Running Rust ASAN Tests (Nightly + MSVC)...')).start();
-  
+
   try {
     const rustEnv = Object.assign({}, process.env, {
       RUSTFLAGS: '-Zsanitizer=address',
-      PATH: `${msvcPath};${process.env.PATH}`
+      PATH: `${msvcPath};${process.env.PATH}`,
     });
 
     await execa('cargo', ['+nightly', 'test', '--target', 'x86_64-pc-windows-msvc'], {
       cwd: path.join(__dirname, '../d-asp/rust'),
-      env: rustEnv
+      env: rustEnv,
     });
-    
+
     spinner.succeed(chalk.green('Rust ASAN Checks Passed. Zero memory leaks detected.'));
   } catch (error) {
     spinner.fail(chalk.red('Rust ASAN Checks Failed. Memory violation detected!'));
@@ -63,24 +63,46 @@ const path = require('path');
   }
 
   const spinner2 = ora(chalk.blue('Running C Engine ASAN Instrumentation (LLVM)...')).start();
-  
+
   try {
     const cEnv = Object.assign({}, process.env, {
-      PATH: `${llvmPath};${process.env.PATH}`
+      PATH: `${llvmPath};${process.env.PATH}`,
     });
 
     // Compile C engine with ASAN
-    await execa('C:\\Program Files\\LLVM\\bin\\clang.exe', [
-      '-O1', '-g', '-fsanitize=address', '-mavx2', '-o', 'dasp_asan.exe',
-      'main.c', 'spna_engine.c', 'gf_math.c', 'ml_kem.c', 'fips202.c',
-      'sha512.c', 'sha256.c', 'aes.c', 'rng.c', 'poly.c', 'poly_sampling.c',
-      '-I.', '-lws2_32', '-luserenv', '-ladvapi32', '-lbcrypt'
-    ], { cwd: path.join(__dirname, '../d-asp/c'), env: cEnv });
+    await execa(
+      'C:\\Program Files\\LLVM\\bin\\clang.exe',
+      [
+        '-O1',
+        '-g',
+        '-fsanitize=address',
+        '-mavx2',
+        '-o',
+        'dasp_asan.exe',
+        'main.c',
+        'spna_engine.c',
+        'gf_math.c',
+        'ml_kem.c',
+        'fips202.c',
+        'sha512.c',
+        'sha256.c',
+        'aes.c',
+        'rng.c',
+        'poly.c',
+        'poly_sampling.c',
+        '-I.',
+        '-lws2_32',
+        '-luserenv',
+        '-ladvapi32',
+        '-lbcrypt',
+      ],
+      { cwd: path.join(__dirname, '../d-asp/c'), env: cEnv },
+    );
 
     // Run KAT tests against the ASAN binary
     await execa('python', ['../scripts/verify_kat.py'], {
       cwd: path.join(__dirname, '../d-asp/c'),
-      env: Object.assign({}, cEnv, { DASP_C_BINARY: 'dasp_asan.exe' })
+      env: Object.assign({}, cEnv, { DASP_C_BINARY: 'dasp_asan.exe' }),
     });
 
     spinner2.succeed(chalk.green('C Engine ASAN Checks Passed. Zero memory leaks detected.'));
@@ -92,6 +114,4 @@ const path = require('path');
 
   console.log(chalk.green.bold('\n✔ All Native Engines Passed Memory Sanitization!\n'));
   process.exit(0);
-
 })();
-

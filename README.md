@@ -36,14 +36,14 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 
 **ASP Cascade 16**: The 16-round engine ensures bit-perfect interoperability across Rust, Go, C, Python, Node.js, and CUDA while providing maximum algebraic complexity.
 
-| Engine      | optimization       | implementation               | Security Tier | Interop  |
-| :---------- | :----------------- | :--------------------------- | :------------ | :------- |
-| **Rust**    | **Native (LTO)**   | Reference implementation     | Grade-1024    | `PASSED` |
-| **Go**      | **Native (SSA)**   | High-performance bridge      | Grade-1024    | `PASSED` |
-| **C**       | **Native (Clang)** | Procedural Reference         | Grade-1024    | `PASSED` |
+| Engine      | optimization               | implementation               | Security Tier | Interop  |
+| :---------- | :------------------------- | :--------------------------- | :------------ | :------- |
+| **Rust**    | **Native (LTO)**           | Reference implementation     | Grade-1024    | `PASSED` |
+| **Go**      | **Native (SSA)**           | High-performance bridge      | Grade-1024    | `PASSED` |
+| **C**       | **Native (Clang)**         | Procedural Reference         | Grade-1024    | `PASSED` |
 | **Node.js** | **Managed (Decrypt-Only)** | Production Bridge (Electron) | Grade-1024    | `PASSED` |
 | **Python**  | **Managed (Decrypt-Only)** | Research & Validation        | Grade-1024    | `PASSED` |
-| **CUDA**    | **Native (NVCC)**  | Massively Parallel GPU       | Grade-1024    | `PASSED` |
+| **CUDA**    | **Native (Decrypt-Only)**  | Massively Parallel GPU       | Grade-1024    | `PASSED` |
 
 ### 🚀 Extreme Performance (Grade-1024)
 

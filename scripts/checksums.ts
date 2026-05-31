@@ -59,4 +59,3 @@ artifactFiles.forEach((file) => {
 
 fs.writeFileSync(OUT_FILE, checksumsOutput, 'utf8');
 console.log(`\n✨ Checksums successfully written to ${OUT_FILE}`);
-

@@ -10,7 +10,7 @@ const { ml_kem1024: kyber } = require('@noble/post-quantum/ml-kem.js');
 
 let wasmPath = path.join(__dirname, '..', '..', 'wasm', 'dasp_crypto.wasm');
 if (!fs.existsSync(wasmPath)) {
-    wasmPath = path.join(__dirname, '..', 'dasp_crypto.wasm');
+  wasmPath = path.join(__dirname, '..', 'dasp_crypto.wasm');
 }
 const wasmBuffer = fs.readFileSync(wasmPath);
 
@@ -23,19 +23,19 @@ export class DarkstarCrypt {
 
   async init(): Promise<void> {
     if (this.wasmInstance) return;
-    
+
     const wasmModule = await WebAssembly.compile(wasmBuffer);
-    
+
     const importObject = {
       env: {
         host_getrandom: (ptr: number, len: number) => {
           if (!this.wasmInstance) return;
           const mem = new Uint8Array((this.wasmInstance.exports.memory as WebAssembly.Memory).buffer);
           nodeCrypto.randomFillSync(mem, ptr, len);
-        }
-      }
+        },
+      },
     };
-    
+
     const instance = await WebAssembly.instantiate(wasmModule, importObject);
     this.wasmInstance = instance;
   }
@@ -54,9 +54,9 @@ export class DarkstarCrypt {
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
   }
-  
+
   private _passStringToWasm(str: string): { ptr: number; len: number } {
-    if (!this.wasmInstance) throw new Error("WASM not initialized");
+    if (!this.wasmInstance) throw new Error('WASM not initialized');
     const encoder = new TextEncoder();
     const encoded = encoder.encode(str);
     const wasm_alloc = this.wasmInstance.exports.wasm_alloc as CallableFunction;
@@ -65,19 +65,19 @@ export class DarkstarCrypt {
     mem.set(encoded, ptr);
     return { ptr, len: encoded.length };
   }
-  
+
   private _passBufferToWasm(buf: Uint8Array | null): { ptr: number; len: number } {
     if (!buf) return { ptr: 0, len: 0 };
-    if (!this.wasmInstance) throw new Error("WASM not initialized");
+    if (!this.wasmInstance) throw new Error('WASM not initialized');
     const wasm_alloc = this.wasmInstance.exports.wasm_alloc as CallableFunction;
     const ptr = wasm_alloc(buf.length) as number;
     const mem = new Uint8Array((this.wasmInstance.exports.memory as WebAssembly.Memory).buffer);
     mem.set(buf, ptr);
     return { ptr, len: buf.length };
   }
-  
+
   private _readStringFromWasm(ptr: number): string {
-    if (!this.wasmInstance) throw new Error("WASM not initialized");
+    if (!this.wasmInstance) throw new Error('WASM not initialized');
     const mem = new Uint8Array((this.wasmInstance.exports.memory as WebAssembly.Memory).buffer);
     let end = ptr;
     while (mem[end] !== 0) end++;
@@ -90,74 +90,66 @@ export class DarkstarCrypt {
 
   async encrypt(payload: string, pkHex: string, hwidHex: string | null = null, telemetry: boolean = false): Promise<string> {
     await this.init();
-    if (!this.wasmInstance) throw new Error("WASM not initialized");
-    
+    if (!this.wasmInstance) throw new Error('WASM not initialized');
+
     const payloadWasm = this._passStringToWasm(payload);
     const pkWasm = this._passStringToWasm(pkHex);
     let hwidWasm = { ptr: 0, len: 0 };
     if (hwidHex) {
       hwidWasm = this._passBufferToWasm(this.hex2buf(hwidHex));
     }
-    
+
     const wasm_encrypt = this.wasmInstance.exports.wasm_encrypt as CallableFunction;
-    const outPtr = wasm_encrypt(
-      payloadWasm.ptr, payloadWasm.len,
-      pkWasm.ptr, pkWasm.len,
-      hwidWasm.ptr, hwidWasm.len
-    ) as number;
-    
+    const outPtr = wasm_encrypt(payloadWasm.ptr, payloadWasm.len, pkWasm.ptr, pkWasm.len, hwidWasm.ptr, hwidWasm.len) as number;
+
     const wasm_dealloc = this.wasmInstance.exports.wasm_dealloc as CallableFunction;
     wasm_dealloc(payloadWasm.ptr, payloadWasm.len);
     wasm_dealloc(pkWasm.ptr, pkWasm.len);
     if (hwidWasm.ptr !== 0) {
       wasm_dealloc(hwidWasm.ptr, hwidWasm.len);
     }
-    
+
     const resultJsonStr = this._readStringFromWasm(outPtr);
-    
+
     try {
-        const res = JSON.parse(resultJsonStr);
-        if (res.error) {
-            throw new Error(res.error);
-        }
-    } catch(e) {
-        if (resultJsonStr.startsWith('{"error"')) {
-            throw new Error(JSON.parse(resultJsonStr).error);
-        }
+      const res = JSON.parse(resultJsonStr);
+      if (res.error) {
+        throw new Error(res.error);
+      }
+    } catch (e) {
+      if (resultJsonStr.startsWith('{"error"')) {
+        throw new Error(JSON.parse(resultJsonStr).error);
+      }
     }
-    
+
     return resultJsonStr;
   }
 
   async decrypt(encryptedDataRaw: string, skHex: string, hwidHex: string | null = null, telemetry: boolean = false): Promise<string> {
     await this.init();
-    if (!this.wasmInstance) throw new Error("WASM not initialized");
-    
+    if (!this.wasmInstance) throw new Error('WASM not initialized');
+
     const dataWasm = this._passStringToWasm(encryptedDataRaw);
     const skWasm = this._passStringToWasm(skHex);
     let hwidWasm = { ptr: 0, len: 0 };
     if (hwidHex) {
       hwidWasm = this._passBufferToWasm(this.hex2buf(hwidHex));
     }
-    
+
     const wasm_decrypt = this.wasmInstance.exports.wasm_decrypt as CallableFunction;
-    const outPtr = wasm_decrypt(
-      dataWasm.ptr, dataWasm.len,
-      skWasm.ptr, skWasm.len,
-      hwidWasm.ptr, hwidWasm.len
-    ) as number;
-    
+    const outPtr = wasm_decrypt(dataWasm.ptr, dataWasm.len, skWasm.ptr, skWasm.len, hwidWasm.ptr, hwidWasm.len) as number;
+
     const wasm_dealloc = this.wasmInstance.exports.wasm_dealloc as CallableFunction;
     wasm_dealloc(dataWasm.ptr, dataWasm.len);
     wasm_dealloc(skWasm.ptr, skWasm.len);
     if (hwidWasm.ptr !== 0) {
       wasm_dealloc(hwidWasm.ptr, hwidWasm.len);
     }
-    
+
     const resultStr = this._readStringFromWasm(outPtr);
     if (resultStr.startsWith('{"error"')) {
-        const errObj = JSON.parse(resultStr);
-        throw new Error(errObj.error);
+      const errObj = JSON.parse(resultStr);
+      throw new Error(errObj.error);
     }
     return resultStr;
   }

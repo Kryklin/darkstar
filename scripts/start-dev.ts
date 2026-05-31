@@ -29,4 +29,3 @@ const child = spawn('npx', [cmd, ...args], {
 child.on('error', (err) => {
   console.error('Failed to start:', err);
 });
-
