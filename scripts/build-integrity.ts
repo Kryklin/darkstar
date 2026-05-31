@@ -1,3 +1,9 @@
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
@@ -21,3 +27,4 @@ filesToHash.forEach((file) => {
 
 fs.writeFileSync(path.join(electronDistPath, 'integrity.json'), JSON.stringify(integrity, null, 2));
 console.log('Integrity signatures generated successfully.');
+

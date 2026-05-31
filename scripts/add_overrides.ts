@@ -1,3 +1,9 @@
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const fs = require('fs');
 const data = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 
@@ -9,3 +15,4 @@ data.overrides['dompurify'] = '^3.3.4';
 data.overrides['ip-address'] = '^10.1.1';
 
 fs.writeFileSync('package.json', JSON.stringify(data, null, 2) + '\n');
+

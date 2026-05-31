@@ -1,3 +1,9 @@
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const { spawn } = require('child_process');
 const path = require('path');
 
@@ -23,3 +29,4 @@ const child = spawn('npx', [cmd, ...args], {
 child.on('error', (err) => {
   console.error('Failed to start:', err);
 });
+

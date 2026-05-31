@@ -7,6 +7,8 @@ use std::slice;
 
 pub mod engine;
 use engine::DarkstarCrypt;
+
+#[cfg(target_arch = "wasm32")]
 pub mod wasm_bindings;
 
 type HmacSha512 = Hmac<Sha512>;
