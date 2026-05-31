@@ -19,7 +19,7 @@ const pkg = require('../package.json');
   const envPath = path.join(__dirname, '../.env');
   if (fs.existsSync(envPath)) {
     const envContent = fs.readFileSync(envPath, 'utf8');
-    envContent.split('\n').forEach((line) => {
+    envContent.split('\n').forEach((line: string) => {
       const [key, ...valueParts] = line.split('=');
       if (key && valueParts.length > 0) {
         const value = valueParts
@@ -93,7 +93,7 @@ const pkg = require('../package.json');
    * @param {string[]} [args=[]] - Arguments for the command
    * @param {object} [options={}] - Extra options for execa
    */
-  async function runStep(stepName, command, args = [], options = {}) {
+  async function runStep(stepName: string, command: string, args: string[] = [], options: Record<string, unknown> = {}) {
     // Extract custom options from execa options
     const { clear = true, showOutput = false, ...execaOptions } = options;
 
@@ -117,7 +117,8 @@ const pkg = require('../package.json');
       } else {
         spinner.succeed(chalk.green.bold(`${stepName} Completed Successfully!`));
       }
-    } catch (error) {
+    } catch (err: unknown) {
+      const error = err as { stdout?: string; stderr?: string };
       if (!showOutput) {
         spinner.fail(chalk.red.bold(`${stepName} Failed!`));
         if (error.stdout) console.log(error.stdout);
@@ -136,7 +137,7 @@ const pkg = require('../package.json');
    * @param {string} shellCommand
    * @param {object} [options={}]
    */
-  async function runShell(stepName, shellCommand, options = {}) {
+  async function runShell(stepName: string, shellCommand: string, options: Record<string, unknown> = {}) {
     await runStep(stepName, shellCommand, [], { shell: true, ...options });
   }
 
@@ -153,7 +154,7 @@ const pkg = require('../package.json');
     // Inject common installation paths into process.env.PATH so newly installed tools are detected without a terminal restart
     const commonPaths = ['C:\\Program Files\\LLVM\\bin', 'C:\\Program Files\\Go\\bin', path.join(process.env.USERPROFILE || '', '.cargo', 'bin')];
     for (const p of commonPaths) {
-      if (!process.env.PATH.includes(p) && fs.existsSync(p)) {
+      if (process.env.PATH && !process.env.PATH.includes(p) && fs.existsSync(p)) {
         process.env.PATH = `${p}${path.delimiter}${process.env.PATH}`;
       }
     }
@@ -167,6 +168,8 @@ const pkg = require('../package.json');
       { name: 'Go Audit (govulncheck)', cmd: 'govulncheck', args: ['-version'], pkg: 'golang.org/x/vuln/cmd/govulncheck@latest', installer: 'go' },
       { name: 'Python Audit (pip-audit)', cmd: 'python', args: ['-m', 'pip_audit', '--version'], pkg: 'pip-audit', installer: 'pip' },
       { name: 'Python Formatter (black)', cmd: 'python', args: ['-m', 'black', '--version'], pkg: 'black', installer: 'pip' },
+      { name: '.NET (dotnet)', cmd: 'dotnet', args: ['--version'], pkg: 'Microsoft.DotNet.SDK.8', installer: 'winget' },
+      { name: 'Zig', cmd: 'zig', args: ['version'], pkg: 'zig.zig', installer: 'winget' },
     ];
 
     const missing = [];
@@ -175,20 +178,20 @@ const pkg = require('../package.json');
       try {
         await execa(dep.cmd, dep.args, { preferLocal: true, shell: process.platform === 'win32' });
         if (interactive) console.log(chalk.green(`✔ ${dep.name} is installed.`));
-      } catch (e) {
+      } catch (_e) {
         // Try fallback for C compiler if clang fails
         if (dep.cmd === 'clang') {
           try {
             await execa('gcc', ['--version'], { preferLocal: true, shell: process.platform === 'win32' });
             if (interactive) console.log(chalk.green(`✔ C Compiler (gcc) is installed.`));
             continue;
-          } catch (e2) {
+          } catch (_e2) {
             // Try explicit LLVM path fallback
             try {
               await execa('C:\\Program Files\\LLVM\\bin\\clang.exe', ['--version']);
               if (interactive) console.log(chalk.green(`✔ C Compiler (clang) is installed at C:\\Program Files\\LLVM.`));
               continue;
-            } catch (e3) {
+            } catch (_e3) {
               // Both failed
             }
           }
@@ -235,9 +238,9 @@ const pkg = require('../package.json');
             await execa('python', ['-m', 'pip', 'install', dep.pkg], { preferLocal: true });
           }
           installSpinner.succeed(chalk.green(`Successfully installed ${dep.name}!`));
-        } catch (err) {
+        } catch (err: unknown) {
           installSpinner.fail(chalk.red(`Failed to install ${dep.name}.`));
-          console.error(chalk.dim(err.message));
+          console.error(chalk.dim((err as Error).message));
         }
       }
       console.log(chalk.yellow.bold('\nℹ Note: You may need to restart your terminal or PC for the newly installed tools to be available in your PATH.'));
@@ -428,10 +431,10 @@ const pkg = require('../package.json');
             break;
         }
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.log(chalk.red.bold('\n❌ Operation Aborted.'));
-      if (err.message) {
-        console.log(chalk.dim(err.message));
+      if ((err as Error).message) {
+        console.log(chalk.dim((err as Error).message));
       }
     }
 

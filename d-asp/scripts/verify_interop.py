@@ -59,7 +59,7 @@ def get_system_info():
                 if "L2CacheSize" in cpu_json: info["l2_cache"] = f"{cpu_json['L2CacheSize']} KB"
                 if "L3CacheSize" in cpu_json: info["l3_cache"] = f"{cpu_json['L3CacheSize']} KB"
                 if "MaxClockSpeed" in cpu_json: info["cpu_freq_nominal_mhz"] = str(cpu_json['MaxClockSpeed'])
-            except: pass
+            except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
         
         # Disk Info via PowerShell (Optimized CIM call)
         disk_ps = run_ps(r"Get-CimInstance -ClassName MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage | Select-Object FriendlyName, MediaType | ConvertTo-Json")
@@ -68,19 +68,19 @@ def get_system_info():
                 disk_json = json.loads(disk_ps)
                 if isinstance(disk_json, list): disk_json = disk_json[0]
                 info["disk_type"] = f"{disk_json.get('FriendlyName', 'Unknown')} ({disk_json.get('MediaType', 'Unknown')})"
-            except: pass
+            except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
         
     # Get runtime versions with timeouts
     try: info["node_v"] = subprocess.check_output(["node", "--version"], timeout=5).decode().strip()
-    except: pass
+    except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
     try: 
         go_out = subprocess.check_output(["go", "version"], timeout=5).decode().strip()
         info["go_v"] = go_out.split()[2]
-    except: pass
+    except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
     try:
         rust_out = subprocess.check_output(["rustc", "--version"], timeout=5).decode().strip()
         info["rust_v"] = rust_out.split()[1]
-    except: pass
+    except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
         
     return info
 
@@ -160,7 +160,7 @@ def run_cmd(cmd, cwd, input_data=None):
             if '"timings":' in line:
                 try:
                     internal_timings = json.loads(line).get("timings")
-                except: pass
+                except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
         
         # If not in stderr, check if stdout is JSON containing it (Encrypt pattern)
         if not internal_timings:
@@ -168,7 +168,7 @@ def run_cmd(cmd, cwd, input_data=None):
                 out_json = json.loads(res.stdout)
                 if "timings" in out_json:
                     internal_timings = out_json["timings"]
-            except: pass
+            except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
 
         return res.stdout.strip(), end - start, internal_timings
     except subprocess.CalledProcessError as e:
@@ -178,8 +178,10 @@ def run_cmd(cmd, cwd, input_data=None):
 def benchmark_engine(name, encrypted_payload, sk_hex, hwid, use_docker=False):
     engine = ENGINES[name]
     if use_docker:
-        cmd = engine["cmd"] + ["decrypt", encrypted_payload, sk_hex, "--hwid", hwid, "--telemetry"]
+        cmd = engine["cmd"] + ["decrypt", "@/data/interop.json", sk_hex, "--hwid", hwid, "--telemetry"]
         cwd = BASE_DIR
+        with open(os.path.join(cwd, "interop.json"), "w") as f:
+            f.write(encrypted_payload)
     else:
         cmd = engine["cmd"] + ["decrypt", "@interop.json", sk_hex, "--hwid", hwid, "--telemetry"]
         cwd = engine["cwd"]
@@ -201,6 +203,13 @@ def benchmark_engine(name, encrypted_payload, sk_hex, hwid, use_docker=False):
             internal_metrics.append(it)
         output = out
         
+    try:
+        parsed = json.loads(output)
+        if "data" in parsed:
+            output = parsed["data"]
+    except:
+        pass
+        
     return output, times, internal_metrics
 
 def main():
@@ -213,10 +222,11 @@ def main():
     if use_docker:
         for name in ENGINES:
             image_name = f"darkstar-dasp-{name.lower().replace('#', 'sharp')}"
+            mount_arg = f"{BASE_DIR}:/data"
             if name == "CUDA":
-                ENGINES[name]["cmd"] = ["docker", "run", "--rm", "--gpus", "all", image_name]
+                ENGINES[name]["cmd"] = ["docker", "run", "--rm", "--gpus", "all", "-v", mount_arg, image_name]
             else:
-                ENGINES[name]["cmd"] = ["docker", "run", "--rm", image_name]
+                ENGINES[name]["cmd"] = ["docker", "run", "--rm", "-v", mount_arg, image_name]
 
     if not use_docker:
         for engine_name, engine in ENGINES.items():
@@ -258,7 +268,8 @@ def main():
     with open(payload_file, "w") as f:
         f.write(payload)
         
-    enc_json, _, _ = run_cmd(ENGINES["Rust"]["cmd"] + ["encrypt", "@payload.txt", pk, "--hwid", hwid, "--telemetry"], enc_cwd)
+    payload_arg = "@/data/payload.txt" if use_docker else "@payload.txt"
+    enc_json, _, _ = run_cmd(ENGINES["Rust"]["cmd"] + ["encrypt", payload_arg, pk, "--hwid", hwid, "--telemetry"], enc_cwd)
     
     # 3. Cross-Platform Benchmark
     log("\nStep 3: Executing Cross-Platform Benchmark (20 rounds each)...")

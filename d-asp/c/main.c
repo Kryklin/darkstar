@@ -54,21 +54,24 @@ extern int dasp_decapsulate_data_inner(uint8_t *base_payload,
                                        const uint8_t *in_mac);
 
 // Helpers
-/**
- * @brief Decodes a hexadecimal string into a byte array.
- */
+static inline uint8_t hex_char_val(char c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  return 0;
+}
+
 static void hex_decode(const char *in, uint8_t *out, size_t out_len) {
   for (size_t i = 0; i < out_len; i++) {
-    sscanf(in + i * 2, "%2hhx", &out[i]);
+    out[i] = (hex_char_val(in[i * 2]) << 4) | hex_char_val(in[i * 2 + 1]);
   }
 }
 
-/**
- * @brief Encodes a byte array into a null-terminated hexadecimal string.
- */
 static void hex_encode(const uint8_t *in, size_t in_len, char *out) {
+  static const char hex[] = "0123456789abcdef";
   for (size_t i = 0; i < in_len; i++) {
-    sprintf(out + i * 2, "%02x", in[i]);
+    out[i * 2] = hex[in[i] >> 4];
+    out[i * 2 + 1] = hex[in[i] & 0x0F];
   }
   out[in_len * 2] = '\0';
 }

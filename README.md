@@ -51,16 +51,16 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 
 Darkstar is heavily optimized using vectorized SIMD (AVX2), `comptime`-unrolled Zig vectors, .NET AVX2 intrinsics, and GPU PTX instructions — pipelining PCIe transfers and maintaining exact register bounds to achieve sub-millisecond cascading.
 
-| Engine        | Total Time   | Casca Time | Casca CPB | Ops/sec   |
-| :------------ | :----------- | :--------- | :-------- | :-------- |
-| **CUDA**      | 309.10 ms    | **160 μs** | **5.80**  | 3.24      |
-| **Zig**       | **17.30 ms** | 239 μs     | 8.67      | **57.81** |
-| **C**         | 256.44 ms    | 380 μs     | 13.79     | 3.90      |
-| **Python**    | 546.19 ms    | 998 μs     | 36.19     | 1.83      |
-| **Go**        | 25.28 ms     | 1.23 ms    | 44.63     | 39.56     |
-| **Node.js**   | 213.16 ms    | 2.56 ms    | 92.90     | 4.69      |
-| **Rust**      | 25.75 ms     | 2.81 ms    | 101.77    | 38.84     |
-| **C# (.NET)** | 155.12 ms    | 4.70 ms    | 170.51    | 6.45      |
+| Engine        | Native Casca | Docker Casca | Native CPB | Native Ops/sec | Docker Ops/sec |
+| :------------ | :----------- | :----------- | :--------- | :------------- | :------------- |
+| **Rust**      | **121 µs**   | **163 µs**   | **4.39**   | **60.62**      | 1.35           |
+| **CUDA**      | 174 µs       | 249 µs       | 6.32       | 2.64           | 0.72           |
+| **Zig**       | 257 µs       | 283 µs       | 9.31       | 49.79          | 0.73           |
+| **C**         | 345 µs       | 434 µs       | 12.51      | 62.47          | 1.33           |
+| **Python**    | 838 µs       | 831 µs       | 30.38      | 2.24           | 0.78           |
+| **Go**        | 1.182 ms     | 1.913 ms     | 42.89      | 52.34          | 1.38           |
+| **Node.js**   | 1.785 ms     | 2.006 ms     | 64.74      | 6.28           | 1.18           |
+| **C# (.NET)** | 5.273 ms     | 8.997 ms     | 191.26     | 5.54           | 0.97           |
 
 > [!NOTE]
 > _CUDA timing includes the total host-to-host DMA transfer pipeline. The actual unrolled Grade-1024 SPNA Cascade computes in ~139μs. C# and Node.js times include JIT/CLR warm-up overhead; raw cascade execution is sub-microsecond._
