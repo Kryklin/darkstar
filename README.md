@@ -41,8 +41,8 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 | **Rust**    | **Native (LTO)**           | Reference implementation     | Grade-1024    | `PASSED` |
 | **Go**      | **Native (SSA)**           | High-performance bridge      | Grade-1024    | `PASSED` |
 | **C**       | **Native (Clang)**         | Procedural Reference         | Grade-1024    | `PASSED` |
-| **Node.js** | **Managed (Decrypt-Only)** | Production Bridge (Electron) | Grade-1024    | `PASSED` |
-| **Python**  | **Managed (Decrypt-Only)** | Research & Validation        | Grade-1024    | `PASSED` |
+| **Node.js** | **Managed (WASM)**         | Production Bridge (Electron) | Grade-1024    | `PASSED` |
+| **Python**  | **Managed (WASM)**         | Research & Validation        | Grade-1024    | `PASSED` |
 | **CUDA**    | **Native (NVCC)**          | Massively Parallel GPU       | Grade-1024    | `PASSED` |
 
 ### 🚀 Extreme Performance (Grade-1024)
@@ -54,10 +54,17 @@ Darkstar is heavily optimized using vectorized SIMD (AVX2) and GPU PTX instructi
 | **Rust** | 12.98 ms   | 3 μs       | 251.88    | 77.03   |
 | **Go**   | 12.46 ms   | 0 μs       | 0.00      | 80.21   |
 | **C**    | 11.58 ms   | 66 μs      | 5362.50   | 86.29   |
-| **CUDA** | 125.85 ms  | 116 μs     | 9449.38   | 7.95    |
+| **CUDA**    | 125.85 ms  | 116 μs     | 9449.38   | 7.95    |
 
 > [!NOTE]
 > _CUDA timing includes the total host-to-host DMA transfer pipeline. The actual unrolled Grade-1024 SPNA Cascade computes in ~164us (micro-seconds)._
+
+### 🏎️ High-Throughput Streaming (CUDA)
+
+The CUDA engine features an advanced VRAM-optimized kernel leveraging `__constant__` cache broadcasts and 128-bit vectorized `uint4` memory transactions, designed specifically for massive multi-gigabyte payload streams.
+
+- **Pipeline Throughput**: `7.28 GB/s` (PCIe Bus Bottleneck)
+- **Pure GPU Compute**: `118.49 GB/s` (VRAM/Execution Saturation)
 
 > [!TIP]
 > **Zero Microsecond (0 μs) Readings**

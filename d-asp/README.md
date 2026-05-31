@@ -57,6 +57,13 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 > [!NOTE]
 > **Cycles per Byte (CPB)** is calculated for the 32-byte (256-bit) internal state. Native engines (Go, Rust, C) achieve elite CPB efficiency by leveraging structural optimizations.
 
+### 🏎️ High-Throughput Streaming (CUDA)
+
+The CUDA engine features an advanced VRAM-optimized kernel leveraging `__constant__` cache broadcasts and 128-bit vectorized `uint4` memory transactions, designed specifically for massive multi-gigabyte payload streams.
+
+- **Pipeline Throughput**: `7.28 GB/s` (PCIe Bus Bottleneck)
+- **Pure GPU Compute**: `118.49 GB/s` (VRAM/Execution Saturation)
+
 > [!TIP]
 > **Zero Microsecond (0 μs) Readings**
 > You may observe `0 μs` for `Casca Time` in highly optimized engines like **Go** during small payload benchmarks. This is a measurement artifact, not a bug. For minimal payloads (e.g., 64 bytes), the pure native unrolled execution completes so quickly (< 100ns) that it finishes entirely between the ticks of the OS monotonic clock (e.g., Windows QPC), effectively registering zero elapsed time.

@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include "dasp_cuda.h"
 
-__device__ uint32_t d_round_keys[128];
+__constant__ uint32_t d_round_keys_const[128];
 
 __device__ static inline uint32_t d_rotl32(uint32_t x, int n) {
     return (x << n) | (x >> (32 - n));
@@ -55,12 +55,12 @@ __device__ static uint32_t d_prng_next(d_prng_t *ctx) {
     return ctx->block[ctx->block_idx++];
 }
 
-__global__ void init_keys_kernel(const uint8_t *prng_seed) {
+__global__ void init_keys_kernel(const uint8_t *prng_seed, uint32_t *out_keys) {
     if (threadIdx.x != 0 || blockIdx.x != 0) return;
     d_prng_t prng;
     d_prng_init(&prng, prng_seed);
     for (int i=0; i<128; i++) {
-        d_round_keys[i] = d_prng_next(&prng);
+        out_keys[i] = d_prng_next(&prng);
     }
 }
 
@@ -93,14 +93,14 @@ __global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, siz
     s1.x = n[4]; s1.y = n[5]; s1.z = n[6]; s1.w = n[7];
 
 #define DASP_ROUND_CUDA(i) do { \
-    s0.x += d_round_keys[(i)*8 + 0]; \
-    s0.y += d_round_keys[(i)*8 + 1]; \
-    s0.z += d_round_keys[(i)*8 + 2]; \
-    s0.w += d_round_keys[(i)*8 + 3]; \
-    s1.x += d_round_keys[(i)*8 + 4]; \
-    s1.y += d_round_keys[(i)*8 + 5]; \
-    s1.z += d_round_keys[(i)*8 + 6]; \
-    s1.w += d_round_keys[(i)*8 + 7]; \
+    s0.x += d_round_keys_const[(i)*8 + 0]; \
+    s0.y += d_round_keys_const[(i)*8 + 1]; \
+    s0.z += d_round_keys_const[(i)*8 + 2]; \
+    s0.w += d_round_keys_const[(i)*8 + 3]; \
+    s1.x += d_round_keys_const[(i)*8 + 4]; \
+    s1.y += d_round_keys_const[(i)*8 + 5]; \
+    s1.z += d_round_keys_const[(i)*8 + 6]; \
+    s1.w += d_round_keys_const[(i)*8 + 7]; \
     \
     uint32_t rc = 0x9E3779B9 + (i); \
     s0.x ^= rc; s0.y ^= rc; s0.z ^= rc; s0.w ^= rc; \
@@ -134,10 +134,14 @@ __global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, siz
     size_t remaining = payload_len - byte_offset;
     if (remaining >= 32) {
         // Can read/write 32 bytes safely
-        // Just write 8 ints
-        uint32_t *p32 = (uint32_t*)(payloads + byte_offset);
-        p32[0] ^= s0.x; p32[1] ^= s0.y; p32[2] ^= s0.z; p32[3] ^= s0.w;
-        p32[4] ^= s1.x; p32[5] ^= s1.y; p32[6] ^= s1.z; p32[7] ^= s1.w;
+        // Use uint4 vector loads/stores for 128-bit coalesced memory transactions
+        uint4 *p128 = (uint4*)(payloads + byte_offset);
+        uint4 in0 = p128[0];
+        uint4 in1 = p128[1];
+        in0.x ^= s0.x; in0.y ^= s0.y; in0.z ^= s0.z; in0.w ^= s0.w;
+        in1.x ^= s1.x; in1.y ^= s1.y; in1.z ^= s1.z; in1.w ^= s1.w;
+        p128[0] = in0;
+        p128[1] = in1;
     } else {
         uint32_t temp[8];
         temp[0] = s0.x; temp[1] = s0.y; temp[2] = s0.z; temp[3] = s0.w;
@@ -149,8 +153,22 @@ __global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, siz
 
 extern "C" void dasp_cuda_init_keys(const uint8_t *d_keys_128) {
     const uint8_t *prng_seed = d_keys_128 + 64;
-    init_keys_kernel<<<1, 1>>>(prng_seed);
+    
+    // Allocate temporary device buffer for keys
+    uint32_t *d_tmp_keys;
+    cudaMalloc(&d_tmp_keys, 128 * sizeof(uint32_t));
+    
+    // Generate keys on GPU
+    init_keys_kernel<<<1, 1>>>(prng_seed, d_tmp_keys);
     cudaDeviceSynchronize();
+    
+    // Copy keys back to Host
+    uint32_t h_tmp_keys[128];
+    cudaMemcpy(h_tmp_keys, d_tmp_keys, 128 * sizeof(uint32_t), cudaMemcpyDeviceToHost);
+    cudaFree(d_tmp_keys);
+    
+    // Copy keys to __constant__ cache
+    cudaMemcpyToSymbol(d_round_keys_const, h_tmp_keys, 128 * sizeof(uint32_t));
 }
 
 extern "C" void dasp_cuda_process_chunk(uint8_t *d_payload, size_t chunk_len, const uint8_t *d_nonce, uint64_t block_offset, cudaStream_t stream) {
