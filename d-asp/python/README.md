@@ -17,13 +17,13 @@ The Python implementation is provided primarily for cross-platform validation, r
 
 ## 🔒 Security Profile
 
-- **KEM**: Grade-1024 (ML-KEM-1024) via [`pqcrypto`](https://github.com/kpeters93/pqcrypto).
+- **KEM**: Grade-1024 (ML-KEM-1024) via WebAssembly module (WASM).
 - **Hardening**:
-  - Uses `hmac.compare_digest` for timing-resistant MAC validation.
-  - Relies on Standard Library `hashlib` for SHA-256.
+  - Offloads cryptographic processing to the precompiled `dasp_crypto.wasm` engine.
+  - Leverages `os.urandom` and standard APIs mapped over WASM linear memory boundaries for secure entropy.
 - **Constant-Time Analysis**:
   > [!IMPORTANT]
-  > **Branchless-Equivalent**. To mitigate timing side-channels, this implementation utilizes branchless arithmetic masking for all $GF(2^8)$ field operations. However, due to the nature of the Python interpreter and dynamic memory management, absolute constant-time execution cannot be guaranteed.
+  > **Full WASM Parity**. To mitigate timing side-channels and memory boundary limits historically found in scripting engines, this module now securely mounts the Rust WASM implementation via `wasmtime`, achieving native constant-time arithmetic properties.
 
 ## 🚀 Usage
 

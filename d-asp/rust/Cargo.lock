@@ -123,6 +123,7 @@ dependencies = [
  "aes-gcm",
  "base64",
  "cbc",
+ "getrandom",
  "hex",
  "hmac",
  "ml-kem",

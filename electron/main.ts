@@ -460,10 +460,16 @@ async function runDAsPCommand(engine: string, args: string[]): Promise<unknown> 
     } else if (engine === 'c') {
       cmd = path.join(process.resourcesPath, `dasp${ext}`);
       execArgs = args;
-    } else {
-      // default Node
+    } else if (engine === 'node') {
       cmd = 'node';
-      execArgs = [path.join(process.resourcesPath, 'dasp.js'), ...args];
+      execArgs = [path.join(process.resourcesPath, 'main.js'), ...args];
+    } else if (engine === 'python') {
+      cmd = 'python';
+      execArgs = [path.join(process.resourcesPath, 'dasp.py'), ...args];
+    } else {
+      // default Rust
+      cmd = path.join(process.resourcesPath, `d-asp${ext}`);
+      execArgs = args;
     }
   } else {
     // In development, use the local d-asp source tree
@@ -477,10 +483,16 @@ async function runDAsPCommand(engine: string, args: string[]): Promise<unknown> 
     } else if (engine === 'c') {
       cmd = path.join(basePath, 'c', `dasp${ext}`);
       execArgs = args;
-    } else {
-      // default Node
+    } else if (engine === 'node') {
       cmd = 'node';
-      execArgs = [path.join(basePath, 'node', 'darkstar_crypt.js'), ...args];
+      execArgs = [path.join(basePath, 'node', 'dist', 'main.js'), ...args];
+    } else if (engine === 'python') {
+      cmd = 'python';
+      execArgs = [path.join(basePath, 'python', 'dasp.py'), ...args];
+    } else {
+      // default Rust
+      cmd = path.join(basePath, 'rust', 'target', 'release', `d-asp${ext}`);
+      execArgs = args;
     }
   }
 

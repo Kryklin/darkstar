@@ -107,7 +107,7 @@ ENGINES = {
     },
     "Node": {
         "cwd": os.path.join(BASE_DIR, "node"),
-        "cmd": ["node", os.path.join(BASE_DIR, "node", "dasp.js")],
+        "cmd": ["node", os.path.join(BASE_DIR, "node", "dist", "main.js")],
         "type": "managed"
     },
     "Python": {

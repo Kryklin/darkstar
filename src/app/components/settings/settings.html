@@ -85,13 +85,16 @@
                     @if (dkaspEngine === 'go') {
                       <i class="devicon-go-plain colored"></i>
                     }
-                    @if (dkaspEngine === 'node') {
-                      <i class="devicon-nodejs-plain colored"></i>
-                    }
                     @if (dkaspEngine === 'c') {
                       <i class="devicon-c-plain colored"></i>
                     }
-                    <span style="margin-left: 8px; text-transform: capitalize">{{ dkaspEngine === 'node' ? 'Node.js' : dkaspEngine }}</span>
+                    @if (dkaspEngine === 'node') {
+                      <i class="devicon-nodejs-plain colored"></i>
+                    }
+                    @if (dkaspEngine === 'python') {
+                      <i class="devicon-python-plain colored"></i>
+                    }
+                    <span style="margin-left: 8px; text-transform: capitalize">{{ dkaspEngine }}</span>
                   </div>
                 </mat-select-trigger>
                 <mat-option value="rust">
@@ -118,6 +121,13 @@
                     <span>Node.js</span>
                   </div>
                 </mat-option>
+                <mat-option value="python">
+                  <div class="engine-option">
+                    <i class="devicon-python-plain colored"></i>
+                    <span>Python</span>
+                  </div>
+                </mat-option>
+
               </mat-select>
             </mat-form-field>
           </div>

@@ -44,14 +44,17 @@ Thumbs.db
 /out
 
 # Standalone Encryption Ignores
-darkstar-encry/**/node_modules
-darkstar-encry/**/__pycache__
+d-asp/**/node_modules
+d-asp/**/__pycache__
+d-asp/**/dist
 
-# Added by cargo
+# Added by build/cargo
 /target
-darkstar-encry/rust/target
-darkstar-encry/go/darkstar-encry
-darkstar-encry/go/*.exe
+d-asp/rust/target
+d-asp/go/main
+d-asp/go/main.exe
+d-asp/c/dasp
+d-asp/c/dasp.exe
 *.log
 
 # Plans

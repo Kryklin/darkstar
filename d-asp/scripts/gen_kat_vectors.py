@@ -2,8 +2,8 @@ import subprocess
 import json
 import os
 
-C_BIN = "python"
-C_CWD = r"x:\Projects\darkstar\d-asp\python"
+C_BIN = os.path.join(os.path.dirname(__file__), "..", "rust", "target", "release", "d-asp.exe")
+C_CWD = os.path.join(os.path.dirname(__file__), "..", "rust")
 
 def run_engine(bin_path, cwd, args):
     res = subprocess.run([bin_path] + args, cwd=cwd, capture_output=True, text=True, encoding='utf-8', timeout=60)
@@ -16,14 +16,12 @@ def run_engine(bin_path, cwd, args):
     return out, res.stderr
 
 def main():
-    print("Generating Master KAT Key using C Reference Engine...")
-    keygen_out, _ = run_engine(C_BIN, C_CWD, ["dasp.py", "keygen"])
+    print("Generating Master KAT Key using Rust Reference Engine...")
+    keygen_out, _ = run_engine(C_BIN, C_CWD, ["keygen"])
     
-    pk, sk = None, None
-    key_obj = json.loads(keygen_out)
-    pk = key_obj['pk']
-    sk = key_obj['sk']
-    
+    lines = keygen_out.splitlines()
+    pk = lines[0].split(": ")[1]
+    sk = lines[1].split(": ")[1]
     if not pk or not sk:
         raise ValueError(f"Failed to find PK/SK in keygen output:\n{keygen_out}")
     
@@ -38,12 +36,12 @@ def main():
     ]
     
     for tc in test_cases:
-        print(f"Generating Vector {tc['id']} using C engine encrypt...")
+        print(f"Generating Vector {tc['id']} using Rust engine encrypt...")
         
         pk_file = os.path.join(C_CWD, "tmp_pk.hex")
         with open(pk_file, "w") as f: f.write(pk)
         
-        args = ["dasp.py", "--diagnostic", "encrypt", tc["payload"], f"@{pk_file}", "--telemetry"]
+        args = ["--diagnostic", "encrypt", tc["payload"], f"@{pk_file}", "--telemetry"]
         if tc["hwid"]:
             hwid_file = os.path.join(C_CWD, "tmp_hwid.hex")
             with open(hwid_file, "w") as f: f.write(tc["hwid"])
@@ -86,7 +84,7 @@ def main():
         json.dump(vectors, f, indent=2)
     
     print(f"\nSuccessfully generated {len(vectors)} vectors in {output_path}")
-    print("NOTE: KAT vectors use Python-native ML-KEM-1024 keypair + Python encrypt.")
+    print("NOTE: KAT vectors use Rust-native ML-KEM-1024 keypair + Rust encrypt.")
     print("All engines decrypt to validate SPNA cascade parity.")
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-const { execa } = require('execa');
+import { execa } from 'execa';
 
 (async () => {
   const { default: ora } = await import('ora');

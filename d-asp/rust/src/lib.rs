@@ -5,6 +5,10 @@ use ml_kem::{EncodedSizeUser, KemCore, MlKem1024, MlKem1024Params};
 use sha2::{Digest, Sha256, Sha512};
 use std::slice;
 
+pub mod engine;
+use engine::DarkstarCrypt;
+pub mod wasm_bindings;
+
 type HmacSha512 = Hmac<Sha512>;
 type HmacSha256 = Hmac<Sha256>;
 

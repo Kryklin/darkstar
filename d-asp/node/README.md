@@ -17,13 +17,13 @@ The Node.js implementation acts as the primary bridge for web applications and E
 
 ## 🔒 Security Profile
 
-- **KEM**: Grade-1024 (ML-KEM-1024) via [@noble/post-quantum](https://github.com/paulmillr/noble-post-quantum).
+- **KEM**: Grade-1024 (ML-KEM-1024) via WebAssembly module (WASM).
 - **Hardening**:
-  - Leverages Node.js `crypto` module for high-entropy PBKDF2 and SHA-256 operations.
-  - Implements `timingSafeEqual` for MAC verification.
+  - Offloads cryptographic processing to the precompiled `dasp_crypto.wasm` engine.
+  - Leverages Node.js `crypto.randomFillSync` and standard APIs mapped over WASM linear memory boundaries for secure entropy.
 - **Constant-Time Analysis**:
   > [!IMPORTANT]
-  > **Branchless-Equivalent**. To mitigate timing side-channels, this implementation utilizes branchless arithmetic masking for all $GF(2^8)$ field operations. However, due to the nature of the V8 JavaScript engine (JIT, GC), absolute constant-time execution cannot be guaranteed on the same level as the hardware-bound Rust reference.
+  > **Full WASM Parity**. To mitigate timing side-channels and memory boundary limits historically found in JS engines, this module now securely mounts the Rust WASM implementation, achieving native constant-time arithmetic properties.
 
 ## 🚀 Usage
 

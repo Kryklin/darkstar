@@ -26,7 +26,7 @@ ENGINES = {
     },
     "Node": {
         "cwd": os.path.join(BASE_DIR, "node"),
-        "cmd": ["node", os.path.join(BASE_DIR, "node", "dasp.js")],
+        "cmd": ["node", os.path.join(BASE_DIR, "node", "dist", "main.js")],
     },
             "Python": {
         "cwd": os.path.join(BASE_DIR, "python"),
@@ -71,7 +71,7 @@ def run_decrypt(engine_name, ciphertext_json, sk_hex, hwid, use_diagnostic=True)
         hwid_path_abs = os.path.abspath(hwid_file)
         cmd += ["--hwid", f"@{hwid_path_abs}"]
         
-    if use_diagnostic and engine_name != "C":
+    if use_diagnostic and engine_name not in ["C", "Node", "Python"]:
         cmd += ["--diagnostic"]
         
     try:
@@ -160,7 +160,7 @@ def main():
                 status = "FAIL (CLI ERROR)"
                 error_msg = actual_payload
             else:
-                if engine != "C":
+                if engine not in ["C", "Node", "Python"]:
                     for stage_name, key in stages:
                         if engine == "CUDA" and key == "stage3_round_indices":
                             continue

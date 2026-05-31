@@ -6,7 +6,7 @@ license = "CC0-1.0"
 
 [lib]
 name = "dasp_crypto"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 aes = "0.8"
@@ -22,3 +22,6 @@ hex = "0.4"
 zeroize = "1.7"
 aes-gcm = "0.10.3"
 ml-kem = "0.2"
+getrandom = { version = "0.2", features = ["custom"] }
+
+

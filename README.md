@@ -41,8 +41,8 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 | **Rust**    | **Native (LTO)**   | Reference implementation     | Grade-1024    | `PASSED` |
 | **Go**      | **Native (SSA)**   | High-performance bridge      | Grade-1024    | `PASSED` |
 | **C**       | **Native (Clang)** | Procedural Reference         | Grade-1024    | `PASSED` |
-| **Node.js** | **Managed**        | Production Bridge (Electron) | Grade-1024    | `PASSED` |
-| **Python**  | **Managed**        | Research & Validation        | Grade-1024    | `PASSED` |
+| **Node.js** | **Managed (Decrypt-Only)** | Production Bridge (Electron) | Grade-1024    | `PASSED` |
+| **Python**  | **Managed (Decrypt-Only)** | Research & Validation        | Grade-1024    | `PASSED` |
 | **CUDA**    | **Native (NVCC)**  | Massively Parallel GPU       | Grade-1024    | `PASSED` |
 
 ### 🚀 Extreme Performance (Grade-1024)

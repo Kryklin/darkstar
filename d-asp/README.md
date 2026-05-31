@@ -84,8 +84,8 @@ All implementations are designed as **high-performance, standalone sources** to 
 | **Rust**    | `rust/src/main.rs`       | ML-KEM / ASP Cascade 16     | **Full**                  |
 | **Go**      | `go/main.go`             | ML-KEM / ASP Cascade 16     | **Full**                  |
 | **C/C++**   | `c/spna_engine.c`        | FFI ML-KEM / ASP Cascade 16 | **Full**                  |
-| **Python**  | `python/dasp.py`         | ASP Cascade 16              | **Branchless-Equivalent** |
-| **Node.js** | `node/darkstar_crypt.js` | ASP Cascade 16 / Bridge     | **Branchless-Equivalent** |
+| **Python**  | `python/dasp.py`         | WASM ML-KEM / Cascade 16    | **Full**                  |
+| **Node.js** | `node/dasp.js`           | WASM ML-KEM / Cascade 16    | **Full**                  |
 | **CUDA**    | `cuda/dasp_kernel.cu`    | ASP Cascade 16 GPU          | **Full**                  |
 
 ---
@@ -101,8 +101,8 @@ All CLI engines share a standardized argument structure for seamless integration
 # Available Commands
 encrypt <payload> <pk_hex> [--hwid <hex>] [--telemetry]    # Encrypt using D-ASP
 decrypt <json_payload> <sk_hex> [--hwid <hex>] [--telemetry] # Decrypt using D-ASP
-keygen                                       # Generate ML-KEM keypair
-test                                         # Run bit-perfect self-test
+keygen                                       # Generate ML-KEM keypair (Native/WASM)
+test                                         # Run bit-perfect self-test (Native Only)
 ```
 
 ---

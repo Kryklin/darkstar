@@ -1,4 +1,4 @@
-const { execa } = require('execa');
+import { execa } from 'execa';
 const path = require('path');
 
 (async () => {

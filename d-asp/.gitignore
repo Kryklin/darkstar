@@ -2,10 +2,18 @@
 
 # Node.js
 node/node_modules/
+node/dist/
 
 # Rust
 # Binaries
 *.exe
+*.obj
+*.o
+*.pdb
+*.ilk
+*.lib
+*.exp
+out.txt
 darkstar
 rust/target/
 
@@ -28,6 +36,8 @@ kat_vectors.json
 tmp_*.hex
 tmp_*.json
 tmp_*.txt
+cipher.json
+key.json
 diag_*.txt
 scripts/log/
 logs/
