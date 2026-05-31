@@ -155,6 +155,7 @@ d-asp/csharp/dasp_kem.dll
 # -----------------------------------------------------------------------------
 d-asp/zig/.zig-cache/
 d-asp/zig/zig-out/
+d-asp/zig/dist/
 
 # -----------------------------------------------------------------------------
 # Toolchain archives / downloaded binaries  (tools/)

@@ -132,7 +132,7 @@ ENGINES = {
     },
     "Zig": {
         "cwd": os.path.join(BASE_DIR, "zig"),
-        "cmd": [os.path.join(BASE_DIR, "zig", "zig-out", "bin", "d-asp_zig.exe")],
+        "cmd": [os.path.join(BASE_DIR, "zig", "dist", "d-asp_zig.exe")],
         "type": "native"
     }
 }
