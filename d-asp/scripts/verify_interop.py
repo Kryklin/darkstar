@@ -212,7 +212,7 @@ def main():
     use_docker = args.docker
     if use_docker:
         for name in ENGINES:
-            image_name = f"darkstar-dasp-{name.lower()}"
+            image_name = f"darkstar-dasp-{name.lower().replace('#', 'sharp')}"
             if name == "CUDA":
                 ENGINES[name]["cmd"] = ["docker", "run", "--rm", "--gpus", "all", image_name]
             else:

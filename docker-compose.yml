@@ -49,3 +49,17 @@ services:
               count: 1
               capabilities: [gpu]
     container_name: dasp-cuda
+
+  dasp-csharp:
+    build:
+      context: d-asp
+      dockerfile: csharp/Dockerfile
+    command: ['test']
+    container_name: dasp-csharp
+
+  dasp-zig:
+    build:
+      context: d-asp
+      dockerfile: zig/Dockerfile
+    command: ['test']
+    container_name: dasp-zig
