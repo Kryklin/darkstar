@@ -9,8 +9,13 @@
     <AssemblyName>d-asp_csharp</AssemblyName>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
     <Content Include="..\c\dasp_kem.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+    <Content Include="..\c\libdasp_kem.so" Condition="Exists('..\c\libdasp_kem.so')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

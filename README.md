@@ -51,16 +51,16 @@ At its core, Darkstar utilizes the **ASP Cascade 16** protocol—a sovereign 16-
 
 Darkstar is heavily optimized using vectorized SIMD (AVX2), `comptime`-unrolled Zig vectors, .NET AVX2 intrinsics, and GPU PTX instructions — pipelining PCIe transfers and maintaining exact register bounds to achieve sub-millisecond cascading.
 
-| Engine       | Total Time  | Casca Time | Casca CPB | Ops/sec |
-| :----------- | :---------- | :--------- | :-------- | :------ |
-| **Zig**      | **12.54 ms**| 0 μs       | 0.00      | **79.74** |
-| **Rust**     | 14.22 ms    | 6.25 μs    | 507.81    | 70.31   |
-| **Go**       | 14.67 ms    | 0 μs       | 0.00      | 68.17   |
-| **C**        | 14.44 ms    | 111 μs     | 9010.62   | 69.27   |
-| **Node.js**  | 100.94 ms   | 0 μs       | 0.00      | 9.91    |
-| **CUDA**     | 139.08 ms   | 139 μs     | 11310.00  | 7.19    |
-| **C# (.NET)**| 151.43 ms   | 0 μs       | 0.00      | 6.60    |
-| **Python**   | 363.38 ms   | 0 μs       | 0.00      | 2.75    |
+| Engine       | Total Time   | Casca Time | Casca CPB | Ops/sec |
+| :----------- | :----------- | :--------- | :-------- | :------ |
+| **C**        | **12.65 ms** | 85 μs      | 6890.00   | **79.02** |
+| **Go**       | 15.56 ms     | 0 μs       | 0.00      | 64.28   |
+| **Rust**     | 16.17 ms     | 7.35 μs    | 597.19    | 61.84   |
+| **Zig**      | 17.18 ms     | 0 μs       | 0.00      | 58.21   |
+| **Node.js**  | 136.58 ms    | 0 μs       | 0.00      | 7.32    |
+| **C# (.NET)**| 145.44 ms    | 0 μs       | 0.00      | 6.88    |
+| **CUDA**     | 158.46 ms    | 145 μs     | 11765.00  | 6.31    |
+| **Python**   | 361.84 ms    | 0 μs       | 0.00      | 2.76    |
 
 > [!NOTE]
 > _CUDA timing includes the total host-to-host DMA transfer pipeline. The actual unrolled Grade-1024 SPNA Cascade computes in ~139μs. C# and Node.js times include JIT/CLR warm-up overhead; raw cascade execution is sub-microsecond._

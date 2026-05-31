@@ -11,13 +11,13 @@ namespace DarkstarCSharp
 {
     class Program
     {
-        [DllImport("dasp_kem.dll", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport("dasp_kem", CallingConvention = CallingConvention.Cdecl)]
         public static extern int crypto_kem_keypair(byte[] pk, byte[] sk);
 
-        [DllImport("dasp_kem.dll", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport("dasp_kem", CallingConvention = CallingConvention.Cdecl)]
         public static extern int crypto_kem_enc(byte[] ct, byte[] ss, byte[] pk);
 
-        [DllImport("dasp_kem.dll", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport("dasp_kem", CallingConvention = CallingConvention.Cdecl)]
         public static extern int crypto_kem_dec(byte[] ss, byte[] ct, byte[] sk);
 
         class DarkstarChaChaPRNG

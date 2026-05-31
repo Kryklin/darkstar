@@ -7,8 +7,10 @@ RUN gcc -shared -fPIC -o libdasp_kem.so spna_engine.c gf_math.c ml_kem.c fips202
 
 # Stage 2: Build the C# project
 FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS csharp-builder
+WORKDIR /app
+COPY csharp/ ./csharp/
+COPY --from=c-builder /app/c/libdasp_kem.so ./c/
 WORKDIR /app/csharp
-COPY csharp/ ./
 RUN dotnet build -c Release
 
 # Stage 3: Runtime
