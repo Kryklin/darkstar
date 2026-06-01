@@ -1,4 +1,15 @@
-[⬅ Back to Main README](../README.md)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../assets/logo-white.png">
+    <img src="../assets/logo-black.png" width="120" alt="Darkstar Logo">
+  </picture>
+</p>
+
+<div align="center">
+
+[🏠 Main](../README.md) | [📐 Math Spec](../DASP_CRYPTO_MATH.md) | [⚙️ System Flows](../DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
+
+</div>
 
 # D-ASP: C Implementation
 
@@ -32,3 +43,11 @@ The native C executable conforms to the standard D-ASP CLI interface:
 - **`3`**: Input file not found.
 - **`4`**: JSON parse failure.
 - **`5`**: MAC verification or Decapsulation failure.
+
+---
+
+<div align="center">
+
+[🏠 Main](../README.md) | [📐 Math Spec](../DASP_CRYPTO_MATH.md) | [⚙️ System Flows](../DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
+
+</div>

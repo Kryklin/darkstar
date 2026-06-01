@@ -1,4 +1,15 @@
-[⬅ Back to Main README](../README.md)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../assets/logo-white.png">
+    <img src="../assets/logo-black.png" width="120" alt="Darkstar Logo">
+  </picture>
+</p>
+
+<div align="center">
+
+[🏠 Main](../README.md) | [📐 Math Spec](../DASP_CRYPTO_MATH.md) | [⚙️ System Flows](../DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
+
+</div>
 
 # D-ASP: C# (.NET) Implementation
 
@@ -23,3 +34,11 @@ The C# executable matches the D-ASP universal CLI:
 d-asp_csharp.exe encrypt <payload> <pk_hex> [--hwid <hex>] [--telemetry]
 d-asp_csharp.exe decrypt <json_payload> <sk_hex> [--hwid <hex>] [--telemetry]
 ```
+
+---
+
+<div align="center">
+
+[🏠 Main](../README.md) | [📐 Math Spec](../DASP_CRYPTO_MATH.md) | [⚙️ System Flows](../DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
+
+</div>
