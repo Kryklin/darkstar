@@ -1,62 +1,27 @@
-<p align="left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="../../public/assets/img/logo-white.png">
-    <img src="../../public/assets/img/logo-black.png" width="120" alt="Darkstar Logo">
-  </picture>
-</p>
+[⬅ Back to Main README](../README.md)
 
 # D-ASP: Python Implementation
 
-<img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+<p align="left">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+</p>
 
-This directory contains the Python implementation of the **ASP Cascade 16** engine, part of the D-ASP protocol suite.
+## Overview
+This is the Python 3 implementation of the **ASP Cascade 16 (D-ASP)** engine. It uses the `wasmtime` runtime to execute WebAssembly (WASM) compiled from the core Rust logic, guaranteeing constant-time execution while keeping a pythonic interface.
 
-## 🛡️ Status: Interoperability Script
+## Prerequisites
+- Python 3.8+
+- `wasmtime` Python package
 
-The Python implementation is provided primarily for cross-platform validation, research, and standalone recovery in environments where native binaries are not feasible.
-
-## 🔒 Security Profile
-
-- **KEM**: Grade-1024 (ML-KEM-1024) via WebAssembly module (WASM).
-- **Hardening**:
-  - Offloads cryptographic processing to the precompiled `dasp_crypto.wasm` engine.
-  - Leverages `os.urandom` and standard APIs mapped over WASM linear memory boundaries for secure entropy.
-- **Constant-Time Analysis**:
-  > [!IMPORTANT]
-  > **Full WASM Parity**. To mitigate timing side-channels and memory boundary limits historically found in scripting engines, this module now securely mounts the Rust WASM implementation via `wasmtime`, achieving native constant-time arithmetic properties.
-
-## 🚀 Usage
-
-### Install Dependencies
-
-Requires Python 3.9+.
-
+## Build Instructions
 ```bash
 pip install -r requirements.txt
+python build.py
 ```
 
-### Key Generation
-
+## Usage
+Run the engine via the CLI entrypoint:
 ```bash
-python dasp.py keygen
+python dasp.py encrypt <payload> <pk_hex> [--hwid <hex>] [--telemetry]
+python dasp.py decrypt <json_payload> <sk_hex> [--hwid <hex>] [--telemetry]
 ```
-
-### Encryption
-
-```bash
-python dasp.py encrypt "your payload" <PUBLIC_KEY_HEX>
-```
-
-### Decryption
-
-```bash
-python dasp.py decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
-```
-
----
-
-## 🏗️ Architecture Alignment
-
-This implementation adheres to the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification, implementing the full 16-round **ASP Cascade** engine to ensure bit-perfect ciphertext parity with Rust, Go, C, and Node.js.
-
-[**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)

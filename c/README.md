@@ -1,62 +1,34 @@
+[⬅ Back to Main README](../README.md)
+
+# D-ASP: C Implementation
+
 <p align="left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="../../public/assets/img/logo-white.png">
-    <img src="../../public/assets/img/logo-black.png" width="120" alt="Darkstar Logo">
-  </picture>
+  <img src="https://img.shields.io/badge/C-A8B9CC?style=for-the-badge&logo=c&logoColor=white" alt="C">
 </p>
 
-# D-ASP: C Reference Implementation
+## Overview
+This is the C/C++ implementation of the **ASP Cascade 16 (D-ASP)** engine. It offers a highly optimized, constant-time `spna_engine.c` FFI library capable of integrating seamlessly with low-level systems and providing interoperability targets for C# and other high-level wrappers.
 
-<img src="https://img.shields.io/badge/C-A8B9CC?style=for-the-badge&logo=c&logoColor=white" alt="C">
+## Prerequisites
+- MSVC Toolchain (Visual Studio) or compatible `cl.exe` (Windows)
+- LLVM / Clang (Alternative for strict C11 compilation)
 
-This directory contains the original native C reference implementation of the **ASP Cascade 16** engine, part of the D-ASP protocol suite.
-
-## 🛡️ Status: Production Reference
-
-The C implementation is designed to serve as the exact procedural specification for all other ecosystem languages. It maintains bit-perfect parity with the Rust reference while ensuring the strictest compliance methodologies without high-level language abstractions.
-
-## 🔒 Security Profile
-
-- **KEM**: NIST Level 5 (ML-KEM-1024) instantiated via standard `dasp_crypto` Rust FFI bindings to guarantee bit-consistency across ecosystem.
-- **Hardening**:
-  - Implements the formal 13 DSP transformations in raw memory constructs to minimize tracing payload footprint.
-  - Constant-time verifiable native comparisons (e.g., `timing_safe_cmp` for MAC verification matching `timingSafeEqual`).
-- **Constant-Time Analysis**:
-  > [!TIP]
-  > **Full Constant-Time**. Similar to the Rust standard, the core algebraic transforms leverage strict branchless bitwise operations (`d_asp_gf_mult`) and constant-time memcmp derivations, preventing all timing and padding oracle side-channels.
-
-## 🚀 Usage
-
-### Build (NIST Reference Implementation)
-
-Requires `clang` natively installed. Build the core engine using the following command:
-
-```bash
-clang -o dasp.exe main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha256.c aes.c rng.c -I. -lws2_32 -luserenv -ladvapi32 -lbcrypt
+## Build Instructions
+Run the provided batch script to build the main executable and the interoperability DLL:
+```cmd
+build.bat
 ```
 
-### Key Generation
-
+## Usage
+The native C executable conforms to the standard D-ASP CLI interface:
 ```bash
-./dasp.exe keygen
+./dasp encrypt <payload> <pk_hex> [--hwid <hex>] [--telemetry]
+./dasp decrypt <json_payload> <sk_hex> [--hwid <hex>] [--telemetry]
+./dasp test
 ```
 
-### Encryption (NIST KEM-DEM Hybrid)
-
-```bash
-./dasp.exe encrypt "your payload" <PK_HEX> [--hwid <HWID_HEX>]
-```
-
-### Decryption
-
-```bash
-./dasp.exe decrypt '{"data":"...","ct":"...","mac":"..."}' <SK_HEX> [--hwid <HWID_HEX>]
-```
-
----
-
-## 🏗️ Architecture Alignment
-
-This implementation closely shadows the design intent outlined in [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md). All substitution and permutation network logic directly models the NIST-compliant structure.
-
-[**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)
+## Error Codes
+- **`2`**: Missing CLI arguments.
+- **`3`**: Input file not found.
+- **`4`**: JSON parse failure.
+- **`5`**: MAC verification or Decapsulation failure.

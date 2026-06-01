@@ -24,33 +24,26 @@
 > [!IMPORTANT]
 > **Notice**: The UI/Electron application (Darkstar Vault) has been decoupled and moved to its own repository at `darkstar-vault`. This repository is now exclusively dedicated to the standalone `d-asp` backend cryptographic engines.
 
-[**Mathematical Specification**](DASP_CRYPTO_MATH.md) | [**System Logic Flows**](DASP_SYSTEM_FLOW.md)
+## 📚 Documentation Hub
+
+Explore the architecture and specifications of the D-ASP suite:
+
+| Specification | Description |
+| :--- | :--- |
+| [**Mathematical Specification**](DASP_CRYPTO_MATH.md) | Cryptographic proofs, ML-KEM constants, and bounds. |
+| [**System Logic Flows**](DASP_SYSTEM_FLOW.md) | Sequence diagrams and execution cascades. |
+| [**NIST Compliance**](DASP_NIST_COMPLIANCE.md) | Grade-1024 SP 800-208 / FIPS 203 alignment matrix. |
+| [**CLI Guide**](DARKSTAR_CLI_GUIDE.md) | Usage instructions for universal CLI integration. |
+| [**Security Policy**](SECURITY.md) | Vulnerability disclosure and audit policies. |
+| [**Contributing**](CONTRIBUTING.md) | Guidelines for engine optimization and PR submission. |
 
 The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Go**, **Rust**, **C**, **Python**, **Node.js**, **CUDA**, **C# (.NET)**, and **Zig**.
 
 ---
 
-## 🛠️ Core Capabilities
-
-- **ML-KEM-1024 (Kyber)**: Grade-1024 High-Security root of trust.
-- **16-Round ASP Cascade 16 Engine**: Hardened deterministic schedule (ARX, CTR Mode, SIMD Vectorized) every round.
-- **HKDF Root Expansion**: Secure key derivation and multi-factor hardware identity binding.
-- **HMAC-Linked Fusion**: Encrypt-then-MAC authentication protocol providing constant-time verified ML-KEM-linked integrity.
-- **Hardware Binding**: Optional machine-unique entropy injection ($HWID$).
-- **Fault-Injection Mitigation**: Redundant implicit-rejection temporal parity bounds neutralizing instruction skips and VCC glitching.
-- **Aggressive Memory Zeroization**: Native-level buffer wiping via compiler optimization overrides.
-- **CUDA Acceleration**: GPU-accelerated massive parallel throughput using PTX native structures.
-
 ## 🚀 Performance Profile (Grade-1024)
 
 The suite is instrumented for exhaustive telemetry across all cryptographic and architectural layers.
-
-### System Telemetry
-
-- **CPU**: Intel Core i7-based (6 Phys / 12 Log Cores) @ 2.60 GHz
-- **Cache**: 1.5MB L2 / 12MB L3
-- **Storage**: SSD-backed (High-speed IO)
-- **Security Standards**: Fully compliant with Grade-1024 structural requirements.
 
 | Engine        | Total Time   | Casca Time | Casca CPB | Total CPB | Ops/sec   |
 | :------------ | :----------- | :--------- | :-------- | :-------- | :-------- |
@@ -64,98 +57,25 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 | **Python**    | 363.38 ms    | 0 μs       | 0.00      | 29.52M    | 2.75      |
 
 > [!NOTE]
-> **Cycles per Byte (CPB)** is calculated for the 32-byte (256-bit) internal state. Native engines (Zig, Rust, Go, C) achieve elite CPB efficiency by leveraging structural optimizations. C# and Node.js include JIT/CLR/V8 runtime overhead in total timing.
-
-### 🏎️ High-Throughput Streaming (CUDA)
-
-The CUDA engine features an advanced VRAM-optimized kernel leveraging `__constant__` cache broadcasts and 128-bit vectorized `uint4` memory transactions, designed specifically for massive multi-gigabyte payload streams.
-
-- **Pipeline Throughput**: `7.28 GB/s` (PCIe Bus Bottleneck)
-- **Pure GPU Compute**: `118.49 GB/s` (VRAM/Execution Saturation)
-
-> [!TIP]
-> **Zero Microsecond (0 μs) Readings**
-> You may observe `0 μs` for `Casca Time` in highly optimized engines like **Zig** and **Go** during small payload benchmarks. This is a measurement artifact, not a bug. For minimal payloads (e.g., 64 bytes), the pure native unrolled execution completes so quickly (< 100ns) that it finishes entirely between the ticks of the OS monotonic clock (e.g., Windows QPC), effectively registering zero elapsed time.
-
-## 🛡️ Cryptographic Verification (KAT)
-
-D-ASP is subject to rigorous **Known Answer Tests (KAT)** to ensure bit-perfect deterministic behavior across all implementation languages.
-
-| Test Case  | Description                    | Status   | Parity      |
-| :--------- | :----------------------------- | :------- | :---------- |
-| **V1_STD** | Standard Payload (32-byte)     | `PASSED` | Bit-Perfect |
-| **V2_IDB** | Identity Bound (HWID)          | `PASSED` | Bit-Perfect |
-| **V3_LNG** | Long-form Payload (>128 bytes) | `PASSED` | Bit-Perfect |
-
-> **Audit Result**: All 8 engines (Rust, Go, C, Node, Python, CUDA, C#, Zig) produced a bit-for-bit match with the Grade-1024 reference vectors.
-
----
+> Detailed structural requirements, CLI Usage, High-Throughput Streaming (CUDA) specs, and Known Answer Tests (KAT) are thoroughly documented in the [**Documentation Hub**](#-documentation-hub) above.
 
 ## 🏗️ Cross-Language Implementation Parity
 
 All implementations are designed as **high-performance, standalone sources** to ensure maximum portability and zero external cryptographic dependencies (where possible).
 
-| Language      | Engine Path           | Core Implementation                | Constant-Time |
-| :------------ | :-------------------- | :--------------------------------- | :------------ |
-| **Rust**      | `rust/src/main.rs`    | ML-KEM / ASP Cascade 16            | **Full**      |
-| **Go**        | `go/main.go`          | ML-KEM / ASP Cascade 16            | **Full**      |
-| **C/C++**     | `c/spna_engine.c`     | FFI ML-KEM / ASP Cascade 16        | **Full**      |
-| **Python**    | `python/dasp.py`      | WASM ML-KEM / ASP Cascade 16       | **Full**      |
-| **Node.js**   | `node/dasp.js`        | WASM ML-KEM / ASP Cascade 16       | **Full**      |
-| **CUDA**      | `cuda/dasp_kernel.cu` | Native ML-KEM / ASP Cascade 16 GPU | **Full**      |
-| **C# (.NET)** | `csharp/Program.cs`   | AVX2 ML-KEM / ASP Cascade 16       | **Full**      |
-| **Zig**       | `zig/main.zig`        | SIMD ML-KEM / ASP Cascade 16       | **Full**      |
-
----
-
-## ⌨️ CLI Usage Standard
-
-All CLI engines share a standardized argument structure for seamless integration.
-
-```bash
-# General Syntax
-./darkstar [flags] <command> [arguments...]
-
-# Available Commands
-encrypt <payload> <pk_hex> [--hwid <hex>] [--telemetry]    # Encrypt using D-ASP
-decrypt <json_payload> <sk_hex> [--hwid <hex>] [--telemetry] # Decrypt using D-ASP
-keygen                                       # Generate ML-KEM keypair (Native/WASM)
-test                                         # Run bit-perfect self-test (Native Only)
-```
-
----
-
-## 📜 Exchange Specification
-
-D-ASP utilizes a flattened JSON envelope for universal compatibility:
-
-```json
-{
-  "data": "<HEX_ENCODED_PAYLOAD>",
-  "ct": "<HEX_ENCODED_KEM_CIPHERTEXT>",
-  "mac": "<HEX_ENCODED_HMAC_TAG>"
-}
-```
-
-> [!TIP]
-> **Telemetry Output**: Use the `--telemetry` flag to re-attach verbose structural performance measurements (`timings`) and cryptographic intermediate states (`diagnostics`) into `stderr` or the primary JSON schema (depending on the engine).
-
----
-
-## 🛑 C Engine Error Codes
-
-The optimized C Engine provides granular exit codes for debugging production environments:
-
-- **`2`**: Missing CLI arguments.
-- **`3`**: Input file not found or inaccessible.
-- **`4`**: Failed to parse JSON blob or extract required structural fields (`data`, `ct`, `mac`).
-- **`5`**: Decapsulation or Authentication Tag (MAC) mismatch (Integrity or KEM failure).
-
-> [!NOTE]
-> **Bit-Parity Guarantee**: For any given input and keys, every engine in this suite is mathematically guaranteed to output identical Hex/JSON byte-streams.
+| Language | Engine Path | Core Implementation | Documentation |
+| :--- | :--- | :--- | :--- |
+| **Rust** | `rust/src/main.rs` | ML-KEM / ASP Cascade 16 | [📖 Rust Guide](rust/README.md) |
+| **Go** | `go/main.go` | ML-KEM / ASP Cascade 16 | [📖 Go Guide](go/README.md) |
+| **C/C++** | `c/spna_engine.c` | FFI ML-KEM / ASP Cascade 16 | [📖 C/C++ Guide](c/README.md) |
+| **Python** | `python/dasp.py` | WASM ML-KEM / ASP Cascade 16 | [📖 Python Guide](python/README.md) |
+| **Node.js** | `node/dasp.js` | WASM ML-KEM / ASP Cascade 16 | [📖 Node.js Guide](node/README.md) |
+| **CUDA** | `cuda/dasp_kernel.cu` | Native ML-KEM / ASP Cascade GPU | [📖 CUDA Guide](cuda/README.md) |
+| **C# (.NET)** | `csharp/Program.cs` | AVX2 ML-KEM / ASP Cascade 16 | [📖 C# Guide](csharp/README.md) |
+| **Zig** | `zig/main.zig` | SIMD ML-KEM / ASP Cascade 16 | [📖 Zig Guide](zig/README.md) |
 
 ---
 
 ## ⚖️ License
 
-D-ASP is a Public Domain work, dedicated under the [**CC0 1.0 Universal (CC0 1.0) Public Domain Dedication**](../LICENSE).
+D-ASP is a Public Domain work, dedicated under the [**CC0 1.0 Universal (CC0 1.0) Public Domain Dedication**](LICENSE).

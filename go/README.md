@@ -1,62 +1,25 @@
-<p align="left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="../../public/assets/img/logo-white.png">
-    <img src="../../public/assets/img/logo-black.png" width="120" alt="Darkstar Logo">
-  </picture>
-</p>
+[⬅ Back to Main README](../README.md)
 
 # D-ASP: Go Implementation
 
-<img src="https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go">
+<p align="left">
+  <img src="https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go">
+</p>
 
-This directory contains the high-performance Go implementation of the **ASP Cascade 16** engine, part of the D-ASP protocol suite.
+## Overview
+This is the pure Go implementation of the **ASP Cascade 16 (D-ASP)** engine. It is highly optimized and provides standalone cross-platform capability with no CGO dependencies.
 
-## 🛡️ Status: Production
+## Prerequisites
+- Go 1.21+
 
-The Go implementation is designed for systems integration and high-velocity cryptographic operations, maintaining bit-perfect parity with the Rust reference.
-
-## 🔒 Security Profile
-
-- **KEM**: NIST Level 5 (ML-KEM-1024) via [Cloudflare Circl](https://github.com/cloudflare/circl).
-- **Hardening**:
-  - Native Go `crypto/hmac` and `crypto/sha256` implementations.
-  - Zero-allocation where possible to minimize memory trace.
-- **Constant-Time Analysis**:
-  > [!TIP]
-  > **Full Constant-Time**. Similar to the reference implementation, the core algebraic transforms ($GF\_Mult$) leverage branchless masking for all reductions, ensuring secret-independent execution time.
-
-## 🚀 Usage
-
-### Build
-
-Requires Go 1.25+.
-
+## Build Instructions
 ```bash
-go build -o main.exe main.go
+go build -o d-asp_go.exe main.go
 ```
 
-### Key Generation
-
+## Usage
+The Go engine matches the standard CLI usage:
 ```bash
-./main.exe keygen
+./d-asp_go encrypt <payload> <pk_hex> [--hwid <hex>] [--telemetry]
+./d-asp_go decrypt <json_payload> <sk_hex> [--hwid <hex>] [--telemetry]
 ```
-
-### Encryption
-
-```bash
-./main.exe encrypt "your payload" <PUBLIC_KEY_HEX>
-```
-
-### Decryption
-
-```bash
-./main.exe decrypt '{"data":"...","ct":"...","mac":"..."}' <SECRET_KEY_HEX>
-```
-
----
-
-## 🏗️ Architecture Alignment
-
-This implementation strictly follows the [DASP_CRYPTO_MATH.md](../DASP_CRYPTO_MATH.md) specification. It utilizes the same 16-round **ASP Cascade** engine and MDS matrix constants as the reference.
-
-[**&larr; Back to D-ASP Suite**](../README.md) | [**Project Root**](../../README.md)
