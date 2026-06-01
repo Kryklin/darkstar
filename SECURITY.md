@@ -15,7 +15,7 @@ Darkstar is a defense-grade security suite. We prioritize the security and integ
 
 The Darkstar ecosystem leverages the **D-ASP** (ASP Cascade 16) protocol with **ML-KEM-1024** (Kyber) at its core. Our security model assumes:
 
-- **Zero-Knowledge**: No sensitive data (passwords, recovery phrases) is ever stored in plaintext or transmitted outside the local security enclave.
+- **Zero-Knowledge**: No sensitive data (passwords, recovery phrases) is ever stored in plaintext or transmitted outside the local cryptographic execution pipeline.
 - **Physical Binding**: Payloads are cryptographically bound to the host hardware, limiting the impact of physical data theft.
 - **Algorithm Agnosticism**: D-ASP provides a structural permutation layer that remains secure even if underlying symmetric primitives are weakened.
 

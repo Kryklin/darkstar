@@ -21,8 +21,6 @@
   <img src="https://img.shields.io/badge/Zig-F7A41D?style=for-the-badge&logo=zig&logoColor=white" alt="Zig">
 </p>
 
-> [!IMPORTANT]
-> **Notice**: The UI/Electron application (Darkstar Vault) has been decoupled and moved to its own repository at `darkstar-vault`. This repository is now exclusively dedicated to the standalone `d-asp` backend cryptographic engines.
 
 ## 📚 Documentation Hub
 
@@ -47,14 +45,14 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 
 | Engine        | Total Time   | Casca Time | Casca CPB | Total CPB | Ops/sec   |
 | :------------ | :----------- | :--------- | :-------- | :-------- | :-------- |
-| **Zig**       | **12.54 ms** | 0 μs       | 0.00      | 1.02M     | **79.74** |
-| **Rust**      | 14.22 ms     | 6.25 μs    | 507.81    | 1.16M     | 70.31     |
-| **Go**        | 14.67 ms     | 0 μs       | 0.00      | 1.19M     | 68.17     |
-| **C**         | 14.44 ms     | 111 μs     | 9010.62   | 1.17M     | 69.27     |
-| **Node.js**   | 100.94 ms    | 0 μs       | 0.00      | 8.20M     | 9.91      |
-| **CUDA**      | 139.08 ms    | 139 μs     | 11310.00  | 11.30M    | 7.19      |
-| **C# (.NET)** | 151.43 ms    | 0 μs       | 0.00      | 12.30M    | 6.60      |
-| **Python**    | 363.38 ms    | 0 μs       | 0.00      | 29.52M    | 2.75      |
+| **C**         | **11.48 ms** | 260 μs     | 9.43      | 416.46    | **87.10** |
+| **Zig**       | 13.51 ms     | 185 μs     | 6.72      | 490.07    | 74.01     |
+| **Go**        | 15.01 ms     | 849 μs     | 30.80     | 544.60    | 66.60     |
+| **Rust**      | 16.16 ms     | 118 μs     | **4.27**  | 586.06    | 61.89     |
+| **Node.js**   | 109.15 ms    | 1.39 ms    | 50.34     | 3959.07   | 9.16      |
+| **C# (.NET)** | 140.51 ms    | 4.35 ms    | 157.63    | 5096.58   | 7.12      |
+| **CUDA**      | 266.03 ms    | 170 μs     | 6.15      | 9649.41   | 3.76      |
+| **Python**    | 286.30 ms    | 534 μs     | 19.38     | 10384.80  | 3.49      |
 
 > [!NOTE]
 > Detailed structural requirements, CLI Usage, High-Throughput Streaming (CUDA) specs, and Known Answer Tests (KAT) are thoroughly documented in the [**Documentation Hub**](#-documentation-hub) above.

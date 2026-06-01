@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/Chalk-white?style=for-the-badge&logo=javascript&logoColor=black" alt="Chalk">
 </p>
 
-The Darkstar project includes a terminal-based interactive dashboard to manage all development, testing, and release operations from a single interface. Use this tool as the primary entry point for managing the enclave.
+The Darkstar project includes a terminal-based interactive dashboard to manage all development, testing, and release operations from a single interface. Use this tool as the primary entry point for managing the cryptographic engines.
 
 ---
 
@@ -37,37 +37,24 @@ npm start
 
 ## 🛠️ Operations Breakdown
 
-### Development
+### Testing & Benchmarking
 
-Operations used during local feature development and engine synchronization.
+Operations used to verify parity and execution times across all languages.
 
 | Option    | Display Name            | Command Executed        | Description                                                                                 |
 | :-------- | :---------------------- | :---------------------- | :------------------------------------------------------------------------------------------ |
-| `dev`     | **Run Dev Environment** | `ng serve` + `electron` | Launches Angular and Electron concurrently with live reload.                                |
-| `lint`    | **Lint Code**           | `ng lint`               | Executes ESLint across the TypeScript/Angular source.                                       |
-| `karma`   | **Run Unit Tests**      | `ng test ...`           | Runs Angular unit tests in Headless Chrome.                                                 |
 | `interop` | **Interop Benchmark**   | `verify_interop.py`     | Verifies bit-perfect parity across all language engines (including CUDA).                   |
 | `kat`     | **KAT Verification**    | `verify_kat.py`         | Runs the Known Answer Test suite (NIST Parity) across all engines, including GPU execution. |
+| `gen-kat` | **Generate KAT Data**   | `gen_kat_vectors.py`    | Re-generates standard, long, and bound KAT vectors using the reference engine.              |
 
-### Mobile (Capacitor)
+### Build & Compilation
 
-Tools for bridging the core application to Android and iOS runtimes.
+Production-grade compilation tasks.
 
-| Option             | Display Name           | Command Executed       | Description                                                     |
-| :----------------- | :--------------------- | :--------------------- | :-------------------------------------------------------------- |
-| `cap:sync`         | **Sync Mobile Assets** | `npx cap sync`         | Builds the web bundle and syncs it to native mobile activities. |
-| `cap:open:android` | **Open Android**       | `npx cap open android` | Launches the current project in Android Studio.                 |
-| `cap:open:ios`     | **Open Xcode**         | `npx cap open ios`     | Launches the current project in Xcode.                          |
-
-### Release & Packaging
-
-Production-grade deployment tasks.
-
-| Option    | Display Name         | Command Executed | Description                                             |
-| :-------- | :------------------- | :--------------- | :------------------------------------------------------ |
-| `build`   | **Build Production** | `ng build ...`   | Compiles a production-hardened web and electron bundle. |
-| `package` | **Package App**      | `forge package`  | Generates native bundles (Squirrel, DMG, DEB, RPM).     |
-| `publish` | **Publish Release**  | `forge publish`  | Uploads the current build to GitHub Releases.           |
+| Option          | Display Name         | Command Executed   | Description                                             |
+| :-------------- | :------------------- | :----------------- | :------------------------------------------------------ |
+| `build:engines` | **Build All Engines**| `npm run build:*`  | Compiles native binaries and WASM for all languages.    |
+| `lint:engines`  | **Lint Code**        | `npm run lint:*`   | Executes formatters and linters across implementations. |
 
 ### System
 
@@ -85,10 +72,9 @@ System-level diagnostic and headless verification utilities.
 The **"Run All"** option executes the full release sequence in a single automation loop:
 
 1.  **Lint** (Security & Style)
-2.  **Angular Tests** (Headless Unit Tests)
-3.  **Interop Tests** (Cross-Language Parity)
-4.  **Production Build** (D-ASP Integrity Generation)
-5.  **GitHub Publication** (Remote Deployment)
+2.  **Interop Tests** (Cross-Language Parity)
+3.  **KAT Tests** (NIST Vectors Validation)
+4.  **Production Build** (Compilation of Native Executables)
 
 ---
 
