@@ -13,7 +13,7 @@ import { execa } from 'execa';
 
   console.log(chalk.hex('#FF4500').bold('\n  🚀  Building Native Crypto Engines\n'));
 
-  const jobs = [
+  const jobs: any[] = [
     { name: 'Rust (Engine)', cmd: 'npm run build:rust' },
     { name: 'Go (Engine)', cmd: 'npm run build:go' },
     { name: 'C (Reference)', cmd: 'npm run build:c' },

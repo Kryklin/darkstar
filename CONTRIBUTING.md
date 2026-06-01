@@ -69,7 +69,7 @@ We welcome suggestions for new features and improvements to existing functionali
 
 5.  **CUDA Implementation Requirements**:
     - Requires **NVIDIA CUDA Toolkit (nvcc)**.
-    - Build locally using the batch script: `d-asp/cuda/build_cuda.bat`.
+    - Build locally using the batch script: `cuda/build_cuda.bat`.
 
 ## Styleguides
 
@@ -88,4 +88,4 @@ We welcome suggestions for new features and improvements to existing functionali
 
 ---
 
-[**&larr; Back to Project Root**](README.md) | [**D-ASP Mathematical Specification**](d-asp/DASP_CRYPTO_MATH.md)
+[**&larr; Back to Project Root**](README.md) | [**D-ASP Mathematical Specification**](DASP_CRYPTO_MATH.md)

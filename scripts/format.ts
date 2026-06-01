@@ -13,7 +13,7 @@ import { execa } from 'execa';
 
   console.log(chalk.hex('#FFD700').bold('\n  ✨  Polyglot Code Formatting\n'));
 
-  const jobs = [
+  const jobs: any[] = [
     { name: 'TypeScript / HTML (Prettier)', cmd: 'npm run format:ts' },
     { name: 'Rust (rustfmt)', cmd: 'npm run format:rust' },
     { name: 'Go (gofmt)', cmd: 'npm run format:go' },

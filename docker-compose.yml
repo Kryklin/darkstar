@@ -3,42 +3,42 @@ version: '3.8'
 services:
   dasp-rust:
     build:
-      context: d-asp/rust
+      context: rust
       dockerfile: Dockerfile
     command: ['test']
     container_name: dasp-rust
 
   dasp-go:
     build:
-      context: d-asp/go
+      context: go
       dockerfile: Dockerfile
     command: ['test']
     container_name: dasp-go
 
   dasp-node:
     build:
-      context: d-asp
+      context: .
       dockerfile: node/Dockerfile
     command: ['test']
     container_name: dasp-node
 
   dasp-python:
     build:
-      context: d-asp
+      context: .
       dockerfile: python/Dockerfile
     command: ['test']
     container_name: dasp-python
 
   dasp-c:
     build:
-      context: d-asp/c
+      context: c
       dockerfile: Dockerfile
     command: ['test']
     container_name: dasp-c
 
   dasp-cuda:
     build:
-      context: d-asp
+      context: .
       dockerfile: cuda/Dockerfile
     command: ['test']
     deploy:
@@ -52,14 +52,14 @@ services:
 
   dasp-csharp:
     build:
-      context: d-asp
+      context: .
       dockerfile: csharp/Dockerfile
     command: ['test']
     container_name: dasp-csharp
 
   dasp-zig:
     build:
-      context: d-asp
+      context: .
       dockerfile: zig/Dockerfile
     command: ['test']
     container_name: dasp-zig

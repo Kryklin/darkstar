@@ -50,12 +50,10 @@ const pkg = require('../package.json');
     new inquirer.Separator(chalk.dim('─── Development ──────────────────────────────────────────')),
     { name: chalk.bold.cyan('  🚀  Build Crypto Engines (Rust, Go, C, CUDA, Node, Python, C#, Zig)'), value: 'build-engines' },
     { name: chalk.bold.cyan('  ⚙️   Run Dev Environment Check (C, Rust, Go, Python, C#, Zig)'), value: 'check-env' },
-    { name: chalk.cyan('  💻  Run Dev Environment'), value: 'dev' },
     { name: chalk.blue('  🔍  Lint Code'), value: 'lint' },
     { name: chalk.yellow('  ✨  Format Code'), value: 'format' },
 
     new inquirer.Separator(chalk.dim('─── Testing & Verification ───────────────────────────────')),
-    { name: chalk.cyan('  🧪  Run Angular (Karma) Unit Tests'), value: 'karma' },
     { name: chalk.magenta('  📊  Run Interop Benchmark'), value: 'interop' },
     { name: chalk.hex('#00BFFF')('  📝  Generate KAT Vectors'), value: 'gen-kat' },
     { name: chalk.hex('#A020F0')('  🤖  Run KAT Verification (Bit-Perfect Check)'), value: 'kat' },
@@ -66,19 +64,8 @@ const pkg = require('../package.json');
     { name: chalk.green('  ⚖️   Run License Compliance Audit'), value: 'license-audit' },
     { name: chalk.yellow('  🕵️   Run Full Security Audit'), value: 'audit' },
 
-    new inquirer.Separator(chalk.dim('─── Mobile (Capacitor) ───────────────────────────────────')),
-    { name: chalk.cyan('  📱  Sync Mobile Assets'), value: 'cap:sync' },
-    { name: chalk.green('  🤖  Open Android Studio'), value: 'cap:open:android' },
-    { name: chalk.blue('  🍏  Open Xcode'), value: 'cap:open:ios' },
-
-    new inquirer.Separator(chalk.dim('─── Release ──────────────────────────────────────────────')),
-    { name: chalk.yellow('  🏗️   Build Production'), value: 'build' },
-    { name: chalk.hex('#FFA500')('  📦  Package Application'), value: 'package' },
-    { name: chalk.hex('#00ADD8')('  🔐  Generate Checksums'), value: 'checksums' },
-    { name: chalk.green('  🚀  Publish Release'), value: 'publish' },
-
-    new inquirer.Separator(chalk.dim('─── Pipelines ────────────────────────────────────────────')),
-    { name: chalk.bold.white('  ⚡  Run All (Lint -> Tests -> Build -> Publish)'), value: 'all' },
+    new inquirer.Separator(chalk.dim('─── Release Management ───────────────────────────────────')),
+    { name: chalk.hex('#00ADD8')('  📦  Publish Engine Artifacts to GitHub Releases'), value: 'publish' },
 
     new inquirer.Separator(chalk.dim('─── System ───────────────────────────────────────────────')),
     { name: chalk.magenta('  🧹  Deep Clean Workspace'), value: 'clean' },
@@ -297,7 +284,7 @@ const pkg = require('../package.json');
       CAP_OPEN_ANDROID: 'npx cap open android',
       CAP_OPEN_IOS: 'npx cap open ios',
       // Docker: Headless environment testing
-      DOCKER_TEST: 'docker compose -f docker-compose.yml build && python "d-asp/scripts/verify_interop.py" --docker',
+      DOCKER_TEST: 'docker compose -f docker-compose.yml build && python "scripts/verify_interop.py" --docker',
       // Format: Runs polyglot code formatters
       FORMAT: 'npm run format',
       // Audit: Runs polyglot security audits
@@ -306,6 +293,8 @@ const pkg = require('../package.json');
       CLEAN: 'npm run clean',
       // Checksums: Generates SHA-256 artifact hashes
       CHECKSUMS: 'npm run checksums',
+      // Publish: Compresses and uploads binaries to GitHub Releases
+      PUBLISH_ENGINES: 'npm run publish',
     };
 
     // Execute selected action
@@ -350,9 +339,7 @@ const pkg = require('../package.json');
           case 'docker-test':
             await runShell('Headless Docker Test', CMD.DOCKER_TEST, { showOutput: true });
             break;
-          case 'dev':
-            await runShell('Dev Environment', CMD.DEV, { showOutput: true });
-            break;
+          
           case 'lint':
             await runShell('Linting', CMD.LINT);
             break;
@@ -371,12 +358,8 @@ const pkg = require('../package.json');
           case 'clean':
             await runShell('Cleaning Workspace', CMD.CLEAN, { clear: false });
             break;
-          case 'checksums':
-            await runShell('Checksum Generation', CMD.CHECKSUMS, { clear: false });
-            break;
-          case 'karma':
-            await runShell('Angular Unit Testing', CMD.KARMA, { showOutput: true });
-            break;
+          
+          
           case 'interop':
             await checkEnvironment(false);
             await runShell('Interop Benchmarking', CMD.INTEROP, { showOutput: true });
@@ -389,7 +372,7 @@ const pkg = require('../package.json');
             await runShell('Generate KAT Vectors', CMD.GEN_KAT, { showOutput: true });
             break;
           case 'kat':
-            if (!fs.existsSync(path.join(__dirname, '../d-asp/scripts/kat_vectors.json'))) {
+            if (!fs.existsSync(path.join(__dirname, '../scripts/kat_vectors.json'))) {
               console.log(chalk.yellow.bold('\n⚠️  Warning: kat_vectors.json not found!'));
               console.log(chalk.yellow('Please run "Generate KAT Vectors" from the menu first before running KAT verification.\n'));
               break;
@@ -397,38 +380,16 @@ const pkg = require('../package.json');
             await checkEnvironment(false);
             await runShell('KAT Verification', CMD.KAT, { showOutput: true });
             break;
-          case 'cap:sync':
-            console.log(chalk.yellow('ℹ Building core application before sync...'));
-            await runShell('Building', CMD.BUILD, { showOutput: true });
-            await runShell('Syncing Native Platforms', CMD.CAP_SYNC, { clear: false, showOutput: true });
-            break;
-          case 'cap:open:android':
-            await runShell('Opening Android Studio', CMD.CAP_OPEN_ANDROID);
-            break;
-          case 'cap:open:ios':
-            await runShell('Opening Xcode', CMD.CAP_OPEN_IOS);
-            break;
-          case 'build':
-            await runShell('Building', CMD.BUILD, { showOutput: true });
-            break;
-          case 'package':
-            console.log(chalk.yellow('ℹ Building before packaging...'));
-            await runShell('Building', CMD.BUILD, { showOutput: true });
-            // Preserve build log
-            await runShell('Packaging', CMD.PACKAGE, { clear: true, showOutput: true }); // User requested clear back
-            break;
           case 'publish':
-            if (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN) {
-              console.log(chalk.red.bold('\n⚠️  Error: GITHUB_TOKEN not found in environment.'));
-              console.log(chalk.yellow('Please create a .env file in the root directory with:'));
-              console.log(chalk.cyan('GITHUB_TOKEN=your_token_here\n'));
-              break;
-            }
-            console.log(chalk.yellow('ℹ Building before publishing...'));
-            await runShell('Building', CMD.BUILD, { showOutput: true });
-            // Preserve build log
-            await runShell('Publishing', CMD.PUBLISH, { clear: false, showOutput: true });
+            await runShell('Publish Engine Artifacts', CMD.PUBLISH_ENGINES, { showOutput: true });
             break;
+          
+          
+          
+          
+          
+          
+
         }
       }
     } catch (err: unknown) {

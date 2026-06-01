@@ -17,7 +17,7 @@ const path = require('path');
   // Acceptable licenses whitelist
   const allowed = ['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', 'CC0-1.0'];
 
-  const jobs = [
+  const jobs: any[] = [
     {
       name: 'NPM (JavaScript)',
       cmd: 'npx license-checker-rseidelsohn --summary --onlyAllow "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Python-2.0;Unlicense;CC-BY-4.0;CC-BY-3.0;BlueOak-1.0.0;0BSD;WTFPL;Zlib;UNLICENSED"',

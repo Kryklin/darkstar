@@ -50,4 +50,4 @@ Darkstar does not contain backdoors, and we do not collect telemetry or usage da
 
 ---
 
-[**&larr; Back to Project Root**](README.md) | [**D-ASP Mathematical Specification**](d-asp/DASP_CRYPTO_MATH.md)
+[**&larr; Back to Project Root**](README.md) | [**D-ASP Mathematical Specification**](DASP_CRYPTO_MATH.md)

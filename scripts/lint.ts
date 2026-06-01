@@ -13,7 +13,7 @@ import { execa } from 'execa';
 
   console.log(chalk.hex('#00BFFF').bold('\n  🔍  Code Linting Initialization\n'));
 
-  const jobs = [
+  const jobs: any[] = [
     { name: 'TypeScript', cmd: 'npm run lint:ts' },
     { name: 'Rust', cmd: 'npm run lint:rust' },
     { name: 'Go', cmd: 'npm run lint:go' },

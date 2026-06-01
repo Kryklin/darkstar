@@ -1,3 +1,0 @@
-pqcrypto
-wasmtime
-python-minifier

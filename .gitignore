@@ -73,89 +73,89 @@ ehthumbs.db
 *.pfx
 
 # -----------------------------------------------------------------------------
-# Rust engine  (d-asp/rust)
+# Rust engine  (rust)
 # -----------------------------------------------------------------------------
-d-asp/rust/target/
+rust/target/
 # Keep Cargo.lock for binaries
-# !d-asp/rust/Cargo.lock
+# !rust/Cargo.lock
 
 # -----------------------------------------------------------------------------
-# Go engine  (d-asp/go)
+# Go engine  (go)
 # -----------------------------------------------------------------------------
-d-asp/go/main
-d-asp/go/main.exe
-d-asp/go/d-asp.exe
-d-asp/go/d-asp_go.exe
-d-asp/go/dasp.exe
+go/main
+go/main.exe
+go/d-asp.exe
+go/d-asp_go.exe
+go/dasp.exe
 
 # -----------------------------------------------------------------------------
-# C engine  (d-asp/c)
+# C engine  (c)
 # -----------------------------------------------------------------------------
-d-asp/c/dasp
-d-asp/c/dasp.exe
-d-asp/c/dasp_asan.exe
-d-asp/c/dasp_asan.pdb
+c/dasp
+c/dasp.exe
+c/dasp_asan.exe
+c/dasp_asan.pdb
 # Compiled object files
-d-asp/c/*.obj
-d-asp/c/*.o
+c/*.obj
+c/*.o
 # MSVC / Clang linker artefacts
-d-asp/c/*.exp
-d-asp/c/*.lib
-d-asp/c/*.pdb
+c/*.exp
+c/*.lib
+c/*.pdb
 # Shared library output (rebuilt on demand)
-d-asp/c/dasp_kem.dll
-d-asp/c/dasp_kem.lib
-d-asp/c/dasp_kem.exp
-d-asp/c/dasp.lib
-d-asp/c/dasp.exp
+c/dasp_kem.dll
+c/dasp_kem.lib
+c/dasp_kem.exp
+c/dasp.lib
+c/dasp.exp
 # Misc output files left by tooling
-d-asp/c/out.txt
+c/out.txt
 
 # -----------------------------------------------------------------------------
-# CUDA engine  (d-asp/cuda)
+# CUDA engine  (cuda)
 # -----------------------------------------------------------------------------
-d-asp/cuda/d-asp_cuda.exe
-d-asp/cuda/d-asp_cuda.exp
-d-asp/cuda/d-asp_cuda.lib
-d-asp/cuda/d-asp_test.exe
-d-asp/cuda/d-asp_test.exp
-d-asp/cuda/d-asp_test.lib
-d-asp/cuda/*.obj
-d-asp/cuda/*.o
-d-asp/cuda/*.pdb
+cuda/d-asp_cuda.exe
+cuda/d-asp_cuda.exp
+cuda/d-asp_cuda.lib
+cuda/d-asp_test.exe
+cuda/d-asp_test.exp
+cuda/d-asp_test.lib
+cuda/*.obj
+cuda/*.o
+cuda/*.pdb
 
 # -----------------------------------------------------------------------------
-# Node.js engine  (d-asp/node)
+# Node.js engine  (node)
 # -----------------------------------------------------------------------------
-d-asp/node/node_modules/
-d-asp/node/dist/
-d-asp/node/cipher.json
-d-asp/node/key.json
+node/node_modules/
+node/dist/
+node/cipher.json
+node/key.json
 
 # -----------------------------------------------------------------------------
-# Python engine  (d-asp/python)
+# Python engine  (python)
 # -----------------------------------------------------------------------------
-d-asp/python/__pycache__/
-d-asp/python/*.pyc
-d-asp/python/*.pyo
-d-asp/python/.venv/
-d-asp/python/venv/
-d-asp/python/dist/
+python/__pycache__/
+python/*.pyc
+python/*.pyo
+python/.venv/
+python/venv/
+python/dist/
 
 # -----------------------------------------------------------------------------
-# C# / .NET engine  (d-asp/csharp)
+# C# / .NET engine  (csharp)
 # -----------------------------------------------------------------------------
-d-asp/csharp/bin/
-d-asp/csharp/obj/
-# The DLL is built from d-asp/c — do not commit the copy
-d-asp/csharp/dasp_kem.dll
+csharp/bin/
+csharp/obj/
+# The DLL is built from c — do not commit the copy
+csharp/dasp_kem.dll
 
 # -----------------------------------------------------------------------------
-# Zig engine  (d-asp/zig)
+# Zig engine  (zig)
 # -----------------------------------------------------------------------------
-d-asp/zig/.zig-cache/
-d-asp/zig/zig-out/
-d-asp/zig/dist/
+zig/.zig-cache/
+zig/zig-out/
+zig/dist/
 
 # -----------------------------------------------------------------------------
 # Toolchain archives / downloaded binaries  (tools/)
@@ -171,18 +171,18 @@ dotnet-install.ps1
 # KAT / interop runtime artefacts
 # -----------------------------------------------------------------------------
 # Temp files written by test harnesses during runs
-d-asp/**/interop.json
-d-asp/**/tmp_sk.hex
-d-asp/**/tmp_pk.hex
-d-asp/**/tmp_data.json
-d-asp/**/tmp_hwid.hex
+**/interop.json
+**/tmp_sk.hex
+**/tmp_pk.hex
+**/tmp_data.json
+**/tmp_hwid.hex
 # Benchmark log sessions (timestamped directories)
-d-asp/logs/
+logs/
 # Generated KAT & NIST artefacts — regenerated on demand
-d-asp/scripts/kat_vectors.json
-d-asp/scripts/master_keys.txt
-d-asp/scripts/nist_kat.rsp
-d-asp/scripts/log/
+scripts/kat_vectors.json
+scripts/master_keys.txt
+scripts/nist_kat.rsp
+scripts/log/
 # Generated checksums (produced during release pipeline)
 checksums.txt
 # Adhoc test JSON files in root
@@ -211,3 +211,9 @@ testem.log
 *.log
 # Plans directory (internal)
 plans/
+rust/target/
+node/dist/
+__pycache__/
+ 
+# GitHub Releases Output
+out-releases/
