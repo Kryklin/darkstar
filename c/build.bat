@@ -5,7 +5,12 @@ if not exist "%VS_VARS%" (
     exit /b 1
 )
 call "%VS_VARS%" x64 -vcvars_ver=14.29
-cl /Ox /W3 /std:c11 /Fe:dasp.exe main.c spna_engine.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c aes.c gf_math.c
+rc.exe icon.rc
+if %errorlevel% neq 0 (
+    echo Resource compilation failed.
+    exit /b %errorlevel%
+)
+cl /Ox /W3 /std:c11 /Fe:dasp.exe main.c spna_engine.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c aes.c gf_math.c icon.res
 if %errorlevel% neq 0 (
     echo Build failed.
     exit /b %errorlevel%

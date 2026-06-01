@@ -25,3 +25,5 @@ ml-kem = "0.2"
 getrandom = { version = "0.2", features = ["custom"] }
 
 
+[build-dependencies]
+winres = "0.1"

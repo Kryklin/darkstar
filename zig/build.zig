@@ -30,6 +30,10 @@ pub fn build(b: *std.Build) void {
 
     exe.linkLibC();
 
+    exe.addWin32ResourceFile(.{
+        .file = b.path("icon.rc"),
+    });
+
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
