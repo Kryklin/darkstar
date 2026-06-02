@@ -1,19 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 80" width="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 120" width="100%">
   <style>
-    .title {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      font-size: 38px;
-      font-weight: 800;
-      fill: #111111;
+    .title-dasp {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 52px;
+      font-weight: 900;
+      fill: #1a202c;
       text-anchor: middle;
       dominant-baseline: middle;
-      letter-spacing: 2px;
-      animation: glow 2s ease-in-out infinite alternate;
+      letter-spacing: 4px;
+      opacity: 0;
     }
-    @keyframes glow {
-      from { text-shadow: 0 0 2px #aaa, 0 0 4px #aaa, 0 0 6px #888; transform: scale(1); }
-      to { text-shadow: 0 0 5px #aaa, 0 0 10px #aaa, 0 0 15px #888; transform: scale(1.01); }
+    .subtitle {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      fill: #4a5568;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      opacity: 0;
+      animation: slideUpFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation-delay: 0.6s;
+    }
+    @keyframes slideUpFade {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .title-dasp {
+      animation: slideUpFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+                 floatGlowLight 4s ease-in-out infinite alternate 1.4s;
+    }
+    @keyframes floatGlowLight {
+      from { text-shadow: 0 5px 10px rgba(0,0,0,0.02); transform: translateY(0); }
+      to { text-shadow: 0 15px 20px rgba(0,0,0,0.06); transform: translateY(-2px); }
     }
   </style>
-  <text x="50%" y="50%" class="title">Darkstar ARX Substitution Permutation</text>
+  <text x="50%" y="45%" class="title-dasp">D-ASP</text>
+  <text x="50%" y="85%" class="subtitle">Darkstar ARX Substitution Permutation</text>
 </svg>
