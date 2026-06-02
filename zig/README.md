@@ -28,12 +28,42 @@ This is the Zig implementation of the **ASP Cascade 16 (D-ASP)** engine. It demo
 zig build
 ```
 
-## Usage
-The Zig engine matches the standard CLI usage:
+## Detailed Usage
+The Zig executable conforms to the standard D-ASP CLI interface, utilizing JSON for cryptographic payloads to ensure cross-language compatibility.
+
+**Encrypting a Payload:**
 ```bash
-./zig-out/bin/d-asp_zig encrypt <payload> <pk_hex> [--hwid <hex>] [--telemetry]
-./zig-out/bin/d-asp_zig decrypt <json_payload> <sk_hex> [--hwid <hex>] [--telemetry]
+./dist/d-asp_zig encrypt <payload_string> <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
 ```
+
+**Decrypting a Payload:**
+```bash
+./dist/d-asp_zig decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
+```
+
+## Recommended Usage
+> [!TIP]
+> **Hardware Binding (HUB)**
+> It is highly recommended to always pass the `--hwid` flag (a 64-character hex string representing machine identity) during both encryption and decryption. This prevents "Static State Theft" by ensuring the resulting payload can only be decrypted on the specific machine it was encrypted for.
+
+## Error Codes
+The CLI returns the following standard error contexts directly to `stderr` alongside an exit code of `1`:
+
+| Error Context | Cause | Resolution |
+| :--- | :--- | :--- |
+| **`DecapsulationFailed`** | The provided `sk_hex` is invalid or does not match the public key used during encryption. | Verify the ML-KEM-1024 keypair generation. |
+| **`IntegrityFailed`** / **`HMAC Error`** | The payload has been tampered with, or the wrong `hwid` was provided during decryption. | Ensure identical `--hwid` is used and payload JSON is untouched. |
+| **`Invalid Arguments`** | Missing required parameters or incorrect hexadecimal lengths. | Ensure keys are full hex strings and HWID is exactly 64 characters. |
+
+## Engine-Specific Metrics
+Based on the latest benchmarking session (`interop`), the Zig engine achieved the following hardware-accelerated telemetry:
+
+| Metric | Recorded Value |
+| :--- | :--- |
+| **Total Pipeline Time** | `13.51 ms` |
+| **ASP Cascade Time** | `185 μs` |
+| **Total CPB** | `490.07` |
+| **Ops/sec** | `74.01` |
 
 ---
 
