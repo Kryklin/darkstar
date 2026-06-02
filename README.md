@@ -4,7 +4,6 @@
     <img src="assets/logo-black.png" width="240" alt="Darkstar Logo">
   </picture>
 </p>
-
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/header-anim-dark.svg">

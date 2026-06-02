@@ -131,6 +131,7 @@ node/node_modules/
 node/dist/
 node/cipher.json
 node/key.json
+node/*.wasm
 
 # -----------------------------------------------------------------------------
 # Python engine  (python)
