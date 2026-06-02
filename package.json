@@ -2,7 +2,7 @@
   "name": "d-asp",
   "version": "1.0.1",
   "productName": "D-ASP",
-  "description": "The Sovereign Post-Quantum Enclave for Identity & Asset Recovery.",
+  "description": "Post-Quantum Symmetric Encryption Suite │ ML-KEM-1024 + ASP Cascade 16",
   "author": "Victor Kane",
   "license": "CC0-1.0",
   "private": true,

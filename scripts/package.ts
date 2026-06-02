@@ -33,43 +33,58 @@ const pkg = require('../package.json');
 
   /**
    * Clears the terminal and displays the project header.
-   * Uses metadata from package.json for consistent branding.
+   * Hardened security-professional aesthetic with status indicators.
    */
   function printHeader() {
     console.clear();
-    console.log(chalk.hex('#00ADD8').bold('\n  🚀  D A R K S T A R   C L I'));
-    console.log(chalk.dim('  ────────────────────────────────────────────────────────────'));
-    console.log(chalk.white(`  Version: ${pkg.version}`));
-    console.log(chalk.white(`  ${pkg.description}`));
-    console.log(chalk.gray(`  Author: ${pkg.author}`));
-    console.log(chalk.dim('  ────────────────────────────────────────────────────────────\n'));
+    const g = chalk.hex('#00FF41');  // Matrix green
+    const d = chalk.hex('#333333'); // Dark muted
+    const w = chalk.hex('#AAAAAA'); // Muted white
+    const accent = chalk.hex('#00ADD8'); // Cyan accent
+
+    console.log('');
+    console.log(g.bold('  D - A S P   ') + chalk.hex('#555555')('│') + accent.bold('   D A R K S T A R   C L I'));
+    console.log(d('  ══════════════════════════════════════════════════════════════'));
+    console.log(w(`  ${pkg.description}`));
+    console.log(d('  ──────────────────────────────────────────────────────────────'));
+    console.log(w(`  Version  `) + accent(pkg.version) + w('  │  ') + w('License  ') + accent(pkg.license) + w('  │  ') + w('Author  ') + accent(pkg.author));
+    console.log(d('  ══════════════════════════════════════════════════════════════\n'));
   }
 
   // --- Menu Configuration ---
+  // Color coding:
+  //   Green  (#00FF41) = Build / Compile operations
+  //   Cyan   (#00BCD4) = Verification / Testing
+  //   Yellow (#FFD600) = Code Quality
+  //   Red    (#FF1744) = Security / Destructive
+  //   White  = System / Utility
+
   const choices = [
-    new inquirer.Separator(chalk.dim('─── Development ──────────────────────────────────────────')),
-    { name: chalk.bold.cyan('  🚀  Build Crypto Engines (Rust, Go, C, CUDA, Node, Python, C#, Zig)'), value: 'build-engines' },
-    { name: chalk.bold.cyan('  ⚙️   Run Dev Environment Check (C, Rust, Go, Python, C#, Zig)'), value: 'check-env' },
-    { name: chalk.blue('  🔍  Lint Code'), value: 'lint' },
-    { name: chalk.yellow('  ✨  Format Code'), value: 'format' },
+    new inquirer.Separator(chalk.hex('#555555')('─── Build ────────────────────────────────────────────────')),
+    { name: chalk.hex('#00FF41')('  ⚙  Compile Engines            ') + chalk.dim('Rust, Go, C, CUDA, Node, Python, C#, Zig'), value: 'build-engines' },
+    { name: chalk.hex('#00FF41')('  ◉  Environment Preflight      ') + chalk.dim('Verify toolchains & dependencies'), value: 'check-env' },
 
-    new inquirer.Separator(chalk.dim('─── Testing & Verification ───────────────────────────────')),
-    { name: chalk.magenta('  📊  Run Interop Benchmark'), value: 'interop' },
-    { name: chalk.hex('#00BFFF')('  📝  Generate KAT Vectors'), value: 'gen-kat' },
-    { name: chalk.hex('#A020F0')('  🤖  Run KAT Verification (Bit-Perfect Check)'), value: 'kat' },
-    { name: chalk.bold.magenta('  🐳  Run Headless Docker Test'), value: 'docker-test' },
+    new inquirer.Separator(chalk.hex('#555555')('─── Verification ─────────────────────────────────────────')),
+    { name: chalk.hex('#00BCD4')('  ◈  Interop Benchmark          ') + chalk.dim('Cross-engine bit-perfect parity'), value: 'interop' },
+    { name: chalk.hex('#00BCD4')('  ◈  Generate KAT Vectors       ') + chalk.dim('NIST Known Answer Test data'), value: 'gen-kat' },
+    { name: chalk.hex('#00BCD4')('  ◈  KAT Verification           ') + chalk.dim('Validate against reference vectors'), value: 'kat' },
+    { name: chalk.hex('#00BCD4')('  ◈  Headless Docker Matrix     ') + chalk.dim('Off-host containerized validation'), value: 'docker-test' },
 
-    new inquirer.Separator(chalk.dim('─── Advanced Security & Auditing ─────────────────────────')),
-    { name: chalk.red.bold('  🛡️   Run Memory Sanitizers (C/Rust)'), value: 'asan' },
-    { name: chalk.green('  ⚖️   Run License Compliance Audit'), value: 'license-audit' },
-    { name: chalk.yellow('  🕵️   Run Full Security Audit'), value: 'audit' },
+    new inquirer.Separator(chalk.hex('#555555')('─── Security & Audit ─────────────────────────────────────')),
+    { name: chalk.hex('#FF1744')('  ▲  Memory Sanitizers          ') + chalk.dim('ASan/MSan on C & Rust engines'), value: 'asan' },
+    { name: chalk.hex('#FF1744')('  ▲  Security Audit             ') + chalk.dim('CVE scan across all dependencies'), value: 'audit' },
+    { name: chalk.hex('#FFD600')('  △  License Compliance         ') + chalk.dim('OSS license compatibility check'), value: 'license-audit' },
 
-    new inquirer.Separator(chalk.dim('─── Release Management ───────────────────────────────────')),
-    { name: chalk.hex('#00ADD8')('  📦  Publish Engine Artifacts to GitHub Releases'), value: 'publish' },
+    new inquirer.Separator(chalk.hex('#555555')('─── Code Quality ─────────────────────────────────────────')),
+    { name: chalk.hex('#FFD600')('  ◇  Lint                       ') + chalk.dim('Static analysis & style enforcement'), value: 'lint' },
+    { name: chalk.hex('#FFD600')('  ◇  Format                     ') + chalk.dim('Polyglot auto-formatter'), value: 'format' },
 
-    new inquirer.Separator(chalk.dim('─── System ───────────────────────────────────────────────')),
-    { name: chalk.magenta('  🧹  Deep Clean Workspace'), value: 'clean' },
-    { name: chalk.red.bold('  ❌  Exit'), value: 'exit' },
+    new inquirer.Separator(chalk.hex('#555555')('─── Release ──────────────────────────────────────────────')),
+    { name: chalk.hex('#00ADD8')('  ◆  Publish to GitHub Releases ') + chalk.dim('Package & upload engine artifacts'), value: 'publish' },
+
+    new inquirer.Separator(chalk.hex('#555555')('─── System ───────────────────────────────────────────────')),
+    { name: chalk.hex('#888888')('  ○  Deep Clean                 ') + chalk.dim('Purge build artifacts & caches'), value: 'clean' },
+    { name: chalk.hex('#FF1744').bold('  ✕  Exit'), value: 'exit' },
   ];
 
   /**
@@ -244,14 +259,14 @@ const pkg = require('../package.json');
       {
         type: 'list',
         name: 'action',
-        message: 'Select an operation:',
+        message: chalk.hex('#AAAAAA')('Select operation:'),
         choices,
-        prefix: chalk.cyan('?'),
+        prefix: chalk.hex('#00FF41')('›'),
       },
     ]);
 
     if (action === 'exit') {
-      console.log(chalk.yellow('Goodbye! 👋'));
+      console.log(chalk.hex('#555555')('  Session terminated.'));
       process.exit(0);
     }
 
@@ -404,8 +419,8 @@ const pkg = require('../package.json');
       {
         type: 'input',
         name: 'continue',
-        message: chalk.dim('Press Enter to return to the main menu...'),
-        prefix: '',
+        message: chalk.hex('#555555')('Press [ENTER] to return to the main dashboard...'),
+        prefix: chalk.hex('#00FF41')('›'),
       },
     ]);
   }
