@@ -41,6 +41,21 @@ The Zig executable conforms to the standard D-ASP CLI interface, utilizing JSON 
 ./dist/d-asp_zig decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
+**Generating a Keypair:**
+```bash
+./dist/d-asp_zig keygen
+```
+
+**Running Self-Test:**
+```bash
+./dist/d-asp_zig test
+```
+
+**Rebinding a Payload (Migration):**
+```bash
+./dist/d-asp_zig rebind <json_payload> <old_sk_hex> <new_pk_hex> [--hwid <old_hwid>] [--new-hwid <new_hwid>]
+```
+
 ## Recommended Usage
 > [!TIP]
 > **Hardware Binding (HUB)**

@@ -41,6 +41,21 @@ The Rust executable conforms to the standard D-ASP CLI interface, utilizing JSON
 ./target/release/d-asp decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
+**Generating a Keypair:**
+```bash
+./target/release/d-asp keygen
+```
+
+**Running Self-Test:**
+```bash
+./target/release/d-asp test
+```
+
+**Rebinding a Payload (Migration):**
+```bash
+./target/release/d-asp rebind <json_payload> <old_sk_hex> <new_pk_hex> [--hwid <old_hwid>] [--new-hwid <new_hwid>]
+```
+
 ## Recommended Usage
 > [!TIP]
 > **Hardware Binding (HUB)**

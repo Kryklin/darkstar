@@ -175,6 +175,7 @@ export class DarkstarCrypt {
 if (require.main === module) {
   const args = process.argv.slice(2);
   let hwid: string | null = null;
+  let newHwid: string | null = null;
   let diagnostic = false;
   let telemetry = false;
 
@@ -186,6 +187,13 @@ if (require.main === module) {
         val = fs.readFileSync(val.slice(1), 'utf-8').trim();
       }
       hwid = val;
+      i++;
+    } else if (args[i] === '--new-hwid' && i + 1 < args.length) {
+      let val = args[i + 1];
+      if (val.startsWith('@')) {
+        val = fs.readFileSync(val.slice(1), 'utf-8').trim();
+      }
+      newHwid = val;
       i++;
     } else if (args[i] === '--diagnostic') {
       process.env.DASP_DIAGNOSTIC = '1';
@@ -223,6 +231,13 @@ if (require.main === module) {
         const data = resolveArg(parsedArgs[1]);
         const skHex = resolveArg(parsedArgs[2]);
         const res = await crypt.decrypt(data, skHex, hwid, telemetry);
+        process.stdout.write(res);
+      } else if (command === 'rebind') {
+        const data = resolveArg(parsedArgs[1]);
+        const skHex = resolveArg(parsedArgs[2]);
+        const pkHex = resolveArg(parsedArgs[3]);
+        const pt = await crypt.decrypt(data, skHex, hwid, false);
+        const res = await crypt.encrypt(pt, pkHex, newHwid, telemetry);
         process.stdout.write(res);
       } else if (command === 'keygen') {
         const keypair = kyber.keygen();

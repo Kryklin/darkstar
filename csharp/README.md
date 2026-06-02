@@ -41,6 +41,21 @@ The C# (.NET) executable conforms to the standard D-ASP CLI interface, utilizing
 ./bin/Release/net8.0/d-asp_csharp decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
+**Generating a Keypair:**
+```bash
+./bin/Release/net8.0/d-asp_csharp keygen
+```
+
+**Running Self-Test:**
+```bash
+./bin/Release/net8.0/d-asp_csharp test
+```
+
+**Rebinding a Payload (Migration):**
+```bash
+./bin/Release/net8.0/d-asp_csharp rebind <json_payload> <old_sk_hex> <new_pk_hex> [--hwid <old_hwid>] [--new-hwid <new_hwid>]
+```
+
 ## Recommended Usage
 > [!TIP]
 > **Hardware Binding (HUB)**

@@ -316,10 +316,12 @@ namespace DarkstarCSharp
             if (args.Length < 1) return;
             string command = args[0];
             byte[] hwid = null;
+            byte[] newHwid = null;
 
             int argIdx = 1;
             string payloadOrData = null;
             string keyHex = null;
+            string newPkHex = null;
 
             while (argIdx < args.Length)
             {
@@ -328,6 +330,13 @@ namespace DarkstarCSharp
                     string hStr = args[argIdx + 1];
                     if (hStr.StartsWith("@")) hStr = File.ReadAllText(hStr.Substring(1)).Trim();
                     hwid = CleanHex(hStr);
+                    argIdx += 2;
+                }
+                else if (args[argIdx] == "--new-hwid" && argIdx + 1 < args.Length)
+                {
+                    string hStr = args[argIdx + 1];
+                    if (hStr.StartsWith("@")) hStr = File.ReadAllText(hStr.Substring(1)).Trim();
+                    newHwid = CleanHex(hStr);
                     argIdx += 2;
                 }
                 else if (args[argIdx] == "--telemetry")
@@ -339,6 +348,7 @@ namespace DarkstarCSharp
                 {
                     if (payloadOrData == null) payloadOrData = args[argIdx];
                     else if (keyHex == null) keyHex = args[argIdx];
+                    else if (newPkHex == null) newPkHex = args[argIdx];
                     argIdx++;
                 }
             }
@@ -349,6 +359,11 @@ namespace DarkstarCSharp
             {
                 if (command == "encrypt") Console.WriteLine(Encrypt(Resolve(payloadOrData), Resolve(keyHex), hwid));
                 else if (command == "decrypt") Console.Write(Decrypt(Resolve(payloadOrData), Resolve(keyHex), hwid));
+                else if (command == "rebind")
+                {
+                    string pt = Decrypt(Resolve(payloadOrData), Resolve(keyHex), hwid);
+                    Console.WriteLine(Encrypt(pt, Resolve(newPkHex), newHwid));
+                }
                 else if (command == "keygen")
                 {
                     byte[] pk = new byte[1568];

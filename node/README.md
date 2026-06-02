@@ -43,6 +43,21 @@ node dist/main.js encrypt <payload_string> <ml_kem_public_key_hex> [--hwid <hex>
 node dist/main.js decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
+**Generating a Keypair:**
+```bash
+node dist/main.js keygen
+```
+
+**Running Self-Test:**
+```bash
+node dist/main.js test
+```
+
+**Rebinding a Payload (Migration):**
+```bash
+node dist/main.js rebind <json_payload> <old_sk_hex> <new_pk_hex> [--hwid <old_hwid>] [--new-hwid <new_hwid>]
+```
+
 ## Recommended Usage
 > [!TIP]
 > **Hardware Binding (HUB)**

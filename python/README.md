@@ -43,6 +43,21 @@ python dist/dasp.py encrypt <payload_string> <ml_kem_public_key_hex> [--hwid <he
 python dist/dasp.py decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
+**Generating a Keypair:**
+```bash
+python dist/dasp.py keygen
+```
+
+**Running Self-Test:**
+```bash
+python dist/dasp.py test
+```
+
+**Rebinding a Payload (Migration):**
+```bash
+python dist/dasp.py rebind <json_payload> <old_sk_hex> <new_pk_hex> [--hwid <old_hwid>] [--new-hwid <new_hwid>]
+```
+
 ## Recommended Usage
 > [!TIP]
 > **Hardware Binding (HUB)**

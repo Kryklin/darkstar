@@ -216,6 +216,16 @@ if __name__ == "__main__":
         "--telemetry", action="store_true", help="Output execution timings"
     )
 
+    rebind_parser = subparsers.add_parser("rebind", help="Rebind a payload to new key/HWID")
+    rebind_parser.add_argument("data", help="D-ASP JSON blob")
+    rebind_parser.add_argument("sk_hex", help="Old Kyber-1024 Secret Key Hex")
+    rebind_parser.add_argument("new_pk_hex", help="New Kyber-1024 Public Key Hex")
+    rebind_parser.add_argument("--hwid", help="Old Hardware ID Hex")
+    rebind_parser.add_argument("--new-hwid", help="New Hardware ID Hex")
+    rebind_parser.add_argument(
+        "--telemetry", action="store_true", help="Output execution timings"
+    )
+
     subparsers.add_parser("keygen", help="Generate ML-KEM-1024 pair")
 
     args = parser.parse_args()
@@ -248,6 +258,22 @@ if __name__ == "__main__":
                 load_arg(args.sk_hex),
                 hwid_hex=hardware_id,
                 telemetry=args.telemetry,
+            )
+        )
+    elif args.command == "rebind":
+        new_hardware_id = load_arg(args.new_hwid) if hasattr(args, "new_hwid") and args.new_hwid else None
+        plaintext = crypt.decrypt(
+            load_arg(args.data),
+            load_arg(args.sk_hex),
+            hwid_hex=hardware_id,
+            telemetry=False,
+        )
+        print(
+            crypt.encrypt(
+                plaintext,
+                load_arg(args.new_pk_hex),
+                hwid_hex=new_hardware_id,
+                telemetry=hasattr(args, "telemetry") and args.telemetry,
             )
         )
     elif args.command == "keygen":

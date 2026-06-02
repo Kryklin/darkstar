@@ -143,9 +143,11 @@ pub fn main() !void {
     if (args.len < 2) return;
 
     var hwid_buf: ?[]u8 = null;
+    var new_hwid_buf: ?[]u8 = null;
     var command: []const u8 = "";
     var payloadOrData: []const u8 = "";
     var keyHex: []const u8 = "";
+    var newPkHex: []const u8 = "";
     
     var telemetry = false;
     var diagnostic = false;
@@ -164,6 +166,18 @@ pub fn main() !void {
             }
             hwid_buf = try hexDecodeAlloc(allocator, hStr);
             allocator.free(hStr);
+        } else if (std.mem.eql(u8, args[argIdx], "--new-hwid") and argIdx + 1 < args.len) {
+            argIdx += 1;
+            var hStr: []u8 = undefined;
+            if (args[argIdx].len > 0 and args[argIdx][0] == '@') {
+                const file = try std.fs.cwd().openFile(args[argIdx][1..], .{});
+                defer file.close();
+                hStr = try file.readToEndAlloc(allocator, std.math.maxInt(usize));
+            } else {
+                hStr = try allocator.dupe(u8, args[argIdx]);
+            }
+            new_hwid_buf = try hexDecodeAlloc(allocator, hStr);
+            allocator.free(hStr);
         } else if (std.mem.eql(u8, args[argIdx], "--telemetry")) {
             telemetry = true;
         } else if (std.mem.eql(u8, args[argIdx], "--diagnostic")) {
@@ -175,6 +189,8 @@ pub fn main() !void {
                 payloadOrData = args[argIdx];
             } else if (keyHex.len == 0) {
                 keyHex = args[argIdx];
+            } else if (newPkHex.len == 0) {
+                newPkHex = args[argIdx];
             }
         }
     }
@@ -196,6 +212,12 @@ pub fn main() !void {
         break :blk h;
     };
     defer allocator.free(hwid);
+    const newHwid = new_hwid_buf orelse blk: {
+        const h = try allocator.alloc(u8, 32);
+        @memset(h, 0);
+        break :blk h;
+    };
+    defer allocator.free(newHwid);
 
     if (std.mem.eql(u8, command, "keygen")) {
         var pk: [1568]u8 = undefined;
@@ -414,6 +436,169 @@ pub fn main() !void {
             try stderr.print("{{\"timings\":{{\"kem_us\":{d},\"kdf_us\":{d},\"cascade_us\":{d},\"mac_us\":0}}}}\n", .{ kem_us, kdf_us, cascade_us });
         }
         try stdout.print("{s}", .{payloadBytes});
+    } else if (std.mem.eql(u8, command, "rebind")) {
+        const encDataRaw = try resolve(allocator, payloadOrData);
+        defer allocator.free(encDataRaw);
+        const skHexStr = try resolve(allocator, keyHex);
+        defer allocator.free(skHexStr);
+        const pkHexStr = try resolve(allocator, newPkHex);
+        defer allocator.free(pkHexStr);
+
+        const sk = try hexDecodeAlloc(allocator, skHexStr);
+        defer allocator.free(sk);
+        const pk = try hexDecodeAlloc(allocator, pkHexStr);
+        defer allocator.free(pk);
+
+        const parsed = try std.json.parseFromSlice(std.json.Value, allocator, encDataRaw, .{});
+        defer parsed.deinit();
+        const ctHex = parsed.value.object.get("ct").?.string;
+        const dataHex = parsed.value.object.get("data").?.string;
+        const macHex = parsed.value.object.get("mac").?.string;
+
+        const in_ct = try hexDecodeAlloc(allocator, ctHex);
+        defer allocator.free(in_ct);
+        const payloadBytes = try hexDecodeAlloc(allocator, dataHex);
+        defer allocator.free(payloadBytes);
+        const expectedMac = try hexDecodeAlloc(allocator, macHex);
+        defer allocator.free(expectedMac);
+
+        // --- DECRYPT ---
+        var ss: [32]u8 = undefined;
+        if (c.crypto_kem_dec(&ss, in_ct.ptr, sk.ptr) != 0) return error.DecapsulationFailed;
+
+        var prk: [32]u8 = undefined;
+        c.crypto_hmac_sha256(hwid.ptr, hwid.len, &ss, ss.len, &prk);
+        var blendedSS: [32]u8 = undefined;
+        c.crypto_hmac_sha256(&prk, prk.len, "dasp-identity-v3\x01", 17, &blendedSS);
+
+        var cInput = try allocator.alloc(u8, 6 + blendedSS.len);
+        defer allocator.free(cInput);
+        std.mem.copyForwards(u8, cInput[0..6], "cipher");
+        std.mem.copyForwards(u8, cInput[6..], &blendedSS);
+        var cipherKey: [32]u8 = undefined;
+        c.crypto_sha256(cInput.ptr, cInput.len, &cipherKey);
+        
+        var cipherKeyHex: [64]u8 = undefined;
+        _ = try std.fmt.bufPrint(&cipherKeyHex, "{s}", .{std.fmt.fmtSliceHexLower(&cipherKey)});
+
+        var hInput = try allocator.alloc(u8, 4 + blendedSS.len);
+        defer allocator.free(hInput);
+        std.mem.copyForwards(u8, hInput[0..4], "hmac");
+        std.mem.copyForwards(u8, hInput[4..], &blendedSS);
+        var activeHmacKey: [32]u8 = undefined;
+        c.crypto_sha256(hInput.ptr, hInput.len, &activeHmacKey);
+
+        var wordKey: [32]u8 = undefined;
+        c.crypto_hmac_sha256(&cipherKeyHex, 64, "dasp-word-0", 11, &wordKey);
+
+        var hmacInput = try allocator.alloc(u8, in_ct.len + payloadBytes.len);
+        defer allocator.free(hmacInput);
+        std.mem.copyForwards(u8, hmacInput[0..in_ct.len], in_ct);
+        std.mem.copyForwards(u8, hmacInput[in_ct.len..], payloadBytes);
+        var macActual: [32]u8 = undefined;
+        c.crypto_hmac_sha256(&activeHmacKey, 32, hmacInput.ptr, hmacInput.len, &macActual);
+
+        if (!std.mem.eql(u8, &macActual, expectedMac)) return error.IntegrityFailed;
+
+        var wordKeyHex: [64]u8 = undefined;
+        _ = try std.fmt.bufPrint(&wordKeyHex, "{s}", .{std.fmt.fmtSliceHexLower(&wordKey)});
+        var prng = DarkstarChaChaPRNG.init(&wordKeyHex);
+
+        var roundKeys: [128]u32 = undefined;
+        for (0..128) |i| {
+            roundKeys[i] = prng.next();
+        }
+
+        var chainInput = try allocator.alloc(u8, 11 + 64);
+        defer allocator.free(chainInput);
+        std.mem.copyForwards(u8, chainInput[0..11], "dasp-chain-");
+        std.mem.copyForwards(u8, chainInput[11..], &cipherKeyHex);
+        var chainState: [32]u8 = undefined;
+        c.crypto_sha256(chainInput.ptr, chainInput.len, &chainState);
+
+        var nonce = chainState;
+        var i: usize = 0;
+        while (i < payloadBytes.len) : (i += 32) {
+            var chunkLen: usize = 32;
+            if (i + chunkLen > payloadBytes.len) chunkLen = payloadBytes.len - i;
+            var block = nonce;
+            daspCascade32(&block, &roundKeys);
+            for (0..chunkLen) |j| payloadBytes[i + j] ^= block[j];
+            for (0..32) |j| {
+                nonce[j] +%= 1;
+                if (nonce[j] != 0) break;
+            }
+        }
+
+        // --- ENCRYPT ---
+        var new_ct: [1568]u8 = undefined;
+        var new_ss: [32]u8 = undefined;
+        _ = c.crypto_kem_enc(&new_ct, &new_ss, pk.ptr);
+
+        var new_prk: [32]u8 = undefined;
+        c.crypto_hmac_sha256(newHwid.ptr, newHwid.len, &new_ss, new_ss.len, &new_prk);
+        var new_blendedSS: [32]u8 = undefined;
+        c.crypto_hmac_sha256(&new_prk, new_prk.len, "dasp-identity-v3\x01", 17, &new_blendedSS);
+
+        var new_cInput = try allocator.alloc(u8, 6 + new_blendedSS.len);
+        defer allocator.free(new_cInput);
+        std.mem.copyForwards(u8, new_cInput[0..6], "cipher");
+        std.mem.copyForwards(u8, new_cInput[6..], &new_blendedSS);
+        var new_cipherKey: [32]u8 = undefined;
+        c.crypto_sha256(new_cInput.ptr, new_cInput.len, &new_cipherKey);
+        
+        var new_cipherKeyHex: [64]u8 = undefined;
+        _ = try std.fmt.bufPrint(&new_cipherKeyHex, "{s}", .{std.fmt.fmtSliceHexLower(&new_cipherKey)});
+
+        var new_hInput = try allocator.alloc(u8, 4 + new_blendedSS.len);
+        defer allocator.free(new_hInput);
+        std.mem.copyForwards(u8, new_hInput[0..4], "hmac");
+        std.mem.copyForwards(u8, new_hInput[4..], &new_blendedSS);
+        var new_activeHmacKey: [32]u8 = undefined;
+        c.crypto_sha256(new_hInput.ptr, new_hInput.len, &new_activeHmacKey);
+
+        var new_wordKey: [32]u8 = undefined;
+        c.crypto_hmac_sha256(&new_cipherKeyHex, 64, "dasp-word-0", 11, &new_wordKey);
+
+        var new_wordKeyHex: [64]u8 = undefined;
+        _ = try std.fmt.bufPrint(&new_wordKeyHex, "{s}", .{std.fmt.fmtSliceHexLower(&new_wordKey)});
+        var new_prng = DarkstarChaChaPRNG.init(&new_wordKeyHex);
+
+        var new_roundKeys: [128]u32 = undefined;
+        for (0..128) |k| new_roundKeys[k] = new_prng.next();
+
+        var new_chainInput = try allocator.alloc(u8, 11 + 64);
+        defer allocator.free(new_chainInput);
+        std.mem.copyForwards(u8, new_chainInput[0..11], "dasp-chain-");
+        std.mem.copyForwards(u8, new_chainInput[11..], &new_cipherKeyHex);
+        var new_chainState: [32]u8 = undefined;
+        c.crypto_sha256(new_chainInput.ptr, new_chainInput.len, &new_chainState);
+
+        var new_nonce = new_chainState;
+        var m: usize = 0;
+        while (m < payloadBytes.len) : (m += 32) {
+            var chunkLen: usize = 32;
+            if (m + chunkLen > payloadBytes.len) chunkLen = payloadBytes.len - m;
+            var block = new_nonce;
+            daspCascade32(&block, &new_roundKeys);
+            for (0..chunkLen) |j| payloadBytes[m + j] ^= block[j];
+            for (0..32) |j| {
+                new_nonce[j] +%= 1;
+                if (new_nonce[j] != 0) break;
+            }
+        }
+
+        var new_hmacInput = try allocator.alloc(u8, new_ct.len + payloadBytes.len);
+        defer allocator.free(new_hmacInput);
+        std.mem.copyForwards(u8, new_hmacInput[0..new_ct.len], &new_ct);
+        std.mem.copyForwards(u8, new_hmacInput[new_ct.len..], payloadBytes);
+        var new_macTag: [32]u8 = undefined;
+        c.crypto_hmac_sha256(&new_activeHmacKey, 32, new_hmacInput.ptr, new_hmacInput.len, &new_macTag);
+
+        const stdout = std.io.getStdOut().writer();
+        try stdout.print("{{\"data\":\"{s}\",\"ct\":\"{s}\",\"mac\":\"{s}\"}}\n", .{ std.fmt.fmtSliceHexLower(payloadBytes), std.fmt.fmtSliceHexLower(&new_ct), std.fmt.fmtSliceHexLower(&new_macTag) });
+        
+        @memset(payloadBytes, 0);
     } else if (std.mem.eql(u8, command, "test")) {
         // Basic test bypass
         var pk: [1568]u8 = undefined;

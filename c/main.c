@@ -138,6 +138,8 @@ int main(int argc, char **argv) {
   char *cmd = argv[1];
   uint8_t hwid[32];
   int use_hwid = 0;
+  uint8_t new_hwid[32];
+  int use_new_hwid = 0;
 
   uint8_t seed[48];
   int telemetry = 0;
@@ -153,6 +155,17 @@ int main(int argc, char **argv) {
         hex_decode(h_hex, hwid, 32);
       }
       use_hwid = 1;
+    }
+    if (strcmp(argv[i], "--new-hwid") == 0 && i + 1 < argc) {
+      char *h_hex = argv[i + 1];
+      if (h_hex[0] == '@') {
+        char *file_content = read_file(h_hex + 1);
+        hex_decode(file_content, new_hwid, 32);
+        free(file_content);
+      } else {
+        hex_decode(h_hex, new_hwid, 32);
+      }
+      use_new_hwid = 1;
     }
     if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
       hex_decode(argv[i + 1], seed, 48);
@@ -316,6 +329,67 @@ int main(int argc, char **argv) {
     free(json);
     free(sk_str);
     free(payload);
+    return 0;
+  } else if (strcmp(cmd, "rebind") == 0) {
+    if (argc < 5) return 2;
+    char *json_file = argv[2];
+    char *json = NULL;
+    if (json_file[0] == '@') {
+      json = read_file(json_file + 1);
+      if (!json) return 3;
+    } else {
+      json = strdup(json_file);
+    }
+    char *sk_str = argv[3];
+    if (sk_str[0] == '@') { sk_str = read_file(sk_str + 1); } else { sk_str = strdup(sk_str); }
+    char *pk_str = argv[4];
+    if (pk_str[0] == '@') { pk_str = read_file(pk_str + 1); } else { pk_str = strdup(pk_str); }
+
+    uint8_t sk[CRYPTO_SECRETKEYBYTES];
+    hex_decode(sk_str, sk, CRYPTO_SECRETKEYBYTES);
+    uint8_t pk[CRYPTO_PUBLICKEYBYTES];
+    hex_decode(pk_str, pk, CRYPTO_PUBLICKEYBYTES);
+
+    char *data_hex = extract_json_string(json, "data");
+    char *ct_hex = extract_json_string(json, "ct");
+    char *mac_hex = extract_json_string(json, "mac");
+    if (!data_hex || !ct_hex || !mac_hex) return 4;
+
+    size_t p_len = strlen(data_hex) / 2;
+    uint8_t *payload = malloc(p_len);
+    hex_decode(data_hex, payload, p_len);
+    uint8_t ct[CRYPTO_CIPHERTEXTBYTES];
+    hex_decode(ct_hex, ct, CRYPTO_CIPHERTEXTBYTES);
+    uint8_t mac[32];
+    hex_decode(mac_hex, mac, 32);
+
+    int res = dasp_decapsulate_data_inner(payload, p_len, sk, use_hwid ? hwid : NULL, ct, mac);
+    if (res != 0) {
+      fprintf(stderr, "Rebind Decryption Failed\n");
+      return 5;
+    }
+
+    uint8_t new_ct[CRYPTO_CIPHERTEXTBYTES];
+    uint8_t new_mac[32];
+    dasp_encapsulate_data_inner(payload, p_len, pk, use_new_hwid ? new_hwid : NULL, new_ct, new_mac);
+
+    char *new_ct_hex = malloc(CRYPTO_CIPHERTEXTBYTES * 2 + 1);
+    char new_mac_hex[65];
+    hex_encode(new_ct, CRYPTO_CIPHERTEXTBYTES, new_ct_hex);
+    hex_encode(new_mac, 32, new_mac_hex);
+    char *new_data_hex = malloc(p_len * 2 + 1);
+    hex_encode(payload, p_len, new_data_hex);
+
+    volatile uint8_t *v_payload = (volatile uint8_t *)payload;
+    for (size_t k = 0; k < p_len; k++) v_payload[k] = 0;
+
+    printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\"}\n", new_data_hex, new_ct_hex, new_mac_hex);
+
+    free(new_data_hex);
+    free(new_ct_hex);
+    free(payload);
+    free(data_hex); free(ct_hex); free(mac_hex);
+    free(json); free(sk_str); free(pk_str);
     return 0;
   }
 

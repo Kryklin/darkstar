@@ -12,6 +12,7 @@ fn print_usage() {
     println!("Commands:");
     println!("  encrypt <payload> <pk_hex>   Encrypt using D-ASP");
     println!("  decrypt <json_data> <sk_hex> Decrypt using D-ASP");
+    println!("  rebind <payload> <sk> <new_pk> Rebind a payload to a new key/HWID");
     println!("  keygen                       Generate ML-KEM-1024 keys");
     println!("  test                         Run D-ASP self-test");
 }
@@ -34,6 +35,7 @@ fn resolve_arg(arg: &str) -> String {
 fn main() {
     let mut raw_args: Vec<String> = std::env::args().skip(1).collect();
     let mut hwid: Option<Vec<u8>> = None;
+    let mut new_hwid: Option<Vec<u8>> = None;
     let mut telemetry = false;
 
     let mut i = 0;
@@ -42,6 +44,10 @@ fn main() {
             let hw_hex = resolve_arg(&raw_args.remove(i + 1));
             raw_args.remove(i);
             hwid = Some(hex::decode(clean_hex(&hw_hex)).expect("Invalid HWID hex"));
+        } else if raw_args[i] == "--new-hwid" && i + 1 < raw_args.len() {
+            let hw_hex = resolve_arg(&raw_args.remove(i + 1));
+            raw_args.remove(i);
+            new_hwid = Some(hex::decode(clean_hex(&hw_hex)).expect("Invalid New HWID hex"));
         } else if raw_args[i] == "--diagnostic" {
             raw_args.remove(i);
             std::env::set_var("DASP_DIAGNOSTIC", "1");
@@ -90,6 +96,36 @@ fn main() {
                 Ok(decrypted) => println!("{}", decrypted),
                 Err(e) => {
                     eprintln!("Decryption Failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        "rebind" => {
+            if raw_args.len() < 3 {
+                print_usage();
+                return;
+            }
+            let data = resolve_arg(&raw_args[0]);
+            let sk_hex = resolve_arg(&raw_args[1]);
+            let pk_hex = resolve_arg(&raw_args[2]);
+
+            match dc.decrypt(&data, &sk_hex, hwid, telemetry) {
+                Ok(mut decrypted) => {
+                    match dc.encrypt(&decrypted, &pk_hex, new_hwid, telemetry) {
+                        Ok(res_json) => {
+                            println!("{}", res_json);
+                        }
+                        Err(e) => {
+                            eprintln!("Rebind Encryption Failed: {}", e);
+                            std::process::exit(1);
+                        }
+                    }
+                    unsafe {
+                        std::ptr::write_bytes(decrypted.as_mut_ptr(), 0, decrypted.len());
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Rebind Decryption Failed: {}", e);
                     std::process::exit(1);
                 }
             }

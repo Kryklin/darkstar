@@ -41,6 +41,21 @@ The Go executable conforms to the standard D-ASP CLI interface, utilizing JSON f
 ./main decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
+**Generating a Keypair:**
+```bash
+./main keygen
+```
+
+**Running Self-Test:**
+```bash
+./main test
+```
+
+**Rebinding a Payload (Migration):**
+```bash
+./main rebind <json_payload> <old_sk_hex> <new_pk_hex> [--hwid <old_hwid>] [--new-hwid <new_hwid>]
+```
+
 ## Recommended Usage
 > [!TIP]
 > **Hardware Binding (HUB)**

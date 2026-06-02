@@ -506,6 +506,7 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 
 func main() {
 	var hwid []byte
+	var newHwid []byte
 	args := os.Args[1:]
 
 	// Flag parsing for --diagnostic and --telemetry
@@ -533,6 +534,19 @@ func main() {
 				val = string(c)
 			}
 			hwid, _ = hex.DecodeString(cleanHex(val))
+			args = append(args[:i], args[i+2:]...)
+			i--
+		} else if args[i] == "--new-hwid" && i+1 < len(args) {
+			val := args[i+1]
+			if strings.HasPrefix(val, "@") {
+				c, err := os.ReadFile(val[1:])
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error reading New HWID file: %v\n", err)
+					os.Exit(1)
+				}
+				val = string(c)
+			}
+			newHwid, _ = hex.DecodeString(cleanHex(val))
 			args = append(args[:i], args[i+2:]...)
 			i--
 		}
@@ -569,6 +583,24 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Print(res)
+	case "rebind":
+		if len(args) < 4 {
+			return
+		}
+		data := resolve(args[1])
+		skHex := resolve(args[2])
+		newPkHex := resolve(args[3])
+		pt, err := dc.Decrypt(data, skHex, hwid)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Rebind Decryption Error: %v\n", err)
+			os.Exit(1)
+		}
+		res, err := dc.Encrypt(pt, newPkHex, newHwid)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Rebind Encryption Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(res)
 	case "keygen":
 		sch := mlkem1024.Scheme()
 		pk, sk, _ := sch.GenerateKeyPair()

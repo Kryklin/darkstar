@@ -43,6 +43,21 @@ The CUDA executable conforms to the standard D-ASP CLI interface, utilizing JSON
 ./d-asp_cuda decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
+**Generating a Keypair:**
+```bash
+./d-asp_cuda keygen
+```
+
+**Running Self-Test:**
+```bash
+./d-asp_cuda test
+```
+
+**Rebinding a Payload (Migration):**
+> [!NOTE]
+> The CUDA engine does not support `rebind` directly due to GPU memory zeroization constraints.
+> Use any CPU-based engine (Rust, C, Go, Python, Node.js, C#, Zig) for migration operations.
+
 ## Recommended Usage
 > [!TIP]
 > **Hardware Binding (HUB)**

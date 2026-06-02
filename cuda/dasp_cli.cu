@@ -475,6 +475,12 @@ int main(int argc, char **argv) {
         CUDA_CHECK(cudaFreeHost(h_payload));
         if (argv[2][0] == '@') free(payload_raw);
         if (argv[3][0] == '@') free(pk_raw);
+    } else if (strcmp(argv[1], "rebind") == 0) {
+        fprintf(stderr, "CUDA-DASP: The 'rebind' command is not supported in the CUDA engine.\n");
+        fprintf(stderr, "GPU memory zeroization of intermediate plaintext cannot be guaranteed.\n");
+        fprintf(stderr, "Please use the Rust, C, Go, Python, Node.js, C#, or Zig engine for rebind operations.\n");
+        fprintf(stderr, "Example: d-asp rebind <payload> <old_sk> <new_pk> [--hwid <old>] [--new-hwid <new>]\n");
+        return 1;
     } else if (strcmp(argv[1], "benchmark") == 0) {
         if (argc < 3) return 1;
         float gb = atof(argv[2]);

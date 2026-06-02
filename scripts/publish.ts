@@ -142,16 +142,16 @@ const pkg = require('../package.json');
       uploadUrlStr = rel.upload_url;
       spinner.info(`Found existing release v${pkg.version}`);
     } catch (e) {
-      spinner.text = 'Creating new draft release...';
+      spinner.text = 'Creating new release...';
       const rel = await githubApi('POST', `/repos/${owner}/${repo}/releases`, {
         tag_name: `v${pkg.version}`,
-        name: `Darkstar v${pkg.version}`,
-        body: `Automated release for Darkstar Core Engines v${pkg.version}.`,
-        draft: true
+        name: `D-ASP v${pkg.version}`,
+        body: `Automated release for D-ASP Core Engines v${pkg.version}.`,
+        draft: false
       });
       releaseId = rel.id;
       uploadUrlStr = rel.upload_url;
-      spinner.succeed(`Created draft release v${pkg.version}`);
+      spinner.succeed(`Created release v${pkg.version}`);
     }
 
     // Upload assets
