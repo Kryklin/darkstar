@@ -94,8 +94,6 @@ We welcome suggestions for new features and improvements to existing functionali
 
 ---
 
-[**&larr; Back to Project Root**](README.md) | [**D-ASP Mathematical Specification**](DASP_CRYPTO_MATH.md)
-
 ---
 
 <div align="center">

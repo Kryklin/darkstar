@@ -72,8 +72,6 @@ version 2.1, available at
 
 ---
 
-[**&larr; Back to Project Root**](README.md) | [**D-ASP Mathematical Specification**](DASP_CRYPTO_MATH.md)
-
 ---
 
 <div align="center">

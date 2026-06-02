@@ -13,8 +13,6 @@
 
 # D-ASP: Formal Mathematical & Systems Specification (Professional Grade)
 
-[**&larr; Back to D-ASP Suite**](README.md) | [**Project Root**](../README.md)
-
 This document provides the formal cryptographic and mathematical specification for the **ASP Cascade 16 (D-ASP)** protocol. ASP Cascade 16 is a high-security cipher suite based on a 16-round **ASP Cascade structure** (Substitution, Permutation, Network, Algebraic) optimized for identity binding and side-channel resistance.
 
 ---

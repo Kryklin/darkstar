@@ -13,11 +13,7 @@
 
 # ASP Cascade 16: System Logic & Architectural Flows
 
-[**&larr; Back to D-ASP Suite**](README.md) | [**Mathematical Specification**](DASP_CRYPTO_MATH.md) | [**Project Root**](../README.md)
-
 This document provides a high-fidelity visual breakdown of the logic flows within the **Darkstar Algebraic Substitution & Permutation (D-ASP)** protocol. It serves as the primary reference for understanding the cryptographic execution pipeline.
-
-
 
 ## 1. Identity Binding & HUB Flow
 
@@ -94,16 +90,6 @@ stateDiagram-v2
     JSON_Envelope --> InteropSuccess: Bit-Perfect Match
     InteropSuccess --> [*]
 ```
-
----
-
-## 🏗️ Technical Navigation
-
-| Scope                      | Resource                                       |
-| :------------------------- | :--------------------------------------------- |
-| **Formal Specification**   | [**DASP_CRYPTO_MATH.md**](DASP_CRYPTO_MATH.md) |
-| **Implementation Details** | [**D-ASP README**](README.md)                  |
-| **Security Guarantees**    | [**SECURITY.md**](../SECURITY.md)              |
 
 ---
 
