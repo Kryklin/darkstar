@@ -1,42 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 120" width="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 200" width="100%">
   <style>
     .title-dasp {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 52px;
+      font-size: 56px;
       font-weight: 900;
-      fill: #1a202c;
+      fill: #000000;
       text-anchor: middle;
       dominant-baseline: middle;
       letter-spacing: 4px;
       opacity: 0;
+      animation: slideUpFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+                 pulse 3s ease-in-out 1.4s infinite alternate;
+    }
+    @keyframes pulse {
+      from { opacity: 1; letter-spacing: 4px; }
+      to { opacity: 0.6; letter-spacing: 8px; }
     }
     .subtitle {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 20px;
+      font-size: 22px;
       font-weight: 600;
-      fill: #4a5568;
+      fill: #333333;
       text-anchor: middle;
       dominant-baseline: middle;
       letter-spacing: 6px;
       text-transform: uppercase;
       opacity: 0;
       animation: slideUpFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      animation-delay: 0.6s;
+      animation-delay: 0.4s;
     }
     @keyframes slideUpFade {
-      from { opacity: 0; transform: translateY(20px); }
+      from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    
-    .title-dasp {
-      animation: slideUpFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards,
-                 floatGlowLight 4s ease-in-out infinite alternate 1.4s;
-    }
-    @keyframes floatGlowLight {
-      from { text-shadow: 0 5px 10px rgba(0,0,0,0.02); transform: translateY(0); }
-      to { text-shadow: 0 15px 20px rgba(0,0,0,0.06); transform: translateY(-2px); }
-    }
   </style>
-  <text x="50%" y="45%" class="title-dasp">D-ASP</text>
-  <text x="50%" y="85%" class="subtitle">Darkstar ARX Substitution Permutation</text>
+  <text x="50%" y="80" class="title-dasp">D-ASP</text>
+  <text x="50%" y="140" class="subtitle">Darkstar ARX Substitution Permutation</text>
 </svg>
