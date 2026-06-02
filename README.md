@@ -7,8 +7,8 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/header-dark.svg">
-    <img src="assets/header-light.svg" width="800" alt="Darkstar ARX Substitution Permutation">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/header-anim-dark.svg">
+    <img src="assets/header-anim-light.svg" width="800" alt="Darkstar ARX Substitution Permutation">
   </picture>
 </p>
 
