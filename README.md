@@ -5,7 +5,12 @@
   </picture>
 </p>
 
-# Darkstar ARX Substitution Permutation
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/header-dark.svg">
+    <img src="assets/header-light.svg" width="800" alt="Darkstar ARX Substitution Permutation">
+  </picture>
+</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge" alt="Version">
