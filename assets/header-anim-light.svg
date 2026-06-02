@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 200" width="100%">
+  <style>
+    .title {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 80px;
+      font-weight: 900;
+      fill: #1a202c;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      opacity: 0;
+      animation: fadeIn 1s ease-out forwards;
+    }
+    .subtitle {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 28px;
+      font-weight: 600;
+      fill: #4a5568;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      opacity: 0;
+      animation: fadeIn 1s ease-out forwards 0.3s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+  <text x="50%" y="80" class="title">D-ASP</text>
+  <text x="50%" y="150" class="subtitle">DARKSTAR ARX SUBSTITUTION PERMUTATION</text>
+</svg>
