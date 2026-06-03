@@ -10,7 +10,18 @@
 
 #include "rng.h"
 #include "aes.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <bcrypt.h>
+#pragma comment(lib, "bcrypt.lib")
+#else
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 
 /** @brief DRBG Internal State (NIST SP 800-90A) */
 typedef struct {
@@ -88,6 +99,29 @@ void randombytes_init(unsigned char *entropy_input,
  * @return RNG_SUCCESS (0).
  */
 int randombytes(unsigned char *x, unsigned long long xlen) {
+  if (drbg_ctx.reseed_counter == 0) {
+    unsigned char auto_seed[48];
+#ifdef _WIN32
+    if (BCryptGenRandom(NULL, auto_seed, 48, BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0 /* STATUS_SUCCESS is 0 */) {
+      fprintf(stderr, "Fatal: BCryptGenRandom failed in auto-seed\n");
+      exit(1);
+    }
+#else
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd != -1) {
+      if (read(fd, auto_seed, 48) != 48) {
+        fprintf(stderr, "Fatal: Failed to read sufficient entropy from /dev/urandom in auto-seed\n");
+        exit(1);
+      }
+      close(fd);
+    } else {
+      fprintf(stderr, "Fatal: Could not open /dev/urandom in auto-seed\n");
+      exit(1);
+    }
+#endif
+    randombytes_init(auto_seed, NULL, 256);
+  }
+
   unsigned char block[16];
   while (xlen > 0) {
     for (int j = 15; j >= 0; j--) {

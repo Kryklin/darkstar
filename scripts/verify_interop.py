@@ -59,7 +59,7 @@ def get_system_info():
                 if "L2CacheSize" in cpu_json: info["l2_cache"] = f"{cpu_json['L2CacheSize']} KB"
                 if "L3CacheSize" in cpu_json: info["l3_cache"] = f"{cpu_json['L3CacheSize']} KB"
                 if "MaxClockSpeed" in cpu_json: info["cpu_freq_nominal_mhz"] = str(cpu_json['MaxClockSpeed'])
-            except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
+            except Exception as e: pass
         
         # Disk Info via PowerShell (Optimized CIM call)
         disk_ps = run_ps(r"Get-CimInstance -ClassName MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage | Select-Object FriendlyName, MediaType | ConvertTo-Json")
@@ -68,19 +68,19 @@ def get_system_info():
                 disk_json = json.loads(disk_ps)
                 if isinstance(disk_json, list): disk_json = disk_json[0]
                 info["disk_type"] = f"{disk_json.get('FriendlyName', 'Unknown')} ({disk_json.get('MediaType', 'Unknown')})"
-            except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
+            except Exception as e: pass
         
     # Get runtime versions with timeouts
     try: info["node_v"] = subprocess.check_output(["node", "--version"], timeout=5).decode().strip()
-    except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
+    except Exception as e: pass
     try: 
         go_out = subprocess.check_output(["go", "version"], timeout=5).decode().strip()
         info["go_v"] = go_out.split()[2]
-    except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
+    except Exception as e: pass
     try:
         rust_out = subprocess.check_output(["rustc", "--version"], timeout=5).decode().strip()
         info["rust_v"] = rust_out.split()[1]
-    except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
+    except Exception as e: pass
         
     return info
 

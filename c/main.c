@@ -18,8 +18,12 @@
 #include <string.h>
 #ifdef _WIN32
 #include <windows.h>
+#include <bcrypt.h>
+#pragma comment(lib, "bcrypt.lib")
 #else
 #include <time.h>
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 /**
@@ -142,6 +146,7 @@ int main(int argc, char **argv) {
   int use_new_hwid = 0;
 
   uint8_t seed[48];
+  int has_seed = 0;
   int telemetry = 0;
 
   for (int i = 1; i < argc; i++) {
@@ -169,12 +174,34 @@ int main(int argc, char **argv) {
     }
     if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
       hex_decode(argv[i + 1], seed, 48);
-      randombytes_init(seed, NULL, 256);
+      has_seed = 1;
     }
     if (strcmp(argv[i], "--telemetry") == 0) {
       telemetry = 1;
     }
   }
+
+  // OS-native entropy fallback for the AES-CTR DRBG
+  if (!has_seed) {
+#ifdef _WIN32
+    BCryptGenRandom(NULL, seed, 48, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+#else
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd != -1) {
+      if (read(fd, seed, 48) != 48) {
+        fprintf(stderr, "Fatal: Failed to read sufficient entropy from /dev/urandom\n");
+        exit(1);
+      }
+      close(fd);
+    } else {
+      fprintf(stderr, "Fatal: Could not open /dev/urandom\n");
+      exit(1);
+    }
+#endif
+  }
+  
+  // Initialize the DRBG regardless of whether the seed came from CLI or OS
+  randombytes_init(seed, NULL, 256);
 
   if (strcmp(cmd, "keygen") == 0) {
     uint8_t pk[CRYPTO_PUBLICKEYBYTES];
