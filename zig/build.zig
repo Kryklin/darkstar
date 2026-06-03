@@ -23,12 +23,15 @@ pub fn build(b: *std.Build) void {
     exe.addCSourceFile(.{ .file = b.path("../c/rng.c"), .flags = c_flags });
     exe.addCSourceFile(.{ .file = b.path("../c/poly.c"), .flags = c_flags });
     exe.addCSourceFile(.{ .file = b.path("../c/poly_sampling.c"), .flags = c_flags });
-    exe.addCSourceFile(.{ .file = b.path("../c/aes.c"), .flags = c_flags });
     exe.addCSourceFile(.{ .file = b.path("../c/gf_math.c"), .flags = c_flags });
 
     exe.addIncludePath(b.path("../c"));
 
     exe.linkLibC();
+    exe.linkSystemLibrary("bcrypt");
+    exe.linkSystemLibrary("ws2_32");
+    exe.linkSystemLibrary("advapi32");
+    exe.linkSystemLibrary("userenv");
 
     exe.addWin32ResourceFile(.{
         .file = b.path("icon.rc"),

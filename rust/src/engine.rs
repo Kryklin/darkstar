@@ -28,17 +28,11 @@ pub struct Instant {
 #[cfg(target_arch = "wasm32")]
 impl Instant {
     pub fn now() -> Self {
-        let mut us = 0.0;
-        unsafe {
-            us = host_gettime_us();
-        }
+        let us = unsafe { host_gettime_us() };
         Instant { start_us: us }
     }
     pub fn elapsed(&self) -> core::time::Duration {
-        let mut us = 0.0;
-        unsafe {
-            us = host_gettime_us();
-        }
+        let us = unsafe { host_gettime_us() };
         let diff = us - self.start_us;
         core::time::Duration::from_micros(diff as u64)
     }
