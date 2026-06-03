@@ -126,6 +126,9 @@ namespace DarkstarCSharp
             return Convert.FromHexString(sb.ToString());
         }
 
+        /// <summary>
+        /// Encrypts a string payload using D-ASP via P/Invoke to the ML-KEM C core.
+        /// </summary>
         static string Encrypt(string payloadStr, string pkHex, byte[] hwid)
         {
             var totalWatch = Stopwatch.StartNew();
@@ -133,14 +136,23 @@ namespace DarkstarCSharp
             byte[] ct = new byte[1568];
             byte[] ss = new byte[32];
 
+            // ---------------------------------------------------------
+            // PHASE 1: KEM Encapsulation & Shared Secret Generation
+            // ---------------------------------------------------------
             var kemWatch = Stopwatch.StartNew();
             if (crypto_kem_enc(ct, ss, pk) != 0) throw new Exception("KEM Encapsulation failed");
             kemWatch.Stop();
 
+            // ---------------------------------------------------------
+            // PHASE 2: Hardware ID Binding (HKDF-like Expand)
+            // ---------------------------------------------------------
             var kdfWatch = Stopwatch.StartNew();
             byte[] prk = HMACSHA256.HashData(hwid != null && hwid.Length > 0 ? hwid : new byte[32], ss);
             byte[] blendedSS = HMACSHA256.HashData(prk, Encoding.UTF8.GetBytes("dasp-identity-v3\x01"));
-            
+
+            // ---------------------------------------------------------
+            // PHASE 3: Subkey Derivation (Cipher & HMAC Keys)
+            // ---------------------------------------------------------
             byte[] cInput = new byte[6 + blendedSS.Length];
             Encoding.UTF8.GetBytes("cipher").CopyTo(cInput, 0);
             blendedSS.CopyTo(cInput, 6);
@@ -165,6 +177,9 @@ namespace DarkstarCSharp
             byte[] nonce = new byte[32];
             Array.Copy(chainState, nonce, 32);
 
+            // ---------------------------------------------------------
+            // PHASE 4: Block Encryption (D-ASP Cascade 16)
+            // ---------------------------------------------------------
             var cascadeWatch = Stopwatch.StartNew();
             unsafe
             {
@@ -225,6 +240,9 @@ namespace DarkstarCSharp
 
         class Envelope { public string data { get; set; } public string ct { get; set; } public string mac { get; set; } }
 
+        /// <summary>
+        /// Decrypts a D-ASP JSON envelope via P/Invoke to the ML-KEM C core.
+        /// </summary>
         static string Decrypt(string encDataRaw, string skHex, byte[] hwid)
         {
             var totalWatch = Stopwatch.StartNew();
@@ -235,14 +253,23 @@ namespace DarkstarCSharp
             byte[] sk = CleanHex(skHex);
             byte[] ss = new byte[32];
 
+            // ---------------------------------------------------------
+            // PHASE 1: KEM Decapsulation & Shared Secret Recovery
+            // ---------------------------------------------------------
             var kemWatch = Stopwatch.StartNew();
             if (crypto_kem_dec(ss, ct, sk) != 0) throw new Exception("KEM Decapsulation failed");
             kemWatch.Stop();
 
+            // ---------------------------------------------------------
+            // PHASE 2: Hardware ID Binding Verification
+            // ---------------------------------------------------------
             var kdfWatch = Stopwatch.StartNew();
             byte[] prk = HMACSHA256.HashData(hwid != null && hwid.Length > 0 ? hwid : new byte[32], ss);
             byte[] blendedSS = HMACSHA256.HashData(prk, Encoding.UTF8.GetBytes("dasp-identity-v3\x01"));
 
+            // ---------------------------------------------------------
+            // PHASE 3: Subkey Derivation & MAC Verification
+            // ---------------------------------------------------------
             byte[] cInput = new byte[6 + blendedSS.Length];
             Encoding.UTF8.GetBytes("cipher").CopyTo(cInput, 0);
             blendedSS.CopyTo(cInput, 6);

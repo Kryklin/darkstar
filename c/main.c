@@ -139,6 +139,11 @@ int main(int argc, char **argv) {
   if (argc < 2)
     return 1;
 
+  // ---------------------------------------------------------
+  // PHASE 1: CLI Argument Parsing
+  // ---------------------------------------------------------
+
+
   char *cmd = argv[1];
   uint8_t hwid[32];
   int use_hwid = 0;
@@ -201,7 +206,12 @@ int main(int argc, char **argv) {
   }
   
   // Initialize the DRBG regardless of whether the seed came from CLI or OS
+  // Initialize the DRBG regardless of whether the seed came from CLI or OS
   randombytes_init(seed, NULL, 256);
+
+  // ---------------------------------------------------------
+  // PHASE 2: Cryptographic Command Execution
+  // ---------------------------------------------------------
 
   if (strcmp(cmd, "keygen") == 0) {
     uint8_t pk[CRYPTO_PUBLICKEYBYTES];

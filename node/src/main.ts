@@ -14,6 +14,10 @@ if (!fs.existsSync(wasmPath)) {
 }
 const wasmBuffer = fs.readFileSync(wasmPath);
 
+/**
+ * @class DarkstarCrypt
+ * @description Native WebAssembly bridge for the D-ASP Cryptographic Engine in Node.js.
+ */
 export class DarkstarCrypt {
   wasmInstance: WebAssembly.Instance | null;
 
@@ -21,6 +25,9 @@ export class DarkstarCrypt {
     this.wasmInstance = null;
   }
 
+  /**
+   * @description Initializes and instantiates the D-ASP WebAssembly module.
+   */
   async init(): Promise<void> {
     if (this.wasmInstance) return;
 
@@ -58,6 +65,13 @@ export class DarkstarCrypt {
       .join('');
   }
 
+  // ---------------------------------------------------------
+  // PHASE 1: WASM Memory Management
+  // ---------------------------------------------------------
+
+  /**
+   * @description Allocates memory in WASM and copies a JS string into it.
+   */
   private _passStringToWasm(str: string): { ptr: number; len: number } {
     if (!this.wasmInstance) throw new Error('WASM not initialized');
     const encoder = new TextEncoder();
@@ -91,6 +105,18 @@ export class DarkstarCrypt {
     return result;
   }
 
+  // ---------------------------------------------------------
+  // PHASE 2: Cryptographic Operations
+  // ---------------------------------------------------------
+
+  /**
+   * @description Encrypts a string payload using D-ASP via the WASM engine.
+   * @param payload Plaintext to encrypt.
+   * @param pkHex Public key in hex format.
+   * @param hwidHex Optional hardware ID binding.
+   * @param telemetry If true, returns detailed timing metrics.
+   * @returns JSON string containing CT, MAC, and Data.
+   */
   async encrypt(payload: string, pkHex: string, hwidHex: string | null = null, telemetry: boolean = false): Promise<string> {
     await this.init();
     if (!this.wasmInstance) throw new Error('WASM not initialized');
@@ -128,6 +154,14 @@ export class DarkstarCrypt {
     return resultJsonStr;
   }
 
+  /**
+   * @description Decrypts a D-ASP ciphertext payload using the WASM engine.
+   * @param encryptedDataRaw JSON string containing CT, MAC, and Data.
+   * @param skHex Secret key in hex format.
+   * @param hwidHex Optional hardware ID binding.
+   * @param telemetry If true, returns detailed timing metrics.
+   * @returns Decrypted plaintext string.
+   */
   async decrypt(encryptedDataRaw: string, skHex: string, hwidHex: string | null = null, telemetry: boolean = false): Promise<string> {
     await this.init();
     if (!this.wasmInstance) throw new Error('WASM not initialized');

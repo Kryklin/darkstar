@@ -17,6 +17,10 @@ from typing import Any
 
 
 class DarkstarCrypt:
+    """
+    Native Wasmtime bridge for the D-ASP Cryptographic Engine in Python.
+    Handles memory boundary crossings and FFI to execute ML-KEM-1024 encryption.
+    """
     def __init__(self):
         self.engine = wasmtime.Engine()
         self.store = wasmtime.Store(self.engine)
@@ -58,7 +62,12 @@ class DarkstarCrypt:
         self.wasm_encrypt: Any = self.exports["wasm_encrypt"]
         self.wasm_decrypt: Any = self.exports["wasm_decrypt"]
 
+    # ---------------------------------------------------------
+    # PHASE 1: WASM Memory Management
+    # ---------------------------------------------------------
+
     def _pass_string_to_wasm(self, s):
+        """Allocates memory in WASM and copies a UTF-8 string into it."""
         encoded = s.encode("utf-8")
         ptr = self.wasm_alloc(self.store, len(encoded))
         self.memory.write(self.store, encoded, ptr)
@@ -90,7 +99,23 @@ class DarkstarCrypt:
         self.wasm_dealloc(self.store, ptr, length + 1)
         return result.decode("utf-8")
 
+    # ---------------------------------------------------------
+    # PHASE 2: Cryptographic Operations
+    # ---------------------------------------------------------
+
     def encrypt(self, payload, pk_hex, hwid_hex=None, telemetry=False):
+        """
+        Encrypts a string payload using D-ASP via the WASM engine.
+        
+        Args:
+            payload (str): Plaintext to encrypt.
+            pk_hex (str): Public key in hex format.
+            hwid_hex (str, optional): Hardware ID binding in hex.
+            telemetry (bool): If True, returns detailed timing metrics.
+            
+        Returns:
+            str: JSON string containing CT, MAC, and Data.
+        """
         payload_ptr, payload_len = self._pass_string_to_wasm(payload)
         pk_ptr, pk_len = self._pass_string_to_wasm(pk_hex)
 
@@ -133,6 +158,18 @@ class DarkstarCrypt:
         return res_str
 
     def decrypt(self, encrypted_data_raw, sk_hex, hwid_hex=None, telemetry=False):
+        """
+        Decrypts a D-ASP ciphertext payload using the WASM engine.
+        
+        Args:
+            encrypted_data_raw (str): JSON string containing CT, MAC, and Data.
+            sk_hex (str): Secret key in hex format.
+            hwid_hex (str, optional): Hardware ID binding in hex.
+            telemetry (bool): If True, returns detailed timing metrics.
+            
+        Returns:
+            str: Decrypted plaintext string.
+        """
         data_ptr, data_len = self._pass_string_to_wasm(encrypted_data_raw)
         sk_ptr, sk_len = self._pass_string_to_wasm(sk_hex)
 

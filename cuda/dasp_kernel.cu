@@ -55,6 +55,10 @@ __device__ static uint32_t d_prng_next(d_prng_t *ctx) {
     return ctx->block[ctx->block_idx++];
 }
 
+// ---------------------------------------------------------
+// PHASE 1: Device Key Derivation & Caching
+// ---------------------------------------------------------
+
 __global__ void init_keys_kernel(const uint8_t *prng_seed, uint32_t *out_keys) {
     if (threadIdx.x != 0 || blockIdx.x != 0) return;
     d_prng_t prng;
@@ -63,6 +67,10 @@ __global__ void init_keys_kernel(const uint8_t *prng_seed, uint32_t *out_keys) {
         out_keys[i] = d_prng_next(&prng);
     }
 }
+
+// ---------------------------------------------------------
+// PHASE 2: Parallel Block Encryption (CTR Mode)
+// ---------------------------------------------------------
 
 __global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, size_t payload_len, const uint8_t *nonce_base, uint64_t block_offset) {
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;

@@ -267,6 +267,13 @@ impl DarkstarCrypt {
         DarkstarCrypt {}
     }
 
+    /// Encrypts a string payload using D-ASP and ML-KEM-1024.
+    ///
+    /// # Arguments
+    /// * `payload_str` - The plaintext string to encrypt.
+    /// * `pk_hex` - The ML-KEM-1024 public key in hex format.
+    /// * `hwid` - Optional hardware ID binding.
+    /// * `telemetry` - If true, returns detailed timing metrics.
     pub fn encrypt(
         &self,
         payload_str: &str,
@@ -280,6 +287,9 @@ impl DarkstarCrypt {
             .try_into()
             .map_err(|_| format!("Invalid public key length (Arg length: {})", pk_hex.len()))?;
 
+        // ---------------------------------------------------------
+        // PHASE 1: KEM Encapsulation & Shared Secret Generation
+        // ---------------------------------------------------------
         let kem_start = Instant::now();
         let ek = EncapsulationKey::<MlKem1024Params>::from_bytes(&pk_bytes.into());
         let (ct, mut ss) = ek
@@ -289,6 +299,9 @@ impl DarkstarCrypt {
         let ss_bytes = &ss[..];
         let kem_duration = kem_start.elapsed();
 
+        // ---------------------------------------------------------
+        // PHASE 2: Hardware ID Binding (HKDF-like Expand)
+        // ---------------------------------------------------------
         let kdf_start = Instant::now();
         use hmac::{Hmac, Mac};
         type HmacSha256 = Hmac<Sha256>;
@@ -308,6 +321,9 @@ impl DarkstarCrypt {
         let mut blended_ss = expand_mac.finalize().into_bytes();
         let blended_ss_hex = hex::encode(blended_ss);
 
+        // ---------------------------------------------------------
+        // PHASE 3: Subkey Derivation (Cipher & HMAC Keys)
+        // ---------------------------------------------------------
         let mut cipher_hasher = Sha256::new();
         cipher_hasher.update(b"cipher");
         cipher_hasher.update(blended_ss);
@@ -340,6 +356,9 @@ impl DarkstarCrypt {
             *key = rng.next();
         }
 
+        // ---------------------------------------------------------
+        // PHASE 4: Block Encryption (D-ASP Cascade 16)
+        // ---------------------------------------------------------
         let mut payload_bytes = payload_str.as_bytes().to_vec();
         let cascade_start = Instant::now();
 
@@ -429,6 +448,13 @@ impl DarkstarCrypt {
         Ok(res_obj.to_string())
     }
 
+    /// Decrypts a D-ASP cipher payload using ML-KEM-1024.
+    ///
+    /// # Arguments
+    /// * `encrypted_data_raw` - The JSON string containing CT, Data, and MAC.
+    /// * `sk_hex` - The ML-KEM-1024 secret key in hex format.
+    /// * `hwid` - Optional hardware ID binding.
+    /// * `telemetry` - If true, returns detailed timing metrics.
     pub fn decrypt(
         &self,
         encrypted_data_raw: &str,
@@ -450,6 +476,9 @@ impl DarkstarCrypt {
             .try_into()
             .map_err(|_| format!("Invalid ciphertext length (Arg length: {})", ct_hex.len()))?;
 
+        // ---------------------------------------------------------
+        // PHASE 1: KEM Decapsulation & Shared Secret Recovery
+        // ---------------------------------------------------------
         let kem_start = Instant::now();
         let dk = DecapsulationKey::<MlKem1024Params>::from_bytes(&sk_bytes.into());
         let mut ss = dk
@@ -458,6 +487,9 @@ impl DarkstarCrypt {
         let ss_bytes = &ss[..];
         let kem_duration = kem_start.elapsed();
 
+        // ---------------------------------------------------------
+        // PHASE 2: Hardware ID Binding Verification
+        // ---------------------------------------------------------
         let kdf_start = Instant::now();
         use hmac::{Hmac, Mac};
         type HmacSha256 = Hmac<Sha256>;
@@ -477,6 +509,9 @@ impl DarkstarCrypt {
         let mut blended_ss = expand_mac.finalize().into_bytes();
         let blended_ss_hex = hex::encode(blended_ss);
 
+        // ---------------------------------------------------------
+        // PHASE 3: Subkey Derivation & MAC Verification
+        // ---------------------------------------------------------
         let mut cipher_hasher = Sha256::new();
         cipher_hasher.update(b"cipher");
         cipher_hasher.update(blended_ss);
@@ -532,6 +567,9 @@ impl DarkstarCrypt {
             *key = rng.next();
         }
 
+        // ---------------------------------------------------------
+        // PHASE 4: Block Decryption (D-ASP Cascade 16)
+        // ---------------------------------------------------------
         let cascade_start = Instant::now();
         let mut nonce = chain_state.clone();
         for chunk in payload_bytes.chunks_mut(32) {

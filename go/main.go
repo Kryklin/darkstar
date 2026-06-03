@@ -161,10 +161,15 @@ func daspCascade32(block []byte, roundKeys []uint32) {
 	}
 }
 
-func (dc *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte) (string, error) {
+// Encrypt performs the D-ASP encryption routine using ML-KEM-1024.
+// It returns a JSON string containing the ciphertext, encrypted payload, and MAC.
+func (c *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte, telemetry bool) (string, error) {
 	totalStart := time.Now()
 	pkBytes, _ := hex.DecodeString(cleanHex(pkHex))
 
+	// ---------------------------------------------------------
+	// PHASE 1: KEM Encapsulation & Shared Secret Generation
+	// ---------------------------------------------------------
 	sch := mlkem1024.Scheme()
 	kemStart := time.Now()
 	pk, err := sch.UnmarshalBinaryPublicKey(pkBytes)
@@ -178,6 +183,9 @@ func (dc *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte) (
 	kemDur := time.Since(kemStart)
 	ctHex := hex.EncodeToString(ctBytes)
 
+	// ---------------------------------------------------------
+	// PHASE 2: Hardware ID Binding (HKDF-like Expand)
+	// ---------------------------------------------------------
 	kdfStart := time.Now()
 	var prk []byte
 	if len(hwid) > 0 {
@@ -223,6 +231,9 @@ func (dc *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte) (
 		roundKeys[i] = rngPath.Next()
 	}
 
+	// ---------------------------------------------------------
+	// PHASE 4: Block Encryption (D-ASP Cascade 16)
+	// ---------------------------------------------------------
 	payloadBytes := []byte(payloadStr)
 	cascadeStart := time.Now()
 
@@ -309,7 +320,7 @@ func (dc *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte) (
 	finalHash := sha256.Sum256(payloadBytes)
 	fmt.Fprintf(os.Stderr, "Go-DCE-Prevent-Hash: %x\n", finalHash)
 
-	if globalTelemetry {
+	if telemetry {
 		timingReport := map[string]interface{}{
 			"timings": map[string]interface{}{
 				"kem_us":     float64(kemDur.Nanoseconds()) / 1000.0,
@@ -327,7 +338,9 @@ func (dc *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte) (
 	return string(innerJson), nil
 }
 
-func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (string, error) {
+// Decrypt performs the D-ASP decryption routine using ML-KEM-1024.
+// It parses the JSON input and returns the decrypted payload string.
+func (c *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte, telemetry bool) (string, error) {
 	totalStart := time.Now()
 	var val map[string]interface{}
 	if err := json.Unmarshal([]byte(encDataRaw), &val); err != nil {
@@ -342,6 +355,10 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 
 	ctBytes, _ := hex.DecodeString(ctHex)
 	payloadBytes, _ := hex.DecodeString(dataHex)
+
+	// ---------------------------------------------------------
+	// PHASE 1: KEM Decapsulation & Shared Secret Recovery
+	// ---------------------------------------------------------
 	sch := mlkem1024.Scheme()
 	kemStart := time.Now()
 	sk, err := sch.UnmarshalBinaryPrivateKey(skBytes)
@@ -354,6 +371,9 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 	}
 	kemDur := time.Since(kemStart)
 
+	// ---------------------------------------------------------
+	// PHASE 2: Hardware ID Binding Verification
+	// ---------------------------------------------------------
 	kdfStart := time.Now()
 	var prk []byte
 	if len(finalHwid) > 0 {
@@ -370,6 +390,9 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 	blendedSS := macExp.Sum(nil)
 	blendedSSHex := hex.EncodeToString(blendedSS)
 
+	// ---------------------------------------------------------
+	// PHASE 3: Subkey Derivation & MAC Verification
+	// ---------------------------------------------------------
 	cHasher := sha256.New()
 	cHasher.Write(append([]byte("cipher"), blendedSS...))
 	cipherKey := cHasher.Sum(nil)
@@ -417,6 +440,9 @@ func (dc *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte) (
 		roundKeys[i] = rngPath.Next()
 	}
 
+	// ---------------------------------------------------------
+	// PHASE 4: Block Decryption (D-ASP Cascade 16)
+	// ---------------------------------------------------------
 	cascadeStart := time.Now()
 
 	nonce := make([]byte, 32)
@@ -570,14 +596,14 @@ func main() {
 
 	switch command {
 	case "encrypt":
-		res, err := dc.Encrypt(resolve(args[1]), resolve(args[2]), hwid)
+		res, err := dc.Encrypt(resolve(args[1]), resolve(args[2]), hwid, globalTelemetry)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Encryption Error: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Println(res)
 	case "decrypt":
-		res, err := dc.Decrypt(resolve(args[1]), resolve(args[2]), hwid)
+		res, err := dc.Decrypt(resolve(args[1]), resolve(args[2]), hwid, globalTelemetry)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Decryption Error: %v\n", err)
 			os.Exit(1)
@@ -590,12 +616,12 @@ func main() {
 		data := resolve(args[1])
 		skHex := resolve(args[2])
 		newPkHex := resolve(args[3])
-		pt, err := dc.Decrypt(data, skHex, hwid)
+		pt, err := dc.Decrypt(data, skHex, hwid, globalTelemetry)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Rebind Decryption Error: %v\n", err)
 			os.Exit(1)
 		}
-		res, err := dc.Encrypt(pt, newPkHex, newHwid)
+		res, err := dc.Encrypt(pt, newPkHex, newHwid, globalTelemetry)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Rebind Encryption Error: %v\n", err)
 			os.Exit(1)
@@ -614,11 +640,11 @@ func main() {
 		skb, _ := sk.MarshalBinary()
 		pkHex := hex.EncodeToString(pkb)
 		skHex := hex.EncodeToString(skb)
-		res, err := dc.Encrypt("test payload", pkHex, nil)
+		res, err := dc.Encrypt("test payload", pkHex, nil, false)
 		if err != nil {
 			fmt.Printf("Enc Err: %v\n", err)
 		}
-		dec, err := dc.Decrypt(res, skHex, nil)
+		dec, err := dc.Decrypt(res, skHex, nil, false)
 		if err != nil {
 			fmt.Printf("Err: %v\n", err)
 		}

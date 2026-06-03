@@ -234,17 +234,26 @@ pub fn main() !void {
         const pk = try hexDecodeAlloc(allocator, pkHexStr);
         defer allocator.free(pk);
 
+        // ---------------------------------------------------------
+        // PHASE 1: KEM Encapsulation & Shared Secret Generation
+        // ---------------------------------------------------------
         var ct: [1568]u8 = undefined;
         var ss: [32]u8 = undefined;
         var timer = try std.time.Timer.start();
         _ = c.crypto_kem_enc(&ct, &ss, pk.ptr);
         _ = timer.lap() / 1000;
 
+        // ---------------------------------------------------------
+        // PHASE 2: Hardware ID Binding (HKDF-like Expand)
+        // ---------------------------------------------------------
         var prk: [32]u8 = undefined;
         c.crypto_hmac_sha256(hwid.ptr, hwid.len, &ss, ss.len, &prk);
         var blendedSS: [32]u8 = undefined;
         c.crypto_hmac_sha256(&prk, prk.len, "dasp-identity-v3\x01", 17, &blendedSS);
 
+        // ---------------------------------------------------------
+        // PHASE 3: Subkey Derivation (Cipher & HMAC Keys)
+        // ---------------------------------------------------------
         var cInput = try allocator.alloc(u8, 6 + blendedSS.len);
         defer allocator.free(cInput);
         std.mem.copyForwards(u8, cInput[0..6], "cipher");
@@ -285,6 +294,9 @@ pub fn main() !void {
         const payloadBytes = try allocator.dupe(u8, payloadStr);
         defer allocator.free(payloadBytes);
 
+        // ---------------------------------------------------------
+        // PHASE 4: Block Encryption (D-ASP Cascade 16)
+        // ---------------------------------------------------------
         var nonce = chainState;
         var i: usize = 0;
         while (i < payloadBytes.len) : (i += 32) {
@@ -346,6 +358,9 @@ pub fn main() !void {
         const expectedMac = try hexDecodeAlloc(allocator, macHex);
         defer allocator.free(expectedMac);
 
+        // ---------------------------------------------------------
+        // PHASE 1: KEM Decapsulation & Shared Secret Recovery
+        // ---------------------------------------------------------
         var ss: [32]u8 = undefined;
         var timer_kem = try std.time.Timer.start();
         if (c.crypto_kem_dec(&ss, ct.ptr, sk.ptr) != 0) return error.DecapsulationFailed;

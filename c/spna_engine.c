@@ -183,8 +183,15 @@ __attribute__((always_inline))
 int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
                                 const uint8_t *pk, const uint8_t *hwid,
                                 uint8_t *out_ct, uint8_t *out_mac) {
+  // ---------------------------------------------------------
+  // PHASE 1: KEM Encapsulation & Shared Secret Generation
+  // ---------------------------------------------------------
   uint8_t ss[32];
   crypto_kem_enc(out_ct, ss, pk);
+
+  // ---------------------------------------------------------
+  // PHASE 2: Hardware ID Binding (HKDF-like Expand)
+  // ---------------------------------------------------------
 
   uint8_t blended_ss[32];
   {
@@ -201,6 +208,9 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
     crypto_hmac_sha256(prk, 32, expand_info, 17, blended_ss);
   }
 
+  // ---------------------------------------------------------
+  // PHASE 3: Subkey Derivation (Cipher & HMAC Keys)
+  // ---------------------------------------------------------
   uint8_t cipher_key[32];
   {
     uint8_t c[38];
@@ -248,6 +258,9 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
   alignas(32) uint8_t nonce[32];
   memcpy(nonce, chain_state, 32);
 
+  // ---------------------------------------------------------
+  // PHASE 4: Block Encryption (D-ASP Cascade 16)
+  // ---------------------------------------------------------
   for (size_t i = 0; i < payload_len; i += 32) {
     alignas(32) uint8_t block[32];
     memcpy(block, nonce, 32);
@@ -286,9 +299,15 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
 int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
                                 const uint8_t *sk, const uint8_t *hwid,
                                 const uint8_t *in_ct, const uint8_t *in_mac) {
+  // ---------------------------------------------------------
+  // PHASE 1: KEM Decapsulation & Shared Secret Recovery
+  // ---------------------------------------------------------
   uint8_t ss[32];
   crypto_kem_dec(ss, in_ct, sk);
 
+  // ---------------------------------------------------------
+  // PHASE 2: Hardware ID Binding Verification
+  // ---------------------------------------------------------
   uint8_t blended_ss[32];
   {
     uint8_t prk[32];
@@ -304,6 +323,9 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
     crypto_hmac_sha256(prk, 32, expand_info, 17, blended_ss);
   }
 
+  // ---------------------------------------------------------
+  // PHASE 3: Subkey Derivation & MAC Verification
+  // ---------------------------------------------------------
   uint8_t cipher_key[32];
   {
     uint8_t c[38];
@@ -361,6 +383,9 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
   if (mac_diff != 0)
     return -1;
 
+  // ---------------------------------------------------------
+  // PHASE 4: Block Decryption (D-ASP Cascade 16)
+  // ---------------------------------------------------------
   // MAC passed, proceed with decryption (CTR is symmetric)
   uint8_t chain_state[32];
   {
