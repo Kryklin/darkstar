@@ -9,6 +9,7 @@
  */
 
 #include "rng.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,72 +23,80 @@
 #include <unistd.h>
 #endif
 
-/** @brief DRBG Internal State (NIST SP 800-90A) */
+/** @brief DRBG Internal State using ChaCha */
 typedef struct {
-  unsigned char Key[32]; /**< AES-256 Key */
-  unsigned char V[16];   /**< Counter Value */
+  uint32_t state[16]; /**< ChaCha base state */
+  uint32_t block[16]; /**< Generated random keystream block */
+  size_t block_idx;   /**< Current index into the generated block */
   int reseed_counter;
 } DRBG_CTX;
 
 static DRBG_CTX drbg_ctx;
 
-/**
- * @brief Single AES-256 ECB encryption for DRBG update/generation.
- */
-static void AES256_ECB(unsigned char *key, unsigned char *ctr,
-                       unsigned char *buffer) {
-  aes_ctx ctx;
-  aes_256_setup(&ctx, key);
-  aes_256_encrypt(&ctx, ctr, buffer);
+static inline uint32_t rng_rotl32(uint32_t x, int n) {
+  return (x << n) | (x >> (32 - n));
 }
 
-/**
- * @brief Updates the DRBG state (Algorithm from NIST SP 800-90A).
- */
-static void AES256_CTR_DRBG_Update(unsigned char *provided_data,
-                                   unsigned char *Key, unsigned char *V) {
-  unsigned char temp[48];
-  for (int i = 0; i < 3; i++) {
-    // Increment V
-    for (int j = 15; j >= 0; j--) {
-      if (V[j] == 0xff)
-        V[j] = 0x00;
-      else {
-        V[j]++;
-        break;
-      }
-    }
-    AES256_ECB(Key, V, temp + i * 16);
+static void rng_chacha_quarter_round(uint32_t *x, int a, int b, int c, int d) {
+  x[a] = x[a] + x[b]; x[d] ^= x[a]; x[d] = rng_rotl32(x[d], 16);
+  x[c] = x[c] + x[d]; x[b] ^= x[c]; x[b] = rng_rotl32(x[b], 12);
+  x[a] = x[a] + x[b]; x[d] ^= x[a]; x[d] = rng_rotl32(x[d], 8);
+  x[c] = x[c] + x[d]; x[b] ^= x[c]; x[b] = rng_rotl32(x[b], 7);
+}
+
+static void rng_chacha_block(uint32_t *state, uint32_t *out) {
+  uint32_t x[16];
+  for (int i = 0; i < 16; i++) x[i] = state[i];
+  for (int i = 0; i < 10; i++) {
+    rng_chacha_quarter_round(x, 0, 4, 8, 12);
+    rng_chacha_quarter_round(x, 1, 5, 9, 13);
+    rng_chacha_quarter_round(x, 2, 6, 10, 14);
+    rng_chacha_quarter_round(x, 3, 7, 11, 15);
+    rng_chacha_quarter_round(x, 0, 5, 10, 15);
+    rng_chacha_quarter_round(x, 1, 6, 11, 12);
+    rng_chacha_quarter_round(x, 2, 7, 8, 13);
+    rng_chacha_quarter_round(x, 3, 4, 9, 14);
   }
-  if (provided_data) {
-    for (int i = 0; i < 48; i++)
-      temp[i] ^= provided_data[i];
-  }
-  memcpy(Key, temp, 32);
-  memcpy(V, temp + 32, 16);
+  for (int i = 0; i < 16; i++) out[i] = x[i] + state[i];
 }
 
 /**
  * @brief Initializes the DRBG with entropy and personalization string.
  * @param entropy_input 48 bytes of initial entropy.
  * @param personalization_string Optional personalization string.
- * @param security_strength Ignored (fixed at 256 bits).
+ * @param security_strength Ignored.
  */
 void randombytes_init(unsigned char *entropy_input,
                       unsigned char *personalization_string,
                       int security_strength) {
-  (void)entropy_input;
-  (void)personalization_string;
   (void)security_strength;
   unsigned char seed_material[48];
   memcpy(seed_material, entropy_input, 48);
   if (personalization_string) {
-    for (int i = 0; i < 48; i++)
+    for (int i = 0; i < 48; i++) {
       seed_material[i] ^= personalization_string[i];
+    }
   }
-  memset(drbg_ctx.Key, 0, 32);
-  memset(drbg_ctx.V, 0, 16);
-  AES256_CTR_DRBG_Update(seed_material, drbg_ctx.Key, drbg_ctx.V);
+
+  drbg_ctx.state[0] = 0x61707865;
+  drbg_ctx.state[1] = 0x3320646e;
+  drbg_ctx.state[2] = 0x79622d32;
+  drbg_ctx.state[3] = 0x6b206574;
+  
+  // Use first 32 bytes for the key
+  for (int i = 0; i < 8; i++) {
+    drbg_ctx.state[4 + i] = seed_material[i * 4] | (seed_material[i * 4 + 1] << 8) |
+                            (seed_material[i * 4 + 2] << 16) | (seed_material[i * 4 + 3] << 24);
+  }
+  
+  // Use last 16 bytes for nonce/counter
+  for (int i = 0; i < 4; i++) {
+    drbg_ctx.state[12 + i] = seed_material[32 + i * 4] | (seed_material[32 + i * 4 + 1] << 8) |
+                             (seed_material[32 + i * 4 + 2] << 16) | (seed_material[32 + i * 4 + 3] << 24);
+  }
+
+  rng_chacha_block(drbg_ctx.state, drbg_ctx.block);
+  drbg_ctx.block_idx = 0;
   drbg_ctx.reseed_counter = 1;
 }
 
@@ -101,7 +110,7 @@ int randombytes(unsigned char *x, unsigned long long xlen) {
   if (drbg_ctx.reseed_counter == 0) {
     unsigned char auto_seed[48];
 #ifdef _WIN32
-    if (BCryptGenRandom(NULL, auto_seed, 48, BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0 /* STATUS_SUCCESS is 0 */) {
+    if (BCryptGenRandom(NULL, auto_seed, 48, BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0) {
       fprintf(stderr, "Fatal: BCryptGenRandom failed in auto-seed\n");
       exit(1);
     }
@@ -121,27 +130,23 @@ int randombytes(unsigned char *x, unsigned long long xlen) {
     randombytes_init(auto_seed, NULL, 256);
   }
 
-  unsigned char block[16];
+  unsigned char *out = (unsigned char *)drbg_ctx.block;
   while (xlen > 0) {
-    for (int j = 15; j >= 0; j--) {
-      if (drbg_ctx.V[j] == 0xff)
-        drbg_ctx.V[j] = 0x00;
-      else {
-        drbg_ctx.V[j]++;
-        break;
-      }
+    if (drbg_ctx.block_idx >= 64) {
+      drbg_ctx.state[12]++;
+      if (drbg_ctx.state[12] == 0) drbg_ctx.state[13]++;
+      rng_chacha_block(drbg_ctx.state, drbg_ctx.block);
+      drbg_ctx.block_idx = 0;
     }
-    AES256_ECB(drbg_ctx.Key, drbg_ctx.V, block);
-    if (xlen > 16) {
-      memcpy(x, block, 16);
-      x += 16;
-      xlen -= 16;
-    } else {
-      memcpy(x, block, xlen);
-      xlen = 0;
-    }
+    
+    size_t avail = 64 - drbg_ctx.block_idx;
+    size_t to_copy = (xlen < avail) ? xlen : avail;
+    memcpy(x, out + drbg_ctx.block_idx, to_copy);
+    drbg_ctx.block_idx += to_copy;
+    x += to_copy;
+    xlen -= to_copy;
   }
-  AES256_CTR_DRBG_Update(NULL, drbg_ctx.Key, drbg_ctx.V);
+  
   drbg_ctx.reseed_counter++;
   return RNG_SUCCESS;
 }
