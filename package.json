@@ -1,6 +1,6 @@
 {
   "name": "d-asp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "productName": "D-ASP",
   "description": "Post-Quantum Symmetric Encryption Suite │ ML-KEM-1024 + ASP Cascade 16",
   "author": "Victor Kane",

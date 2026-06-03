@@ -160,7 +160,7 @@ def run_cmd(cmd, cwd, input_data=None):
             if '"timings":' in line:
                 try:
                     internal_timings = json.loads(line).get("timings")
-                except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
+                except Exception: pass
         
         # If not in stderr, check if stdout is JSON containing it (Encrypt pattern)
         if not internal_timings:
@@ -168,7 +168,7 @@ def run_cmd(cmd, cwd, input_data=None):
                 out_json = json.loads(res.stdout)
                 if "timings" in out_json:
                     internal_timings = out_json["timings"]
-            except Exception as e: print(f'JSON LOAD ERROR: {e}'); pass
+            except Exception: pass
 
         return res.stdout.strip(), end - start, internal_timings
     except subprocess.CalledProcessError as e:
