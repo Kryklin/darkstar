@@ -324,11 +324,7 @@ pub fn main() !void {
         c.crypto_hmac_sha256(&activeHmacKey, 32, hmacInput.ptr, hmacInput.len, &macTag);
 
         const stdout = std.io.getStdOut().writer();
-        if (diagnostic) {
-            const stderr = std.io.getStdErr().writer();
-            try stderr.print("{{\"diagnostics\":{{\"stage1_blended_ss\":\"{s}\",\"stage2_word_key\":\"{s}\",\"stage3_round_indices\":[", .{ std.fmt.fmtSliceHexLower(&blendedSS), std.fmt.fmtSliceHexLower(&wordKey) });
-            try stderr.print("],\"stage4_mac\":\"{s}\"}}}}\n", .{std.fmt.fmtSliceHexLower(&macTag)});
-        }
+
         if (telemetry) {
             const stderr = std.io.getStdErr().writer();
             try stderr.print("{{\"timings\":{{\"kem_us\":0,\"kdf_us\":0,\"cascade_us\":0,\"mac_us\":0}}}}\n", .{});
@@ -440,12 +436,7 @@ pub fn main() !void {
         const cascade_us = timer_cascade.read() / 1000;
 
         const stdout = std.io.getStdOut().writer();
-        if (diagnostic) {
-            const stderr = std.io.getStdErr().writer();
-            try stderr.print("{{\"diagnostics\":{{\"stage1_blended_ss\":\"{s}\",\"stage2_word_key\":\"{s}\",\"stage3_round_indices\":[", .{ std.fmt.fmtSliceHexLower(&blendedSS), std.fmt.fmtSliceHexLower(&wordKey) });
-            // For now, no stage3 round indices implementation in Zig to save time, just empty list. It's skipped anyway for some engines.
-            try stderr.print("],\"stage4_mac\":\"{s}\"}}}}\n", .{std.fmt.fmtSliceHexLower(&macActual)});
-        }
+
         if (telemetry) {
             const stderr = std.io.getStdErr().writer();
             try stderr.print("{{\"timings\":{{\"kem_us\":{d},\"kdf_us\":{d},\"cascade_us\":{d},\"mac_us\":0}}}}\n", .{ kem_us, kdf_us, cascade_us });

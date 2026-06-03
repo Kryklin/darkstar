@@ -313,7 +313,7 @@ impl DarkstarCrypt {
             .map_err(|e| format!("HMAC init error: {:?}", e))?;
         expand_mac.update(b"dasp-identity-v3\x01");
         let mut blended_ss = expand_mac.finalize().into_bytes();
-        let blended_ss_hex = hex::encode(blended_ss);
+
 
         // ---------------------------------------------------------
         // PHASE 3: Subkey Derivation (Cipher & HMAC Keys)
@@ -398,18 +398,7 @@ impl DarkstarCrypt {
         active_password_str.zeroize();
         round_keys.zeroize();
 
-        if std::env::var("DASP_DIAGNOSTIC").is_ok() {
-            eprintln!(
-                "{}",
-                serde_json::json!({
-                    "diagnostics": {
-                        "stage1_blended_ss": blended_ss_hex,
-                        "stage2_word_key": word_key_hex,
-                        "stage4_mac": mac_tag
-                    }
-                })
-            );
-        }
+
         let total_duration = total_start.elapsed();
 
         prk.zeroize();
@@ -501,7 +490,7 @@ impl DarkstarCrypt {
             .map_err(|e| format!("HMAC init error: {:?}", e))?;
         expand_mac.update(b"dasp-identity-v3\x01");
         let mut blended_ss = expand_mac.finalize().into_bytes();
-        let blended_ss_hex = hex::encode(blended_ss);
+
 
         // ---------------------------------------------------------
         // PHASE 3: Subkey Derivation & MAC Verification
@@ -533,20 +522,8 @@ impl DarkstarCrypt {
             .map_err(|e| format!("HMAC error: {:?}", e))?;
         mac.update(&ct_bytes);
         mac.update(&payload_bytes);
-        let mac_tag_actual = hex::encode(mac.clone().finalize().into_bytes());
 
-        if std::env::var("DASP_DIAGNOSTIC").is_ok() {
-            eprintln!(
-                "{}",
-                serde_json::json!({
-                    "diagnostics": {
-                        "stage1_blended_ss": blended_ss_hex,
-                        "stage2_word_key": word_key_hex,
-                        "stage4_mac": mac_tag_actual
-                    }
-                })
-            );
-        }
+
 
         mac.verify_slice(&hex::decode(mac_tag_hex)?)
             .map_err(|_| "Integrity Check Failed")?;

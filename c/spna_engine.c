@@ -349,12 +349,6 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
   crypto_hmac_sha256((uint8_t *)active_password_str, 64,
                      (uint8_t *)"dasp-word-0", 11, word_key);
 
-  char blended_hex[65], mac_in_hex[65], mac_actual_hex[65];
-  for (int i = 0; i < 32; i++)
-    sprintf(&blended_hex[i * 2], "%02x", blended_ss[i]);
-  for (int i = 0; i < 32; i++)
-    sprintf(&mac_in_hex[i * 2], "%02x", in_mac[i]);
-
   char word_key_hex[65];
   for (int i = 0; i < 32; i++)
     sprintf(&word_key_hex[i * 2], "%02x", word_key[i]);
@@ -366,15 +360,6 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
   crypto_hmac_sha256(hmac_key, 32, mac_content,
                      CRYPTO_CIPHERTEXTBYTES + payload_len, actual_mac);
   free(mac_content);
-
-  for (int i = 0; i < 32; i++)
-    sprintf(&mac_actual_hex[i * 2], "%02x", actual_mac[i]);
-
-  fprintf(stderr,
-          "{\"diagnostics\":{\"stage1_blended_ss\":\"%s\",\"stage2_word_key\":"
-          "\"%s\",\"stage4_mac_in\":\"%s\",\"stage4_mac_actual\":\"%s\"}}\n",
-          blended_hex, word_key_hex, mac_in_hex, mac_actual_hex);
-  fflush(stderr);
 
   uint8_t mac_diff = 0;
   for (int i = 0; i < 32; i++) {

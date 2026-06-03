@@ -200,7 +200,7 @@ func (c *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte, te
 	macExp := hmac.New(sha256.New, prk)
 	macExp.Write([]byte("dasp-identity-v3\x01"))
 	blendedSS := macExp.Sum(nil)
-	blendedSSHex := hex.EncodeToString(blendedSS)
+
 
 	cHasher := sha256.New()
 	cHasher.Write(append([]byte("cipher"), blendedSS...))
@@ -270,17 +270,6 @@ func (c *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte, te
 	h.Write(payloadBytes)
 	macTag := hex.EncodeToString(h.Sum(nil))
 
-	if globalDiagnostic || os.Getenv("DASP_DIAGNOSTIC") == "1" {
-		diag := map[string]interface{}{
-			"diagnostics": map[string]interface{}{
-				"stage1_blended_ss": blendedSSHex,
-				"stage2_word_key":   wordKeyHex,
-				"stage4_mac":        macTag,
-			},
-		}
-		dj, _ := json.Marshal(diag)
-		fmt.Fprintf(os.Stderr, "%s\n", dj)
-	}
 
 	totalDur := time.Since(totalStart)
 
@@ -388,7 +377,7 @@ func (c *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte, te
 	macExp := hmac.New(sha256.New, prk)
 	macExp.Write([]byte("dasp-identity-v3\x01"))
 	blendedSS := macExp.Sum(nil)
-	blendedSSHex := hex.EncodeToString(blendedSS)
+
 
 	// ---------------------------------------------------------
 	// PHASE 3: Subkey Derivation & MAC Verification
@@ -411,20 +400,7 @@ func (c *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte, te
 	h := hmac.New(sha256.New, activeHmacKey)
 	h.Write(ctBytes)
 	h.Write(payloadBytes)
-	macActual := hex.EncodeToString(h.Sum(nil))
 
-	if globalDiagnostic || os.Getenv("DASP_DIAGNOSTIC") == "1" {
-		diag := map[string]interface{}{
-			"diagnostics": map[string]interface{}{
-				"stage1_raw_ss":     hex.EncodeToString(ss),
-				"stage1_blended_ss": blendedSSHex,
-				"stage2_word_key":   wordKeyHex,
-				"stage4_mac":        macActual,
-			},
-		}
-		dj, _ := json.Marshal(diag)
-		fmt.Fprintf(os.Stderr, "%s\n", dj)
-	}
 
 	tag, _ := hex.DecodeString(macHex)
 	if !hmac.Equal(h.Sum(nil), tag) {
