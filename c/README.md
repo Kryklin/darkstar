@@ -77,10 +77,10 @@ Based on the latest benchmarking session (`interop`), the C/C++ engine achieved 
 
 | Metric | Recorded Value |
 | :--- | :--- |
-| **Total Pipeline Time** | `11.48 ms` |
-| **ASP Cascade Time** | `260 μs` |
-| **Total CPB** | `416.46` |
-| **Ops/sec** | `87.10` |
+| **Total Pipeline Time** | `2.265 ms` |
+| **ASP Cascade Time** | `468 μs` |
+| **Total CPB** | `82.20` |
+| **Ops/sec** | `2137.89` |
 
 ---
 

@@ -75,10 +75,10 @@ Based on the latest benchmarking session (`interop`), the Rust engine achieved t
 
 | Metric | Recorded Value |
 | :--- | :--- |
-| **Total Pipeline Time** | `16.16 ms` |
-| **ASP Cascade Time** | `118 μs` |
-| **Total CPB** | `586.06` |
-| **Ops/sec** | `61.89` |
+| **Total Pipeline Time** | `3.299 ms` |
+| **ASP Cascade Time** | `191 μs` |
+| **Total CPB** | `119.69` |
+| **Ops/sec** | `5231.49` |
 
 ---
 

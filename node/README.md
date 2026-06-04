@@ -77,10 +77,10 @@ Based on the latest benchmarking session (`interop`), the Node.js engine achieve
 
 | Metric | Recorded Value |
 | :--- | :--- |
-| **Total Pipeline Time** | `109.15 ms` |
-| **ASP Cascade Time** | `1.39 ms` |
-| **Total CPB** | `3959.07` |
-| **Ops/sec** | `9.16` |
+| **Total Pipeline Time** | `20.324 ms` |
+| **ASP Cascade Time** | `2.555 ms` |
+| **Total CPB** | `737.47` |
+| **Ops/sec** | `391.33` |
 
 ---
 

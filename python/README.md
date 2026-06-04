@@ -77,10 +77,10 @@ Based on the latest benchmarking session (`interop`), the Python engine achieved
 
 | Metric | Recorded Value |
 | :--- | :--- |
-| **Total Pipeline Time** | `286.30 ms` |
-| **ASP Cascade Time** | `534 μs` |
-| **Total CPB** | `10384.80` |
-| **Ops/sec** | `3.49` |
+| **Total Pipeline Time** | `3.433 ms` |
+| **ASP Cascade Time** | `708 μs` |
+| **Total CPB** | `124.59` |
+| **Ops/sec** | `1413.43` |
 
 ---
 

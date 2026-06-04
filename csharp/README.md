@@ -75,10 +75,10 @@ Based on the latest benchmarking session (`interop`), the C# (.NET) engine achie
 
 | Metric | Recorded Value |
 | :--- | :--- |
-| **Total Pipeline Time** | `140.51 ms` |
-| **ASP Cascade Time** | `4.35 ms` |
-| **Total CPB** | `5096.58` |
-| **Ops/sec** | `7.12` |
+| **Total Pipeline Time** | `98.842 ms` |
+| **ASP Cascade Time** | `6.975 ms` |
+| **Total CPB** | `3586.60` |
+| **Ops/sec** | `143.38` |
 
 ---
 

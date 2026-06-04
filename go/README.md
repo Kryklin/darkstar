@@ -75,10 +75,10 @@ Based on the latest benchmarking session (`interop`), the Go engine achieved the
 
 | Metric | Recorded Value |
 | :--- | :--- |
-| **Total Pipeline Time** | `15.01 ms` |
-| **ASP Cascade Time** | `849 μs` |
-| **Total CPB** | `544.60` |
-| **Ops/sec** | `66.60` |
+| **Total Pipeline Time** | `4.439 ms` |
+| **ASP Cascade Time** | `1.543 ms` |
+| **Total CPB** | `161.08` |
+| **Ops/sec** | `648.23` |
 
 ---
 

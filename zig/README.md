@@ -75,10 +75,10 @@ Based on the latest benchmarking session (`interop`), the Zig engine achieved th
 
 | Metric | Recorded Value |
 | :--- | :--- |
-| **Total Pipeline Time** | `13.51 ms` |
-| **ASP Cascade Time** | `185 μs` |
-| **Total CPB** | `490.07` |
-| **Ops/sec** | `74.01` |
+| **Total Pipeline Time** | `306.9 μs` |
+| **ASP Cascade Time** | `307 μs` |
+| **Total CPB** | `11.14` |
+| **Ops/sec** | `3257.86` |
 
 ---
 
