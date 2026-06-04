@@ -201,7 +201,6 @@ func (c *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte, te
 	macExp.Write([]byte("dasp-identity-v3\x01"))
 	blendedSS := macExp.Sum(nil)
 
-
 	cHasher := sha256.New()
 	cHasher.Write(append([]byte("cipher"), blendedSS...))
 	cipherKey := cHasher.Sum(nil)
@@ -269,7 +268,6 @@ func (c *DarkstarCrypt) Encrypt(payloadStr string, pkHex string, hwid []byte, te
 	h.Write(ctBytes)
 	h.Write(payloadBytes)
 	macTag := hex.EncodeToString(h.Sum(nil))
-
 
 	totalDur := time.Since(totalStart)
 
@@ -378,7 +376,6 @@ func (c *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte, te
 	macExp.Write([]byte("dasp-identity-v3\x01"))
 	blendedSS := macExp.Sum(nil)
 
-
 	// ---------------------------------------------------------
 	// PHASE 3: Subkey Derivation & MAC Verification
 	// ---------------------------------------------------------
@@ -400,7 +397,6 @@ func (c *DarkstarCrypt) Decrypt(encDataRaw string, skHex string, hwid []byte, te
 	h := hmac.New(sha256.New, activeHmacKey)
 	h.Write(ctBytes)
 	h.Write(payloadBytes)
-
 
 	tag, _ := hex.DecodeString(macHex)
 	if !hmac.Equal(h.Sum(nil), tag) {

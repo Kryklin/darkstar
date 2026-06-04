@@ -19,12 +19,12 @@
 #include <stdlib.h>
 #include <string.h>
 #ifdef _WIN32
-#include <windows.h>
 #include <bcrypt.h>
+#include <windows.h>
 #pragma comment(lib, "bcrypt.lib")
 #else
-#include <time.h>
 #include <fcntl.h>
+#include <time.h>
 #include <unistd.h>
 #endif
 
@@ -61,9 +61,12 @@ extern int dasp_decapsulate_data_inner(uint8_t *base_payload,
 
 // Helpers
 static inline uint8_t hex_char_val(char c) {
-  if (c >= '0' && c <= '9') return c - '0';
-  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  if (c >= '0' && c <= '9')
+    return c - '0';
+  if (c >= 'a' && c <= 'f')
+    return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F')
+    return c - 'A' + 10;
   return 0;
 }
 
@@ -145,7 +148,6 @@ int main(int argc, char **argv) {
   // PHASE 1: CLI Argument Parsing
   // ---------------------------------------------------------
 
-
   char *cmd = argv[1];
   uint8_t hwid[32];
   int use_hwid = 0;
@@ -196,7 +198,8 @@ int main(int argc, char **argv) {
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd != -1) {
       if (read(fd, seed, 48) != 48) {
-        fprintf(stderr, "Fatal: Failed to read sufficient entropy from /dev/urandom\n");
+        fprintf(stderr,
+                "Fatal: Failed to read sufficient entropy from /dev/urandom\n");
         exit(1);
       }
       close(fd);
@@ -206,7 +209,7 @@ int main(int argc, char **argv) {
     }
 #endif
   }
-  
+
   // Initialize the DRBG regardless of whether the seed came from CLI or OS
   // Initialize the DRBG regardless of whether the seed came from CLI or OS
   randombytes_init(seed, NULL, 256);
@@ -370,19 +373,29 @@ int main(int argc, char **argv) {
     free(payload);
     return 0;
   } else if (strcmp(cmd, "rebind") == 0) {
-    if (argc < 5) return 2;
+    if (argc < 5)
+      return 2;
     char *json_file = argv[2];
     char *json = NULL;
     if (json_file[0] == '@') {
       json = read_file(json_file + 1);
-      if (!json) return 3;
+      if (!json)
+        return 3;
     } else {
       json = strdup(json_file);
     }
     char *sk_str = argv[3];
-    if (sk_str[0] == '@') { sk_str = read_file(sk_str + 1); } else { sk_str = strdup(sk_str); }
+    if (sk_str[0] == '@') {
+      sk_str = read_file(sk_str + 1);
+    } else {
+      sk_str = strdup(sk_str);
+    }
     char *pk_str = argv[4];
-    if (pk_str[0] == '@') { pk_str = read_file(pk_str + 1); } else { pk_str = strdup(pk_str); }
+    if (pk_str[0] == '@') {
+      pk_str = read_file(pk_str + 1);
+    } else {
+      pk_str = strdup(pk_str);
+    }
 
     uint8_t sk[CRYPTO_SECRETKEYBYTES];
     hex_decode(sk_str, sk, CRYPTO_SECRETKEYBYTES);
@@ -392,7 +405,8 @@ int main(int argc, char **argv) {
     char *data_hex = extract_json_string(json, "data");
     char *ct_hex = extract_json_string(json, "ct");
     char *mac_hex = extract_json_string(json, "mac");
-    if (!data_hex || !ct_hex || !mac_hex) return 4;
+    if (!data_hex || !ct_hex || !mac_hex)
+      return 4;
 
     size_t p_len = strlen(data_hex) / 2;
     uint8_t *payload = malloc(p_len);
@@ -402,7 +416,8 @@ int main(int argc, char **argv) {
     uint8_t mac[32];
     hex_decode(mac_hex, mac, 32);
 
-    int res = dasp_decapsulate_data_inner(payload, p_len, sk, use_hwid ? hwid : NULL, ct, mac);
+    int res = dasp_decapsulate_data_inner(payload, p_len, sk,
+                                          use_hwid ? hwid : NULL, ct, mac);
     if (res != 0) {
       fprintf(stderr, "Rebind Decryption Failed\n");
       return 5;
@@ -410,7 +425,8 @@ int main(int argc, char **argv) {
 
     uint8_t new_ct[CRYPTO_CIPHERTEXTBYTES];
     uint8_t new_mac[32];
-    dasp_encapsulate_data_inner(payload, p_len, pk, use_new_hwid ? new_hwid : NULL, new_ct, new_mac);
+    dasp_encapsulate_data_inner(
+        payload, p_len, pk, use_new_hwid ? new_hwid : NULL, new_ct, new_mac);
 
     char *new_ct_hex = malloc(CRYPTO_CIPHERTEXTBYTES * 2 + 1);
     char new_mac_hex[65];
@@ -420,15 +436,21 @@ int main(int argc, char **argv) {
     hex_encode(payload, p_len, new_data_hex);
 
     volatile uint8_t *v_payload = (volatile uint8_t *)payload;
-    for (size_t k = 0; k < p_len; k++) v_payload[k] = 0;
+    for (size_t k = 0; k < p_len; k++)
+      v_payload[k] = 0;
 
-    printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\"}\n", new_data_hex, new_ct_hex, new_mac_hex);
+    printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\"}\n", new_data_hex,
+           new_ct_hex, new_mac_hex);
 
     free(new_data_hex);
     free(new_ct_hex);
     free(payload);
-    free(data_hex); free(ct_hex); free(mac_hex);
-    free(json); free(sk_str); free(pk_str);
+    free(data_hex);
+    free(ct_hex);
+    free(mac_hex);
+    free(json);
+    free(sk_str);
+    free(pk_str);
     return 0;
   }
 

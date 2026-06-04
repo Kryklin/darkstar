@@ -21,6 +21,7 @@ class DarkstarCrypt:
     Native Wasmtime bridge for the D-ASP Cryptographic Engine in Python.
     Handles memory boundary crossings and FFI to execute ML-KEM-1024 encryption.
     """
+
     def __init__(self):
         self.engine = wasmtime.Engine()
         self.store = wasmtime.Store(self.engine)
@@ -106,13 +107,13 @@ class DarkstarCrypt:
     def encrypt(self, payload, pk_hex, hwid_hex=None, telemetry=False):
         """
         Encrypts a string payload using D-ASP via the WASM engine.
-        
+
         Args:
             payload (str): Plaintext to encrypt.
             pk_hex (str): Public key in hex format.
             hwid_hex (str, optional): Hardware ID binding in hex.
             telemetry (bool): If True, returns detailed timing metrics.
-            
+
         Returns:
             str: JSON string containing CT, MAC, and Data.
         """
@@ -160,13 +161,13 @@ class DarkstarCrypt:
     def decrypt(self, encrypted_data_raw, sk_hex, hwid_hex=None, telemetry=False):
         """
         Decrypts a D-ASP ciphertext payload using the WASM engine.
-        
+
         Args:
             encrypted_data_raw (str): JSON string containing CT, MAC, and Data.
             sk_hex (str): Secret key in hex format.
             hwid_hex (str, optional): Hardware ID binding in hex.
             telemetry (bool): If True, returns detailed timing metrics.
-            
+
         Returns:
             str: Decrypted plaintext string.
         """
@@ -253,7 +254,9 @@ if __name__ == "__main__":
         "--telemetry", action="store_true", help="Output execution timings"
     )
 
-    rebind_parser = subparsers.add_parser("rebind", help="Rebind a payload to new key/HWID")
+    rebind_parser = subparsers.add_parser(
+        "rebind", help="Rebind a payload to new key/HWID"
+    )
     rebind_parser.add_argument("data", help="D-ASP JSON blob")
     rebind_parser.add_argument("sk_hex", help="Old Kyber-1024 Secret Key Hex")
     rebind_parser.add_argument("new_pk_hex", help="New Kyber-1024 Public Key Hex")
@@ -298,7 +301,11 @@ if __name__ == "__main__":
             )
         )
     elif args.command == "rebind":
-        new_hardware_id = load_arg(args.new_hwid) if hasattr(args, "new_hwid") and args.new_hwid else None
+        new_hardware_id = (
+            load_arg(args.new_hwid)
+            if hasattr(args, "new_hwid") and args.new_hwid
+            else None
+        )
         plaintext = crypt.decrypt(
             load_arg(args.data),
             load_arg(args.sk_hex),

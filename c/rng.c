@@ -15,8 +15,8 @@
 #include <string.h>
 
 #ifdef _WIN32
-#include <windows.h>
 #include <bcrypt.h>
+#include <windows.h>
 #pragma comment(lib, "bcrypt.lib")
 #else
 #include <fcntl.h>
@@ -38,15 +38,24 @@ static inline uint32_t rng_rotl32(uint32_t x, int n) {
 }
 
 static void rng_chacha_quarter_round(uint32_t *x, int a, int b, int c, int d) {
-  x[a] = x[a] + x[b]; x[d] ^= x[a]; x[d] = rng_rotl32(x[d], 16);
-  x[c] = x[c] + x[d]; x[b] ^= x[c]; x[b] = rng_rotl32(x[b], 12);
-  x[a] = x[a] + x[b]; x[d] ^= x[a]; x[d] = rng_rotl32(x[d], 8);
-  x[c] = x[c] + x[d]; x[b] ^= x[c]; x[b] = rng_rotl32(x[b], 7);
+  x[a] = x[a] + x[b];
+  x[d] ^= x[a];
+  x[d] = rng_rotl32(x[d], 16);
+  x[c] = x[c] + x[d];
+  x[b] ^= x[c];
+  x[b] = rng_rotl32(x[b], 12);
+  x[a] = x[a] + x[b];
+  x[d] ^= x[a];
+  x[d] = rng_rotl32(x[d], 8);
+  x[c] = x[c] + x[d];
+  x[b] ^= x[c];
+  x[b] = rng_rotl32(x[b], 7);
 }
 
 static void rng_chacha_block(uint32_t *state, uint32_t *out) {
   uint32_t x[16];
-  for (int i = 0; i < 16; i++) x[i] = state[i];
+  for (int i = 0; i < 16; i++)
+    x[i] = state[i];
   for (int i = 0; i < 10; i++) {
     rng_chacha_quarter_round(x, 0, 4, 8, 12);
     rng_chacha_quarter_round(x, 1, 5, 9, 13);
@@ -57,7 +66,8 @@ static void rng_chacha_block(uint32_t *state, uint32_t *out) {
     rng_chacha_quarter_round(x, 2, 7, 8, 13);
     rng_chacha_quarter_round(x, 3, 4, 9, 14);
   }
-  for (int i = 0; i < 16; i++) out[i] = x[i] + state[i];
+  for (int i = 0; i < 16; i++)
+    out[i] = x[i] + state[i];
 }
 
 /**
@@ -82,17 +92,20 @@ void randombytes_init(unsigned char *entropy_input,
   drbg_ctx.state[1] = 0x3320646e;
   drbg_ctx.state[2] = 0x79622d32;
   drbg_ctx.state[3] = 0x6b206574;
-  
+
   // Use first 32 bytes for the key
   for (int i = 0; i < 8; i++) {
-    drbg_ctx.state[4 + i] = seed_material[i * 4] | (seed_material[i * 4 + 1] << 8) |
-                            (seed_material[i * 4 + 2] << 16) | (seed_material[i * 4 + 3] << 24);
+    drbg_ctx.state[4 + i] =
+        seed_material[i * 4] | (seed_material[i * 4 + 1] << 8) |
+        (seed_material[i * 4 + 2] << 16) | (seed_material[i * 4 + 3] << 24);
   }
-  
+
   // Use last 16 bytes for nonce/counter
   for (int i = 0; i < 4; i++) {
-    drbg_ctx.state[12 + i] = seed_material[32 + i * 4] | (seed_material[32 + i * 4 + 1] << 8) |
-                             (seed_material[32 + i * 4 + 2] << 16) | (seed_material[32 + i * 4 + 3] << 24);
+    drbg_ctx.state[12 + i] = seed_material[32 + i * 4] |
+                             (seed_material[32 + i * 4 + 1] << 8) |
+                             (seed_material[32 + i * 4 + 2] << 16) |
+                             (seed_material[32 + i * 4 + 3] << 24);
   }
 
   rng_chacha_block(drbg_ctx.state, drbg_ctx.block);
@@ -110,7 +123,8 @@ int randombytes(unsigned char *x, unsigned long long xlen) {
   if (drbg_ctx.reseed_counter == 0) {
     unsigned char auto_seed[48];
 #ifdef _WIN32
-    if (BCryptGenRandom(NULL, auto_seed, 48, BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0) {
+    if (BCryptGenRandom(NULL, auto_seed, 48, BCRYPT_USE_SYSTEM_PREFERRED_RNG) !=
+        0) {
       fprintf(stderr, "Fatal: BCryptGenRandom failed in auto-seed\n");
       exit(1);
     }
@@ -118,7 +132,8 @@ int randombytes(unsigned char *x, unsigned long long xlen) {
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd != -1) {
       if (read(fd, auto_seed, 48) != 48) {
-        fprintf(stderr, "Fatal: Failed to read sufficient entropy from /dev/urandom in auto-seed\n");
+        fprintf(stderr, "Fatal: Failed to read sufficient entropy from "
+                        "/dev/urandom in auto-seed\n");
         exit(1);
       }
       close(fd);
@@ -134,11 +149,12 @@ int randombytes(unsigned char *x, unsigned long long xlen) {
   while (xlen > 0) {
     if (drbg_ctx.block_idx >= 64) {
       drbg_ctx.state[12]++;
-      if (drbg_ctx.state[12] == 0) drbg_ctx.state[13]++;
+      if (drbg_ctx.state[12] == 0)
+        drbg_ctx.state[13]++;
       rng_chacha_block(drbg_ctx.state, drbg_ctx.block);
       drbg_ctx.block_idx = 0;
     }
-    
+
     size_t avail = 64 - drbg_ctx.block_idx;
     size_t to_copy = (xlen < avail) ? xlen : avail;
     memcpy(x, out + drbg_ctx.block_idx, to_copy);
@@ -146,7 +162,7 @@ int randombytes(unsigned char *x, unsigned long long xlen) {
     x += to_copy;
     xlen -= to_copy;
   }
-  
+
   drbg_ctx.reseed_counter++;
   return RNG_SUCCESS;
 }

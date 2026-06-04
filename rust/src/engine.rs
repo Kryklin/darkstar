@@ -314,7 +314,6 @@ impl DarkstarCrypt {
         expand_mac.update(b"dasp-identity-v3\x01");
         let mut blended_ss = expand_mac.finalize().into_bytes();
 
-
         // ---------------------------------------------------------
         // PHASE 3: Subkey Derivation (Cipher & HMAC Keys)
         // ---------------------------------------------------------
@@ -397,7 +396,6 @@ impl DarkstarCrypt {
         chain_state.zeroize();
         active_password_str.zeroize();
         round_keys.zeroize();
-
 
         let total_duration = total_start.elapsed();
 
@@ -491,7 +489,6 @@ impl DarkstarCrypt {
         expand_mac.update(b"dasp-identity-v3\x01");
         let mut blended_ss = expand_mac.finalize().into_bytes();
 
-
         // ---------------------------------------------------------
         // PHASE 3: Subkey Derivation & MAC Verification
         // ---------------------------------------------------------
@@ -522,8 +519,6 @@ impl DarkstarCrypt {
             .map_err(|e| format!("HMAC error: {:?}", e))?;
         mac.update(&ct_bytes);
         mac.update(&payload_bytes);
-
-
 
         mac.verify_slice(&hex::decode(mac_tag_hex)?)
             .map_err(|_| "Integrity Check Failed")?;
