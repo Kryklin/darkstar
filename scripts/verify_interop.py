@@ -177,14 +177,15 @@ def run_cmd(cmd, cwd, input_data=None):
 
 def benchmark_engine(name, encrypted_payload, sk_hex, hwid, use_docker=False):
     engine = ENGINES[name]
+    safe_name = name.replace('#', 'sharp')
     if use_docker:
-        filename = f"interop_{name}.json"
+        filename = f"interop_{safe_name}.json"
         cmd = engine["cmd"] + ["decrypt", f"@/data/{filename}", sk_hex, "--hwid", hwid, "--telemetry"]
         cwd = BASE_DIR
         with open(os.path.join(cwd, filename), "w") as f:
             f.write(encrypted_payload)
     else:
-        filename = f"interop_{name}.json"
+        filename = f"interop_{safe_name}.json"
         cmd = engine["cmd"] + ["decrypt", f"@{filename}", sk_hex, "--hwid", hwid, "--telemetry"]
         cwd = engine["cwd"]
         with open(os.path.join(cwd, filename), "w") as f:
