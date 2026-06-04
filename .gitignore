@@ -132,6 +132,7 @@ node/dist/
 node/cipher.json
 node/key.json
 node/*.wasm
+wasm/dasp_crypto.wasm
 
 # -----------------------------------------------------------------------------
 # Python engine  (python)
@@ -173,6 +174,8 @@ dotnet-install.ps1
 # -----------------------------------------------------------------------------
 # Temp files written by test harnesses during runs
 **/interop.json
+**/interop_*.json
+payload.txt
 **/tmp_sk.hex
 **/tmp_pk.hex
 **/tmp_data.json
@@ -180,9 +183,9 @@ dotnet-install.ps1
 # Benchmark log sessions (timestamped directories)
 logs/
 # Generated KAT & NIST artefacts — regenerated on demand
-scripts/kat_vectors.json
-scripts/master_keys.txt
-scripts/nist_kat.rsp
+scripts/data/kat_vectors.json
+scripts/data/master_keys.txt
+scripts/data/nist_kat.rsp
 scripts/log/
 # Generated checksums (produced during release pipeline)
 checksums.txt
