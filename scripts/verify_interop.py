@@ -360,6 +360,7 @@ def main():
                 # Internal timings
                 try:
                     casca_avg_us = statistics.mean([it["cascade_us"] for it in data["internals"]]) if data["internals"] else 0
+                    total_avg_us = statistics.mean([it.get("total_us", it["cascade_us"]) for it in data["internals"]]) if data["internals"] else 0
                 except KeyError as e:
                     print(f"CRITICAL ERROR in {name}: internals missing {e}. Internals: {data['internals']}")
                     raise
@@ -371,10 +372,11 @@ def main():
                 # CPB Calculation (for actual payload size)
                 # CPB = (ns * freq_ghz) / len
                 casca_cpb = (casca_avg_us * 1000 * avg_freq_ghz) / len(payload)
-                total_cpb = (mean_ms * 1_000_000 * avg_freq_ghz) / len(payload)
+                total_cpb = (total_avg_us * 1000 * avg_freq_ghz) / len(payload)
                 
-                # Format Time dynamically
-                mean_time_str = f"{mean_ms * 1000:.1f} us" if mean_ms < 1.0 else f"{mean_ms:.3f} ms"
+                # Format Time dynamically based on true internal execution time (no Docker overhead)
+                true_total_ms = total_avg_us / 1000.0
+                mean_time_str = f"{total_avg_us:.1f} us" if total_avg_us < 1000.0 else f"{true_total_ms:.3f} ms"
                 casca_time_str = f"{casca_avg_us:.3f} us" if casca_avg_us < 10.0 else (f"{casca_avg_us:.0f} us" if casca_avg_us < 1000.0 else f"{casca_avg_us / 1000.0:.3f} ms")
 
                 line = f"{name:<10} | {data['status']:<7} | {mean_time_str:<12} | {casca_time_str:<12} | {casca_cpb:<10.2f} | {total_cpb:<10.2f} | {ops_sec:<10.2f}\n"
