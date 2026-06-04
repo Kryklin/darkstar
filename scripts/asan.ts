@@ -86,7 +86,7 @@ const path = require('path');
         'fips202.c',
         'sha512.c',
         'sha256.c',
-        'aes.c',
+
         'rng.c',
         'poly.c',
         'poly_sampling.c',

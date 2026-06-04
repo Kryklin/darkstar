@@ -28,14 +28,16 @@ pub fn build(b: *std.Build) void {
     exe.addIncludePath(b.path("../c"));
 
     exe.linkLibC();
-    exe.linkSystemLibrary("bcrypt");
-    exe.linkSystemLibrary("ws2_32");
-    exe.linkSystemLibrary("advapi32");
-    exe.linkSystemLibrary("userenv");
+    if (target.result.os.tag == .windows) {
+        exe.linkSystemLibrary("bcrypt");
+        exe.linkSystemLibrary("ws2_32");
+        exe.linkSystemLibrary("advapi32");
+        exe.linkSystemLibrary("userenv");
 
-    exe.addWin32ResourceFile(.{
-        .file = b.path("icon.rc"),
-    });
+        exe.addWin32ResourceFile(.{
+            .file = b.path("icon.rc"),
+        });
+    }
 
     b.installArtifact(exe);
 

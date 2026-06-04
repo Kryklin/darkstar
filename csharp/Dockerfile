@@ -3,12 +3,13 @@ FROM alpine:latest AS c-builder
 RUN apk add --no-cache gcc musl-dev
 WORKDIR /app/c
 COPY c/ ./
-RUN gcc -shared -fPIC -o libdasp_kem.so spna_engine.c gf_math.c ml_kem.c fips202.c sha512.c sha256.c aes.c rng.c poly.c poly_sampling.c -I. -O3 -mavx2
+RUN gcc -shared -fPIC -o libdasp_kem.so spna_engine.c gf_math.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c -I. -O3 -mavx2
 
 # Stage 2: Build the C# project
 FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS csharp-builder
 WORKDIR /app
 COPY csharp/ ./csharp/
+COPY assets/ ./assets/
 COPY --from=c-builder /app/c/libdasp_kem.so ./c/
 WORKDIR /app/csharp
 RUN dotnet build -c Release

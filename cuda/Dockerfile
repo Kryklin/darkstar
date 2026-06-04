@@ -17,7 +17,7 @@ RUN nvcc -O3 \
     c/fips202.c \
     c/sha512.c \
     c/sha256.c \
-    c/aes.c \
+
     c/rng.c \
     c/poly.c \
     c/poly_sampling.c \
