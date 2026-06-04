@@ -356,7 +356,6 @@ def main():
             if data["durations_ns"]:
                 ms = [d / 1_000_000 for d in data["durations_ns"]]
                 mean_ms = statistics.mean(ms)
-                ops_sec = 1000 / mean_ms if mean_ms > 0 else 0
                 
                 # Internal timings
                 try:
@@ -364,6 +363,11 @@ def main():
                 except KeyError as e:
                     print(f"CRITICAL ERROR in {name}: internals missing {e}. Internals: {data['internals']}")
                     raise
+                
+                # Calculate True Ops/sec based on Casca Time
+                # casca_avg_us is in microseconds, so ops/sec = 1_000_000 / casca_avg_us
+                ops_sec = 1_000_000 / casca_avg_us if casca_avg_us > 0 else 0
+                
                 # CPB Calculation (for actual payload size)
                 # CPB = (ns * freq_ghz) / len
                 casca_cpb = (casca_avg_us * 1000 * avg_freq_ghz) / len(payload)
