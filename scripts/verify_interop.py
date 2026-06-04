@@ -178,14 +178,16 @@ def run_cmd(cmd, cwd, input_data=None):
 def benchmark_engine(name, encrypted_payload, sk_hex, hwid, use_docker=False):
     engine = ENGINES[name]
     if use_docker:
-        cmd = engine["cmd"] + ["decrypt", "@/data/interop.json", sk_hex, "--hwid", hwid, "--telemetry"]
+        filename = f"interop_{name}.json"
+        cmd = engine["cmd"] + ["decrypt", f"@/data/{filename}", sk_hex, "--hwid", hwid, "--telemetry"]
         cwd = BASE_DIR
-        with open(os.path.join(cwd, "interop.json"), "w") as f:
+        with open(os.path.join(cwd, filename), "w") as f:
             f.write(encrypted_payload)
     else:
-        cmd = engine["cmd"] + ["decrypt", "@interop.json", sk_hex, "--hwid", hwid, "--telemetry"]
+        filename = f"interop_{name}.json"
+        cmd = engine["cmd"] + ["decrypt", f"@{filename}", sk_hex, "--hwid", hwid, "--telemetry"]
         cwd = engine["cwd"]
-        with open(os.path.join(cwd, "interop.json"), "w") as f:
+        with open(os.path.join(cwd, filename), "w") as f:
             f.write(encrypted_payload)
         
     times = []
@@ -272,12 +274,14 @@ def main():
     enc_json, _, _ = run_cmd(ENGINES["Rust"]["cmd"] + ["encrypt", payload_arg, pk, "--hwid", hwid, "--telemetry"], enc_cwd)
     
     # 3. Cross-Platform Benchmark
-    log("\nStep 3: Executing Cross-Platform Benchmark (20 rounds each)...")
+    log("\nStep 3: Executing Cross-Platform Benchmark (20 rounds each in parallel)...")
     results = {}
     
-    for name in ENGINES:
+    import concurrent.futures
+    
+    def run_for_engine(name):
         try:
-            log(f"Benchmarking {name}...")
+            log(f"Benchmarking {name} (Started)...", to_console=True)
             decrypted, durations, internals = benchmark_engine(name, enc_json, sk, hwid, use_docker=use_docker)
             
             # Verify Parity
@@ -286,21 +290,27 @@ def main():
             else:
                 status = f"FAILED (Output: '{decrypted}')"
                 
-            results[name] = {
-                "status": status,
-                "durations_ns": durations,
-                "internals": internals,
-                "output": decrypted
-            }
-            
             # Save raw output log
             raw_log_path = os.path.join(LOG_DIR, f"engine_raw_{name}.json")
             with open(raw_log_path, "w") as f:
                 f.write(decrypted)
                 
+            log(f"Benchmarking {name} (Finished)...", to_console=True)
+            return name, {
+                "status": status,
+                "durations_ns": durations,
+                "internals": internals,
+                "output": decrypted
+            }
         except Exception as e:
             log(f"Critical error benchmarking {name}: {e}")
-            results[name] = {"status": f"ERROR: {e}", "durations_ns": [], "internals": []}
+            return name, {"status": f"ERROR: {e}", "durations_ns": [], "internals": []}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(run_for_engine, name): name for name in ENGINES}
+        for future in concurrent.futures.as_completed(futures):
+            name, data = future.result()
+            results[name] = data
 
     # Get current frequency end
     freq_end = psutil.cpu_freq().current
