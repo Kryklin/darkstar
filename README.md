@@ -46,16 +46,16 @@ The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engi
 
 The suite is instrumented for exhaustive telemetry across all cryptographic and architectural layers.
 
-| Engine        | Total Time   | Casca Time | Casca CPB | Total CPB | Ops/sec   |
-| :------------ | :----------- | :--------- | :-------- | :-------- | :-------- |
-| **C**         | **11.48 ms** | 260 μs     | 9.43      | 416.46    | **87.10** |
-| **Zig**       | 13.51 ms     | 185 μs     | 6.72      | 490.07    | 74.01     |
-| **Go**        | 15.01 ms     | 849 μs     | 30.80     | 544.60    | 66.60     |
-| **Rust**      | 16.16 ms     | 118 μs     | **4.27**  | 586.06    | 61.89     |
-| **Node.js**   | 109.15 ms    | 1.39 ms    | 50.34     | 3959.07   | 9.16      |
-| **C# (.NET)** | 140.51 ms    | 4.35 ms    | 157.63    | 5096.58   | 7.12      |
-| **CUDA**      | 266.03 ms    | 170 μs     | 6.15      | 9649.41   | 3.76      |
-| **Python**    | 286.30 ms    | 534 μs     | 19.38     | 10384.80  | 3.49      |
+| Engine        | Total Time   | Casca Time | Casca CPB | Total CPB | Ops/sec      |
+| :------------ | :----------- | :--------- | :-------- | :-------- | :----------- |
+| **CUDA**      | **200.8 μs** | 201 μs     | **7.28**  | **7.28**  | **4,981.32** |
+| **Rust**      | 4.050 ms     | 234 μs     | 8.49      | 146.94    | 4,273.50     |
+| **Zig**       | 326.9 μs     | 327 μs     | 11.86     | 11.86     | 3,058.57     |
+| **C**         | 2.784 ms     | 553 μs     | 20.06     | 101.02    | 1,808.48     |
+| **Python**    | 4.521 ms     | 917 μs     | 33.26     | 164.03    | 1,090.93     |
+| **Go**        | 6.141 ms     | 2.244 ms   | 81.44     | 222.84    | 445.57       |
+| **Node.js**   | 26.807 ms    | 3.150 ms   | 114.29    | 972.71    | 317.50       |
+| **C# (.NET)** | 122.723 ms   | 8.224 ms   | 298.42    | 4453.16   | 121.59       |
 
 > [!NOTE]
 > Detailed structural requirements, CLI Usage, High-Throughput Streaming (CUDA) specs, and Known Answer Tests (KAT) are thoroughly documented in the [**Documentation Hub**](#-documentation-hub) above.
