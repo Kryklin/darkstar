@@ -87,3 +87,13 @@ Based on the latest benchmarking session (`interop`), the Go engine achieved the
 [🏠 Main](../README.md) | [📐 Math Spec](../DASP_CRYPTO_MATH.md) | [⚙️ System Flows](../DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
 
 </div>
+
+
+## 🔬 Cryptographic Analysis Suite
+
+This Go implementation is fully integrated with the D-ASP exhaustive mathematical testing suite. By running the global dashboard, you can automatically evaluate this engine's output against:
+- **Entropy & Diffusion:** Shannon Entropy, Strict Avalanche Criterion (SAC), Cross-Key Diffusion.
+- **Uniformity & Sequences:** Chi-Square, Serial Autocorrelation, Monte Carlo Pi Estimation, Monobit Frequency, Runs Tests.
+- **Side-Channel Immunity:** Constant-Time Execution Variance.
+
+Additionally, you can run `npm run gen-nist` from the root directory to stream gigabytes of raw ciphertext from this engine directly into `.bin` files for external certification via the official NIST SP 800-22 `sts` suite.
