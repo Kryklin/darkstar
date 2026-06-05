@@ -66,6 +66,8 @@ const pkg = require('../../package.json');
 
     new inquirer.Separator(chalk.hex('#555555')('─── Verification ─────────────────────────────────────────')),
     { name: chalk.hex('#00BCD4')('  ◈  Interop Benchmark          ') + chalk.dim('Cross-engine bit-perfect parity'), value: 'interop' },
+    { name: chalk.hex('#D800AD')('  ◈  Cryptographic Analysis     ') + chalk.dim('Entropy & Avalanche testing'), value: 'crypto_analysis' },
+    { name: chalk.hex('#00BCD4')('  ◈  Generate NIST Bitstream    ') + chalk.dim('Raw CT dumping for external tests'), value: 'gen-nist' },
     { name: chalk.hex('#00BCD4')('  ◈  Generate KAT Vectors       ') + chalk.dim('NIST Known Answer Test data'), value: 'gen-kat' },
     { name: chalk.hex('#00BCD4')('  ◈  KAT Verification           ') + chalk.dim('Validate against reference vectors'), value: 'kat' },
     { name: chalk.hex('#00BCD4')('  ◈  Headless Docker Matrix     ') + chalk.dim('Off-host containerized validation'), value: 'docker-test' },
@@ -378,6 +380,12 @@ const pkg = require('../../package.json');
           case 'interop':
             await checkEnvironment(false);
             await runShell('Interop Benchmarking', CMD.INTEROP, { showOutput: true });
+            break;
+          case 'crypto_analysis':
+            await runShell('Cryptographic Analysis', 'npm run analyze', { showOutput: true });
+            break;
+          case 'gen-nist':
+            await runShell('Generate NIST Bitstream', 'npm run gen-nist', { showOutput: true });
             break;
           case 'build-engines':
             await runShell('Building Crypto Engines', CMD.BUILD_ENGINES, { showOutput: true });

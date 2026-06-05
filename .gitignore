@@ -186,6 +186,7 @@ logs/
 scripts/data/kat_vectors.json
 scripts/data/master_keys.txt
 scripts/data/nist_kat.rsp
+scripts/data/crypto_analysis.json
 scripts/log/
 # Generated checksums (produced during release pipeline)
 checksums.txt

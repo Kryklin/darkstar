@@ -42,7 +42,9 @@
     "publish": "npx tsx scripts/cli/publish.ts",
     "lint:ts": "npx tsc --noEmit -p tsconfig.json",
     "format:ts": "npx prettier --write \"scripts/**/*.ts\"",
-    "bump": "npx tsx scripts/cli/bump.ts"
+    "bump": "npx tsx scripts/cli/bump.ts",
+    "analyze": "npx tsx scripts/cli/analyze.ts",
+    "gen-nist": "npx tsx scripts/cli/gen_nist.ts"
   },
   "prettier": {
     "printWidth": 200,
