@@ -60,8 +60,9 @@ graph LR
 
 | Layer            | Operation               | Purpose                       |
 | :--------------- | :---------------------- | :---------------------------- |
-| **Addition**     | 32-bit modular addition | Destroy linear correlation    |
-| **Substitution** | 32-bit bitwise XOR      | Algebraic non-linearity       |
+| **Permutation**  | Left/Right bitwise rotation | Structural diffusion          |
+| **Network**      | Butterfly Mixing (Addition) | Cross-lane dependency         |
+| **Substitution** | 32-bit bitwise XOR      | Algebraic Non-Linearity (ARX) |
 | **Permutation**  | 32-bit Funnel Shift     | Bit-level cascading diffusion |
 | **Network**      | SIMD Word Shuffle       | Cross-word diffusion          |
 

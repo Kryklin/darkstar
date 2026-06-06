@@ -13,7 +13,10 @@
 
 # D-ASP: Formal Mathematical & Systems Specification (Professional Grade)
 
-This document provides the formal cryptographic and mathematical specification for the **ASP Cascade 16 (D-ASP)** protocol. ASP Cascade 16 is a high-security cipher suite based on a 16-round **ASP Cascade structure** (Substitution, Permutation, Network, Algebraic) optimized for identity binding and side-channel resistance.
+This document provides the formal cryptographic and mathematical specification for the **ASP Cascade 16 (D-ASP)** protocol. ASP Cascade 16 is a high-security cipher suite based on a 16-round **ASP Cascade structure** (Algebraic Substitution [ARX], Permutation, Network) optimized for identity binding and cache-timing side-channel resistance.
+
+> [!IMPORTANT]
+> **No S-Boxes or AES:** The term "Substitution" in D-ASP refers strictly to *Algebraic Substitution* via Modular Addition and XOR (ARX). D-ASP explicitly abandons traditional block-cipher components like AES-256 Rijndael S-Boxes and MixColumns MDS matrices to guarantee mathematical 0.0000% variance against cache-timing attacks.
 
 ---
 

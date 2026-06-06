@@ -190,7 +190,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  // OS-native entropy fallback for the AES-CTR DRBG
+  // OS-native entropy fallback for the internal DRBG
   if (!has_seed) {
 #ifdef _WIN32
     BCryptGenRandom(NULL, seed, 48, BCRYPT_USE_SYSTEM_PREFERRED_RNG);

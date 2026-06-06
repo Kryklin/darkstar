@@ -21,7 +21,6 @@ serde_json = "1.0"
 rand = "0.8.6"
 hex = "0.4"
 zeroize = "1.7"
-aes-gcm = "0.10.3"
 ml-kem = "0.2"
 getrandom = { version = "0.2", features = ["custom"] }
 
