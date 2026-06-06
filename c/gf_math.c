@@ -15,9 +15,9 @@
 /**
  * @brief Constant-Time Galois Field GF(2^8) Multiplication.
  *
- * Utilizes branchless arithmetic masking to neutralize instruction-timing
- * side channels. Uses the Rijndael irreducible polynomial: x^8 + x^4 + x^3 + x
- * + 1.
+ * This implementation uses arithmetic masking to prevent cache-timing
+ * side channels. Uses the standard GF(2^8) irreducible polynomial: x^8 + x^4 + x^3 + x
+ * + 1 (0x11B).
  *
  * @param a First operand.
  * @param b Second operand.
