@@ -302,7 +302,7 @@ const pkg = require('../../package.json');
       CAP_OPEN_ANDROID: 'npx cap open android',
       CAP_OPEN_IOS: 'npx cap open ios',
       // Docker: Headless environment testing
-      DOCKER_TEST: 'docker compose -f docker-compose.yml build && python "scripts/verify_interop.py" --docker',
+      DOCKER_TEST: 'docker compose -f docker-compose.yml build && python "scripts/tests/verify_interop.py" --docker',
       // Format: Runs polyglot code formatters
       FORMAT: 'npm run format',
       // Audit: Runs polyglot security audits
