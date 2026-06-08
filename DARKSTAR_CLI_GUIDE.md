@@ -46,9 +46,9 @@ Operations used to verify parity and execution times across all languages.
 
 | Option    | Display Name            | Command Executed        | Description                                                                                 |
 | :-------- | :---------------------- | :---------------------- | :------------------------------------------------------------------------------------------ |
-| `interop` | **Interop Benchmark**   | `verify_interop.py`     | Verifies bit-perfect parity across all language engines (including CUDA).                   |
-| `kat`     | **KAT Verification**    | `verify_kat.py`         | Runs the Known Answer Test suite (NIST Parity) across all engines, including GPU execution. |
-| `gen-kat` | **Generate KAT Data**   | `gen_kat_vectors.py`    | Re-generates standard, long, and bound KAT vectors using the reference engine.              |
+| `interop` | **Interop Benchmark**   | `npm run test:interop`  | Verifies bit-perfect parity across all language engines (including CUDA).                   |
+| `kat`     | **KAT Verification**    | `npm run test:kat`      | Runs the Known Answer Test suite (NIST Parity) across all engines, including GPU execution. |
+| `gen-kat` | **Generate KAT Data**   | `npm run test:gen-kat`  | Re-generates standard, long, and bound KAT vectors using the reference engine.              |
 
 ### Build & Compilation
 
@@ -94,6 +94,45 @@ GITHUB_TOKEN=your_personal_access_token_here
 > Never commit your `.env` file to version control. It is explicitly ignored by our [**.gitignore**](.gitignore).
 
 ---
+
+## 💻 Native Engine CLI Usage
+
+The core cryptographic engines (`rust`, `c`, `cuda`) share a unified CLI API that supports three modes of data ingestion for both `encrypt` and `decrypt` operations.
+
+> **Note:** The executable name will differ per engine (e.g. `d-asp.exe`, `dasp.exe`, `d-asp_cuda.exe`). The examples below use `<engine_exe>`.
+
+### 1. Single Payload (Raw String)
+Ideal for small, inline strings or environmental variables.
+
+```bash
+# Encrypting a short string
+<engine_exe> encrypt "my secret payload" <public_key_hex> [--hwid <hex>]
+
+# Decrypting an inline JSON payload
+<engine_exe> decrypt '{"iv":"...","ct":"..."}' <secret_key_hex> [--hwid <hex>]
+```
+
+### 2. File Parameters (`@file`)
+By prefixing an argument with `@`, the engine will dynamically read the target file's contents into memory. This is highly recommended for large payloads or securely storing keys on disk instead of passing them via the shell history.
+
+```bash
+# Encrypt a payload from a file using a public key from another file
+<engine_exe> encrypt @payload.txt @public_key.hex [--hwid <hex>]
+
+# Decrypt using a secret key file
+<engine_exe> decrypt @output.json @secret_key.hex [--hwid <hex>]
+```
+
+### 3. High-Throughput Streaming (STDIN/STDOUT)
+For massive multi-gigabyte payloads or pipeline chaining, use the `stream-encrypt` and `stream-decrypt` commands. These commands bypass terminal argument limitations and stream data directly through standard IO pipes.
+
+```bash
+# Stream a large file directly into the encryption engine and pipe the JSON output
+cat massive_file.bin | <engine_exe> stream-encrypt @public_key.hex [--hwid <hex>] > output.json
+
+# Stream the JSON back into decryption and pipe out the raw bytes
+cat output.json | <engine_exe> stream-decrypt @secret_key.hex [--hwid <hex>] > restored_file.bin
+```
 
 ---
 

@@ -31,14 +31,34 @@ cargo build --release
 ## Detailed Usage
 The Rust executable conforms to the standard D-ASP CLI interface, utilizing JSON for cryptographic payloads to ensure cross-language compatibility.
 
-**Encrypting a Payload:**
+**Encrypting a Payload (Single String):**
 ```bash
-./target/release/d-asp encrypt <payload_string> <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
+./target/release/d-asp encrypt "my secret payload" <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
-**Decrypting a Payload:**
+**Encrypting a Payload (From File):**
+```bash
+./target/release/d-asp encrypt @payload.txt <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
+```
+
+**Streaming Encryption (STDIN to STDOUT):**
+```bash
+cat payload.txt | ./target/release/d-asp stream-encrypt <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry] > output.json
+```
+
+**Decrypting a Payload (Single String):**
 ```bash
 ./target/release/d-asp decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
+```
+
+**Decrypting a Payload (From File):**
+```bash
+./target/release/d-asp decrypt @output.json <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
+```
+
+**Streaming Decryption (STDIN to STDOUT):**
+```bash
+cat output.json | ./target/release/d-asp stream-decrypt <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry] > decrypted.txt
 ```
 
 **Generating a Keypair:**

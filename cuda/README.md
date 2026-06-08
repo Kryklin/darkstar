@@ -33,14 +33,34 @@ build_cuda.bat
 ## Detailed Usage
 The CUDA executable conforms to the standard D-ASP CLI interface, utilizing JSON for cryptographic payloads to ensure cross-language compatibility.
 
-**Encrypting a Payload:**
+**Encrypting a Payload (Single String):**
 ```bash
-./d-asp_cuda encrypt <payload_string> <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
+./d-asp_cuda encrypt "my secret payload" <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
-**Decrypting a Payload:**
+**Encrypting a Payload (From File):**
+```bash
+./d-asp_cuda encrypt @payload.txt <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
+```
+
+**Streaming Encryption (STDIN to STDOUT):**
+```bash
+cat payload.txt | ./d-asp_cuda stream-encrypt <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry] > output.json
+```
+
+**Decrypting a Payload (Single String):**
 ```bash
 ./d-asp_cuda decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
+```
+
+**Decrypting a Payload (From File):**
+```bash
+./d-asp_cuda decrypt @output.json <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
+```
+
+**Streaming Decryption (STDIN to STDOUT):**
+```bash
+cat output.json | ./d-asp_cuda stream-decrypt <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry] > decrypted.txt
 ```
 
 **Generating a Keypair:**
