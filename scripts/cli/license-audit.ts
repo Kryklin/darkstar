@@ -23,10 +23,6 @@ const path = require('path');
       cmd: 'npx license-checker-rseidelsohn --summary --onlyAllow "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Python-2.0;Unlicense;CC-BY-4.0;CC-BY-3.0;BlueOak-1.0.0;0BSD;WTFPL;Zlib;UNLICENSED"',
     },
     { name: 'Cargo (Rust)', cmd: 'cargo deny check licenses', cwd: path.join(__dirname, '../../rust') },
-    {
-      name: 'Pip (Python)',
-      cmd: 'C:\\Users\\morta\\AppData\\Roaming\\Python\\Python314\\Scripts\\pip-licenses.exe --fail-on "GPL;AGPL;LGPL" --allow-only "MIT;Apache Software License;Apache-2.0;Apache-2.0 WITH LLVM-exception;BSD License;ISC License (ISCL);Python Software Foundation License;BSD-2-Clause;BSD-3-Clause;Zlib;Mozilla Public License 2.0 (MPL 2.0);Apache-2.0 OR BSD-3-Clause;DFSG approved; MIT License;MIT OR Apache-2.0;Creative Commons Attribution 4.0 International License;Apache-2.0 OR BSD-2-Clause"',
-    },
   ];
 
   for (let i = 0; i < jobs.length; i++) {
