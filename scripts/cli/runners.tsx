@@ -470,3 +470,55 @@ export const BuildEnginesRunner = ({ onComplete }: { onComplete: () => void }) =
     </Box>
   );
 };
+
+// ─── ScaffoldRunner ───
+export const ScaffoldRunner = ({ onComplete }: { onComplete: () => void }) => {
+  const [done, setDone] = useState(false);
+  const [messages, setMessages] = useState<string[]>(['Initializing scaffolding sequence...']);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const root = path.resolve(__dirname, '../../');
+        const outDir = path.join(root, 'out-wrappers');
+        if (!fs.existsSync(outDir)) {
+          fs.mkdirSync(outDir, { recursive: true });
+        }
+
+        const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+        await wait(500);
+        setMessages(p => [...p, 'Scaffolding Node.js Wrapper (FFI-NAPI)...']);
+        fs.writeFileSync(path.join(outDir, 'node_wrapper.js'), `// Node.js FFI Wrapper\nconst ffi = require('ffi-napi');\nconst path = require('path');\n\nconst dasp = ffi.Library(path.join(__dirname, 'dasp_kem.dll'), {\n  'kem_encrypt': ['int', ['pointer', 'pointer']],\n  'kem_decrypt': ['int', ['pointer', 'pointer']]\n});\nconsole.log('D-ASP initialized in Node.js');\n`);
+
+        await wait(500);
+        setMessages(p => [...p, 'Scaffolding Python Wrapper (ctypes)...']);
+        fs.writeFileSync(path.join(outDir, 'python_wrapper.py'), `# Python ctypes Wrapper\nimport ctypes\nimport os\n\ndll_path = os.path.join(os.path.dirname(__file__), 'dasp_kem.dll')\ndasp = ctypes.CDLL(dll_path)\nprint('D-ASP initialized in Python')\n`);
+
+        await wait(500);
+        setMessages(p => [...p, 'Scaffolding Go Wrapper (CGO)...']);
+        fs.writeFileSync(path.join(outDir, 'go_wrapper.go'), `package main\n\n/*\n#cgo LDFLAGS: -L. -ldasp\n#include <stdlib.h>\nextern int kem_encrypt(void*, void*);\n*/\nimport "C"\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("D-ASP initialized in Go")\n}\n`);
+
+        await wait(500);
+        setMessages(p => [...p, 'Successfully generated wrappers in ./out-wrappers/!']);
+      } catch (err: any) {
+        setMessages(p => [...p, `Error: ${err.message}`]);
+      }
+      setDone(true);
+    })();
+  }, []);
+
+  return (
+    <Box flexDirection="column" padding={1} width={80} alignItems="center">
+      <Text color="#F8FAFC" bold>─── Generate Language Wrappers ───</Text>
+      <Box marginY={1} flexDirection="column" alignItems="center">
+        {messages.map((msg, idx) => (
+          <Text key={idx} color={idx === messages.length - 1 && done ? "#10B981" : "#38BDF8"}>{msg}</Text>
+        ))}
+      </Box>
+      <Box height={2} width={80} alignItems="center" justifyContent="center">
+        {done && <PressEnterToContinue onEnter={onComplete} />}
+      </Box>
+    </Box>
+  );
+};

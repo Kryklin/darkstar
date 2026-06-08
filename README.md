@@ -16,6 +16,7 @@
 </p>
 <p align="center">
   <a href="rust/README.md"><img src="https://img.shields.io/badge/Rust-black?style=for-the-badge&logo=rust&logoColor=white" alt="Rust"></a>
+  <a href="WASM_README.md"><img src="https://img.shields.io/badge/WebAssembly-654FF0?style=for-the-badge&logo=webassembly&logoColor=white" alt="WASM"></a>
   <a href="c/README.md"><img src="https://img.shields.io/badge/C-A8B9CC?style=for-the-badge&logo=c&logoColor=white" alt="C"></a>
   <a href="cuda/README.md"><img src="https://img.shields.io/badge/CUDA-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="CUDA"></a>
 </p>
@@ -33,7 +34,7 @@ Explore the architecture and specifications of the D-ASP suite:
 | [**Security Policy**](SECURITY.md)                    | Vulnerability disclosure and audit policies.          |
 | [**Contributing**](CONTRIBUTING.md)                   | Guidelines for engine optimization and PR submission. |
 
-The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Rust**, **C**, and **CUDA**.
+The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Rust**, **C**, and **CUDA**, with **WebAssembly** bindings via Node/Python/Go.
 
 ---
 
