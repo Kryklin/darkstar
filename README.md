@@ -44,9 +44,9 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 
 | Engine        | Total Time   | Casca Time | Casca CPB | Total CPB | Ops/sec      |
 | :------------ | :----------- | :--------- | :-------- | :-------- | :----------- |
-| **CUDA**      | **200.8 μs** | 201 μs     | **7.28**  | **7.28**  | **4,981.32** |
-| **Rust**      | 4.050 ms     | 234 μs     | 8.49      | 146.94    | 4,273.50     |
-| **C**         | 2.784 ms     | 553 μs     | 20.06     | 101.02    | 1,808.48     |
+| **CUDA**      | **168.4 μs** | 150 μs     | **5.45**  | **5.45**  | **5,938.24** |
+| **Rust**      | 692.0 μs     | 109 μs     | 4.12      | 24.35     | 1,445.08     |
+| **C**         | 1.842 ms     | 388 μs     | 14.15     | 65.41     | 2,125.80     |
 
 > [!NOTE]
 > Detailed structural requirements, CLI Usage, High-Throughput Streaming (CUDA) specs, and Known Answer Tests (KAT) are thoroughly documented in the [**Documentation Hub**](#-documentation-hub) above.
@@ -59,14 +59,14 @@ The D-ASP suite guarantees mathematical pseudo-randomness and structural immunit
 
 | Metric | Result | Ideal |
 | :--- | :--- | :--- |
-| **Shannon Entropy (Bits/Byte)** | 7.9977 | ~ 8.000 |
-| **Strict Avalanche Criterion (SAC)** | 49.91% | ~ 50.0% |
-| **Chi-Square Uniformity** | 323.20 | 200 - 300 |
-| **Serial Autocorrelation** | -0.00099 | ~ 0.000 |
-| **Monte Carlo Pi Estimation** | 3.14426 | ~ 3.14159 |
-| **Monobit Frequency** | 0.5006 | ~ 0.5000 |
-| **Runs Test (Decay Ratio)** | 1.0015 | ~ 1.0000 |
-| **Cross-Key Diffusion** | 49.98% | ~ 50.0% |
+| **Shannon Entropy (Bits/Byte)** | 7.9984 | ~ 8.000 |
+| **Strict Avalanche Criterion (SAC)** | 49.78% | ~ 50.0% |
+| **Chi-Square Uniformity** | 231.89 | 200 - 300 |
+| **Serial Autocorrelation** | -0.00032 | ~ 0.000 |
+| **Monte Carlo Pi Estimation** | 3.15083 | ~ 3.14159 |
+| **Monobit Frequency** | 0.5003 | ~ 0.5000 |
+| **Runs Test (Decay Ratio)** | 1.0000 | ~ 1.0000 |
+| **Cross-Key Diffusion** | 50.01% | ~ 50.0% |
 | **Constant-Time Variance** | 0.0000% | < 5.00% |
 
 > [!TIP]
