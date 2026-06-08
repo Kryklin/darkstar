@@ -92,6 +92,11 @@ import { runCryptoAnalysis } from './tests/analyze.js';
     if (cusum > 1.5) failed = true;
     table.push(['Cumulative Sums (Cusum)', cusum.toFixed(4), '~ 0.000']);
 
+    // 12. Discrete Fourier Transform (Spectral)
+    const dft = results.spectral_dft;
+    if (Math.abs(dft) > 2.0) failed = true;
+    table.push(['Discrete Fourier Transform', dft.toFixed(4), '~ 0.000']);
+
     console.log(table.toString());
     console.log(chalk.dim('\n  Evaluated against reference engine (Rust) using 100KB standard payload.\n'));
 

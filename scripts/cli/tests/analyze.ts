@@ -22,6 +22,7 @@ export type CryptoAnalysisResult = {
   time_variance: number;
   block_frequency: number;
   cumulative_sums: number;
+  spectral_dft: number;
 };
 
 // Math Utilities
@@ -173,6 +174,85 @@ function cumulativeSums(data: Buffer): number {
   return maxExcursion / Math.sqrt(n);
 }
 
+function spectralTest(data: Buffer): number {
+  const totalBits = data.length * 8;
+  // Find largest power of 2 <= totalBits
+  let n = 1;
+  while (n * 2 <= totalBits) n *= 2;
+  
+  if (n < 4) return 0;
+  
+  const real = new Float64Array(n);
+  const imag = new Float64Array(n);
+  
+  for (let i = 0; i < n; i++) {
+    const byteIdx = Math.floor(i / 8);
+    const bitInByte = 7 - (i % 8);
+    const bit = (data[byteIdx] & (1 << bitInByte)) !== 0 ? 1 : -1;
+    real[i] = bit;
+    imag[i] = 0;
+  }
+  
+  // Bit-reversal permutation
+  let j = 0;
+  for (let i = 0; i < n - 1; i++) {
+    if (i < j) {
+      let temp = real[i]; real[i] = real[j]; real[j] = temp;
+      temp = imag[i]; imag[i] = imag[j]; imag[j] = temp;
+    }
+    let k = n >> 1;
+    while (k <= j) {
+      j -= k;
+      k >>= 1;
+    }
+    j += k;
+  }
+  
+  // Cooley-Tukey FFT
+  for (let size = 2; size <= n; size <<= 1) {
+    const halfSize = size >> 1;
+    const angle = -2 * Math.PI / size;
+    const wReal = Math.cos(angle);
+    const wImag = Math.sin(angle);
+    
+    for (let i = 0; i < n; i += size) {
+      let uReal = 1;
+      let uImag = 0;
+      for (let j = 0; j < halfSize; j++) {
+        const k = i + j;
+        const l = i + j + halfSize;
+        
+        const tReal = uReal * real[l] - uImag * imag[l];
+        const tImag = uReal * imag[l] + uImag * real[l];
+        
+        real[l] = real[k] - tReal;
+        imag[l] = imag[k] - tImag;
+        
+        real[k] += tReal;
+        imag[k] += tImag;
+        
+        const nextUReal = uReal * wReal - uImag * wImag;
+        uImag = uReal * wImag + uImag * wReal;
+        uReal = nextUReal;
+      }
+    }
+  }
+  
+  // Calculate magnitudes and count peaks
+  const threshold = Math.sqrt(Math.log(1 / 0.05) * n);
+  const n0 = 0.95 * (n / 2);
+  let n1 = 0;
+  
+  // Due to symmetry, only check first n/2 elements
+  for (let i = 0; i < n / 2; i++) {
+    const mag = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
+    if (mag < threshold) n1++;
+  }
+  
+  const d = (n1 - n0) / Math.sqrt(n * 0.95 * 0.05 / 4);
+  return d;
+}
+
 // Engine Wrappers
 async function runKeygen(): Promise<{ pk: string; sk: string }> {
   const { stdout } = await execa(RUST_CMD[0], ['keygen'], { cwd: RUST_CWD });
@@ -225,6 +305,7 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
   const runsRatio = runsTest(ctBytes);
   const blockFreq = blockFrequency(ctBytes);
   const cusum = cumulativeSums(ctBytes);
+  const spectral = spectralTest(ctBytes);
 
   onProgress('Strict Avalanche Criterion (SAC)', 40);
   const payloadStr = 'CRYPTOGRAPHIC_AVALANCHE_TEST_PAYLOAD_1234567890';
@@ -285,5 +366,6 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
     time_variance: timeVariance,
     block_frequency: blockFreq,
     cumulative_sums: cusum,
+    spectral_dft: spectral,
   };
 }

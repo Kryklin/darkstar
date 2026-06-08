@@ -566,6 +566,7 @@ const CryptoAnalysisRunner = ({ onComplete }: { onComplete: () => void }) => {
             <Text color="#F8FAFC">Time Variance: <Text color="#10B981">{result.time_variance.toFixed(4)}%</Text></Text>
             <Text color="#F8FAFC">Block Frequency (χ²): <Text color="#10B981">{result.block_frequency.toFixed(4)}</Text></Text>
             <Text color="#F8FAFC">Cumulative Sums: <Text color="#10B981">{result.cumulative_sums.toFixed(4)}</Text></Text>
+            <Text color="#F8FAFC">Discrete Fourier Transform: <Text color="#10B981">{result.spectral_dft.toFixed(4)}</Text></Text>
           </Box>
         )}
       </Box>
