@@ -337,6 +337,10 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
   ];
   
   if (step === 0) {
+    return <ScaffoldRunner onComplete={() => setStep(1)} autoAdvance={true} />;
+  }
+
+  if (step === 1) {
     const coreJobs = [
       { name: '  ├── Core: Rust', cmd: 'docker compose -f docker-compose.yml build -q dasp-rust' },
       { name: '  ├── Core: C', cmd: 'docker compose -f docker-compose.yml build -q dasp-c' },
@@ -354,12 +358,12 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
         autoAdvance={true}
         successMsg="Core Infrastructure Initialized. Proceeding to Matrix..." 
         failMsg="Core Compilation Failed" 
-        onComplete={() => setStep(1)} 
+        onComplete={() => setStep(2)} 
       />
     );
   }
 
-  if (step === 1) {
+  if (step === 2) {
     const jobs = wrappers.map((w, i) => ({
       name: `${i === wrappers.length - 1 ? '  └──' : '  ├──'} Wrapper: ${w}`,
       cmd: `docker compose -f docker-compose.yml build -q dasp-${w}`
@@ -375,7 +379,7 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
         autoAdvance={true}
         successMsg="Containers Built Successfully. Proceeding to Benchmark..." 
         failMsg="Container Build Failed" 
-        onComplete={() => setStep(2)} 
+        onComplete={() => setStep(3)} 
       />
     );
   }

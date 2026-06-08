@@ -472,7 +472,7 @@ export const BuildEnginesRunner = ({ onComplete }: { onComplete: () => void }) =
 };
 
 // ─── ScaffoldRunner ───
-export const ScaffoldRunner = ({ onComplete }: { onComplete: () => void }) => {
+export const ScaffoldRunner = ({ onComplete, autoAdvance = false }: { onComplete: () => void, autoAdvance?: boolean }) => {
   const [done, setDone] = useState(false);
   const [messages, setMessages] = useState<string[]>(['Initializing scaffolding sequence...']);
 
@@ -507,13 +507,14 @@ export const ScaffoldRunner = ({ onComplete }: { onComplete: () => void }) => {
         ];
 
         for (const w of wrappers) {
-          await wait(50);
+          if (!autoAdvance) await wait(50);
           setMessages(p => [...p, `Scaffolding ${w.name} Wrapper...`]);
           fs.writeFileSync(path.join(outDir, w.file), w.code);
         }
 
-        await wait(200);
+        if (!autoAdvance) await wait(200);
         setMessages(p => [...p, 'Successfully generated 16 wrappers in ./out-wrappers/!']);
+        if (autoAdvance) setTimeout(onComplete, 800);
       } catch (err: any) {
         setMessages(p => [...p, `Error: ${err.message}`]);
       }
@@ -530,7 +531,7 @@ export const ScaffoldRunner = ({ onComplete }: { onComplete: () => void }) => {
         ))}
       </Box>
       <Box height={2} width={80} alignItems="center" justifyContent="center">
-        {done && <PressEnterToContinue onEnter={onComplete} />}
+        {done && !autoAdvance && <PressEnterToContinue onEnter={onComplete} />}
       </Box>
     </Box>
   );
