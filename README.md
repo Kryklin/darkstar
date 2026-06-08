@@ -44,9 +44,9 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 
 | Engine        | Casca Time | Casca CPB | Ops/sec      | Throughput (MB/s) |
 | :------------ | :--------- | :-------- | :----------- | :---------------- |
-| **CUDA**      | 150 μs     | **7.54**  | **6,666.67** | **442.5**         |
-| **Rust**      | 179 μs     | 9.00      | 5,587.00     | 370.9             |
-| **C**         | 388 μs     | 19.50     | 2,577.32     | 171.1             |
+| **CUDA**      | 156.44 μs  | **7.64**  | **6,392**    | **437.0**         |
+| **Rust**      | **134.91 μs** | **6.59** | **7,412**    | **506.7**         |
+| **C**         | 249.55 μs  | 12.19     | 4,007        | 273.9             |
 
 ### 🏎️ Synthetic GPU Benchmarks (CUDA)
 

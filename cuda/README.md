@@ -97,10 +97,10 @@ Based on the latest benchmarking session (`interop`), the CUDA engine achieved t
 
 | Metric | Recorded Value |
 | :--- | :--- |
-| **Total Pipeline Time** | `155.2 μs` |
-| **ASP Cascade Time** | `155 μs` |
-| **Total CPB** | `5.63` |
-| **Ops/sec** | `6443.30` |
+| **Cascade Time** | `156.44 μs` |
+| **Cascade CPB** | `7.64` |
+| **Ops/sec** | `6,392` |
+| **Throughput** | `437.0 MB/s` |
 
 ---
 
