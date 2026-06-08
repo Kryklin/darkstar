@@ -10,7 +10,7 @@ import { runKatVerification, KatResult } from './tests/kat.js';
 import { runGpuTest, GpuTestResult } from './tests/gpu.js';
 import { CryptoAnalysisResult, runCryptoAnalysis } from './tests/analyze.js';
 import SelectInput from 'ink-select-input';
-import { ShellJobRunner, ScriptRunner, CleanRunner, EnvCheckRunner, BumpRunner, BuildEnginesRunner, ScaffoldRunner as AutomatedScaffoldRunner } from './runners.js';
+import { ShellJobRunner, ScriptRunner, CleanRunner, EnvCheckRunner, BumpRunner, BuildEnginesRunner } from './runners.js';
 
 
 const require = createRequire(import.meta.url);
@@ -84,7 +84,7 @@ const AnimatedHeader = ({ terminalHeight }: { terminalHeight: number }) => {
 const items = [
   { isSeparator: true, label: '─── Build ────────────────────────────────────────────────', color: '#F8FAFC' },
   { label: '⚙ Compile Engines (Rust, C, CUDA)', value: 'build-engines', color: '#10B981' },
-  { label: '⚙ Generate Language Wrapper', value: 'scaffold-wrapper', color: '#10B981' },
+
   { label: '◉ Environment Preflight', value: 'check-env', color: '#10B981' },
   { isSeparator: true, label: '─── Verification ─────────────────────────────────────────', color: '#F8FAFC' },
   { label: '◈ Interop Benchmark', value: 'interop', color: '#38BDF8' },
@@ -570,70 +570,7 @@ const CryptoAnalysisRunner = ({ onComplete }: { onComplete: () => void }) => {
   );
 };
 
-const ScaffoldRunner = ({ onComplete }: { onComplete: () => void }) => {
-  const [step, setStep] = useState(0);
-  const [lang, setLang] = useState('');
-  const [backend, setBackend] = useState<'wasm' | 'ffi' | ''>('');
-  const [result, setResult] = useState<{success: boolean, message: string} | null>(null);
 
-  const langChoices = [
-    { label: 'Node.js', value: 'Node.js' },
-    { label: 'Python', value: 'Python' },
-    { label: 'Browser JS', value: 'Browser JS' },
-    { label: 'Go', value: 'Go' },
-    { label: 'Ruby', value: 'Ruby' },
-    { label: 'PHP', value: 'PHP' },
-    { label: 'Elixir', value: 'Elixir' },
-    { label: 'C#', value: 'C#' },
-    { label: 'Java', value: 'Java' }
-  ];
-
-  const backendChoices = [
-    { label: 'WASM (WebAssembly)', value: 'wasm' },
-    { label: 'C-FFI (Native Dynamic Library)', value: 'ffi' }
-  ];
-
-  useEffect(() => {
-    if (step === 2) {
-      try {
-        const projectRoot = path.join(__dirname, '../../');
-        const res = generateScaffold(lang, backend as 'wasm' | 'ffi', projectRoot);
-        setResult(res);
-        setStep(3);
-      } catch (err: any) {
-        console.error(err);
-      }
-    }
-  }, [step]);
-
-  return (
-    <Box flexDirection="column" padding={1} width={80} alignItems="center">
-      <Text color="#F8FAFC" bold>─── Generate Language Wrapper ───</Text>
-      
-      {step === 0 && (
-         <Box flexDirection="column" marginTop={1} alignItems="center">
-            <Text color="#38BDF8">Select Target Language:</Text>
-            <SelectInput items={langChoices} onSelect={(item) => { setLang(item.value); setStep(1); }} />
-         </Box>
-      )}
-
-      {step === 1 && (
-         <Box flexDirection="column" marginTop={1} alignItems="center">
-            <Text color="#38BDF8">Target Language: <Text color="#F8FAFC" bold>{lang}</Text></Text>
-            <Box marginTop={1}><Text color="#38BDF8">Select Backend Architecture:</Text></Box>
-            <SelectInput items={backendChoices} onSelect={(item) => { setBackend(item.value as 'wasm' | 'ffi'); setStep(2); }} />
-         </Box>
-      )}
-
-      {step === 3 && result && (
-         <Box flexDirection="column" marginTop={1} alignItems="center">
-            <Text color={result.success ? "#10B981" : "#D946EF"}>{result.message}</Text>
-            <PressEnterToContinue onEnter={onComplete} />
-         </Box>
-      )}
-    </Box>
-  );
-};
 
 (async () => {
   const { default: chalk } = await import('chalk');
@@ -707,10 +644,7 @@ const ScaffoldRunner = ({ onComplete }: { onComplete: () => void }) => {
         await runComponent(CryptoAnalysisRunner);
         continue;
       }
-      if (action === 'scaffold-wrapper') {
-        await runComponent(ScaffoldRunner);
-        continue;
-      }
+
       if (action === 'check-env') {
         await runComponent(EnvCheckRunner);
         continue;
@@ -761,14 +695,11 @@ const ScaffoldRunner = ({ onComplete }: { onComplete: () => void }) => {
       }
       if (action === 'publish') {
         await runComponent(BuildEnginesRunner);
-        await runComponent(ScaffoldRunner);
+
         await runComponent(ScriptRunner, { title: "Publish Engine Artifacts", cmd: CMD.PUBLISH_ENGINES });
         continue;
       }
-      if (action === 'scaffold-wrapper') {
-        await runComponent(ScaffoldRunner);
-        continue;
-      }
+
       if (action === 'bump') {
         await runComponent(BumpRunner);
         continue;
