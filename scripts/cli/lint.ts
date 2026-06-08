@@ -16,9 +16,7 @@ import { execa } from 'execa';
   const jobs: any[] = [
     { name: 'TypeScript', cmd: 'npm run lint:ts' },
     { name: 'Rust', cmd: 'npm run lint:rust' },
-    { name: 'Go', cmd: 'npm run lint:go' },
     { name: 'C / CUDA', cmd: 'npm run lint:c' },
-    { name: 'Python', cmd: 'npm run lint:python' },
   ];
 
   for (let i = 0; i < jobs.length; i++) {

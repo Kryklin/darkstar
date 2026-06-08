@@ -365,7 +365,7 @@ impl DarkstarCrypt {
 
         let mut chain_hasher = Sha256::new();
         chain_hasher.update(b"dasp-chain-");
-        chain_hasher.update(&active_password_bytes);
+        chain_hasher.update(active_password_bytes);
         let mut chain_state = chain_hasher.finalize().to_vec();
 
         let mut rng = DarkstarChaChaPRNG::new(word_key_str);
@@ -560,7 +560,7 @@ impl DarkstarCrypt {
 
         let mut chain_hasher = Sha256::new();
         chain_hasher.update(b"dasp-chain-");
-        chain_hasher.update(&active_password_bytes);
+        chain_hasher.update(active_password_bytes);
         let mut chain_state = chain_hasher.finalize().to_vec();
 
         let mut rng = DarkstarChaChaPRNG::new(word_key_str);

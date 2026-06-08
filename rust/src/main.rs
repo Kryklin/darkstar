@@ -102,20 +102,18 @@ fn main() {
             }
         }
         "stream-decrypt" => {
-            if raw_args.len() < 1 {
+            if raw_args.is_empty() {
                 print_usage();
                 return;
             }
             let sk_hex = resolve_arg(&raw_args[0]);
             let stdin = std::io::stdin();
-            for line in stdin.lines() {
-                if let Ok(data) = line {
-                    let data = data.trim();
-                    if data.is_empty() { continue; }
-                    match dc.decrypt(&data, &sk_hex, hwid.clone(), telemetry) {
-                        Ok(decrypted) => println!("{}", decrypted),
-                        Err(_) => println!("{{\"error\":\"MAC Failed\"}}")
-                    }
+            for data in stdin.lines().map_while(Result::ok) {
+                let data = data.trim();
+                if data.is_empty() { continue; }
+                match dc.decrypt(data, &sk_hex, hwid.clone(), telemetry) {
+                    Ok(decrypted) => println!("{}", decrypted),
+                    Err(_) => println!("{{\"error\":\"MAC Failed\"}}")
                 }
             }
         }
