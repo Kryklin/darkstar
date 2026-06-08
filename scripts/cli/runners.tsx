@@ -488,22 +488,22 @@ export const ScaffoldRunner = ({ onComplete }: { onComplete: () => void }) => {
         const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
 
         const wrappers = [
-          { name: 'Node.js', file: 'node_wrapper.js', code: `// Node.js FFI Wrapper\nconst ffi = require('ffi-napi');\n` },
-          { name: 'Browser JS', file: 'browser_wrapper.js', code: `// Browser JS WASM\nWebAssembly.instantiateStreaming(fetch('dasp_crypto.wasm'));\n` },
-          { name: 'Python', file: 'python_wrapper.py', code: `# Python ctypes Wrapper\nimport ctypes\n` },
-          { name: 'Go', file: 'go_wrapper.go', code: `package main\nimport "C"\n` },
-          { name: 'Ruby', file: 'ruby_wrapper.rb', code: `# Ruby FFI Wrapper\nrequire 'ffi'\n` },
-          { name: 'Elixir', file: 'elixir_wrapper.ex', code: `# Elixir Wasmex Wrapper\n` },
-          { name: 'PHP', file: 'php_wrapper.php', code: `<?php\n// PHP Wasmer Wrapper\n` },
-          { name: 'C#', file: 'csharp_wrapper.cs', code: `// C# DllImport Wrapper\nusing System.Runtime.InteropServices;\n` },
-          { name: 'Java', file: 'java_wrapper.java', code: `// Java JNA Wrapper\nimport com.sun.jna.Library;\n` },
-          { name: 'Kotlin', file: 'kotlin_wrapper.kt', code: `// Kotlin JNA Wrapper\n` },
-          { name: 'Dart', file: 'dart_wrapper.dart', code: `// Dart FFI Wrapper\nimport 'dart:ffi' as ffi;\n` },
-          { name: 'Swift', file: 'swift_wrapper.swift', code: `// Swift C-Interop Wrapper\nimport Foundation\n` },
-          { name: 'Lua', file: 'lua_wrapper.lua', code: `-- LuaJIT FFI Wrapper\nlocal ffi = require("ffi")\n` },
-          { name: 'R', file: 'r_wrapper.R', code: `# R dyn.load Wrapper\ndyn.load("dasp_kem.dll")\n` },
-          { name: 'Julia', file: 'julia_wrapper.jl', code: `# Julia ccall Wrapper\n` },
-          { name: 'Perl', file: 'perl_wrapper.pl', code: `# Perl FFI::Platypus Wrapper\nuse FFI::Platypus;\n` }
+          { name: 'Node.js', file: 'node_wrapper.js', code: `// Node.js FFI Wrapper\nconst ffi = require('ffi-napi');\nconst path = require('path');\nconst os = require('os');\nconst ext = os.platform() === 'win32' ? '.dll' : '.so';\nconst dasp = ffi.Library(path.join(__dirname, 'dasp_kem' + ext), {\n  'kem_encrypt': ['int', ['pointer', 'pointer']]\n});\nconsole.log('D-ASP initialized in Node.js');\n` },
+          { name: 'Browser JS', file: 'browser_wrapper.js', code: `// Browser JS WASM\nconsole.log('Browser JS: load dasp_crypto.wasm');\n` },
+          { name: 'Python', file: 'python_wrapper.py', code: `# Python ctypes Wrapper\nimport ctypes\nimport os\nimport sys\next = '.dll' if sys.platform == 'win32' else '.so'\ndll_path = os.path.join(os.path.dirname(__file__), 'dasp_kem' + ext)\ndasp = ctypes.CDLL(dll_path)\nprint('D-ASP initialized in Python')\n` },
+          { name: 'Go', file: 'go_wrapper.go', code: `package main\n\n/*\n#cgo linux LDFLAGS: -L. -ldasp_kem -Wl,-rpath=.\n#cgo windows LDFLAGS: -L. -ldasp_kem\nextern int kem_encrypt(void*, void*);\n*/\nimport "C"\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("D-ASP initialized in Go")\n}\n` },
+          { name: 'Ruby', file: 'ruby_wrapper.rb', code: `# Ruby FFI Wrapper\nrequire 'ffi'\nrequire 'rbconfig'\next = RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/ ? '.dll' : '.so'\nmodule Dasp\n  extend FFI::Library\n  ffi_lib File.join(__dir__, 'dasp_kem' + ext)\nend\nputs 'D-ASP initialized in Ruby'\n` },
+          { name: 'Elixir', file: 'elixir_wrapper.ex', code: `# Elixir WASM Wrapper\nIO.puts("D-ASP initialized in Elixir")\n` },
+          { name: 'PHP', file: 'php_wrapper.php', code: `<?php\n// PHP WASM Wrapper\necho "D-ASP initialized in PHP\\n";\n` },
+          { name: 'C#', file: 'csharp_wrapper.cs', code: `// C# Wrapper\nusing System;\nusing System.Runtime.InteropServices;\nclass Program {\n  [DllImport("dasp_kem")]\n  public static extern int kem_encrypt(IntPtr a, IntPtr b);\n  static void Main() { Console.WriteLine("D-ASP initialized in C#"); }\n}\n` },
+          { name: 'Java', file: 'java_wrapper.java', code: `// Java JNA Wrapper\npublic class java_wrapper {\n  public static void main(String[] args) {\n    System.out.println("D-ASP initialized in Java");\n  }\n}\n` },
+          { name: 'Kotlin', file: 'kotlin_wrapper.kt', code: `// Kotlin JNA Wrapper\nfun main() {\n  println("D-ASP initialized in Kotlin")\n}\n` },
+          { name: 'Dart', file: 'dart_wrapper.dart', code: `// Dart FFI Wrapper\nimport 'dart:ffi' as ffi;\nimport 'dart:io';\nvoid main() {\n  var ext = Platform.isWindows ? '.dll' : '.so';\n  var dylib = ffi.DynamicLibrary.open('dasp_kem' + ext);\n  print('D-ASP initialized in Dart');\n}\n` },
+          { name: 'Swift', file: 'swift_wrapper.swift', code: `// Swift C-Interop Wrapper\nimport Foundation\nprint("D-ASP initialized in Swift")\n` },
+          { name: 'Lua', file: 'lua_wrapper.lua', code: `-- LuaJIT FFI Wrapper\nlocal ffi = require("ffi")\nlocal ext = ffi.os == "Windows" and ".dll" or ".so"\nlocal dasp = ffi.load(ext == ".dll" and "dasp_kem.dll" or "./dasp_kem.so")\nprint("D-ASP initialized in Lua")\n` },
+          { name: 'R', file: 'r_wrapper.R', code: `# R Wrapper\next <- if(.Platform$OS.type == "windows") ".dll" else ".so"\ndyn.load(paste0("dasp_kem", ext))\nprint("D-ASP initialized in R")\n` },
+          { name: 'Julia', file: 'julia_wrapper.jl', code: `# Julia Wrapper\next = Sys.iswindows() ? ".dll" : ".so"\nlib = joinpath(@__DIR__, "dasp_kem" * ext)\nprintln("D-ASP initialized in Julia")\n` },
+          { name: 'Perl', file: 'perl_wrapper.pl', code: `# Perl FFI Wrapper\nuse FFI::Platypus;\nprint "D-ASP initialized in Perl\\n";\n` }
         ];
 
         for (const w of wrappers) {

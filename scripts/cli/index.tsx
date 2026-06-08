@@ -331,10 +331,19 @@ const InteropTestRunner = ({ title = "Hardware Interoperability Benchmark", useD
 const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
   const [step, setStep] = useState(0);
 
+  const wrappers = [
+    'node', 'python', 'go', 'ruby', 'elixir', 'php', 'csharp', 
+    'java', 'kotlin', 'dart', 'swift', 'lua', 'r', 'julia', 'perl'
+  ];
+  
   const jobs = [
-    { name: 'Build Rust Container', cmd: 'docker compose -f docker-compose.yml build dasp-rust' },
-    { name: 'Build C Container', cmd: 'docker compose -f docker-compose.yml build dasp-c' },
-    { name: 'Build CUDA Container', cmd: 'docker compose -f docker-compose.yml build dasp-cuda' }
+    { name: 'Build Core: Rust', cmd: 'docker compose -f docker-compose.yml build dasp-rust' },
+    { name: 'Build Core: C', cmd: 'docker compose -f docker-compose.yml build dasp-c' },
+    { name: 'Build Core: CUDA', cmd: 'docker compose -f docker-compose.yml build dasp-cuda' },
+    ...wrappers.map(w => ({
+      name: `Build Wrapper: ${w}`,
+      cmd: `docker compose -f docker-compose.yml build dasp-${w}`
+    }))
   ];
 
   if (step === 0) {
