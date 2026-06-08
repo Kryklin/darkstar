@@ -278,7 +278,7 @@ const InteropTestRunner = ({ title = "Hardware Interoperability Benchmark", useD
                 <Text color="#F8FAFC" bold>{lang}</Text>
                 <Box marginTop={1}>
                   <Text color={color}>
-                    {r ? (r.status === 'PASS' ? `✔ ${r.total_cpb.toFixed(2)} cpb` : '✖ Failed') : isCurrent ? `${spin[tick % 10]} ${prog}% [${'█'.repeat(Math.floor(prog / 10))}${'░'.repeat(10 - Math.floor(prog / 10))}]` : '○ Pending'}
+                    {r ? (r.status === 'PASS' ? `✔ ${r.casca_cpb.toFixed(2)} cpb` : '✖ Failed') : isCurrent ? `${spin[tick % 10]} ${prog}% [${'█'.repeat(Math.floor(prog / 10))}${'░'.repeat(10 - Math.floor(prog / 10))}]` : '○ Pending'}
                   </Text>
                 </Box>
               </Box>
