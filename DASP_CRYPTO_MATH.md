@@ -113,16 +113,14 @@ To combat OS-level RAM scraping and Side-Channel leakage:
 
 ## 5. Constant-Time Analysis & Security Posture
 
-### 5.1 Native Compliance (Rust/Go/C)
+### 5.1 Native Compliance (Rust/C)
 
 > [!IMPORTANT]
-> **Full Constant-Time (CT) Enforcement**. Rust, Go, and C engines utilize architecture-specific primitives (`wrapping_sub`, `atomic` masks, native bitwise logic) to ensure execution time is independent of the secret permutation state.
+> **Full Constant-Time (CT) Enforcement**. Rust and C engines utilize architecture-specific primitives (`wrapping_sub`, `atomic` masks, native bitwise logic) to ensure execution time is independent of the secret permutation state.
 
-### 5.2 Managed Compliance (WASM)
 
-While high-level runtimes introduce jitter (jitter != side-channel), the **D-ASP V3** WASM implementation mirrors the 32-bit ARX mathematical operations natively. WebAssembly guarantees execution within its sandboxed runtime without runtime garbage collection interrupting the cascade itself.
 
-### 5.3 Hardware Intrinsics & Entropy Cascade
+### 5.2 Hardware Intrinsics & Entropy Cascade
 
 - **AVX2 SIMD**: C and Rust map the 32-byte state directly to `__m256i` registers, processing 8 words per clock cycle.
 - **CUDA PTX**: GPUs utilize `uint4` memory transactions and `__funnelshift_l` for pure silicon efficiency.

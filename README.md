@@ -16,10 +16,8 @@
 </p>
 <p align="center">
   <a href="rust/README.md"><img src="https://img.shields.io/badge/Rust-black?style=for-the-badge&logo=rust&logoColor=white" alt="Rust"></a>
-  <a href="WASM_README.md"><img src="https://img.shields.io/badge/WebAssembly-654FF0?style=for-the-badge&logo=webassembly&logoColor=white" alt="WASM"></a>
   <a href="c/README.md"><img src="https://img.shields.io/badge/C-A8B9CC?style=for-the-badge&logo=c&logoColor=white" alt="C"></a>
   <a href="cuda/README.md"><img src="https://img.shields.io/badge/CUDA-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="CUDA"></a>
-  <a href="zig/README.md"><img src="https://img.shields.io/badge/Zig-F7A41D?style=for-the-badge&logo=zig&logoColor=white" alt="Zig"></a>
 </p>
 
 ## 📚 Documentation Hub
@@ -35,7 +33,7 @@ Explore the architecture and specifications of the D-ASP suite:
 | [**Security Policy**](SECURITY.md)                    | Vulnerability disclosure and audit policies.          |
 | [**Contributing**](CONTRIBUTING.md)                   | Guidelines for engine optimization and PR submission. |
 
-The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Rust**, **C**, **CUDA**, and **Zig**.
+The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Rust**, **C**, and **CUDA**.
 
 ---
 
@@ -47,7 +45,6 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 | :------------ | :----------- | :--------- | :-------- | :-------- | :----------- |
 | **CUDA**      | **200.8 μs** | 201 μs     | **7.28**  | **7.28**  | **4,981.32** |
 | **Rust**      | 4.050 ms     | 234 μs     | 8.49      | 146.94    | 4,273.50     |
-| **Zig**       | 326.9 μs     | 327 μs     | 11.86     | 11.86     | 3,058.57     |
 | **C**         | 2.784 ms     | 553 μs     | 20.06     | 101.02    | 1,808.48     |
 
 > [!NOTE]
@@ -85,7 +82,6 @@ All implementations are designed as **high-performance, standalone sources** to 
 | **Rust**      | `rust/src/main.rs`    | ML-KEM / ASP Cascade 16         | [📖 Rust Guide](rust/README.md)     |
 | **C/C++**     | `c/spna_engine.c`     | FFI ML-KEM / ASP Cascade 16     | [📖 C/C++ Guide](c/README.md)       |
 | **CUDA**      | `cuda/dasp_kernel.cu` | Native ML-KEM / ASP Cascade GPU | [📖 CUDA Guide](cuda/README.md)     |
-| **Zig**       | `zig/main.zig`        | SIMD ML-KEM / ASP Cascade 16    | [📖 Zig Guide](zig/README.md)       |
 
 ---
 
