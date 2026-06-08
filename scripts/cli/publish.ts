@@ -52,7 +52,8 @@ const pkg = require('../../package.json');
     { name: 'rust-engine-windows-x64.zip', cwd: 'rust/target/release', files: ['d-asp.exe'] },
     { name: 'c-engine-windows-x64.zip', cwd: 'c', files: ['dasp.exe', 'dasp_kem.dll', 'dasp.lib'] },
     { name: 'cuda-engine-windows-x64.zip', cwd: 'cuda', files: ['d-asp_cuda.exe', 'd-asp_cuda.lib', 'd-asp_cuda.exp'] },
-    { name: 'wasm-engine-windows-x64.zip', cwd: 'wasm', files: ['dasp_crypto.wasm'] }
+    { name: 'wasm-engine-windows-x64.zip', cwd: 'wasm', files: ['dasp_crypto.wasm'] },
+    { name: 'language-wrappers.zip', cwd: 'out-wrappers', files: ['node_wrapper.js', 'python_wrapper.py', 'go_wrapper.go'] }
   ];
 
   console.log(chalk.cyan(`\n📦 Packaging ${engines.length} engines into ${outDir}...\n`));

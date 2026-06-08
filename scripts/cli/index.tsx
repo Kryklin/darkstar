@@ -731,6 +731,7 @@ const ScaffoldRunner = ({ onComplete }: { onComplete: () => void }) => {
       }
       if (action === 'publish') {
         await runComponent(BuildEnginesRunner);
+        await runComponent(ScaffoldRunner);
         await runComponent(ScriptRunner, { title: "Publish Engine Artifacts", cmd: CMD.PUBLISH_ENGINES });
         continue;
       }
