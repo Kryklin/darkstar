@@ -353,7 +353,7 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
         key={step}
         title="Headless Docker Test (Phase 1: Multi-Stage Core Builder)" 
         jobs={coreJobs} 
-        concurrent={true}
+        concurrent={false}
         boxLayout={false}
         autoAdvance={true}
         successMsg="Core Infrastructure Initialized. Proceeding to Matrix..." 
@@ -374,7 +374,7 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
         key={step}
         title="Headless Docker Test (Phase 2: Build Matrix)" 
         jobs={jobs} 
-        concurrent={true}
+        concurrent={false}
         boxLayout={false}
         autoAdvance={true}
         successMsg="Containers Built Successfully. Proceeding to Benchmark..." 
