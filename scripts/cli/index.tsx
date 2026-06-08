@@ -292,10 +292,8 @@ const InteropTestRunner = ({ title = "Hardware Interoperability Benchmark", useD
         <Box paddingX={1} marginBottom={1}>
           <Box width={10}><Text color="#94A3B8" bold>ENGINE</Text></Box>
           <Box width={10}><Text color="#94A3B8" bold>STATUS</Text></Box>
-          <Box width={14}><Text color="#94A3B8" bold>TOTAL TIME</Text></Box>
           <Box width={15}><Text color="#94A3B8" bold>CASCADE TIME</Text></Box>
           <Box width={15}><Text color="#94A3B8" bold>CASCADE CPB</Text></Box>
-          <Box width={15}><Text color="#94A3B8" bold>TOTAL CPB</Text></Box>
           <Box width={15}><Text color="#94A3B8" bold>PERFORMANCE</Text></Box>
         </Box>
         
@@ -303,10 +301,8 @@ const InteropTestRunner = ({ title = "Hardware Interoperability Benchmark", useD
           <Box key={i} paddingX={1} backgroundColor={i % 2 === 0 ? '#0F172A' : undefined}>
             <Box width={10}><Text color="#F8FAFC">{r.engine}</Text></Box>
             <Box width={10}><Text color={r.status === 'PASS' ? '#10B981' : '#EF4444'} bold>{r.status}</Text></Box>
-            <Box width={14}><Text color="#38BDF8">{r.mean_ms.toFixed(2)} ms</Text></Box>
             <Box width={15}><Text color="#38BDF8">{r.casca_us.toFixed(2)} μs</Text></Box>
             <Box width={15}><Text color="#F59E0B">{r.casca_cpb.toFixed(2)} cpb</Text></Box>
-            <Box width={15}><Text color="#F59E0B">{r.total_cpb.toFixed(2)} cpb</Text></Box>
             <Box width={15}><Text color="#00E5FF">{r.ops_sec.toLocaleString(undefined, {maximumFractionDigits: 0})} ops/s</Text></Box>
           </Box>
         ))}
