@@ -342,7 +342,7 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
         title="Headless Docker Test (Phase 1: Build Base Builder)" 
         jobs={[{ name: 'Build Multi-Stage C-Builder', cmd: 'docker compose -f docker-compose.yml build dasp-builder' }]} 
         concurrent={false}
-        boxLayout={true}
+        boxLayout={false}
         autoAdvance={true}
         successMsg="Builder Initialized. Proceeding to Matrix..." 
         failMsg="Builder Compilation Failed" 
@@ -367,7 +367,7 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
         title="Headless Docker Test (Phase 2: Build Matrix)" 
         jobs={jobs} 
         concurrent={true}
-        boxLayout={true}
+        boxLayout={false}
         autoAdvance={true}
         successMsg="Containers Built Successfully. Proceeding to Benchmark..." 
         failMsg="Container Build Failed" 
