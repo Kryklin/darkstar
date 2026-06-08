@@ -337,33 +337,37 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
   ];
   
   if (step === 0) {
+    const coreJobs = [
+      { name: '  ├── Core: Rust', cmd: 'docker compose -f docker-compose.yml build dasp-rust' },
+      { name: '  ├── Core: C', cmd: 'docker compose -f docker-compose.yml build dasp-c' },
+      { name: '  ├── Core: CUDA', cmd: 'docker compose -f docker-compose.yml build dasp-cuda' },
+      { name: '  └── Base Builder (Shared)', cmd: 'docker compose -f docker-compose.yml build dasp-builder' }
+    ];
+
     return (
       <ShellJobRunner 
-        title="Headless Docker Test (Phase 1: Build Base Builder)" 
-        jobs={[{ name: 'Build Multi-Stage C-Builder', cmd: 'docker compose -f docker-compose.yml build dasp-builder' }]} 
-        concurrent={false}
+        key={step}
+        title="Headless Docker Test (Phase 1: Multi-Stage Core Builder)" 
+        jobs={coreJobs} 
+        concurrent={true}
         boxLayout={false}
         autoAdvance={true}
-        successMsg="Builder Initialized. Proceeding to Matrix..." 
-        failMsg="Builder Compilation Failed" 
+        successMsg="Core Infrastructure Initialized. Proceeding to Matrix..." 
+        failMsg="Core Compilation Failed" 
         onComplete={() => setStep(1)} 
       />
     );
   }
 
   if (step === 1) {
-    const jobs = [
-      { name: 'Build Core: Rust', cmd: 'docker compose -f docker-compose.yml build dasp-rust' },
-      { name: 'Build Core: C', cmd: 'docker compose -f docker-compose.yml build dasp-c' },
-      { name: 'Build Core: CUDA', cmd: 'docker compose -f docker-compose.yml build dasp-cuda' },
-      ...wrappers.map(w => ({
-        name: `Build Wrapper: ${w}`,
-        cmd: `docker compose -f docker-compose.yml build dasp-${w}`
-      }))
-    ];
+    const jobs = wrappers.map((w, i) => ({
+      name: `${i === wrappers.length - 1 ? '  └──' : '  ├──'} Wrapper: ${w}`,
+      cmd: `docker compose -f docker-compose.yml build dasp-${w}`
+    }));
 
     return (
       <ShellJobRunner 
+        key={step}
         title="Headless Docker Test (Phase 2: Build Matrix)" 
         jobs={jobs} 
         concurrent={true}
