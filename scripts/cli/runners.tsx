@@ -140,6 +140,7 @@ export const ScriptRunner = ({ title, cmd, cwd, onComplete }: {
   const [done, setDone] = useState(false);
   const [success, setSuccess] = useState(true);
   const [tick, setTick] = useState(0);
+  const [stats, setStats] = useState({ durationMs: 0, logLines: 0, logFile: '' });
 
   useEffect(() => {
     const t = setInterval(() => setTick(f => f + 1), 80);
@@ -149,10 +150,24 @@ export const ScriptRunner = ({ title, cmd, cwd, onComplete }: {
   useEffect(() => {
     (async () => {
       const { execa } = await import('execa');
+      const start = Date.now();
+      let lineCount = 0;
+      
+      const logDir = path.join(process.cwd(), 'logs');
+      if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+      const safeTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const logFile = path.join(logDir, `${safeTitle}_${start}.log`);
+      const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+      logStream.write(`--- Execution Started: ${new Date(start).toISOString()} ---\n`);
+      logStream.write(`Command: ${cmd}\n\n`);
+
       try {
         const proc = execa(cmd, { shell: true, cwd: cwd || process.cwd() });
         const onData = (data: Buffer) => {
-          const newLines = stripAnsi(data.toString()).split('\n').filter((l: string) => l.trim());
+          const raw = data.toString();
+          logStream.write(stripAnsi(raw));
+          const newLines = stripAnsi(raw).split('\n').filter((l: string) => l.trim());
+          lineCount += newLines.length;
           setLines(prev => [...prev.slice(-20), ...newLines]);
         };
         proc.stdout?.on('data', onData);
@@ -161,8 +176,15 @@ export const ScriptRunner = ({ title, cmd, cwd, onComplete }: {
       } catch (e: any) {
         setSuccess(false);
         const err = stripAnsi(e.stderr || e.stdout || e.message || '');
-        setLines(prev => [...prev, ...err.split('\n').filter(Boolean).slice(-5)]);
+        logStream.write(`\n--- ERROR ---\n${err}\n`);
+        const errLines = err.split('\n').filter(Boolean);
+        lineCount += errLines.length;
+        setLines(prev => [...prev, ...errLines.slice(-5)]);
       }
+      
+      logStream.write(`\n--- Execution Completed in ${Date.now() - start}ms ---\n`);
+      logStream.end();
+      setStats({ durationMs: Date.now() - start, logLines: lineCount, logFile });
       setDone(true);
     })();
   }, []);
@@ -178,9 +200,17 @@ export const ScriptRunner = ({ title, cmd, cwd, onComplete }: {
             {spin[tick % 10]} <Text color="#64748B" wrap="truncate-end">{lines[lines.length - 1]?.slice(0, 70) || 'Executing...'}</Text>
           </Text>
         ) : (
-          <Text color={success ? '#10B981' : '#EF4444'} bold>
-            {success ? `✔ ${title} Complete` : `✖ ${title} Failed`}
-          </Text>
+          <Box flexDirection="column" alignItems="center">
+            <Text color={success ? '#10B981' : '#EF4444'} bold>
+              {success ? `✔ ${title} Complete` : `✖ ${title} Failed`}
+            </Text>
+            <Box marginTop={1} padding={1} borderStyle="round" borderColor="#38BDF8" width={60} flexDirection="column">
+              <Text color="#F8FAFC" bold>Diagnostics & Stats</Text>
+              <Text color="#CBD5E1">Duration: {(stats.durationMs / 1000).toFixed(2)}s</Text>
+              <Text color="#CBD5E1">Log Lines Output: {stats.logLines}</Text>
+              <Text color="#CBD5E1">Log File: {stats.logFile}</Text>
+            </Box>
+          </Box>
         )}
       </Box>
       <Box flexDirection="column" alignItems="center" height={2}>
