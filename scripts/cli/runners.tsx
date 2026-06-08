@@ -413,10 +413,10 @@ export const BuildEnginesRunner = ({ onComplete }: { onComplete: () => void }) =
     (async () => {
       const { execa } = await import('execa');
       const engines = [
-        { id: 'rust', name: 'Rust Core Engine', cmd: 'npm run build:rust' },
-        { id: 'wasm', name: 'WASM Engine', cmd: 'npm run build:wasm' },
-        { id: 'c', name: 'C-FFI AVX2 Engine', cmd: 'npm run build:c' },
-        { id: 'cuda', name: 'CUDA GPU Pipeline', cmd: 'npm run build:cuda' }
+        { id: 'rust', name: '🦀 Rust Core Engine', cmd: 'npm run build:rust' },
+        { id: 'wasm', name: '🕸️ WASM Engine', cmd: 'npm run build:wasm' },
+        { id: 'c', name: '⚙️ C-FFI AVX2 Engine', cmd: 'npm run build:c' },
+        { id: 'cuda', name: '🟩 CUDA GPU Pipeline', cmd: 'npm run build:cuda' }
       ];
       
       for (const e of engines) {

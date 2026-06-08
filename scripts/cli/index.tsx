@@ -109,6 +109,8 @@ const items = [
   { label: '✕ Exit', value: 'exit', color: '#E11D48' },
 ];
 
+const ICONS: Record<string, string> = { Rust: '🦀', C: '⚙️', CUDA: '🟩' };
+
 const Menu = ({ onSelect, terminalHeight, hasLogo }: { onSelect: (val: string) => void, terminalHeight: number, hasLogo: boolean }) => {
   const [selectedIndex, setSelectedIndex] = useState(1);
   const [viewportStart, setViewportStart] = useState(0);
@@ -275,7 +277,7 @@ const InteropTestRunner = ({ title = "Hardware Interoperability Benchmark", useD
             const color = r ? (r.status === 'PASS' ? '#10B981' : '#EF4444') : isCurrent ? '#38BDF8' : '#64748B';
             return (
               <Box key={i} width={28} height={5} borderStyle="single" borderColor={color} flexDirection="column" alignItems="center" justifyContent="center">
-                <Text color="#F8FAFC" bold>{lang}</Text>
+                <Text color="#F8FAFC" bold>{ICONS[lang]} {lang}</Text>
                 <Box marginTop={1}>
                   <Text color={color}>
                     {r ? (r.status === 'PASS' ? `✔ ${r.casca_cpb.toFixed(2)} cpb` : '✖ Failed') : isCurrent ? `${spin[tick % 10]} ${prog}% [${'█'.repeat(Math.floor(prog / 10))}${'░'.repeat(10 - Math.floor(prog / 10))}]` : '○ Pending'}
@@ -300,7 +302,7 @@ const InteropTestRunner = ({ title = "Hardware Interoperability Benchmark", useD
         
         {results.map((r, i) => (
           <Box key={i} paddingX={1} backgroundColor={i % 2 === 0 ? '#0F172A' : undefined}>
-            <Box width={10}><Text color="#F8FAFC">{r.engine}</Text></Box>
+            <Box width={10}><Text color="#F8FAFC">{ICONS[r.engine]} {r.engine}</Text></Box>
             <Box width={10}><Text color={r.status === 'PASS' ? '#10B981' : '#EF4444'} bold>{r.status}</Text></Box>
             <Box width={15}><Text color="#38BDF8">{r.casca_us.toFixed(2)} μs</Text></Box>
             <Box width={15}><Text color="#F59E0B">{r.casca_cpb.toFixed(2)} cpb</Text></Box>
