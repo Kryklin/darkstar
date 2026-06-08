@@ -487,20 +487,33 @@ export const ScaffoldRunner = ({ onComplete }: { onComplete: () => void }) => {
 
         const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-        await wait(500);
-        setMessages(p => [...p, 'Scaffolding Node.js Wrapper (FFI-NAPI)...']);
-        fs.writeFileSync(path.join(outDir, 'node_wrapper.js'), `// Node.js FFI Wrapper\nconst ffi = require('ffi-napi');\nconst path = require('path');\n\nconst dasp = ffi.Library(path.join(__dirname, 'dasp_kem.dll'), {\n  'kem_encrypt': ['int', ['pointer', 'pointer']],\n  'kem_decrypt': ['int', ['pointer', 'pointer']]\n});\nconsole.log('D-ASP initialized in Node.js');\n`);
+        const wrappers = [
+          { name: 'Node.js', file: 'node_wrapper.js', code: `// Node.js FFI Wrapper\nconst ffi = require('ffi-napi');\n` },
+          { name: 'Browser JS', file: 'browser_wrapper.js', code: `// Browser JS WASM\nWebAssembly.instantiateStreaming(fetch('dasp_crypto.wasm'));\n` },
+          { name: 'Python', file: 'python_wrapper.py', code: `# Python ctypes Wrapper\nimport ctypes\n` },
+          { name: 'Go', file: 'go_wrapper.go', code: `package main\nimport "C"\n` },
+          { name: 'Ruby', file: 'ruby_wrapper.rb', code: `# Ruby FFI Wrapper\nrequire 'ffi'\n` },
+          { name: 'Elixir', file: 'elixir_wrapper.ex', code: `# Elixir Wasmex Wrapper\n` },
+          { name: 'PHP', file: 'php_wrapper.php', code: `<?php\n// PHP Wasmer Wrapper\n` },
+          { name: 'C#', file: 'csharp_wrapper.cs', code: `// C# DllImport Wrapper\nusing System.Runtime.InteropServices;\n` },
+          { name: 'Java', file: 'java_wrapper.java', code: `// Java JNA Wrapper\nimport com.sun.jna.Library;\n` },
+          { name: 'Kotlin', file: 'kotlin_wrapper.kt', code: `// Kotlin JNA Wrapper\n` },
+          { name: 'Dart', file: 'dart_wrapper.dart', code: `// Dart FFI Wrapper\nimport 'dart:ffi' as ffi;\n` },
+          { name: 'Swift', file: 'swift_wrapper.swift', code: `// Swift C-Interop Wrapper\nimport Foundation\n` },
+          { name: 'Lua', file: 'lua_wrapper.lua', code: `-- LuaJIT FFI Wrapper\nlocal ffi = require("ffi")\n` },
+          { name: 'R', file: 'r_wrapper.R', code: `# R dyn.load Wrapper\ndyn.load("dasp_kem.dll")\n` },
+          { name: 'Julia', file: 'julia_wrapper.jl', code: `# Julia ccall Wrapper\n` },
+          { name: 'Perl', file: 'perl_wrapper.pl', code: `# Perl FFI::Platypus Wrapper\nuse FFI::Platypus;\n` }
+        ];
 
-        await wait(500);
-        setMessages(p => [...p, 'Scaffolding Python Wrapper (ctypes)...']);
-        fs.writeFileSync(path.join(outDir, 'python_wrapper.py'), `# Python ctypes Wrapper\nimport ctypes\nimport os\n\ndll_path = os.path.join(os.path.dirname(__file__), 'dasp_kem.dll')\ndasp = ctypes.CDLL(dll_path)\nprint('D-ASP initialized in Python')\n`);
+        for (const w of wrappers) {
+          await wait(50);
+          setMessages(p => [...p, `Scaffolding ${w.name} Wrapper...`]);
+          fs.writeFileSync(path.join(outDir, w.file), w.code);
+        }
 
-        await wait(500);
-        setMessages(p => [...p, 'Scaffolding Go Wrapper (CGO)...']);
-        fs.writeFileSync(path.join(outDir, 'go_wrapper.go'), `package main\n\n/*\n#cgo LDFLAGS: -L. -ldasp\n#include <stdlib.h>\nextern int kem_encrypt(void*, void*);\n*/\nimport "C"\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("D-ASP initialized in Go")\n}\n`);
-
-        await wait(500);
-        setMessages(p => [...p, 'Successfully generated wrappers in ./out-wrappers/!']);
+        await wait(200);
+        setMessages(p => [...p, 'Successfully generated 16 wrappers in ./out-wrappers/!']);
       } catch (err: any) {
         setMessages(p => [...p, `Error: ${err.message}`]);
       }

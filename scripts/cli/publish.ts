@@ -53,7 +53,7 @@ const pkg = require('../../package.json');
     { name: 'c-engine-windows-x64.zip', cwd: 'c', files: ['dasp.exe', 'dasp_kem.dll', 'dasp.lib'] },
     { name: 'cuda-engine-windows-x64.zip', cwd: 'cuda', files: ['d-asp_cuda.exe', 'd-asp_cuda.lib', 'd-asp_cuda.exp'] },
     { name: 'wasm-engine-windows-x64.zip', cwd: 'wasm', files: ['dasp_crypto.wasm'] },
-    { name: 'language-wrappers.zip', cwd: 'out-wrappers', files: ['node_wrapper.js', 'python_wrapper.py', 'go_wrapper.go'] }
+    { name: 'language-wrappers.zip', cwd: 'out-wrappers', files: ['*'] }
   ];
 
   console.log(chalk.cyan(`\n📦 Packaging ${engines.length} engines into ${outDir}...\n`));
@@ -65,7 +65,10 @@ const pkg = require('../../package.json');
       // Constructing tar command for archiving
       const existingFiles = [];
       for (const file of engine.files) {
-        if (fs.existsSync(path.join(root, engine.cwd, file))) {
+        if (file === '*') {
+          const allFiles = fs.readdirSync(path.join(root, engine.cwd));
+          existingFiles.push(...allFiles);
+        } else if (fs.existsSync(path.join(root, engine.cwd, file))) {
           existingFiles.push(file);
         }
       }
