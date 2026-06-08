@@ -258,8 +258,7 @@ export const EnvCheckRunner = ({ onComplete }: { onComplete: () => void }) => {
         { name: 'C Compiler (clang)', cmd: 'clang', args: ['--version'], fallbackCmd: 'gcc', fallbackArgs: ['--version'] },
         { name: 'Rust (cargo)', cmd: 'cargo', args: ['--version'] },
         { name: 'CUDA (nvcc)', cmd: 'nvcc', args: ['--version'] },
-        { name: 'Python', cmd: 'python', args: ['--version'] },
-        { name: 'Node.js', cmd: 'node', args: ['--version'] },
+        { name: 'Docker Engine', cmd: 'docker', args: ['--version'] },
       ];
       const res: typeof checks = [];
       for (const dep of deps) {
