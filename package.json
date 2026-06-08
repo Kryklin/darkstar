@@ -18,6 +18,7 @@
     "build:c": "cd c && \"C:\\Program Files\\LLVM\\bin\\clang.exe\" -O3 -o dasp.exe main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c -I. -lws2_32 -luserenv -ladvapi32 -lbcrypt -mavx2 -fno-strict-aliasing",
     "build:cuda": "cd cuda && build_cuda.bat",
     "build:engines": "npm run build:rust && npm run build:wasm && npm run build:c && npm run build:cuda",
+    "test:gen-kat": "python scripts/tests/gen_kat_vectors.py",
     "lint:rust": "cd rust && cargo clippy -- -D warnings",
     "lint:c": "cd c && \"C:\\Program Files\\LLVM\\bin\\clang.exe\" -fsyntax-only -Wall -Wextra -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c -I.",
     "lint:engines": "npm run lint:rust && npm run lint:c",
