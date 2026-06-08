@@ -44,9 +44,9 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 
 | Engine        | Total Time   | Casca Time | Casca CPB | Total CPB | Ops/sec      |
 | :------------ | :----------- | :--------- | :-------- | :-------- | :----------- |
-| **CUDA**      | **168.4 μs** | 150 μs     | **5.45**  | **5.45**  | **5,938.24** |
-| **Rust**      | 692.0 μs     | 109 μs     | 4.12      | 24.35     | 1,445.08     |
-| **C**         | 1.842 ms     | 388 μs     | 14.15     | 65.41     | 2,125.80     |
+| **CUDA**      | **210.8 μs** | 150 μs     | **7.54**  | **10.59** | **6,666.67** |
+| **Rust**      | 760.0 μs     | 179 μs     | 9.00      | 38.20     | 5,587.00     |
+| **C**         | 1.842 ms     | 388 μs     | 19.50     | 92.58     | 2,577.32     |
 
 > [!NOTE]
 > Detailed structural requirements, CLI Usage, High-Throughput Streaming (CUDA) specs, and Known Answer Tests (KAT) are thoroughly documented in the [**Documentation Hub**](#-documentation-hub) above.
