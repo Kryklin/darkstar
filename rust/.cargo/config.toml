@@ -1,2 +1,2 @@
-[target.'cfg(target_arch = "x86_64")']
-rustflags = ["-C", "target-cpu=native", "-C", "target-feature=+avx2"]
+[build]
+rustflags = ["-C", "target-cpu=native"]

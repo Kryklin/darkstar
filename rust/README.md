@@ -18,7 +18,7 @@
 </p>
 
 ## Overview
-This is the native Rust implementation and the core reference engine for the **ASP Cascade 16 (D-ASP)** suite. It is built for raw performance, memory safety, and produces both native executables and WASM targets for Python and Node.js.
+This is the native Rust implementation and the core reference engine for the **ASP Cascade 16 (D-ASP)** suite. It is built for raw performance, memory safety, and produces both native executables and WASM targets for dynamic language integration.
 
 ## Prerequisites
 - Rust (Cargo) 1.70+

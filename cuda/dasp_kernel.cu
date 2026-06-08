@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include "dasp_cuda.h"
 
-__constant__ uint32_t d_round_keys_const[128];
+// d_round_keys_const is passed as an argument instead of __constant__
 
 __device__ static inline uint32_t d_rotl32(uint32_t x, int n) {
     return (x << n) | (x >> (32 - n));
@@ -72,7 +72,7 @@ __global__ void init_keys_kernel(const uint8_t *prng_seed, uint32_t *out_keys) {
 // PHASE 2: Parallel Block Encryption (CTR Mode)
 // ---------------------------------------------------------
 
-__global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, size_t payload_len, const uint8_t *nonce_base, uint64_t block_offset) {
+__global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, size_t payload_len, const uint8_t *nonce_base, uint64_t block_offset, const uint32_t *d_round_keys_const) {
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     size_t byte_offset = tid * 32;
     if (byte_offset >= payload_len) return;
@@ -96,40 +96,88 @@ __global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, siz
         n[1] = (uint32_t)n1;
     }
 
-    uint4 s0, s1;
-    s0.x = n[0]; s0.y = n[1]; s0.z = n[2]; s0.w = n[3];
-    s1.x = n[4]; s1.y = n[5]; s1.z = n[6]; s1.w = n[7];
+    /* state is stored as s[0..7] corresponding to 8 x uint32 lanes */
+    uint32_t s[8];
+    s[0] = n[0]; s[1] = n[1]; s[2] = n[2]; s[3] = n[3];
+    s[4] = n[4]; s[5] = n[5]; s[6] = n[6]; s[7] = n[7];
 
-#define DASP_ROUND_CUDA(i) do { \
-    s0.x += d_round_keys_const[(i)*8 + 0]; \
-    s0.y += d_round_keys_const[(i)*8 + 1]; \
-    s0.z += d_round_keys_const[(i)*8 + 2]; \
-    s0.w += d_round_keys_const[(i)*8 + 3]; \
-    s1.x += d_round_keys_const[(i)*8 + 4]; \
-    s1.y += d_round_keys_const[(i)*8 + 5]; \
-    s1.z += d_round_keys_const[(i)*8 + 6]; \
-    s1.w += d_round_keys_const[(i)*8 + 7]; \
+    /*
+     * Permutation tables (matching AVX2 _mm256_permutevar8x32_epi32):
+     *   _mm256_set_epi32 sets lanes in HIGH-to-LOW order, so
+     *   set_epi32(3,2,1,0,7,6,5,4) means lane[0]=4, lane[1]=5, ..., lane[7]=3
+     *
+     * Blend masks (matching AVX2 _mm256_blend_epi32):
+     *   0xF0 = bit 0..3 from A, bit 4..7 from B
+     *   0xCC = bits 0,1,4,5 from A; bits 2,3,6,7 from B
+     *   0xAA = even lanes (0,2,4,6) from A; odd lanes (1,3,5,7) from B
+     */
+
+#define DASP_ROUND_CUDA(r) do { \
+    /* Step 1: Add round keys */ \
+    s[0] += d_round_keys_const[(r)*8 + 0]; \
+    s[1] += d_round_keys_const[(r)*8 + 1]; \
+    s[2] += d_round_keys_const[(r)*8 + 2]; \
+    s[3] += d_round_keys_const[(r)*8 + 3]; \
+    s[4] += d_round_keys_const[(r)*8 + 4]; \
+    s[5] += d_round_keys_const[(r)*8 + 5]; \
+    s[6] += d_round_keys_const[(r)*8 + 6]; \
+    s[7] += d_round_keys_const[(r)*8 + 7]; \
     \
-    uint32_t rc = 0x9E3779B9 + (i); \
-    s0.x ^= rc; s0.y ^= rc; s0.z ^= rc; s0.w ^= rc; \
-    s1.x ^= rc; s1.y ^= rc; s1.z ^= rc; s1.w ^= rc; \
+    /* Step 2: XOR round constant */ \
+    uint32_t rc_##r = 0x9E3779B9u + (r); \
+    s[0] ^= rc_##r; s[1] ^= rc_##r; s[2] ^= rc_##r; s[3] ^= rc_##r; \
+    s[4] ^= rc_##r; s[5] ^= rc_##r; s[6] ^= rc_##r; s[7] ^= rc_##r; \
     \
-    int rot = (((i) % 4) == 0) ? 16 : ((((i) % 4) == 1) ? 12 : ((((i) % 4) == 2) ? 8 : 7)); \
-    if (((i) % 3) == 0) { \
-        s0.x += s1.x; s1.x ^= s0.x; s1.x = __funnelshift_l(s1.x, s1.x, rot); \
-        s0.y += s1.y; s1.y ^= s0.y; s1.y = __funnelshift_l(s1.y, s1.y, rot); \
-        s0.z += s1.z; s1.z ^= s0.z; s1.z = __funnelshift_l(s1.z, s1.z, rot); \
-        s0.w += s1.w; s1.w ^= s0.w; s1.w = __funnelshift_l(s1.w, s1.w, rot); \
-    } else if (((i) % 3) == 1) { \
-        s0.x += s0.z; s0.z ^= s0.x; s0.z = __funnelshift_l(s0.z, s0.z, rot); \
-        s0.y += s0.w; s0.w ^= s0.y; s0.w = __funnelshift_l(s0.w, s0.w, rot); \
-        s1.x += s1.z; s1.z ^= s1.x; s1.z = __funnelshift_l(s1.z, s1.z, rot); \
-        s1.y += s1.w; s1.w ^= s1.y; s1.w = __funnelshift_l(s1.w, s1.w, rot); \
+    /* Step 3: Permute to create 'swapped' */ \
+    uint32_t sw_##r[8]; \
+    if (((r) % 3) == 0) { \
+        /* perm: lane[i] = state[{4,5,6,7,0,1,2,3}[i]] */ \
+        sw_##r[0]=s[4]; sw_##r[1]=s[5]; sw_##r[2]=s[6]; sw_##r[3]=s[7]; \
+        sw_##r[4]=s[0]; sw_##r[5]=s[1]; sw_##r[6]=s[2]; sw_##r[7]=s[3]; \
+    } else if (((r) % 3) == 1) { \
+        /* perm: lane[i] = state[{2,3,0,1,6,7,4,5}[i]] */ \
+        sw_##r[0]=s[2]; sw_##r[1]=s[3]; sw_##r[2]=s[0]; sw_##r[3]=s[1]; \
+        sw_##r[4]=s[6]; sw_##r[5]=s[7]; sw_##r[6]=s[4]; sw_##r[7]=s[5]; \
     } else { \
-        s0.x += s0.y; s0.y ^= s0.x; s0.y = __funnelshift_l(s0.y, s0.y, rot); \
-        s0.z += s0.w; s0.w ^= s0.z; s0.w = __funnelshift_l(s0.w, s0.w, rot); \
-        s1.x += s1.y; s1.y ^= s1.x; s1.y = __funnelshift_l(s1.y, s1.y, rot); \
-        s1.z += s1.w; s1.w ^= s1.z; s1.w = __funnelshift_l(s1.w, s1.w, rot); \
+        /* perm: lane[i] = state[{1,0,3,2,5,4,7,6}[i]] */ \
+        sw_##r[0]=s[1]; sw_##r[1]=s[0]; sw_##r[2]=s[3]; sw_##r[3]=s[2]; \
+        sw_##r[4]=s[5]; sw_##r[5]=s[4]; sw_##r[6]=s[7]; sw_##r[7]=s[6]; \
+    } \
+    \
+    /* Step 4: A_new = state + swapped */ \
+    uint32_t a_##r[8]; \
+    a_##r[0]=s[0]+sw_##r[0]; a_##r[1]=s[1]+sw_##r[1]; \
+    a_##r[2]=s[2]+sw_##r[2]; a_##r[3]=s[3]+sw_##r[3]; \
+    a_##r[4]=s[4]+sw_##r[4]; a_##r[5]=s[5]+sw_##r[5]; \
+    a_##r[6]=s[6]+sw_##r[6]; a_##r[7]=s[7]+sw_##r[7]; \
+    \
+    /* Step 5: B_new = state ^ A_new */ \
+    uint32_t b_##r[8]; \
+    b_##r[0]=s[0]^a_##r[0]; b_##r[1]=s[1]^a_##r[1]; \
+    b_##r[2]=s[2]^a_##r[2]; b_##r[3]=s[3]^a_##r[3]; \
+    b_##r[4]=s[4]^a_##r[4]; b_##r[5]=s[5]^a_##r[5]; \
+    b_##r[6]=s[6]^a_##r[6]; b_##r[7]=s[7]^a_##r[7]; \
+    \
+    /* Step 6: Rotate B_new */ \
+    int rot_##r = (((r) % 4) == 0) ? 16 : ((((r) % 4) == 1) ? 12 : ((((r) % 4) == 2) ? 8 : 7)); \
+    b_##r[0]=d_rotl32(b_##r[0],rot_##r); b_##r[1]=d_rotl32(b_##r[1],rot_##r); \
+    b_##r[2]=d_rotl32(b_##r[2],rot_##r); b_##r[3]=d_rotl32(b_##r[3],rot_##r); \
+    b_##r[4]=d_rotl32(b_##r[4],rot_##r); b_##r[5]=d_rotl32(b_##r[5],rot_##r); \
+    b_##r[6]=d_rotl32(b_##r[6],rot_##r); b_##r[7]=d_rotl32(b_##r[7],rot_##r); \
+    \
+    /* Step 7: Blend A_new and B_new back into state */ \
+    if (((r) % 3) == 0) { \
+        /* 0xF0: lanes 0-3 from A, lanes 4-7 from B */ \
+        s[0]=a_##r[0]; s[1]=a_##r[1]; s[2]=a_##r[2]; s[3]=a_##r[3]; \
+        s[4]=b_##r[4]; s[5]=b_##r[5]; s[6]=b_##r[6]; s[7]=b_##r[7]; \
+    } else if (((r) % 3) == 1) { \
+        /* 0xCC: lanes 0,1,4,5 from A; lanes 2,3,6,7 from B */ \
+        s[0]=a_##r[0]; s[1]=a_##r[1]; s[2]=b_##r[2]; s[3]=b_##r[3]; \
+        s[4]=a_##r[4]; s[5]=a_##r[5]; s[6]=b_##r[6]; s[7]=b_##r[7]; \
+    } else { \
+        /* 0xAA: even lanes from A; odd lanes from B */ \
+        s[0]=a_##r[0]; s[1]=b_##r[1]; s[2]=a_##r[2]; s[3]=b_##r[3]; \
+        s[4]=a_##r[4]; s[5]=b_##r[5]; s[6]=a_##r[6]; s[7]=b_##r[7]; \
     } \
 } while(0)
 
@@ -141,42 +189,32 @@ __global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, siz
 
     size_t remaining = payload_len - byte_offset;
     if (remaining >= 32) {
-        // Can read/write 32 bytes safely
         // Use uint4 vector loads/stores for 128-bit coalesced memory transactions
         uint4 *p128 = (uint4*)(payloads + byte_offset);
         uint4 in0 = p128[0];
         uint4 in1 = p128[1];
-        in0.x ^= s0.x; in0.y ^= s0.y; in0.z ^= s0.z; in0.w ^= s0.w;
-        in1.x ^= s1.x; in1.y ^= s1.y; in1.z ^= s1.z; in1.w ^= s1.w;
+        in0.x ^= s[0]; in0.y ^= s[1]; in0.z ^= s[2]; in0.w ^= s[3];
+        in1.x ^= s[4]; in1.y ^= s[5]; in1.z ^= s[6]; in1.w ^= s[7];
         p128[0] = in0;
         p128[1] = in1;
     } else {
-        uint32_t temp[8];
-        temp[0] = s0.x; temp[1] = s0.y; temp[2] = s0.z; temp[3] = s0.w;
-        temp[4] = s1.x; temp[5] = s1.y; temp[6] = s1.z; temp[7] = s1.w;
-        uint8_t *t8 = (uint8_t*)temp;
+        uint8_t *t8 = (uint8_t*)s;
         for(size_t i=0; i<remaining; i++) payloads[byte_offset + i] ^= t8[i];
     }
 }
 
+uint32_t *g_round_keys_device = NULL;
+
 extern "C" void dasp_cuda_init_keys(const uint8_t *d_keys_128) {
     const uint8_t *prng_seed = d_keys_128 + 64;
     
-    // Allocate temporary device buffer for keys
-    uint32_t *d_tmp_keys;
-    cudaMalloc(&d_tmp_keys, 128 * sizeof(uint32_t));
+    if (!g_round_keys_device) {
+        cudaMalloc(&g_round_keys_device, 128 * sizeof(uint32_t));
+    }
     
-    // Generate keys on GPU
-    init_keys_kernel<<<1, 1>>>(prng_seed, d_tmp_keys);
+    // Generate keys on GPU directly into device memory
+    init_keys_kernel<<<1, 1>>>(prng_seed, g_round_keys_device);
     cudaDeviceSynchronize();
-    
-    // Copy keys back to Host
-    uint32_t h_tmp_keys[128];
-    cudaMemcpy(h_tmp_keys, d_tmp_keys, 128 * sizeof(uint32_t), cudaMemcpyDeviceToHost);
-    cudaFree(d_tmp_keys);
-    
-    // Copy keys to __constant__ cache
-    cudaMemcpyToSymbol(d_round_keys_const, h_tmp_keys, 128 * sizeof(uint32_t));
 }
 
 extern "C" void dasp_cuda_process_chunk(uint8_t *d_payload, size_t chunk_len, const uint8_t *d_nonce, uint64_t block_offset, cudaStream_t stream) {
@@ -186,7 +224,11 @@ extern "C" void dasp_cuda_process_chunk(uint8_t *d_payload, size_t chunk_len, co
     int threadsPerBlock = 256;
     int blocksPerGrid = (real_num_blocks + threadsPerBlock - 1) / threadsPerBlock;
     
-    dasp_ctr_kernel<<<blocksPerGrid, threadsPerBlock, 0, stream>>>(d_payload, chunk_len, d_nonce, block_offset);
+    dasp_ctr_kernel<<<blocksPerGrid, threadsPerBlock, 0, stream>>>(d_payload, chunk_len, d_nonce, block_offset, g_round_keys_device);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("CUDA ERROR in kernel: %s\n", cudaGetErrorString(err));
+    }
 }
 
 extern "C" void dasp_cuda_init() {

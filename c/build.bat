@@ -10,13 +10,13 @@ if %errorlevel% neq 0 (
     echo Resource compilation failed.
     exit /b %errorlevel%
 )
-cl /Ox /W3 /std:c11 /Fe:dasp.exe main.c spna_engine.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c gf_math.c icon.res
+cl /O2 /GL /arch:AVX2 /W3 /std:c11 /Fe:dasp.exe main.c spna_engine.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c gf_math.c icon.res
 if %errorlevel% neq 0 (
     echo Build failed.
     exit /b %errorlevel%
 )
 echo Building DLL for C# Interoperability...
-cl /LD /Ox /W3 /std:c11 /Fe:dasp_kem.dll ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c gf_math.c
+cl /LD /O2 /GL /arch:AVX2 /W3 /std:c11 /Fe:dasp_kem.dll ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c gf_math.c
 if %errorlevel% neq 0 (
     echo DLL Build failed.
     exit /b %errorlevel%

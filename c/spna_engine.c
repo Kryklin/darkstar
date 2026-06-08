@@ -117,11 +117,10 @@ __attribute__((always_inline))
 #endif
     static inline void dasp_cascade_32(uint8_t *restrict block,
                                        const uint32_t *restrict round_keys) {
-  __m256i *aligned_block = (__m256i *)__builtin_assume_aligned(block, 32);
   const __m256i *aligned_keys =
       (const __m256i *)__builtin_assume_aligned(round_keys, 32);
 
-  __m256i state = _mm256_load_si256(aligned_block);
+  __m256i state = _mm256_loadu_si256((const __m256i*)block);
 
 #define DASP_ROUND_AVX2(r)                                                     \
   do {                                                                         \
@@ -177,7 +176,7 @@ __attribute__((always_inline))
   DASP_ROUND_AVX2(15);
 #undef DASP_ROUND_AVX2
 
-  _mm256_store_si256(aligned_block, state);
+  _mm256_storeu_si256((__m256i*)block, state);
 }
 
 int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len,

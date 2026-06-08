@@ -4,66 +4,114 @@
 #include <time.h>
 #include "dasp_cuda.h"
 
-int main() {
-    printf("--- D-ASP CUDA Verification Tool ---\n");
+int main(int argc, char **argv) {
+    int telemetry = 0;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--telemetry") == 0) telemetry = 1;
+    }
 
-    const size_t num_blocks = 1024 * 1024; // 1M blocks (64MB)
-    const size_t payload_len = num_blocks * DASP_BLOCK_SIZE;
+    if (!telemetry) {
+        printf("--- D-ASP CUDA Verification Tool (Sweep Benchmark) ---\n");
+    }
+
+    size_t sizes_mb[] = {1, 16, 64, 256, 512, 1024};
+    int num_sizes = sizeof(sizes_mb) / sizeof(sizes_mb[0]);
+
+    dasp_cuda_init();
     
-    printf("Allocating %zu MB of host memory...\n", payload_len / (1024 * 1024));
-    uint8_t *h_payload = (uint8_t*)malloc(payload_len);
-    uint8_t *h_verify = (uint8_t*)malloc(payload_len);
+    // Allocate max buffer size upfront
+    size_t max_payload_len = sizes_mb[num_sizes - 1] * 1024 * 1024;
     
-    // Fill with random data
-    for(size_t i=0; i<payload_len; i++) h_payload[i] = i & 0xFF;
-    memcpy(h_verify, h_payload, payload_len);
+    uint8_t *h_payload = (uint8_t*)malloc(max_payload_len);
+    uint8_t *h_verify = (uint8_t*)malloc(max_payload_len);
+    for(size_t i=0; i<max_payload_len; i++) h_payload[i] = i & 0xFF;
+    memcpy(h_verify, h_payload, max_payload_len);
 
-    uint8_t h_key[32];
-    memset(h_key, 0x42, 32); // Sample key
+    uint8_t h_keys[128];
+    memset(h_keys, 0x42, 128); // Sample key + seed
 
-    uint8_t *d_payload, *d_key;
-    CUDA_CHECK(cudaMalloc(&d_payload, payload_len));
-    CUDA_CHECK(cudaMalloc(&d_key, 32));
+    uint8_t h_nonce[32];
+    memset(h_nonce, 0x11, 32);
 
-    printf("Copying data to device...\n");
-    CUDA_CHECK(cudaMemcpy(d_payload, h_payload, payload_len, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_key, h_key, 32, cudaMemcpyHostToDevice));
+    uint8_t *d_payload, *d_keys, *d_nonce;
+    CUDA_CHECK(cudaMalloc(&d_payload, max_payload_len));
+    CUDA_CHECK(cudaMalloc(&d_keys, 128));
+    CUDA_CHECK(cudaMalloc(&d_nonce, 32));
 
-    printf("Launching D-ASP Kernel (Encryption)...\n");
-    clock_t start = clock();
-    dasp_cuda_process_blocks(d_payload, payload_len, d_key, NULL, num_blocks, 1);
-    clock_t end = clock();
-    
-    double time_taken = (double)(end - start) / CLOCKS_PER_SEC;
-    double gbps = (payload_len * 8.0) / (time_taken * 1e9);
-    printf("Encryption completed in %.4f seconds (%.2f Gbps)\n", time_taken, gbps);
+    CUDA_CHECK(cudaMemcpy(d_payload, h_payload, max_payload_len, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_keys, h_keys, 128, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_nonce, h_nonce, 32, cudaMemcpyHostToDevice));
 
-    printf("Launching D-ASP Kernel (Decryption)...\n");
-    dasp_cuda_process_blocks(d_payload, payload_len, d_key, NULL, num_blocks, 0);
+    dasp_cuda_init_keys(d_keys);
 
-    printf("Copying result back to host...\n");
-    CUDA_CHECK(cudaMemcpy(h_payload, d_payload, payload_len, cudaMemcpyDeviceToHost));
+    cudaEvent_t start_event, stop_event;
+    CUDA_CHECK(cudaEventCreate(&start_event));
+    CUDA_CHECK(cudaEventCreate(&stop_event));
 
-    printf("Verifying bit-perfect integrity...\n");
-    int match = 1;
-    for(size_t i=0; i<payload_len; i++) {
-        if(h_payload[i] != h_verify[i]) {
-            printf("MISMATCH at index %zu: Expected %02x, Got %02x\n", i, h_verify[i], h_payload[i]);
-            match = 0;
-            break;
+    int global_match = 1;
+
+    for (int i = 0; i < num_sizes; i++) {
+        size_t current_mb = sizes_mb[i];
+        size_t current_payload_len = current_mb * 1024 * 1024;
+
+        if (telemetry) {
+            printf("{\"progress\": %d, \"total\": %d, \"size_mb\": %zu, \"action\": \"Encrypting\"}\n", i*2, num_sizes*2, current_mb);
+            fflush(stdout);
+        } else {
+            printf("\nTesting %zu MB...\n", current_mb);
+        }
+
+        CUDA_CHECK(cudaEventRecord(start_event, 0));
+        dasp_cuda_process_chunk(d_payload, current_payload_len, d_nonce, 0, 0);
+        CUDA_CHECK(cudaEventRecord(stop_event, 0));
+        CUDA_CHECK(cudaEventSynchronize(stop_event));
+
+        float enc_ms = 0;
+        CUDA_CHECK(cudaEventElapsedTime(&enc_ms, start_event, stop_event));
+        double enc_time = enc_ms / 1000.0;
+        double enc_gbps = (current_payload_len * 8.0) / (enc_time * 1e9);
+
+        if (telemetry) {
+            printf("{\"progress\": %d, \"total\": %d, \"size_mb\": %zu, \"action\": \"Decrypting\"}\n", i*2 + 1, num_sizes*2, current_mb);
+            fflush(stdout);
+        }
+
+        CUDA_CHECK(cudaEventRecord(start_event, 0));
+        dasp_cuda_process_chunk(d_payload, current_payload_len, d_nonce, 0, 0);
+        CUDA_CHECK(cudaEventRecord(stop_event, 0));
+        CUDA_CHECK(cudaEventSynchronize(stop_event));
+
+        float dec_ms = 0;
+        CUDA_CHECK(cudaEventElapsedTime(&dec_ms, start_event, stop_event));
+        double dec_time = dec_ms / 1000.0;
+        double dec_gbps = (current_payload_len * 8.0) / (dec_time * 1e9);
+
+        CUDA_CHECK(cudaMemcpy(h_payload, d_payload, current_payload_len, cudaMemcpyDeviceToHost));
+        int match = 1;
+        for(size_t j=0; j<current_payload_len; j++) {
+            if(h_payload[j] != h_verify[j]) {
+                match = 0;
+                global_match = 0;
+                break;
+            }
+        }
+
+        if (telemetry) {
+            printf("{\"result\": true, \"size_mb\": %zu, \"enc_gbps\": %.2f, \"dec_gbps\": %.2f, \"match\": %s}\n", 
+                current_mb, enc_gbps, dec_gbps, match ? "true" : "false");
+            fflush(stdout);
+        } else {
+            printf("  Enc: %.2f Gbps | Dec: %.2f Gbps | Match: %s\n", enc_gbps, dec_gbps, match ? "PASS" : "FAIL");
         }
     }
 
-    if(match) {
-        printf("SUCCESS: CUDA kernel passed bit-perfect loopback test!\n");
-    } else {
-        printf("FAILURE: Data corruption detected.\n");
-    }
-
+    CUDA_CHECK(cudaEventDestroy(start_event));
+    CUDA_CHECK(cudaEventDestroy(stop_event));
     CUDA_CHECK(cudaFree(d_payload));
-    CUDA_CHECK(cudaFree(d_key));
+    CUDA_CHECK(cudaFree(d_keys));
+    CUDA_CHECK(cudaFree(d_nonce));
     free(h_payload);
     free(h_verify);
 
-    return match ? 0 : 1;
+    return global_match ? 0 : 1;
 }

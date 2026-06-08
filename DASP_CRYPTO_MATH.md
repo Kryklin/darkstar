@@ -13,10 +13,10 @@
 
 # D-ASP: Formal Mathematical & Systems Specification (Professional Grade)
 
-This document provides the formal cryptographic and mathematical specification for the **ASP Cascade 16 (D-ASP)** protocol. ASP Cascade 16 is a high-security cipher suite based on a 16-round **ASP Cascade structure** (Algebraic Substitution [ARX], Permutation, Network) optimized for identity binding and cache-timing side-channel resistance.
+This document provides the formal cryptographic and mathematical specification for the **ASP Cascade 16 (D-ASP)** protocol. ASP Cascade 16 is a high-security cipher suite based on a 16-round **ASP Cascade structure** (ARX Substitution, Permutation, Network) optimized for identity binding and cache-timing side-channel resistance.
 
 > [!IMPORTANT]
-> **No S-Boxes or AES:** The term "Substitution" in D-ASP refers strictly to *Algebraic Substitution* via Modular Addition and XOR (ARX). D-ASP explicitly abandons traditional block-cipher components like AES-256 Rijndael S-Boxes and MixColumns MDS matrices to guarantee mathematical 0.0000% variance against cache-timing attacks.
+> **No S-Boxes or AES:** The term "Substitution" in D-ASP refers strictly to *ARX Substitution* via Modular Addition and XOR (ARX). D-ASP explicitly abandons traditional block-cipher components like AES-256 Rijndael S-Boxes and MixColumns MDS matrices to guarantee mathematical 0.0000% variance against cache-timing attacks.
 
 ---
 
@@ -106,10 +106,8 @@ During the implicit-rejection Fujisaki-Okamoto (FO) transform decapsulation insi
 
 To combat OS-level RAM scraping and Side-Channel leakage:
 
-- **Go**: Bypasses SSA Dead-Store Elimination utilizing `runtime.KeepAlive()` pinning over loop-reset arrays.
-- **Python**: Bypasses Pymalloc caching by forcing `bytearray` addresses through native `ctypes.memset` for direct OS-level execution.
-- **Rust**: Uses `.zeroize()` trait integration across all dynamic heaps.
-- **C Native**: Defeats Clang/GCC optimizations via `SecureZeroMemory` and explicitly unrolled `volatile` pointer iterators.
+- **Rust**: Leverages `zeroize` traits explicitly on `Drop`.
+- **C/C++**: Implements custom `SecureZeroMemory` over static arrays.
 
 ---
 
@@ -120,18 +118,15 @@ To combat OS-level RAM scraping and Side-Channel leakage:
 > [!IMPORTANT]
 > **Full Constant-Time (CT) Enforcement**. Rust, Go, and C engines utilize architecture-specific primitives (`wrapping_sub`, `atomic` masks, native bitwise logic) to ensure execution time is independent of the secret permutation state.
 
-### 5.2 Managed Compliance (NodeJS/Python)
+### 5.2 Managed Compliance (WASM)
 
-While high-level runtimes introduce jitter (jitter != side-channel), the **D-ASP V3 reference code** for Node.js and Python mirrors the 32-bit ARX mathematical operations natively.
-
-- **No conditional jumps** based on bit-values.
-- **No secret-dependent branching** in the cascade.
+While high-level runtimes introduce jitter (jitter != side-channel), the **D-ASP V3** WASM implementation mirrors the 32-bit ARX mathematical operations natively. WebAssembly guarantees execution within its sandboxed runtime without runtime garbage collection interrupting the cascade itself.
 
 ### 5.3 Hardware Intrinsics & Entropy Cascade
 
 - **AVX2 SIMD**: C and Rust map the 32-byte state directly to `__m256i` registers, processing 8 words per clock cycle.
 - **CUDA PTX**: GPUs utilize `uint4` memory transactions and `__funnelshift_l` for pure silicon efficiency.
-- **Interop**: All six engines (Rust, Go, C, Node, Python, CUDA) maintain exact bit-perfect parity through CTR mode.
+- **Interop**: All engines (Rust, C, CUDA) maintain exact bit-perfect parity through CTR mode.
 
 ---
 

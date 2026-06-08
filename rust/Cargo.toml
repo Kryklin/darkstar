@@ -1,6 +1,6 @@
 [package]
 name = "d-asp"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2021"
 authors = ["Victor Kane"]
 license = "CC0-1.0"
@@ -24,3 +24,9 @@ getrandom = { version = "0.2", features = ["custom"] }
 
 [build-dependencies]
 winres = "0.1"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+opt-level = 3

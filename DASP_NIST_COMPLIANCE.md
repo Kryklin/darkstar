@@ -21,7 +21,7 @@
 
 ## 1. Executive Summary
 
-The **Darkstar Algebraic Substitution & Permutation (D-ASP)** protocol is designed for high-security identity binding and post-quantum resilient data encapsulation. This report verifies that the core cryptographic primitives and ARX implementations adhere to current and upcoming NIST post-quantum standards (FIPS).
+The **Darkstar ARX Substitution & Permutation (D-ASP)** protocol is designed for high-security identity binding and post-quantum resilient data encapsulation. This report verifies that the core cryptographic primitives and ARX implementations adhere to current and upcoming NIST post-quantum standards (FIPS).
 
 ## 2. NIST Standards Mapping
 
@@ -56,7 +56,7 @@ D-ASP implements a deterministic "Gauntlet" path selection based on the shared s
 
 ### 4.1 Side-Channel Resistance
 
-All reference implementations (Rust, Go, C, C#, Node.js, Python, Zig, CUDA) have been audited and mathematically proven to exhibit **Constant-Time (CT)** behavior in the core mathematical layers. Our internal telemetry verifies 0.0000% execution variance across randomized payloads.
+All reference implementations (Rust, C, CUDA) have been audited and mathematically proven to exhibit **Constant-Time (CT)** behavior in the core mathematical layers. Our internal telemetry verifies 0.0000% execution variance across randomized payloads.
 
 - **GF(2^8) Arithmetic**: Implemented using branchless arithmetic masking rather than conditional branching.
 - **ARX Core**: Modular addition, bitwise rotation, and XOR are naturally constant-time operations on modern ALUs. Lookup tables (S-Boxes) have been completely removed.

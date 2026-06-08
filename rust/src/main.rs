@@ -12,6 +12,7 @@ fn print_usage() {
     println!("Commands:");
     println!("  encrypt <payload> <pk_hex>   Encrypt using D-ASP");
     println!("  decrypt <json_data> <sk_hex> Decrypt using D-ASP");
+    println!("  stream-decrypt <sk_hex>      Stream decrypt JSON from stdin");
     println!("  rebind <payload> <sk> <new_pk> Rebind a payload to a new key/HWID");
     println!("  keygen                       Generate ML-KEM-1024 keys");
     println!("  test                         Run D-ASP self-test");
@@ -97,6 +98,24 @@ fn main() {
                 Err(e) => {
                     eprintln!("Decryption Failed: {}", e);
                     std::process::exit(1);
+                }
+            }
+        }
+        "stream-decrypt" => {
+            if raw_args.len() < 1 {
+                print_usage();
+                return;
+            }
+            let sk_hex = resolve_arg(&raw_args[0]);
+            let stdin = std::io::stdin();
+            for line in stdin.lines() {
+                if let Ok(data) = line {
+                    let data = data.trim();
+                    if data.is_empty() { continue; }
+                    match dc.decrypt(&data, &sk_hex, hwid.clone(), telemetry) {
+                        Ok(decrypted) => println!("{}", decrypted),
+                        Err(_) => println!("{{\"error\":\"MAC Failed\"}}")
+                    }
                 }
             }
         }

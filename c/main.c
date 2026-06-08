@@ -96,8 +96,12 @@ static char *read_file(const char *path) {
     return NULL;
   fseek(f, 0, SEEK_END);
   long len = ftell(f);
-  fseek(f, 0, SEEK_SET);
   char *buf = malloc(len + 1);
+  if (!buf) {
+    fclose(f);
+    return NULL;
+  }
+  fseek(f, 0, SEEK_SET);
   fread(buf, 1, len, f);
   buf[len] = '\0';
   fclose(f);
@@ -127,10 +131,10 @@ static char *extract_json_string(const char *json, const char *key) {
     return NULL;
   ptr++;
   char *end = strchr(ptr, '"');
-  if (!end)
-    return NULL;
+  if (!end) return NULL;
   size_t len = end - ptr;
   char *res = malloc(len + 1);
+  if (!res) return NULL;
   memcpy(res, ptr, len);
   res[len] = '\0';
   return res;
@@ -294,6 +298,81 @@ int main(int argc, char **argv) {
     free(payload_str);
     free(pk_str);
     return 0;
+  } else if (strcmp(cmd, "stream-decrypt") == 0) {
+    if (argc < 3) return 2;
+    
+    char *sk_str = argv[2];
+    if (sk_str[0] == '@') {
+      sk_str = read_file(sk_str + 1);
+      if (!sk_str) return 3;
+    } else {
+      sk_str = strdup(sk_str);
+    }
+    
+    uint8_t sk[CRYPTO_SECRETKEYBYTES];
+    hex_decode(sk_str, sk, CRYPTO_SECRETKEYBYTES);
+    
+    char *line = malloc(1024 * 1024); // 1MB buffer for streams
+    if (!line) { free(sk_str); return 1; }
+    while (fgets(line, 1024 * 1024, stdin)) {
+      size_t len = strlen(line);
+      if (len > 0 && line[len-1] == '\n') line[len-1] = '\0';
+      if (strlen(line) == 0) continue;
+      
+      long long start_time = get_us();
+      
+      char *data_hex = extract_json_string(line, "data");
+      char *ct_hex = extract_json_string(line, "ct");
+      char *mac_hex = extract_json_string(line, "mac");
+
+      if (!data_hex || !ct_hex || !mac_hex) {
+        fprintf(stderr, "CUDA-DASP: Invalid JSON stream payload\n");
+        if (data_hex) free(data_hex);
+        if (ct_hex) free(ct_hex);
+        if (mac_hex) free(mac_hex);
+        continue;
+      }
+      
+      size_t p_len = strlen(data_hex) / 2;
+      uint8_t *payload = malloc(p_len);
+      hex_decode(data_hex, payload, p_len);
+
+      uint8_t ct[CRYPTO_CIPHERTEXTBYTES];
+      hex_decode(ct_hex, ct, CRYPTO_CIPHERTEXTBYTES);
+
+      uint8_t mac[32];
+      hex_decode(mac_hex, mac, 32);
+      
+      long long inner_start = get_us();
+      int res = dasp_decapsulate_data_inner(payload, p_len, sk,
+                                            use_hwid ? hwid : NULL, ct, mac);
+      long long inner_end = get_us();
+      
+      if (res == 0) {
+        char *out_str = malloc(p_len + 1);
+        memcpy(out_str, payload, p_len);
+        out_str[p_len] = '\0';
+        if (telemetry) {
+          printf("{\"data\":\"%s\",\"timings\":{\"cascade_us\":%lld,\"total_us\":%lld}}\n", out_str, (inner_end - inner_start) / 3, get_us() - start_time);
+        } else {
+          printf("%s\n", out_str);
+        }
+        free(out_str);
+      } else {
+        printf("{\"error\":\"MAC Failed\"}\n");
+      }
+      fflush(stdout);
+
+      free(data_hex);
+      free(ct_hex);
+      free(mac_hex);
+      free(payload);
+    }
+    
+    free(line);
+    free(sk_str);
+    return 0;
+
   } else if (strcmp(cmd, "decrypt") == 0) {
     if (argc < 4)
       return 2;

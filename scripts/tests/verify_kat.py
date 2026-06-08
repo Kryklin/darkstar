@@ -20,18 +20,6 @@ ENGINES = {
         "cwd": os.path.join(BASE_DIR, "rust"),
         "cmd": [os.path.join(BASE_DIR, "rust", "target", "release", "d-asp.exe")],
     },
-    "Go": {
-        "cwd": os.path.join(BASE_DIR, "go"),
-        "cmd": [os.path.join(BASE_DIR, "go", "main.exe")],
-    },
-    "Node": {
-        "cwd": os.path.join(BASE_DIR, "node"),
-        "cmd": ["node", os.path.join(BASE_DIR, "node", "dist", "main.js")],
-    },
-            "Python": {
-        "cwd": os.path.join(BASE_DIR, "python"),
-        "cmd": ["python", os.path.join(BASE_DIR, "python", "dasp.py")],
-    },
     "C": {
         "cwd": os.path.join(BASE_DIR, "c"),
         "cmd": [os.path.join(BASE_DIR, "c", os.environ.get("DASP_C_BINARY", "dasp.exe"))],
@@ -39,14 +27,6 @@ ENGINES = {
     "CUDA": {
         "cwd": os.path.join(BASE_DIR, "cuda"),
         "cmd": [os.path.join(BASE_DIR, "cuda", "d-asp_cuda.exe")],
-    },
-    "C#": {
-        "cwd": os.path.join(BASE_DIR, "csharp"),
-        "cmd": [os.path.join(BASE_DIR, "csharp", "bin", "Release", "net8.0", "d-asp_csharp.exe")],
-    },
-    "Zig": {
-        "cwd": os.path.join(BASE_DIR, "zig"),
-        "cmd": [os.path.join(BASE_DIR, "zig", "zig-out", "bin", "d-asp_zig.exe")],
     }
 }
 
@@ -79,11 +59,11 @@ def run_decrypt(engine_name, ciphertext_json, sk_hex, hwid, use_diagnostic=True)
         hwid_path_abs = os.path.abspath(hwid_file)
         cmd += ["--hwid", f"@{hwid_path_abs}"]
         
-    if use_diagnostic and engine_name not in ["C", "Node", "Python"]:
+    if use_diagnostic and engine_name not in ["C"]:
         cmd += ["--diagnostic"]
         
     try:
-        res = subprocess.run(cmd, cwd=engine["cwd"], capture_output=True, text=True, encoding='utf-8', timeout=30)
+        res = subprocess.run(cmd, cwd=engine["cwd"], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=30)
         # Cleanup
         if os.path.exists(os.path.join(engine["cwd"], "tmp_sk.hex")): os.remove(os.path.join(engine["cwd"], "tmp_sk.hex"))
         if os.path.exists(os.path.join(engine["cwd"], "tmp_data.json")): os.remove(os.path.join(engine["cwd"], "tmp_data.json"))
@@ -91,12 +71,14 @@ def run_decrypt(engine_name, ciphertext_json, sk_hex, hwid, use_diagnostic=True)
 
         if res.returncode != 0:
             # Dump all output for diagnosis
-            diag_lines = [l for l in res.stdout.splitlines() if "diagnostics" in l]
+            stdout_text = res.stdout or ""
+            stderr_text = res.stderr or ""
+            diag_lines = [l for l in stdout_text.splitlines() if "diagnostics" in l]
             diag_str = " | ".join(diag_lines) if diag_lines else "no_diagnostics"
-            log(f"KAT ERROR [{engine_name}]: {res.stderr.strip()} | stdout_diag: {diag_str}")
-            return f"ERROR: {res.stderr}", {}
+            log(f"KAT ERROR [{engine_name}]: {stderr_text.strip()} | stdout_diag: {diag_str}")
+            return f"ERROR: {stderr_text}", {}
         
-        out = res.stdout
+        out = res.stdout or ""
         if out.endswith("\n"): out = out[:-1]
         if out.endswith("\r"): out = out[:-1]
         
@@ -106,7 +88,8 @@ def run_decrypt(engine_name, ciphertext_json, sk_hex, hwid, use_diagnostic=True)
         
         # Parse diagnostics from stderr
         diagnostics = {}
-        for line in res.stderr.splitlines():
+        stderr_text = res.stderr or ""
+        for line in stderr_text.splitlines():
             try:
                 d_obj = json.loads(line)
                 if "diagnostics" in d_obj:
@@ -114,7 +97,8 @@ def run_decrypt(engine_name, ciphertext_json, sk_hex, hwid, use_diagnostic=True)
                     break
             except: continue
         # Also parse diagnostics from stdout
-        for line in res.stdout.splitlines():
+        stdout_text = res.stdout or ""
+        for line in stdout_text.splitlines():
             try:
                 d_obj = json.loads(line)
                 if "diagnostics" in d_obj:
@@ -168,9 +152,9 @@ def main():
                 status = "FAIL (CLI ERROR)"
                 error_msg = actual_payload
             else:
-                if engine not in ["C", "Node", "Python", "C#"]:
+                if engine not in ["C"]:
                     for stage_name, key in stages:
-                        if engine in ["CUDA", "Zig"] and key == "stage3_round_indices":
+                        if engine in ["CUDA"] and key == "stage3_round_indices":
                             continue
                         v_exp = expected_diag.get(key)
                         v_act = actual_diag.get(key)

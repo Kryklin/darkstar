@@ -50,13 +50,8 @@ const pkg = require('../../package.json');
 
   const engines = [
     { name: 'rust-engine-windows-x64.zip', cwd: 'rust/target/release', files: ['d-asp.exe'] },
-    { name: 'go-engine-windows-x64.zip', cwd: 'go', files: ['main.exe'] },
     { name: 'c-engine-windows-x64.zip', cwd: 'c', files: ['dasp.exe', 'dasp_kem.dll', 'dasp.lib'] },
     { name: 'cuda-engine-windows-x64.zip', cwd: 'cuda', files: ['d-asp_cuda.exe', 'd-asp_cuda.lib', 'd-asp_cuda.exp'] },
-    { name: 'python-engine.zip', cwd: 'python', files: ['dist', 'dasp.py'] },
-    { name: 'node-engine.zip', cwd: 'node', files: ['dist', 'dasp_crypto.wasm'] },
-    { name: 'csharp-engine-windows-x64.zip', cwd: 'csharp/bin/Release/net8.0', files: ['d-asp_csharp.dll', 'DarkstarCSharp.exe'] },
-    { name: 'zig-engine-windows-x64.zip', cwd: 'zig/dist', files: ['d-asp_zig.exe'] },
   ];
 
   console.log(chalk.cyan(`\n📦 Packaging ${engines.length} engines into ${outDir}...\n`));

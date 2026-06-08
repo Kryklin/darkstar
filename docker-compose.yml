@@ -8,27 +8,6 @@ services:
     command: ['test']
     container_name: dasp-rust
 
-  dasp-go:
-    build:
-      context: go
-      dockerfile: Dockerfile
-    command: ['test']
-    container_name: dasp-go
-
-  dasp-node:
-    build:
-      context: .
-      dockerfile: node/Dockerfile
-    command: ['test']
-    container_name: dasp-node
-
-  dasp-python:
-    build:
-      context: .
-      dockerfile: python/Dockerfile
-    command: ['test']
-    container_name: dasp-python
-
   dasp-c:
     build:
       context: c
@@ -49,17 +28,3 @@ services:
               count: 1
               capabilities: [gpu]
     container_name: dasp-cuda
-
-  dasp-csharp:
-    build:
-      context: .
-      dockerfile: csharp/Dockerfile
-    command: ['test']
-    container_name: dasp-csharp
-
-  dasp-zig:
-    build:
-      context: .
-      dockerfile: zig/Dockerfile
-    command: ['test']
-    container_name: dasp-zig

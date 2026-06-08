@@ -13,7 +13,7 @@
 
 # ASP Cascade 16: System Logic & Architectural Flows
 
-This document provides a high-fidelity visual breakdown of the logic flows within the **Darkstar Algebraic Substitution & Permutation (D-ASP)** protocol. It serves as the primary reference for understanding the cryptographic execution pipeline.
+This document provides a high-fidelity visual breakdown of the logic flows within the **Darkstar ARX Substitution & Permutation (D-ASP)** protocol. It serves as the primary reference for understanding the cryptographic execution pipeline.
 
 ## 1. Identity Binding & HUB Flow
 
@@ -74,18 +74,18 @@ D-ASP achieves "Bit-Perfect" parity. Regardless of the implementation language, 
 
 ```mermaid
 stateDiagram-v2
-    [*] --> RustRef: Reference Input
-    [*] --> GoNative: Reference Input
-    [*] --> CNative: Reference Input
-    [*] --> NodeJS: Reference Input
-    [*] --> Python: Reference Input
-    [*] --> CUDAGPU: Reference Input
-
-    RustRef --> JSON_Envelope: ASP Cascade 16
-    GoNative --> JSON_Envelope: ASP Cascade 16
+    [*] --> Client: Reference Input
+    Client --> Rust: FFI / IPC Request
+    Rust --> ML_KEM: Gen Shared Secret
+    ML_KEM --> Rust: Return SS (1024-bit)
+    Rust --> SHA3: Hash(SS || HWID)
+    SHA3 --> Rust: 512-bit Seed
+    Rust --> ASP_Engine: Seed + Payload
+    ASP_Engine --> Rust: Ciphertext
+    Client --> JSON_Envelope: ASP Cascade 16
     CNative --> JSON_Envelope: ASP Cascade 16
     NodeJS --> JSON_Envelope: ASP Cascade 16
-    Python --> JSON_Envelope: ASP Cascade 16
+    Client --> JSON_Envelope: ASP Cascade 16
     CUDAGPU --> JSON_Envelope: ASP Cascade 16 (Parallel)
 
     JSON_Envelope --> InteropSuccess: Bit-Perfect Match

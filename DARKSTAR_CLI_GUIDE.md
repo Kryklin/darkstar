@@ -14,8 +14,7 @@
 # Darkstar Interactive CLI: Developer Dashboard
 
 <p align="left">
-  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js">
-  <img src="https://img.shields.io/badge/Inquirer.js-000000?style=for-the-badge&logo=javascript&logoColor=white" alt="Inquirer">
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/Chalk-white?style=for-the-badge&logo=javascript&logoColor=black" alt="Chalk">
 </p>
 
@@ -66,7 +65,7 @@ System-level diagnostic and headless verification utilities.
 
 | Option        | Display Name              | Command Executed        | Description                                                                        |
 | :------------ | :------------------------ | :---------------------- | :--------------------------------------------------------------------------------- |
-| `check-env`   | **Dev Environment Check** | Custom Script           | Verifies the installation of C, Rust, Go, and Python compilers.                    |
+| `check-env`   | **Dev Environment Check** | Custom Script           | Verifies the installation of C, Rust toolchains.                          |
 | `docker-test` | **Headless Docker Test**  | `docker compose ... up` | Orchestrates a standalone Docker Compose matrix to test language engines off-host. |
 
 ---

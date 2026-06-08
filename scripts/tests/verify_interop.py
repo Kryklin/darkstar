@@ -42,9 +42,6 @@ def get_system_info():
         "l2_cache": "N/A",
         "l3_cache": "N/A",
         "disk_type": "N/A",
-        "python_v": platform.python_version(),
-        "node_v": "N/A",
-        "go_v": "N/A",
         "rust_v": "N/A"
     }
     
@@ -70,15 +67,8 @@ def get_system_info():
                 info["disk_type"] = f"{disk_json.get('FriendlyName', 'Unknown')} ({disk_json.get('MediaType', 'Unknown')})"
             except Exception as e: pass
         
-    # Get runtime versions with timeouts
-    try: info["node_v"] = subprocess.check_output(["node", "--version"], timeout=5).decode().strip()
-    except Exception as e: pass
-    try: 
-        go_out = subprocess.check_output(["go", "version"], timeout=5).decode().strip()
-        info["go_v"] = go_out.split()[2]
-    except Exception as e: pass
     try:
-        rust_out = subprocess.check_output(["rustc", "--version"], timeout=5).decode().strip()
+        rust_out = subprocess.check_output(["cargo", "--version"], timeout=5).decode().strip()
         info["rust_v"] = rust_out.split()[1]
     except Exception as e: pass
         
@@ -100,21 +90,6 @@ ENGINES = {
         "cmd": [os.path.join(BASE_DIR, "rust", "target", "release", "d-asp.exe")],
         "type": "native"
     },
-    "Go": {
-        "cwd": os.path.join(BASE_DIR, "go"),
-        "cmd": [os.path.join(BASE_DIR, "go", "main.exe")],
-        "type": "native"
-    },
-    "Node": {
-        "cwd": os.path.join(BASE_DIR, "node"),
-        "cmd": ["node", os.path.join(BASE_DIR, "node", "dist", "main.js")],
-        "type": "managed"
-    },
-    "Python": {
-        "cwd": os.path.join(BASE_DIR, "python"),
-        "cmd": ["python", os.path.join(BASE_DIR, "python", "dist", "dasp.py")],
-        "type": "managed"
-    },
     "C": {
         "cwd": os.path.join(BASE_DIR, "c"),
         "cmd": [os.path.join(BASE_DIR, "c", "dasp.exe")],
@@ -123,16 +98,6 @@ ENGINES = {
     "CUDA": {
         "cwd": os.path.join(BASE_DIR, "cuda"),
         "cmd": [os.path.join(BASE_DIR, "cuda", "d-asp_cuda.exe")],
-        "type": "native"
-    },
-    "C#": {
-        "cwd": os.path.join(BASE_DIR, "csharp"),
-        "cmd": [os.path.join(BASE_DIR, "csharp", "bin", "Release", "net8.0", "d-asp_csharp.exe")],
-        "type": "managed"
-    },
-    "Zig": {
-        "cwd": os.path.join(BASE_DIR, "zig"),
-        "cmd": [os.path.join(BASE_DIR, "zig", "dist", "d-asp_zig.exe")],
         "type": "native"
     }
 }
@@ -324,7 +289,7 @@ def main():
         f.write(f"D-ASP PROFESSIONAL PERFORMANCE REPORT\n")
         f.write(f"Session: {SESSION_ID}\n")
         f.write(f"Timestamp: {datetime.now().isoformat()}\n")
-        f.write(f"Protocol: Darkstar Algebraic Substitution & Permutation (D-ASP)\n")
+        f.write(f"Protocol: Darkstar ARX Substitution & Permutation (D-ASP)\n")
         f.write(f"Anchor: ML-KEM-1024\n\n")
         
         f.write(f"SYSTEM TELEMETRY\n")
@@ -340,9 +305,6 @@ def main():
         f.write(f"Freq (Nominal/Current): {sys_info['cpu_freq_nominal_mhz']} / {avg_freq_mhz:.0f} MHz\n")
         f.write(f"{'-'*60}\n")
         f.write(f"RUNTIMES\n")
-        f.write(f"Python:    {sys_info['python_v']}\n")
-        f.write(f"Node:      {sys_info['node_v']}\n")
-        f.write(f"Go:        {sys_info['go_v']}\n")
         f.write(f"Rustc:     {sys_info['rust_v']}\n")
         f.write(f"{'-'*60}\n\n")
         

@@ -18,7 +18,7 @@
 </p>
 
 ## Overview
-This is the C/C++ implementation of the **ASP Cascade 16 (D-ASP)** engine. It offers a highly optimized, constant-time `spna_engine.c` FFI library capable of integrating seamlessly with low-level systems and providing interoperability targets for C# and other high-level wrappers.
+This is the C/C++ implementation of the **ASP Cascade 16 (D-ASP)** engine. It offers a highly optimized, constant-time `spna_engine.c` FFI library capable of integrating seamlessly with low-level systems and providing interoperability targets for high-level language wrappers.
 
 ## Prerequisites
 - MSVC Toolchain (Visual Studio) or compatible `cl.exe` (Windows)

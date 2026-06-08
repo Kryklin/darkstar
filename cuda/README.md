@@ -56,7 +56,7 @@ The CUDA executable conforms to the standard D-ASP CLI interface, utilizing JSON
 **Rebinding a Payload (Migration):**
 > [!NOTE]
 > The CUDA engine does not support `rebind` directly due to GPU memory zeroization constraints.
-> Use any CPU-based engine (Rust, C, Go, Python, Node.js, C#, Zig) for migration operations.
+> Use any CPU-based engine (Rust, C, or a scaffolded wrapper) for migration operations.
 
 ## Recommended Usage
 > [!TIP]

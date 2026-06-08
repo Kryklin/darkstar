@@ -1,8 +1,8 @@
 {
   "name": "d-asp",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "productName": "D-ASP",
-  "description": "Darkstar Algebraic Substitution & Permutation (D-ASP) Suite",
+  "description": "Darkstar ARX Substitution & Permutation (D-ASP) Suite",
   "author": "Victor Kane",
   "license": "CC0-1.0",
   "private": true,
@@ -12,24 +12,19 @@
     "url": "https://github.com/Kryklin/darkstar.git"
   },
   "scripts": {
-    "start": "npx tsx scripts/cli/index.ts",
+    "start": "npx tsx scripts/cli/index.tsx",
     "build:rust": "cd rust && cargo build --release",
     "build:wasm": "cd rust && cargo build --release --target wasm32-unknown-unknown && if not exist ..\\wasm mkdir ..\\wasm && copy target\\wasm32-unknown-unknown\\release\\dasp_crypto.wasm ..\\wasm\\dasp_crypto.wasm",
-    "build:go": "cd go && go build -o main.exe main.go",
-    "build:c": "cd c && \"C:\\Program Files\\LLVM\\bin\\clang.exe\" -O3 -o dasp.exe main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c -I. -lws2_32 -luserenv -ladvapi32 -lbcrypt -march=native -mtune=native -mavx2 -fno-strict-aliasing",
+    "build:c": "cd c && \"C:\\Program Files\\LLVM\\bin\\clang.exe\" -O3 -o dasp.exe main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c -I. -lws2_32 -luserenv -ladvapi32 -lbcrypt -mavx2 -fno-strict-aliasing",
     "build:cuda": "cd cuda && build_cuda.bat",
-    "build:csharp": "cd csharp && C:\\Users\\morta\\AppData\\Local\\Microsoft\\dotnet\\dotnet.exe build -c Release",
-    "build:zig": "cd zig && python build.py",
-    "build:python": "cd python && python build.py",
-    "build:engines": "npm run build:rust && npm run build:wasm && npm run build:go && npm run build:node && npm run build:python && npm run build:c && npm run build:cuda && npm run build:csharp && npm run build:zig",
+    "build:engines": "npm run build:rust && npm run build:wasm && npm run build:c && npm run build:cuda",
     "test:gen-kat": "python scripts/tests/gen_kat_vectors.py",
     "test:kat": "python scripts/tests/verify_kat.py",
     "test:interop": "python scripts/tests/verify_interop.py",
     "lint:rust": "cd rust && cargo clippy -- -D warnings",
-    "lint:go": "cd go && go vet ./...",
     "lint:c": "cd c && \"C:\\Program Files\\LLVM\\bin\\clang.exe\" -fsyntax-only -Wall -Wextra -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c -I.",
     "lint:python": "npx pyright python/dasp.py",
-    "lint:engines": "npm run lint:rust && npm run lint:go && npm run lint:c && npm run lint:python",
+    "lint:engines": "npm run lint:rust && npm run lint:c && npm run lint:python",
     "format:rust": "cd rust && cargo fmt",
     "format:go": "cd go && gofmt -w .",
     "format:c": "cd c && \"C:\\Program Files\\LLVM\\bin\\clang-format.exe\" -i *.c *.h",
@@ -61,13 +56,22 @@
   "devDependencies": {
     "@types/inquirer": "^9.0.9",
     "@types/node": "^25.9.1",
+    "@types/react": "^19.2.17",
     "chalk": "^5.6.2",
     "cli-table3": "^0.6.5",
     "concurrently": "^9.2.1",
     "execa": "^9.6.1",
+    "ink": "^7.0.5",
+    "ink-big-text": "^2.0.0",
+    "ink-gradient": "^4.0.1",
+    "ink-select-input": "^6.2.0",
     "inquirer": "^9.3.8",
     "ora": "^9.0.0",
+    "react": "^19.2.7",
     "tsx": "^4.22.4",
     "typescript": "~5.9.2"
+  },
+  "dependencies": {
+    "terminal-image": "^4.3.0"
   }
 }
