@@ -87,15 +87,15 @@ export const ShellJobRunner = ({ title, jobs, successMsg, failMsg, concurrent = 
   }, [done, allPassed, autoAdvance]);
 
   return (
-    <Box flexDirection="column" padding={1} width={80} alignItems="center">
+    <Box flexDirection="column" padding={1} width="100%" alignItems="center">
       <Text color="#F8FAFC" bold>─── {title} ───</Text>
       {boxLayout ? (
-        <Box marginY={1} flexDirection="row" width={90} justifyContent="space-around">
+        <Box marginY={1} flexDirection="row" width="100%" flexWrap="wrap" justifyContent="center" gap={1}>
           {states.map((s, i) => {
             const color = s.status === 'pass' ? '#10B981' : s.status === 'fail' ? '#EF4444' : s.status === 'running' ? '#38BDF8' : '#64748B';
-            const shortName = s.name.replace('Build ', '').replace(' Container', '');
+            const shortName = s.name.replace('Build Wrapper: ', '').replace('Build Core: ', '');
             return (
-              <Box key={i} width={28} height={5} borderStyle="single" borderColor={color} flexDirection="column" alignItems="center" justifyContent="center">
+              <Box key={i} width={18} height={5} borderStyle="single" borderColor={color} flexDirection="column" alignItems="center" justifyContent="center">
                 <Text color="#F8FAFC" bold>{shortName}</Text>
                 <Box marginTop={1}>
                   <Text color={color}>
