@@ -28,10 +28,8 @@ const ENGINES = {
 export type InteropResult = {
   engine: string;
   status: string;
-  mean_ms: number;
   casca_us: number;
   casca_cpb: number;
-  total_cpb: number;
   ops_sec: number;
 };
 
@@ -116,7 +114,6 @@ export async function runInteropBenchmark(
     
     // Warmup process is not needed as much since we spawn once and stream, but we keep the engine map.
     const casca_us_list: number[] = [];
-    const total_us_list: number[] = [];
     let lastOutput = '';
     let status = 'PASS';
     let lineCount = 0;
@@ -131,7 +128,6 @@ export async function runInteropBenchmark(
             const out_json = JSON.parse(line);
             if (out_json.timings) {
                 casca_us_list.push(out_json.timings.cascade_us || 0);
-                total_us_list.push(out_json.timings.total_us || out_json.timings.cascade_us || 0);
             }
             if (lineCount === ROUNDS) {
                 lastOutput = out_json.data || line;
@@ -144,7 +140,6 @@ export async function runInteropBenchmark(
         }
     });
 
-    const streamStart = performance.now();
     for(let i=0; i<ROUNDS; i++) {
         if (!child.stdin!.write(encPayload.trim() + '\n')) {
              await new Promise(r => child.stdin!.once('drain', r));
@@ -153,7 +148,6 @@ export async function runInteropBenchmark(
     child.stdin!.end();
 
     const runRes = await child;
-    const streamEnd = performance.now();
 
     if (runRes.exitCode !== 0 && status === 'PASS') {
         status = 'FAIL';
@@ -165,16 +159,12 @@ export async function runInteropBenchmark(
       console.error(`${name} process exited with code:`, runRes.exitCode);
     }
 
-    const mean_ns = ((streamEnd - streamStart) * 1_000_000) / ROUNDS;
-    const mean_ms = mean_ns / 1_000_000;
     const casca_us = casca_us_list.reduce((a, b) => a + b, 0) / (casca_us_list.length || 1);
-    const total_us = total_us_list.reduce((a, b) => a + b, 0) / (total_us_list.length || 1);
     
     const ops_sec = casca_us > 0 ? 1_000_000 / casca_us : 0;
     const casca_cpb = (casca_us * 1000 * freq_ghz) / payload.length;
-    const total_cpb = (total_us * 1000 * freq_ghz) / payload.length;
 
-    const resObj = { engine: name, status, mean_ms, casca_us, casca_cpb, total_cpb, ops_sec };
+    const resObj = { engine: name, status, casca_us, casca_cpb, ops_sec };
     results.push(resObj);
     onProgress(name, 100, resObj, ROUNDS, ROUNDS);
   }));
