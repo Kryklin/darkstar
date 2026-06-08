@@ -549,7 +549,7 @@ const CryptoAnalysisRunner = ({ onComplete }: { onComplete: () => void }) => {
   return (
     <Box flexDirection="column" padding={1} width={80} alignItems="center">
       <Text color="#F8FAFC" bold>─── Cryptographic Analysis ───</Text>
-      <Box marginY={1} flexDirection="column" alignItems="center" height={16}>
+      <Box marginY={1} flexDirection="column" alignItems="center" height={19}>
         {!done ? (
           <Text color="#F8FAFC">
             {currentStage}... {progress}%
@@ -563,7 +563,10 @@ const CryptoAnalysisRunner = ({ onComplete }: { onComplete: () => void }) => {
             <Text color="#F8FAFC">Monte Carlo Pi: <Text color="#10B981">{result.monte_carlo_pi.toFixed(5)}</Text></Text>
             <Text color="#F8FAFC">Monobit Ratio: <Text color="#10B981">{result.monobit.toFixed(4)}</Text></Text>
             <Text color="#F8FAFC">Cross-Key SAC: <Text color="#10B981">{result.cross_key_sac.toFixed(2)}%</Text></Text>
-            <Text color="#F8FAFC">Time Variance: <Text color="#10B981">{result.time_variance.toFixed(4)}%</Text></Text>
+            <Text color="#F8FAFC">Multi-Engine Ciphertext Parity: <Text color="#10B981">{result.parity_pass ? 'PASS' : 'FAIL'}</Text></Text>
+            <Text color="#F8FAFC">Time Variance (Rust Engine): <Text color="#10B981">{result.time_variance_rust.toFixed(4)}%</Text></Text>
+            <Text color="#F8FAFC">Time Variance (C Engine): <Text color="#10B981">{result.time_variance_c.toFixed(4)}%</Text></Text>
+            <Text color="#F8FAFC">Time Variance (CUDA Engine): <Text color="#10B981">{result.time_variance_cuda.toFixed(4)}%</Text></Text>
             <Text color="#F8FAFC">Block Frequency (χ²): <Text color="#10B981">{result.block_frequency.toFixed(4)}</Text></Text>
             <Text color="#F8FAFC">Cumulative Sums: <Text color="#10B981">{result.cumulative_sums.toFixed(4)}</Text></Text>
             <Text color="#F8FAFC">Discrete Fourier Transform: <Text color="#10B981">{result.spectral_dft.toFixed(4)}</Text></Text>

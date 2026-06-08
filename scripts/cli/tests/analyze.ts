@@ -7,8 +7,21 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const BASE_DIR = path.resolve(__dirname, '../../../');
-const RUST_CMD = [path.join(BASE_DIR, 'rust', 'target', 'release', 'd-asp.exe')];
-const RUST_CWD = path.join(BASE_DIR, 'rust');
+
+const ENGINES: Record<string, { cwd: string; cmd: string[] }> = {
+  Rust: {
+    cwd: path.join(BASE_DIR, 'rust'),
+    cmd: [path.join(BASE_DIR, 'rust', 'target', 'release', 'd-asp.exe')],
+  },
+  C: {
+    cwd: path.join(BASE_DIR, 'c'),
+    cmd: [path.join(BASE_DIR, 'c', 'dasp.exe')],
+  },
+  CUDA: {
+    cwd: path.join(BASE_DIR, 'cuda'),
+    cmd: [path.join(BASE_DIR, 'cuda', 'd-asp_cuda.exe')],
+  },
+};
 
 export type CryptoAnalysisResult = {
   entropy: number;
@@ -24,9 +37,11 @@ export type CryptoAnalysisResult = {
   cumulative_sums: number;
   spectral_dft: number;
   longest_run: number;
+  longest_run: number;
   approx_entropy: number;
   serial_pattern: number;
   lz_compression: number;
+  time_variance: number;
 };
 
 import zlib from 'zlib';
@@ -377,8 +392,8 @@ function lzCompressionTest(data: Buffer): number {
 }
 
 // Engine Wrappers
-async function runKeygen(): Promise<{ pk: string; sk: string }> {
-  const { stdout } = await execa(RUST_CMD[0], ['keygen'], { cwd: RUST_CWD });
+async function runKeygen(engine: 'Rust'|'C'|'CUDA' = 'Rust'): Promise<{ pk: string; sk: string }> {
+  const { stdout } = await execa(ENGINES[engine].cmd[0], ['keygen'], { cwd: ENGINES[engine].cwd });
   const lines = stdout.split('\n');
   const pk =
     lines
@@ -393,14 +408,15 @@ async function runKeygen(): Promise<{ pk: string; sk: string }> {
   return { pk, sk };
 }
 
-async function runEncrypt(payload: string, pk: string, telemetry = false): Promise<any> {
-  const tmpFile = path.join(RUST_CWD, 'tmp_analyze_payload.txt');
+async function runEncrypt(payload: string, pk: string, telemetry = false, engine: 'Rust' | 'C' | 'CUDA' = 'Rust'): Promise<any> {
+  const eng = ENGINES[engine];
+  const tmpFile = path.join(eng.cwd, 'tmp_analyze_payload.txt');
   await fs.writeFile(tmpFile, payload, 'utf-8');
 
   const args = ['encrypt', `@${tmpFile}`, pk];
   if (telemetry) args.push('--telemetry');
 
-  const { stdout } = await execa(RUST_CMD[0], args, { cwd: RUST_CWD });
+  const { stdout } = await execa(eng.cmd[0], args, { cwd: eng.cwd });
   await fs.rm(tmpFile, { force: true });
 
   const lines = stdout.trim().split('\n');
@@ -410,13 +426,14 @@ async function runEncrypt(payload: string, pk: string, telemetry = false): Promi
   return JSON.parse(stdout.trim());
 }
 
-export async function runCryptoAnalysis(onProgress: (stage: string, progress: number) => void): Promise<CryptoAnalysisResult> {
+export async function runCryptoAnalysis(onProgress: (stage: string, progress: number) => void, engine: 'Rust' | 'C' | 'CUDA' = 'Rust'): Promise<CryptoAnalysisResult> {
   onProgress('Keygen', 0);
-  const { pk } = await runKeygen();
+  const { pk } = await runKeygen(engine);
 
   onProgress('Baseline Statistical Tests', 10);
   const basePayload = 'A'.repeat(102400); // 100KB
-  const baseCt = await runEncrypt(basePayload, pk);
+  
+  const baseCt = await runEncrypt(basePayload, pk, false, engine);
   const ctHex = baseCt.data;
   const ctBytes = Buffer.from(ctHex, 'hex');
 
@@ -436,7 +453,7 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
 
   onProgress('Strict Avalanche Criterion (SAC)', 40);
   const payloadStr = 'CRYPTOGRAPHIC_AVALANCHE_TEST_PAYLOAD_1234567890';
-  const baseCtSac = (await runEncrypt(payloadStr, pk)).data;
+  const baseCtSac = (await runEncrypt(payloadStr, pk, false, engine)).data;
 
   // Use character-level mutation to keep payloads as valid UTF-8.
   // For each iteration, change a single character to a different printable ASCII char.
@@ -453,7 +470,7 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
     chars[charIdx] = replacement;
     const mutatedStr = chars.join('');
 
-    const mutatedCtSac = (await runEncrypt(mutatedStr, pk)).data;
+    const mutatedCtSac = (await runEncrypt(mutatedStr, pk, false, engine)).data;
     if (baseCtSac.length === mutatedCtSac.length) {
       const flips = countBitFlips(baseCtSac, mutatedCtSac);
       const totalBits = baseCtSac.length * 4;
@@ -464,8 +481,8 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
   const avgSac = flipPercentages.reduce((a, b) => a + b, 0) / (flipPercentages.length || 1);
 
   onProgress('Cross-Key Avalanche', 80);
-  const { pk: pk2 } = await runKeygen();
-  const crossKeyCt = (await runEncrypt(basePayload, pk2)).data;
+  const { pk: pk2 } = await runKeygen(engine);
+  const crossKeyCt = (await runEncrypt(basePayload, pk2, false, engine)).data;
   const crossKeyDiff = countBitFlips(ctHex, crossKeyCt);
   const crossKeySacPercent = (crossKeyDiff / (ctHex.length * 4)) * 100.0;
 
@@ -473,8 +490,8 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
   const zerosPayload = '0'.repeat(1024 * 1024);
   const onesPayload = 'A'.repeat(1024 * 1024);
 
-  const timingZeros = (await runEncrypt(zerosPayload, pk, true)).timings || {};
-  const timingOnes = (await runEncrypt(onesPayload, pk, true)).timings || {};
+  const timingZeros = (await runEncrypt(zerosPayload, pk, true, engine)).timings || {};
+  const timingOnes = (await runEncrypt(onesPayload, pk, true, engine)).timings || {};
 
   const zTime = timingZeros.total_pipeline_us || 1;
   const oTime = timingOnes.total_pipeline_us || 1;

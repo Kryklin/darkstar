@@ -70,17 +70,24 @@ The CUDA engine was engineered to support massive parallel payloads by streaming
 
 The D-ASP suite guarantees mathematical pseudo-randomness and structural immunity against differential, sequence, and side-channel analysis. The output is continuously evaluated via our exhaustive analysis suite against the following optimal cryptographic boundaries using a 100KB payload:
 
-| Metric | Result | Ideal |
-| :--- | :--- | :--- |
-| **Shannon Entropy (Bits/Byte)** | 7.9984 | ~ 8.000 |
-| **Strict Avalanche Criterion (SAC)** | 49.78% | ~ 50.0% |
-| **Chi-Square Uniformity** | 231.89 | 200 - 300 |
-| **Serial Autocorrelation** | -0.00032 | ~ 0.000 |
-| **Monte Carlo Pi Estimation** | 3.15083 | ~ 3.14159 |
-| **Monobit Frequency** | 0.5003 | ~ 0.5000 |
-| **Runs Test (Decay Ratio)** | 1.0000 | ~ 1.0000 |
-| **Cross-Key Diffusion** | 50.01% | ~ 50.0% |
-| **Constant-Time Variance** | 0.0000% | < 5.00% |
+| Metric | Rust | C | CUDA | Ideal |
+| :--- | :--- | :--- | :--- | :--- |
+| **Shannon Entropy (Bits/Byte)** | 7.9980 | 7.9980 | 7.9980 | ~ 8.000 |
+| **Strict Avalanche Criterion (SAC)** | 49.39% | 49.64% | 49.85% | ~ 50.0% |
+| **Chi-Square Uniformity** | 278.27 | 280.99 | 277.34 | 200 - 300 |
+| **Serial Autocorrelation** | 0.00769 | 0.00170 | -0.00159 | ~ 0.000 |
+| **Monte Carlo Pi Estimation** | 3.14590 | 3.14356 | 3.16348 | ~ 3.14159 |
+| **Monobit Frequency** | 0.5002 | 0.4999 | 0.4989 | ~ 0.5000 |
+| **Runs Test (Decay Ratio)** | 0.9996 | 1.0001 | 0.9996 | ~ 1.0000 |
+| **Cross-Key Diffusion** | 50.06% | 49.96% | 50.04% | ~ 50.0% |
+| **Constant-Time Variance** | 0.0000% | 0.0000% | 0.0000% | < 5.00% |
+| **Block Frequency (χ²)** | 6287.1563 | 6308.5000 | 6375.5938 | ~ 6400.0 |
+| **Cumulative Sums (Cusum)** | 0.6651 | 0.6585 | 1.1567 | ~ 0.000 |
+| **Discrete Fourier Transform** | 0.8263 | -1.7464 | 0.2687 | ~ 0.000 |
+| **Longest Run of Ones (χ²)** | 4.8133 | 2.0124 | 3.8634 | ~ 0.000 |
+| **Approximate Entropy** | 0.6925 | 0.6926 | 0.6925 | ~ 0.693 |
+| **Serial Pattern Test (χ²)** | 33046.1600 | 32790.2400 | 32777.8400 | ~ 32768 |
+| **Lempel-Ziv Incompressibility** | 1.0004 | 1.0004 | 1.0004 | ~ 1.000 |
 
 > [!TIP]
 > **NIST SP 800-22 Certification Ready:** D-ASP includes a native bitstream generator (`npm run gen-nist`) that rapidly pipes hardware-accelerated gigabytes of raw ciphertext into binary format, ready for direct ingestion by external tools like `Dieharder` and the official NIST `sts` suite.

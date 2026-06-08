@@ -17,105 +17,67 @@ import { runCryptoAnalysis } from './tests/analyze.js';
 
   console.log(chalk.hex('#FF0055').bold('\n  🔬  Cryptographic Analysis & Profiling\n'));
 
-  let currentStageStr = 'Initializing...';
-  let progressNum = 0;
+    let currentStageStr = 'Initializing...';
+    let progressNum = 0;
+    
+    const spinner = ora(chalk.blue(`Running Mathematical Evaluation...`)).start();
   
-  const spinner = ora(chalk.blue(`Running Mathematical Evaluation...`)).start();
+    try {
+      const resultsRust = await runCryptoAnalysis((stage, progress) => {
+        currentStageStr = stage;
+        progressNum = progress;
+        spinner.text = chalk.blue(`[Rust] [${progressNum}%] ${currentStageStr}`);
+      }, 'Rust');
 
-  try {
-    const results = await runCryptoAnalysis((stage, progress) => {
-      currentStageStr = stage;
-      progressNum = progress;
-      spinner.text = chalk.blue(`[${progressNum}%] ${currentStageStr}`);
-    });
+      const resultsC = await runCryptoAnalysis((stage, progress) => {
+        currentStageStr = stage;
+        progressNum = progress;
+        spinner.text = chalk.blue(`[C] [${progressNum}%] ${currentStageStr}`);
+      }, 'C');
 
-    spinner.succeed(chalk.green('Cryptographic analysis completed.\n'));
+      const resultsCUDA = await runCryptoAnalysis((stage, progress) => {
+        currentStageStr = stage;
+        progressNum = progress;
+        spinner.text = chalk.blue(`[CUDA] [${progressNum}%] ${currentStageStr}`);
+      }, 'CUDA');
+  
+      spinner.succeed(chalk.green('Cryptographic analysis completed.\n'));
+  
+      const table = new Table({
+        head: [chalk.bold.white('Metric'), chalk.bold.white('Rust'), chalk.bold.white('C'), chalk.bold.white('CUDA'), chalk.bold.white('Ideal')],
+        colWidths: [35, 12, 12, 12, 15],
+        style: { head: [], border: [] },
+      });
+  
+      let failed = false;
 
-    const table = new Table({
-      head: [chalk.bold.white('Metric'), chalk.bold.white('Result'), chalk.bold.white('Ideal')],
-      colWidths: [35, 15, 15],
-      style: { head: [], border: [] },
-    });
+      function addRow(name: string, format: (r: any) => string, check: (r: any) => boolean, ideal: string) {
+        const valR = resultsRust[name];
+        const valC = resultsC[name];
+        const valCu = resultsCUDA[name];
+        if (check(resultsRust) || check(resultsC) || check(resultsCUDA)) failed = true;
+        table.push([name, format(valR), format(valC), format(valCu), ideal]);
+      }
 
-    // 1. Shannon Entropy
-    const entropy = results.entropy;
-    let failed = false;
-    if (entropy <= 7.5) failed = true;
-    table.push(['Shannon Entropy (Bits/Byte)', entropy.toFixed(4), '~ 8.000']);
-
-    // 2. Strict Avalanche Criterion (SAC)
-    const sac = results.sac_percent;
-    if (sac <= 48.0 || sac >= 52.0) failed = true;
-    table.push(['Strict Avalanche Criterion (SAC)', sac.toFixed(2) + '%', '~ 50.0%']);
-
-    // 3. Chi-Square
-    const chi2 = results.chi_square;
-    if (chi2 <= 150 || chi2 >= 350) failed = true;
-    table.push(['Chi-Square Uniformity', chi2.toFixed(2), '200 - 300']);
-
-    // 4. Serial Correlation
-    const serialCorr = results.serial_correlation;
-    if (Math.abs(serialCorr) > 0.05) failed = true;
-    table.push(['Serial Autocorrelation', serialCorr.toFixed(5), '~ 0.000']);
-
-    // 5. Monte Carlo Pi Estimation
-    const piEst = results.monte_carlo_pi;
-    if (Math.abs(piEst - 3.14159) > 0.1) failed = true;
-    table.push(['Monte Carlo Pi Estimation', piEst.toFixed(5), '~ 3.14159']);
-
-    // 6. Monobit Frequency Test
-    const monobit = results.monobit;
-    if (Math.abs(monobit - 0.5) > 0.05) failed = true;
-    table.push(['Monobit Frequency', monobit.toFixed(4), '~ 0.5000']);
-
-    // 7. Runs Test (Decay Ratio)
-    const runsTest = results.runs_test;
-    if (Math.abs(runsTest - 1.0) > 0.05) failed = true;
-    table.push(['Runs Test (Decay Ratio)', runsTest.toFixed(4), '~ 1.0000']);
-
-    // 8. Cross-Key Avalanche Diffusion
-    const ckSac = results.cross_key_sac;
-    if (Math.abs(ckSac - 50.0) > 2.0) failed = true;
-    table.push(['Cross-Key Diffusion', ckSac.toFixed(2) + '%', '~ 50.0%']);
-
-    // 9. Constant-Time Variance
-    const tv = results.time_variance;
-    if (tv > 5.0) failed = true;
-    table.push(['Constant-Time Variance', tv.toFixed(4) + '%', '< 5.00%']);
-
-    // 10. Block Frequency Test
-    const bFreq = results.block_frequency;
-    table.push(['Block Frequency (χ²)', bFreq.toFixed(4), '~ 6400.0']);
-
-    // 11. Cumulative Sums Test
-    const cusum = results.cumulative_sums;
-    if (cusum > 1.5) failed = true;
-    table.push(['Cumulative Sums (Cusum)', cusum.toFixed(4), '~ 0.000']);
-
-    // 12. Discrete Fourier Transform (Spectral)
-    const dft = results.spectral_dft;
-    if (Math.abs(dft) > 2.0) failed = true;
-    table.push(['Discrete Fourier Transform', dft.toFixed(4), '~ 0.000']);
-
-    // 13. Longest Run of Ones Test
-    const longest = results.longest_run;
-    table.push(['Longest Run of Ones (χ²)', longest.toFixed(4), '~ 0.000']);
-
-    // 14. Approximate Entropy Test
-    const apen = results.approx_entropy;
-    table.push(['Approximate Entropy', apen.toFixed(4), '~ 0.693']);
-
-    // 15. Serial Pattern Test
-    const serial = results.serial_pattern;
-    table.push(['Serial Pattern Test (χ²)', serial.toFixed(4), '~ 32768']);
-
-    // 16. Lempel-Ziv Compression Ratio
-    const lzRatio = results.lz_compression;
-    if (lzRatio < 0.95) failed = true;
-    table.push(['Lempel-Ziv Incompressibility', lzRatio.toFixed(4), '~ 1.000']);
-
-    console.log(table.toString());
-    console.log(chalk.dim('\n  Evaluated against reference engine (Rust) using 100KB standard payload.\n'));
+      addRow('entropy', v => v.toFixed(4), r => r.entropy <= 7.5, '~ 8.000');
+      addRow('sac_percent', v => v.toFixed(2) + '%', r => r.sac_percent <= 48.0 || r.sac_percent >= 52.0, '~ 50.0%');
+      addRow('chi_square', v => v.toFixed(2), r => r.chi_square <= 150 || r.chi_square >= 350, '200 - 300');
+      addRow('serial_correlation', v => v.toFixed(5), r => Math.abs(r.serial_correlation) > 0.05, '~ 0.000');
+      addRow('monte_carlo_pi', v => v.toFixed(5), r => Math.abs(r.monte_carlo_pi - 3.14159) > 0.1, '~ 3.14159');
+      addRow('monobit', v => v.toFixed(4), r => Math.abs(r.monobit - 0.5) > 0.05, '~ 0.5000');
+      addRow('runs_test', v => v.toFixed(4), r => Math.abs(r.runs_test - 1.0) > 0.05, '~ 1.0000');
+      addRow('cross_key_sac', v => v.toFixed(2) + '%', r => Math.abs(r.cross_key_sac - 50.0) > 2.0, '~ 50.0%');
+      addRow('time_variance', v => v.toFixed(4) + '%', r => r.time_variance > 5.0, '< 5.00%');
+      addRow('block_frequency', v => v.toFixed(4), r => false, '~ 6400.0');
+      addRow('cumulative_sums', v => v.toFixed(4), r => r.cumulative_sums > 1.5, '~ 0.000');
+      addRow('spectral_dft', v => v.toFixed(4), r => Math.abs(r.spectral_dft) > 2.0, '~ 0.000');
+      addRow('longest_run', v => v.toFixed(4), r => false, '~ 0.000');
+      addRow('approx_entropy', v => v.toFixed(4), r => false, '~ 0.693');
+      addRow('serial_pattern', v => v.toFixed(4), r => false, '~ 32768');
+      addRow('lz_compression', v => v.toFixed(4), r => r.lz_compression < 0.95, '~ 1.000');
+  
+      console.log(table.toString());
+      console.log(chalk.dim('\n  Evaluated independently across Rust, C, and CUDA engines using 100KB payload.\n'));
 
     // Check if it passes security thresholds
     if (failed) {
