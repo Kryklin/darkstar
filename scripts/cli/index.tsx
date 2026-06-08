@@ -549,7 +549,7 @@ const CryptoAnalysisRunner = ({ onComplete }: { onComplete: () => void }) => {
   return (
     <Box flexDirection="column" padding={1} width={80} alignItems="center">
       <Text color="#F8FAFC" bold>─── Cryptographic Analysis ───</Text>
-      <Box marginY={1} flexDirection="column" alignItems="center" height={9}>
+      <Box marginY={1} flexDirection="column" alignItems="center" height={16}>
         {!done ? (
           <Text color="#F8FAFC">
             {currentStage}... {progress}%
@@ -567,6 +567,10 @@ const CryptoAnalysisRunner = ({ onComplete }: { onComplete: () => void }) => {
             <Text color="#F8FAFC">Block Frequency (χ²): <Text color="#10B981">{result.block_frequency.toFixed(4)}</Text></Text>
             <Text color="#F8FAFC">Cumulative Sums: <Text color="#10B981">{result.cumulative_sums.toFixed(4)}</Text></Text>
             <Text color="#F8FAFC">Discrete Fourier Transform: <Text color="#10B981">{result.spectral_dft.toFixed(4)}</Text></Text>
+            <Text color="#F8FAFC">Longest Run of Ones (χ²): <Text color="#10B981">{result.longest_run.toFixed(4)}</Text></Text>
+            <Text color="#F8FAFC">Approximate Entropy: <Text color="#10B981">{result.approx_entropy.toFixed(4)}</Text></Text>
+            <Text color="#F8FAFC">Serial Pattern Test (χ²): <Text color="#10B981">{result.serial_pattern.toFixed(4)}</Text></Text>
+            <Text color="#F8FAFC">Lempel-Ziv Incompressibility: <Text color="#10B981">{result.lz_compression.toFixed(4)}</Text></Text>
           </Box>
         )}
       </Box>

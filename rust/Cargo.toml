@@ -1,6 +1,6 @@
 [package]
 name = "d-asp"
-version = "1.0.5"
+version = "1.0.6"
 edition = "2021"
 authors = ["Victor Kane"]
 license = "CC0-1.0"

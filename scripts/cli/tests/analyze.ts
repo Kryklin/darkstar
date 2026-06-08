@@ -23,7 +23,13 @@ export type CryptoAnalysisResult = {
   block_frequency: number;
   cumulative_sums: number;
   spectral_dft: number;
+  longest_run: number;
+  approx_entropy: number;
+  serial_pattern: number;
+  lz_compression: number;
 };
+
+import zlib from 'zlib';
 
 // Math Utilities
 function shannonEntropy(data: Buffer): number {
@@ -253,6 +259,123 @@ function spectralTest(data: Buffer): number {
   return d;
 }
 
+function longestRunOfOnes(data: Buffer): number {
+  const blockSize = 128;
+  const n = data.length * 8;
+  const numBlocks = Math.floor(n / blockSize);
+  if (numBlocks === 0) return 0;
+  
+  const v = [0, 0, 0, 0, 0, 0, 0];
+  const pi = [0.1174, 0.2430, 0.2493, 0.1753, 0.1027, 0.1124];
+  
+  for (let i = 0; i < numBlocks; i++) {
+    let maxRun = 0;
+    let currentRun = 0;
+    for (let bitIdx = 0; bitIdx < blockSize; bitIdx++) {
+      const globalBitIdx = i * blockSize + bitIdx;
+      const byteIdx = Math.floor(globalBitIdx / 8);
+      const bitInByte = 7 - (globalBitIdx % 8);
+      if ((data[byteIdx] & (1 << bitInByte)) !== 0) {
+        currentRun++;
+        if (currentRun > maxRun) maxRun = currentRun;
+      } else {
+        currentRun = 0;
+      }
+    }
+    if (maxRun <= 4) v[0]++;
+    else if (maxRun === 5) v[1]++;
+    else if (maxRun === 6) v[2]++;
+    else if (maxRun === 7) v[3]++;
+    else if (maxRun === 8) v[4]++;
+    else v[5]++;
+  }
+  
+  let chi2 = 0;
+  for (let i = 0; i < 6; i++) {
+    const expected = numBlocks * pi[i];
+    if (expected > 0) chi2 += Math.pow(v[i] - expected, 2) / expected;
+  }
+  return chi2;
+}
+
+function approximateEntropy(data: Buffer, m: number = 10): number {
+  const n = data.length * 8;
+  if (n === 0) return 0.0;
+  
+  const getBit = (idx: number) => {
+    const byteIdx = Math.floor((idx % n) / 8);
+    const bitInByte = 7 - ((idx % n) % 8);
+    return (data[byteIdx] & (1 << bitInByte)) !== 0 ? 1 : 0;
+  };
+  
+  const phi = (mSize: number) => {
+    if (mSize === 0) return 0;
+    const counts = new Int32Array(1 << mSize);
+    const mask = (1 << mSize) - 1;
+    let pattern = 0;
+    for (let j = 0; j < mSize - 1; j++) {
+      pattern = (pattern << 1) | getBit(j);
+    }
+    for (let i = 0; i < n; i++) {
+      pattern = ((pattern << 1) | getBit(i + mSize - 1)) & mask;
+      counts[pattern]++;
+    }
+    let sum = 0;
+    for (let i = 0; i < counts.length; i++) {
+      const count = counts[i];
+      if (count > 0) {
+        const p = count / n;
+        sum += p * Math.log(p);
+      }
+    }
+    return sum;
+  };
+  
+  return phi(m) - phi(m + 1);
+}
+
+function serialTest(data: Buffer, m: number = 16): number {
+  const n = data.length * 8;
+  if (n === 0) return 0.0;
+  
+  const getBit = (idx: number) => {
+    const byteIdx = Math.floor((idx % n) / 8);
+    const bitInByte = 7 - ((idx % n) % 8);
+    return (data[byteIdx] & (1 << bitInByte)) !== 0 ? 1 : 0;
+  };
+  
+  const psi = (mSize: number) => {
+    if (mSize === 0) return 0;
+    const counts = new Int32Array(1 << mSize);
+    const mask = (1 << mSize) - 1;
+    let pattern = 0;
+    for (let j = 0; j < mSize - 1; j++) {
+      pattern = (pattern << 1) | getBit(j);
+    }
+    for (let i = 0; i < n; i++) {
+      pattern = ((pattern << 1) | getBit(i + mSize - 1)) & mask;
+      counts[pattern]++;
+    }
+    let sum = 0;
+    for (let i = 0; i < counts.length; i++) {
+      const count = counts[i];
+      if (count > 0) sum += count * count;
+    }
+    return (Math.pow(2, mSize) / n) * sum - n;
+  };
+  
+  const psiM = psi(m);
+  const psiM1 = psi(m - 1);
+  
+  return psiM - psiM1;
+}
+
+function lzCompressionTest(data: Buffer): number {
+  if (data.length === 0) return 1.0;
+  const compressed = zlib.deflateSync(data, { level: 9 });
+  return compressed.length / data.length;
+}
+
 // Engine Wrappers
 async function runKeygen(): Promise<{ pk: string; sk: string }> {
   const { stdout } = await execa(RUST_CMD[0], ['keygen'], { cwd: RUST_CWD });
@@ -306,6 +429,10 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
   const blockFreq = blockFrequency(ctBytes);
   const cusum = cumulativeSums(ctBytes);
   const spectral = spectralTest(ctBytes);
+  const longest = longestRunOfOnes(ctBytes);
+  const apen = approximateEntropy(ctBytes);
+  const serial = serialTest(ctBytes);
+  const lzRatio = lzCompressionTest(ctBytes);
 
   onProgress('Strict Avalanche Criterion (SAC)', 40);
   const payloadStr = 'CRYPTOGRAPHIC_AVALANCHE_TEST_PAYLOAD_1234567890';
@@ -367,5 +494,9 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
     block_frequency: blockFreq,
     cumulative_sums: cusum,
     spectral_dft: spectral,
+    longest_run: longest,
+    approx_entropy: apen,
+    serial_pattern: serial,
+    lz_compression: lzRatio,
   };
 }

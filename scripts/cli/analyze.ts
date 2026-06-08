@@ -97,6 +97,23 @@ import { runCryptoAnalysis } from './tests/analyze.js';
     if (Math.abs(dft) > 2.0) failed = true;
     table.push(['Discrete Fourier Transform', dft.toFixed(4), '~ 0.000']);
 
+    // 13. Longest Run of Ones Test
+    const longest = results.longest_run;
+    table.push(['Longest Run of Ones (χ²)', longest.toFixed(4), '~ 0.000']);
+
+    // 14. Approximate Entropy Test
+    const apen = results.approx_entropy;
+    table.push(['Approximate Entropy', apen.toFixed(4), '~ 0.693']);
+
+    // 15. Serial Pattern Test
+    const serial = results.serial_pattern;
+    table.push(['Serial Pattern Test (χ²)', serial.toFixed(4), '~ 32768']);
+
+    // 16. Lempel-Ziv Compression Ratio
+    const lzRatio = results.lz_compression;
+    if (lzRatio < 0.95) failed = true;
+    table.push(['Lempel-Ziv Incompressibility', lzRatio.toFixed(4), '~ 1.000']);
+
     console.log(table.toString());
     console.log(chalk.dim('\n  Evaluated against reference engine (Rust) using 100KB standard payload.\n'));
 
