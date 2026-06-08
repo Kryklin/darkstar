@@ -564,6 +564,8 @@ const CryptoAnalysisRunner = ({ onComplete }: { onComplete: () => void }) => {
             <Text color="#F8FAFC">Monobit Ratio: <Text color="#10B981">{result.monobit.toFixed(4)}</Text></Text>
             <Text color="#F8FAFC">Cross-Key SAC: <Text color="#10B981">{result.cross_key_sac.toFixed(2)}%</Text></Text>
             <Text color="#F8FAFC">Time Variance: <Text color="#10B981">{result.time_variance.toFixed(4)}%</Text></Text>
+            <Text color="#F8FAFC">Block Frequency (χ²): <Text color="#10B981">{result.block_frequency.toFixed(4)}</Text></Text>
+            <Text color="#F8FAFC">Cumulative Sums: <Text color="#10B981">{result.cumulative_sums.toFixed(4)}</Text></Text>
           </Box>
         )}
       </Box>

@@ -8,6 +8,8 @@ import { execa } from 'execa';
 const fs = require('fs');
 const path = require('path');
 
+import { runCryptoAnalysis } from './tests/analyze.js';
+
 (async () => {
   const { default: ora } = await import('ora');
   const { default: chalk } = await import('chalk');
@@ -15,21 +17,17 @@ const path = require('path');
 
   console.log(chalk.hex('#FF0055').bold('\n  🔬  Cryptographic Analysis & Profiling\n'));
 
-  const spinner = ora(chalk.blue('Running Mathematical Evaluation via Python Engine...')).start();
+  let currentStageStr = 'Initializing...';
+  let progressNum = 0;
+  
+  const spinner = ora(chalk.blue(`Running Mathematical Evaluation...`)).start();
 
   try {
-    const rootDir = path.join(__dirname, '../..');
-
-    // Execute the python analysis script
-    await execa('python', ['scripts/tests/analyze_crypto.py'], { cwd: rootDir });
-
-    // Read the results
-    const resultsPath = path.join(rootDir, 'scripts/data/crypto_analysis.json');
-    if (!fs.existsSync(resultsPath)) {
-      throw new Error('Analysis completed but results file is missing.');
-    }
-
-    const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+    const results = await runCryptoAnalysis((stage, progress) => {
+      currentStageStr = stage;
+      progressNum = progress;
+      spinner.text = chalk.blue(`[${progressNum}%] ${currentStageStr}`);
+    });
 
     spinner.succeed(chalk.green('Cryptographic analysis completed.\n'));
 
@@ -84,6 +82,15 @@ const path = require('path');
     const tv = results.time_variance;
     if (tv > 5.0) failed = true;
     table.push(['Constant-Time Variance', tv.toFixed(4) + '%', '< 5.00%']);
+
+    // 10. Block Frequency Test
+    const bFreq = results.block_frequency;
+    table.push(['Block Frequency (χ²)', bFreq.toFixed(4), '~ 6400.0']);
+
+    // 11. Cumulative Sums Test
+    const cusum = results.cumulative_sums;
+    if (cusum > 1.5) failed = true;
+    table.push(['Cumulative Sums (Cusum)', cusum.toFixed(4), '~ 0.000']);
 
     console.log(table.toString());
     console.log(chalk.dim('\n  Evaluated against reference engine (Rust) using 100KB standard payload.\n'));

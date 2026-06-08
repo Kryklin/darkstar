@@ -20,6 +20,8 @@ export type CryptoAnalysisResult = {
   runs_test: number;
   cross_key_sac: number;
   time_variance: number;
+  block_frequency: number;
+  cumulative_sums: number;
 };
 
 // Math Utilities
@@ -131,6 +133,46 @@ function countBitFlips(hex1: string, hex2: string): number {
   return flips;
 }
 
+function blockFrequency(data: Buffer, blockSize: number = 128): number {
+  const n = data.length * 8;
+  const numBlocks = Math.floor(n / blockSize);
+  if (numBlocks === 0) return 0.0;
+  
+  let chiSquare = 0.0;
+  for (let i = 0; i < numBlocks; i++) {
+    let ones = 0;
+    for (let bitIdx = 0; bitIdx < blockSize; bitIdx++) {
+      const globalBitIdx = i * blockSize + bitIdx;
+      const byteIdx = Math.floor(globalBitIdx / 8);
+      const bitInByte = 7 - (globalBitIdx % 8);
+      if ((data[byteIdx] & (1 << bitInByte)) !== 0) {
+        ones++;
+      }
+    }
+    const proportion = ones / blockSize;
+    chiSquare += Math.pow(proportion - 0.5, 2);
+  }
+  return 4.0 * blockSize * chiSquare;
+}
+
+function cumulativeSums(data: Buffer): number {
+  const n = data.length * 8;
+  if (n === 0) return 0.0;
+  
+  let sum = 0;
+  let maxExcursion = 0;
+  
+  for (let i = 0; i < data.length; i++) {
+    for (let bit = 7; bit >= 0; bit--) {
+      const b = (data[i] & (1 << bit)) !== 0 ? 1 : -1;
+      sum += b;
+      if (Math.abs(sum) > maxExcursion) maxExcursion = Math.abs(sum);
+    }
+  }
+  // Normalize against expected max excursion
+  return maxExcursion / Math.sqrt(n);
+}
+
 // Engine Wrappers
 async function runKeygen(): Promise<{ pk: string; sk: string }> {
   const { stdout } = await execa(RUST_CMD[0], ['keygen'], { cwd: RUST_CWD });
@@ -181,6 +223,8 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
   const piEst = monteCarloPi(ctBytes);
   const monobit = monobitFrequency(ctBytes);
   const runsRatio = runsTest(ctBytes);
+  const blockFreq = blockFrequency(ctBytes);
+  const cusum = cumulativeSums(ctBytes);
 
   onProgress('Strict Avalanche Criterion (SAC)', 40);
   const payloadStr = 'CRYPTOGRAPHIC_AVALANCHE_TEST_PAYLOAD_1234567890';
@@ -239,5 +283,7 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
     runs_test: runsRatio,
     cross_key_sac: crossKeySacPercent,
     time_variance: timeVariance,
+    block_frequency: blockFreq,
+    cumulative_sums: cusum,
   };
 }
