@@ -10,7 +10,7 @@ import { runKatVerification, KatResult } from './tests/kat.js';
 import { runGpuTest, GpuTestResult } from './tests/gpu.js';
 import { CryptoAnalysisResult, runCryptoAnalysis } from './tests/analyze.js';
 import SelectInput from 'ink-select-input';
-import { ShellJobRunner, ScriptRunner, CleanRunner, EnvCheckRunner, BumpRunner, BuildEnginesRunner, ScaffoldRunner } from './runners.js';
+import { ShellJobRunner, ScriptRunner, CleanRunner, EnvCheckRunner, BumpRunner, BuildEnginesRunner, ScaffoldRunner as AutomatedScaffoldRunner } from './runners.js';
 
 
 const require = createRequire(import.meta.url);
@@ -337,7 +337,7 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
   ];
   
   if (step === 0) {
-    return <ScaffoldRunner onComplete={() => setStep(1)} autoAdvance={true} />;
+    return <AutomatedScaffoldRunner onComplete={() => setStep(1)} autoAdvance={true} />;
   }
 
   if (step === 1) {
