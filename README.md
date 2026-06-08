@@ -42,11 +42,11 @@ The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engi
 
 The suite is instrumented for exhaustive telemetry across all cryptographic and architectural layers.
 
-| Engine        | Total Time   | Casca Time | Casca CPB | Total CPB | Ops/sec      |
-| :------------ | :----------- | :--------- | :-------- | :-------- | :----------- |
-| **CUDA**      | **210.8 μs** | 150 μs     | **7.54**  | **10.59** | **6,666.67** |
-| **Rust**      | 760.0 μs     | 179 μs     | 9.00      | 38.20     | 5,587.00     |
-| **C**         | 1.842 ms     | 388 μs     | 19.50     | 92.58     | 2,577.32     |
+| Engine        | Casca Time | Casca CPB | Ops/sec      |
+| :------------ | :--------- | :-------- | :----------- |
+| **CUDA**      | 150 μs     | **7.54**  | **6,666.67** |
+| **Rust**      | 179 μs     | 9.00      | 5,587.00     |
+| **C**         | 388 μs     | 19.50     | 2,577.32     |
 
 > [!NOTE]
 > Detailed structural requirements, CLI Usage, High-Throughput Streaming (CUDA) specs, and Known Answer Tests (KAT) are thoroughly documented in the [**Documentation Hub**](#-documentation-hub) above.
