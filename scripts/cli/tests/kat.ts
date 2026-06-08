@@ -15,7 +15,7 @@ const ENGINES = {
   },
   C: {
     cwd: path.join(BASE_DIR, 'c'),
-    cmd: [path.join(BASE_DIR, 'c', 'dasp.exe')],
+    cmd: [path.join(BASE_DIR, 'c', process.env.DASP_C_BINARY || 'dasp.exe')],
   },
   CUDA: {
     cwd: path.join(BASE_DIR, 'cuda'),

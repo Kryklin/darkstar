@@ -96,14 +96,18 @@ const path = require('path');
         '-ladvapi32',
         '-lbcrypt',
       ],
-      { cwd: path.join(__dirname, '../../c'), env: cEnv },
+      { cwd: path.join(__dirname, '../../c'), env: cEnv }
     );
-
     // Run KAT tests against the ASAN binary
-    await execa('python', ['../scripts/tests/verify_kat.py'], {
-      cwd: path.join(__dirname, '../../c'),
-      env: Object.assign({}, cEnv, { DASP_C_BINARY: 'dasp_asan.exe' }),
-    });
+    process.env.PATH = `${llvmPath};${process.env.PATH}`;
+    process.env.DASP_C_BINARY = 'dasp_asan.exe';
+    const { runKatVerification } = await import('./tests/kat.js');
+    const results = await runKatVerification(() => {});
+    
+    const cFailures = results.filter(r => r.engine === 'C' && r.status !== 'PASS');
+    if (cFailures.length > 0) {
+      throw new Error(`C ASAN Tests Failed: \n${cFailures.map(f => `Vector ${f.vectorId}: ${f.error}`).join('\n')}`);
+    }
 
     spinner2.succeed(chalk.green('C Engine ASAN Checks Passed. Zero memory leaks detected.'));
   } catch (error) {
