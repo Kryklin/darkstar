@@ -45,7 +45,7 @@ import { execa } from 'execa';
 
     // 1. Root package.json & package-lock.json
     await execa('npm', ['version', targetVersion, '--no-git-tag-version', '--allow-same-version'], { cwd: root });
-    
+
     // 2. Node engine package.json & package-lock.json
     const nodeDir = path.join(root, 'node');
     if (fs.existsSync(nodeDir)) {
@@ -58,7 +58,7 @@ import { execa } from 'execa';
       let cargoToml = fs.readFileSync(cargoTomlPath, 'utf8');
       cargoToml = cargoToml.replace(/^version\s*=\s*".*?"/m, `version = "${targetVersion}"`);
       fs.writeFileSync(cargoTomlPath, cargoToml);
-      
+
       // Update Cargo.lock
       await execa('cargo', ['update', '-p', 'd-asp'], { cwd: path.join(root, 'rust') });
     }

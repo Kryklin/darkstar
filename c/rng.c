@@ -15,8 +15,8 @@
 #include <string.h>
 
 #ifdef _WIN32
-#include <windows.h>
 #include <bcrypt.h>
+#include <windows.h>
 #pragma comment(lib, "bcrypt.lib")
 #else
 #include <fcntl.h>

@@ -16,9 +16,7 @@ import { execa } from 'execa';
   const jobs: any[] = [
     { name: 'TypeScript / HTML (Prettier)', cmd: 'npm run format:ts' },
     { name: 'Rust (rustfmt)', cmd: 'npm run format:rust' },
-    { name: 'Go (gofmt)', cmd: 'npm run format:go' },
     { name: 'C / CUDA (clang-format)', cmd: 'npm run format:c' },
-    { name: 'Python (Black)', cmd: 'npm run format:python' },
   ];
 
   for (let i = 0; i < jobs.length; i++) {

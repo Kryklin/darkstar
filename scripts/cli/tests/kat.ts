@@ -20,7 +20,7 @@ const ENGINES = {
   CUDA: {
     cwd: path.join(BASE_DIR, 'cuda'),
     cmd: [path.join(BASE_DIR, 'cuda', 'd-asp_cuda.exe')],
-  }
+  },
 };
 
 export type KatResult = {
@@ -42,86 +42,88 @@ export async function runKatVerification(onProgress: (engine: string, vectorId: 
 
   const results: KatResult[] = [];
 
-  await Promise.all(Object.entries(ENGINES).map(async ([engineName, engine]) => {
-    for (const vec of vectors) {
-      onProgress(engineName, vec.vector_id);
-      
-      const ctJsonStr = JSON.stringify(vec.ciphertext_json);
-      const skFile = path.join(engine.cwd, 'tmp_sk.hex');
-      const dataFile = path.join(engine.cwd, 'tmp_data.json');
-      const hwidFile = path.join(engine.cwd, 'tmp_hwid.hex');
+  await Promise.all(
+    Object.entries(ENGINES).map(async ([engineName, engine]) => {
+      for (const vec of vectors) {
+        onProgress(engineName, vec.vector_id);
 
-      await fs.writeFile(skFile, vec.sk, 'utf-8');
-      await fs.writeFile(dataFile, ctJsonStr, 'utf-8');
-      if (vec.hwid) await fs.writeFile(hwidFile, vec.hwid, 'utf-8');
+        const ctJsonStr = JSON.stringify(vec.ciphertext_json);
+        const skFile = path.join(engine.cwd, 'tmp_sk.hex');
+        const dataFile = path.join(engine.cwd, 'tmp_data.json');
+        const hwidFile = path.join(engine.cwd, 'tmp_hwid.hex');
 
-      const cmd = [...engine.cmd, 'decrypt', `@${path.resolve(dataFile)}`, `@${path.resolve(skFile)}`];
-      if (vec.hwid) cmd.push('--hwid', `@${path.resolve(hwidFile)}`);
-      if (engineName !== 'C') cmd.push('--diagnostic');
+        await fs.writeFile(skFile, vec.sk, 'utf-8');
+        await fs.writeFile(dataFile, ctJsonStr, 'utf-8');
+        if (vec.hwid) await fs.writeFile(hwidFile, vec.hwid, 'utf-8');
 
-      let resOutput = '';
-      let resStderr = '';
-      let exitCode = 0;
+        const cmd = [...engine.cmd, 'decrypt', `@${path.resolve(dataFile)}`, `@${path.resolve(skFile)}`];
+        if (vec.hwid) cmd.push('--hwid', `@${path.resolve(hwidFile)}`);
+        if (engineName !== 'C') cmd.push('--diagnostic');
 
-      try {
-        const subprocess = await execa(cmd[0], cmd.slice(1), { cwd: engine.cwd, reject: false, timeout: 30000 });
-        resOutput = subprocess.stdout;
-        resStderr = subprocess.stderr;
-        exitCode = subprocess.exitCode;
-      } catch (e: any) {
-        resStderr = e.message;
-        exitCode = 1;
-      }
+        let resOutput = '';
+        let resStderr = '';
+        let exitCode = 0;
 
-      await fs.rm(skFile, { force: true });
-      await fs.rm(dataFile, { force: true });
-      await fs.rm(hwidFile, { force: true });
+        try {
+          const subprocess = await execa(cmd[0], cmd.slice(1), { cwd: engine.cwd, reject: false, timeout: 30000 });
+          resOutput = subprocess.stdout;
+          resStderr = subprocess.stderr;
+          exitCode = subprocess.exitCode;
+        } catch (e: any) {
+          resStderr = e.message;
+          exitCode = 1;
+        }
 
-      let status = 'PASS';
-      let errorMsg = undefined;
+        await fs.rm(skFile, { force: true });
+        await fs.rm(dataFile, { force: true });
+        await fs.rm(hwidFile, { force: true });
 
-      if (exitCode !== 0) {
-        status = 'FAIL';
-        errorMsg = `CLI ERROR: ${resStderr}`;
-      } else {
-        const lines = resOutput.split('\n');
-        const outputLines = lines.filter((l) => !l.startsWith('{"diagnostics"'));
-        const actualPayload = outputLines[outputLines.length - 1]?.trim() || '';
+        let status = 'PASS';
+        let errorMsg = undefined;
 
-        if (actualPayload !== vec.payload.trim()) {
+        if (exitCode !== 0) {
           status = 'FAIL';
-          errorMsg = 'Payload mismatch';
-        } else if (engineName !== 'C') {
-          let actualDiag: any = {};
-          for (const line of resStderr.split('\n').concat(resOutput.split('\n'))) {
-            try {
-              const obj = JSON.parse(line);
-              if (obj.diagnostics) {
-                actualDiag = { ...actualDiag, ...obj.diagnostics };
-              }
-            } catch (e) {}
-          }
+          errorMsg = `CLI ERROR: ${resStderr}`;
+        } else {
+          const lines = resOutput.split('\n');
+          const outputLines = lines.filter((l) => !l.startsWith('{"diagnostics"'));
+          const actualPayload = outputLines[outputLines.length - 1]?.trim() || '';
 
-          const stages = ['stage1_blended_ss', 'stage2_word_key', 'stage3_round_indices', 'stage4_mac'];
-          for (const key of stages) {
-            if (engineName === 'CUDA' && key === 'stage3_round_indices') continue;
-            
-            const vExp = vec.diagnostics?.[key];
-            const vAct = actualDiag[key];
-            if (vExp !== undefined && vAct !== undefined && vExp !== vAct) {
-              status = 'FAIL';
-              errorMsg = `Diagnostic mismatch: ${key}`;
-              break;
+          if (actualPayload !== vec.payload.trim()) {
+            status = 'FAIL';
+            errorMsg = 'Payload mismatch';
+          } else if (engineName !== 'C') {
+            let actualDiag: any = {};
+            for (const line of resStderr.split('\n').concat(resOutput.split('\n'))) {
+              try {
+                const obj = JSON.parse(line);
+                if (obj.diagnostics) {
+                  actualDiag = { ...actualDiag, ...obj.diagnostics };
+                }
+              } catch (e) {}
+            }
+
+            const stages = ['stage1_blended_ss', 'stage2_word_key', 'stage3_round_indices', 'stage4_mac'];
+            for (const key of stages) {
+              if (engineName === 'CUDA' && key === 'stage3_round_indices') continue;
+
+              const vExp = vec.diagnostics?.[key];
+              const vAct = actualDiag[key];
+              if (vExp !== undefined && vAct !== undefined && vExp !== vAct) {
+                status = 'FAIL';
+                errorMsg = `Diagnostic mismatch: ${key}`;
+                break;
+              }
             }
           }
         }
-      }
 
-      const result = { engine: engineName, vectorId: vec.vector_id, status, error: errorMsg };
-      results.push(result);
-      onProgress(engineName, vec.vector_id, result);
-    }
-  }));
+        const result = { engine: engineName, vectorId: vec.vector_id, status, error: errorMsg };
+        results.push(result);
+        onProgress(engineName, vec.vector_id, result);
+      }
+    }),
+  );
 
   return results;
 }

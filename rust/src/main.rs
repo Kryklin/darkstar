@@ -110,10 +110,12 @@ fn main() {
             let stdin = std::io::stdin();
             for data in stdin.lines().map_while(Result::ok) {
                 let data = data.trim();
-                if data.is_empty() { continue; }
+                if data.is_empty() {
+                    continue;
+                }
                 match dc.decrypt(data, &sk_hex, hwid.clone(), telemetry) {
                     Ok(decrypted) => println!("{}", decrypted),
-                    Err(_) => println!("{{\"error\":\"MAC Failed\"}}")
+                    Err(_) => println!("{{\"error\":\"MAC Failed\"}}"),
                 }
             }
         }

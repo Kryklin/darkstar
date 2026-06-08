@@ -95,6 +95,4 @@ import { execa } from 'execa';
     const json = JSON.parse(out.substring(out.indexOf('{')));
     return json.vulnerabilities.count || 0;
   }
-
-
 })();

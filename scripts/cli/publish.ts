@@ -53,7 +53,7 @@ const pkg = require('../../package.json');
     { name: 'c-engine-windows-x64.zip', cwd: 'c', files: ['dasp.exe', 'dasp_kem.dll', 'dasp.lib'] },
     { name: 'cuda-engine-windows-x64.zip', cwd: 'cuda', files: ['d-asp_cuda.exe', 'd-asp_cuda.lib', 'd-asp_cuda.exp'] },
     { name: 'wasm-engine-windows-x64.zip', cwd: 'wasm', files: ['dasp_crypto.wasm'] },
-    { name: 'language-wrappers.zip', cwd: 'out-wrappers', files: ['*'] }
+    { name: 'language-wrappers.zip', cwd: 'out-wrappers', files: ['*'] },
   ];
 
   console.log(chalk.cyan(`\n📦 Packaging ${engines.length} engines into ${outDir}...\n`));

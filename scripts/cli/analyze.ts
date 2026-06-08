@@ -19,24 +19,24 @@ const path = require('path');
 
   try {
     const rootDir = path.join(__dirname, '../..');
-    
+
     // Execute the python analysis script
     await execa('python', ['scripts/tests/analyze_crypto.py'], { cwd: rootDir });
-    
+
     // Read the results
     const resultsPath = path.join(rootDir, 'scripts/data/crypto_analysis.json');
     if (!fs.existsSync(resultsPath)) {
       throw new Error('Analysis completed but results file is missing.');
     }
-    
+
     const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
-    
+
     spinner.succeed(chalk.green('Cryptographic analysis completed.\n'));
-    
+
     const table = new Table({
       head: [chalk.bold.white('Metric'), chalk.bold.white('Result'), chalk.bold.white('Ideal')],
       colWidths: [35, 15, 15],
-      style: { head: [], border: [] }
+      style: { head: [], border: [] },
     });
 
     // 1. Shannon Entropy
@@ -87,7 +87,7 @@ const path = require('path');
 
     console.log(table.toString());
     console.log(chalk.dim('\n  Evaluated against reference engine (Rust) using 100KB standard payload.\n'));
-    
+
     // Check if it passes security thresholds
     if (failed) {
       console.log(chalk.red.bold('✖ Cryptographic algorithms are displaying severe anomalies!'));
@@ -96,7 +96,6 @@ const path = require('path');
       console.log(chalk.green.bold('✔ D-ASP Encryption algorithms pass all statistical pseudo-randomness tests!'));
       process.exit(0);
     }
-
   } catch (error: any) {
     spinner.fail(chalk.red('Analysis script failed to execute.'));
     console.error(chalk.dim(error.message));

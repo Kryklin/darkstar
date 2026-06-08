@@ -50,18 +50,22 @@ function chiSquare(data: Buffer): number {
 function serialCorrelation(data: Buffer): number {
   if (data.length < 2) return 0.0;
   const n = data.length - 1;
-  let sum_x = 0, sum_y = 0, sum_xx = 0, sum_yy = 0, sum_xy = 0;
-  
+  let sum_x = 0,
+    sum_y = 0,
+    sum_xx = 0,
+    sum_yy = 0,
+    sum_xy = 0;
+
   for (let i = 0; i < n; i++) {
     const x = data[i];
-    const y = data[i+1];
+    const y = data[i + 1];
     sum_x += x;
     sum_y += y;
     sum_xx += x * x;
     sum_yy += y * y;
     sum_xy += x * y;
   }
-  
+
   const numerator = n * sum_xy - sum_x * sum_y;
   const denominator = Math.sqrt((n * sum_xx - sum_x * sum_x) * (n * sum_yy - sum_y * sum_y));
   return denominator === 0 ? 0.0 : numerator / denominator;
@@ -71,13 +75,13 @@ function monteCarloPi(data: Buffer): number {
   let pointsInCircle = 0;
   const totalPoints = Math.floor(data.length / 6);
   if (totalPoints === 0) return 0.0;
-  
+
   for (let i = 0; i < totalPoints; i++) {
     const x = data.readUIntLE(i * 6, 3) / 16777215.0;
     const y = data.readUIntLE(i * 6 + 3, 3) / 16777215.0;
     if (x * x + y * y <= 1.0) pointsInCircle++;
   }
-  return 4 * pointsInCircle / totalPoints;
+  return (4 * pointsInCircle) / totalPoints;
 }
 
 function monobitFrequency(data: Buffer): number {
@@ -96,10 +100,10 @@ function monobitFrequency(data: Buffer): number {
 function runsTest(data: Buffer): number {
   const n = data.length * 8;
   if (n === 0) return 0.0;
-  
+
   let actualRuns = 1;
   let prevBit = (data[0] & 128) >> 7;
-  
+
   for (let i = 0; i < data.length; i++) {
     for (let bit = 7; bit >= 0; bit--) {
       if (i === 0 && bit === 7) continue;
@@ -108,8 +112,8 @@ function runsTest(data: Buffer): number {
       prevBit = currentBit;
     }
   }
-  
-  const expectedRuns = (n / 2) + 1;
+
+  const expectedRuns = n / 2 + 1;
   return actualRuns / expectedRuns;
 }
 
@@ -131,21 +135,29 @@ function countBitFlips(hex1: string, hex2: string): number {
 async function runKeygen(): Promise<{ pk: string; sk: string }> {
   const { stdout } = await execa(RUST_CMD[0], ['keygen'], { cwd: RUST_CWD });
   const lines = stdout.split('\n');
-  const pk = lines.find(l => l.startsWith('PK:'))?.split('PK:')[1].trim() || '';
-  const sk = lines.find(l => l.startsWith('SK:'))?.split('SK:')[1].trim() || '';
+  const pk =
+    lines
+      .find((l) => l.startsWith('PK:'))
+      ?.split('PK:')[1]
+      .trim() || '';
+  const sk =
+    lines
+      .find((l) => l.startsWith('SK:'))
+      ?.split('SK:')[1]
+      .trim() || '';
   return { pk, sk };
 }
 
 async function runEncrypt(payload: string, pk: string, telemetry = false): Promise<any> {
   const tmpFile = path.join(RUST_CWD, 'tmp_analyze_payload.txt');
   await fs.writeFile(tmpFile, payload, 'utf-8');
-  
+
   const args = ['encrypt', `@${tmpFile}`, pk];
   if (telemetry) args.push('--telemetry');
-  
+
   const { stdout } = await execa(RUST_CMD[0], args, { cwd: RUST_CWD });
   await fs.rm(tmpFile, { force: true });
-  
+
   const lines = stdout.trim().split('\n');
   for (let i = lines.length - 1; i >= 0; i--) {
     if (lines[i].startsWith('{')) return JSON.parse(lines[i]);
@@ -156,24 +168,24 @@ async function runEncrypt(payload: string, pk: string, telemetry = false): Promi
 export async function runCryptoAnalysis(onProgress: (stage: string, progress: number) => void): Promise<CryptoAnalysisResult> {
   onProgress('Keygen', 0);
   const { pk } = await runKeygen();
-  
+
   onProgress('Baseline Statistical Tests', 10);
   const basePayload = 'A'.repeat(102400); // 100KB
   const baseCt = await runEncrypt(basePayload, pk);
   const ctHex = baseCt.data;
   const ctBytes = Buffer.from(ctHex, 'hex');
-  
+
   const entropy = shannonEntropy(ctBytes);
   const chi2 = chiSquare(ctBytes);
   const serialCorr = serialCorrelation(ctBytes);
   const piEst = monteCarloPi(ctBytes);
   const monobit = monobitFrequency(ctBytes);
   const runsRatio = runsTest(ctBytes);
-  
+
   onProgress('Strict Avalanche Criterion (SAC)', 40);
   const payloadStr = 'CRYPTOGRAPHIC_AVALANCHE_TEST_PAYLOAD_1234567890';
   const baseCtSac = (await runEncrypt(payloadStr, pk)).data;
-  
+
   // Use character-level mutation to keep payloads as valid UTF-8.
   // For each iteration, change a single character to a different printable ASCII char.
   const ASCII_PRINTABLE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
@@ -188,7 +200,7 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
     }
     chars[charIdx] = replacement;
     const mutatedStr = chars.join('');
-    
+
     const mutatedCtSac = (await runEncrypt(mutatedStr, pk)).data;
     if (baseCtSac.length === mutatedCtSac.length) {
       const flips = countBitFlips(baseCtSac, mutatedCtSac);
@@ -198,24 +210,24 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
     onProgress('Strict Avalanche Criterion (SAC)', 40 + i * 2);
   }
   const avgSac = flipPercentages.reduce((a, b) => a + b, 0) / (flipPercentages.length || 1);
-  
+
   onProgress('Cross-Key Avalanche', 80);
   const { pk: pk2 } = await runKeygen();
   const crossKeyCt = (await runEncrypt(basePayload, pk2)).data;
   const crossKeyDiff = countBitFlips(ctHex, crossKeyCt);
   const crossKeySacPercent = (crossKeyDiff / (ctHex.length * 4)) * 100.0;
-  
+
   onProgress('Constant-Time Verification', 90);
   const zerosPayload = '0'.repeat(1024 * 1024);
   const onesPayload = 'A'.repeat(1024 * 1024);
-  
+
   const timingZeros = (await runEncrypt(zerosPayload, pk, true)).timings || {};
   const timingOnes = (await runEncrypt(onesPayload, pk, true)).timings || {};
-  
+
   const zTime = timingZeros.total_pipeline_us || 1;
   const oTime = timingOnes.total_pipeline_us || 1;
   const timeVariance = (Math.abs(zTime - oTime) / zTime) * 100.0;
-  
+
   onProgress('Done', 100);
   return {
     entropy,
@@ -226,6 +238,6 @@ export async function runCryptoAnalysis(onProgress: (stage: string, progress: nu
     monobit,
     runs_test: runsRatio,
     cross_key_sac: crossKeySacPercent,
-    time_variance: timeVariance
+    time_variance: timeVariance,
   };
 }

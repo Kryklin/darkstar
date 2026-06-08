@@ -15,13 +15,12 @@ const path = require('path');
 
   try {
     const rootDir = path.join(__dirname, '../..');
-    
+
     // Execute the python generator script with inherited stdio so it prints its progress
     await execa('python', ['scripts/tests/gen_nist_bitstream.py'], { cwd: rootDir, stdio: 'inherit' });
-    
+
     console.log(chalk.green.bold('\n✔ NIST Bitstream Generation Complete!'));
     console.log(chalk.white('File saved to: ') + chalk.cyan('out-releases/nist_bitstream.bin'));
-
   } catch (error: any) {
     console.error(chalk.red('\n✖ Bitstream generation failed.'));
     console.error(chalk.dim(error.message));
