@@ -295,6 +295,7 @@ const InteropTestRunner = ({ title = "Hardware Interoperability Benchmark", useD
           <Box width={15}><Text color="#94A3B8" bold>CASCADE TIME</Text></Box>
           <Box width={15}><Text color="#94A3B8" bold>CASCADE CPB</Text></Box>
           <Box width={15}><Text color="#94A3B8" bold>PERFORMANCE</Text></Box>
+          <Box width={15}><Text color="#94A3B8" bold>THROUGHPUT</Text></Box>
         </Box>
         
         {results.map((r, i) => (
@@ -304,6 +305,7 @@ const InteropTestRunner = ({ title = "Hardware Interoperability Benchmark", useD
             <Box width={15}><Text color="#38BDF8">{r.casca_us.toFixed(2)} μs</Text></Box>
             <Box width={15}><Text color="#F59E0B">{r.casca_cpb.toFixed(2)} cpb</Text></Box>
             <Box width={15}><Text color="#00E5FF">{r.ops_sec.toLocaleString(undefined, {maximumFractionDigits: 0})} ops/s</Text></Box>
+            <Box width={15}><Text color="#D946EF">{r.throughput_mbps.toFixed(1)} MB/s</Text></Box>
           </Box>
         ))}
         <Box paddingX={1} marginTop={1}>

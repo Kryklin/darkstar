@@ -31,6 +31,7 @@ export type InteropResult = {
   casca_us: number;
   casca_cpb: number;
   ops_sec: number;
+  throughput_mbps: number;
 };
 
 async function runCmd(cmd: string[], cwd: string): Promise<{ stdout: string; duration_ns: number; internal_timings: any }> {
@@ -163,8 +164,9 @@ export async function runInteropBenchmark(
     
     const ops_sec = casca_us > 0 ? 1_000_000 / casca_us : 0;
     const casca_cpb = (casca_us * 1000 * freq_ghz) / payload.length;
+    const throughput_mbps = casca_us > 0 ? (payload.length / 1048576) / (casca_us / 1000000) : 0;
 
-    const resObj = { engine: name, status, casca_us, casca_cpb, ops_sec };
+    const resObj = { engine: name, status, casca_us, casca_cpb, ops_sec, throughput_mbps };
     results.push(resObj);
     onProgress(name, 100, resObj, ROUNDS, ROUNDS);
   }));
