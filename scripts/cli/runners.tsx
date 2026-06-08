@@ -453,8 +453,7 @@ export const BuildEnginesRunner = ({ onComplete }: { onComplete: () => void }) =
           <Text color={getColor(states.rust)}>├─ {getIcon(states.rust)} Rust Core Engine</Text>
           <Text color={getColor(states.wasm)}>├─ {getIcon(states.wasm)} WebAssembly Fallback</Text>
           <Text color={getColor(states.c)}>├─ {getIcon(states.c)} C-FFI AVX2 Engine</Text>
-          <Text color={getColor(states.cuda)}>├─ {getIcon(states.cuda)} CUDA GPU Pipeline</Text>
-          <Text color={getColor(states.zig)}>└─ {getIcon(states.zig)} Zig Node API Wrapper</Text>
+          <Text color={getColor(states.cuda)}>└─ {getIcon(states.cuda)} CUDA GPU Pipeline</Text>
         </Box>
       </Box>
       <Box flexDirection="column" alignItems="center" height={3}>
