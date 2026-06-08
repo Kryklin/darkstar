@@ -336,34 +336,49 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
     'java', 'kotlin', 'dart', 'swift', 'lua', 'r', 'julia', 'perl'
   ];
   
-  const jobs = [
-    { name: 'Build Core: Rust', cmd: 'docker compose -f docker-compose.yml build dasp-rust' },
-    { name: 'Build Core: C', cmd: 'docker compose -f docker-compose.yml build dasp-c' },
-    { name: 'Build Core: CUDA', cmd: 'docker compose -f docker-compose.yml build dasp-cuda' },
-    ...wrappers.map(w => ({
-      name: `Build Wrapper: ${w}`,
-      cmd: `docker compose -f docker-compose.yml build dasp-${w}`
-    }))
-  ];
-
   if (step === 0) {
     return (
       <ShellJobRunner 
-        title="Headless Docker Test (Phase 1: Build)" 
+        title="Headless Docker Test (Phase 1: Build Base Builder)" 
+        jobs={[{ name: 'Build Multi-Stage C-Builder', cmd: 'docker compose -f docker-compose.yml build dasp-builder' }]} 
+        concurrent={false}
+        boxLayout={true}
+        autoAdvance={true}
+        successMsg="Builder Initialized. Proceeding to Matrix..." 
+        failMsg="Builder Compilation Failed" 
+        onComplete={() => setStep(1)} 
+      />
+    );
+  }
+
+  if (step === 1) {
+    const jobs = [
+      { name: 'Build Core: Rust', cmd: 'docker compose -f docker-compose.yml build dasp-rust' },
+      { name: 'Build Core: C', cmd: 'docker compose -f docker-compose.yml build dasp-c' },
+      { name: 'Build Core: CUDA', cmd: 'docker compose -f docker-compose.yml build dasp-cuda' },
+      ...wrappers.map(w => ({
+        name: `Build Wrapper: ${w}`,
+        cmd: `docker compose -f docker-compose.yml build dasp-${w}`
+      }))
+    ];
+
+    return (
+      <ShellJobRunner 
+        title="Headless Docker Test (Phase 2: Build Matrix)" 
         jobs={jobs} 
         concurrent={true}
         boxLayout={true}
         autoAdvance={true}
         successMsg="Containers Built Successfully. Proceeding to Benchmark..." 
         failMsg="Container Build Failed" 
-        onComplete={() => setStep(1)} 
+        onComplete={() => setStep(2)} 
       />
     );
   }
 
   return (
     <InteropTestRunner 
-      title="Headless Docker Test (Phase 2: Benchmark)" 
+      title="Headless Docker Test (Phase 3: Benchmark)" 
       useDocker={true} 
       onComplete={onComplete} 
     />
