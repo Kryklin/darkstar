@@ -338,10 +338,10 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
   
   if (step === 0) {
     const coreJobs = [
-      { name: '  ├── Core: Rust', cmd: 'docker compose -f docker-compose.yml build dasp-rust' },
-      { name: '  ├── Core: C', cmd: 'docker compose -f docker-compose.yml build dasp-c' },
-      { name: '  ├── Core: CUDA', cmd: 'docker compose -f docker-compose.yml build dasp-cuda' },
-      { name: '  └── Base Builder (Shared)', cmd: 'docker compose -f docker-compose.yml build dasp-builder' }
+      { name: '  ├── Core: Rust', cmd: 'docker compose -f docker-compose.yml build -q dasp-rust' },
+      { name: '  ├── Core: C', cmd: 'docker compose -f docker-compose.yml build -q dasp-c' },
+      { name: '  ├── Core: CUDA', cmd: 'docker compose -f docker-compose.yml build -q dasp-cuda' },
+      { name: '  └── Base Builder (Shared)', cmd: 'docker compose -f docker-compose.yml build -q dasp-builder' }
     ];
 
     return (
@@ -362,7 +362,7 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
   if (step === 1) {
     const jobs = wrappers.map((w, i) => ({
       name: `${i === wrappers.length - 1 ? '  └──' : '  ├──'} Wrapper: ${w}`,
-      cmd: `docker compose -f docker-compose.yml build dasp-${w}`
+      cmd: `docker compose -f docker-compose.yml build -q dasp-${w}`
     }));
 
     return (
