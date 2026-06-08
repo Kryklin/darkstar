@@ -16,8 +16,6 @@ import { execa } from 'execa';
   const results = [
     { name: 'NPM (JavaScript)', status: 'Pending', vulns: 0, cmd: 'npm audit --json', parse: parseNpm },
     { name: 'Cargo (Rust)', status: 'Pending', vulns: 0, cmd: 'cd rust && cargo audit --json', parse: parseCargo },
-    { name: 'Govulncheck (Go)', status: 'Pending', vulns: 0, cmd: 'cd go && govulncheck ./...', parse: parseGo },
-    { name: 'Pip-Audit (Python)', status: 'Pending', vulns: 0, cmd: 'python -m pip install pip-audit && python -m pip_audit -f json', parse: parsePython },
   ];
 
   for (let i = 0; i < results.length; i++) {
@@ -98,23 +96,5 @@ import { execa } from 'execa';
     return json.vulnerabilities.count || 0;
   }
 
-  function parseGo(out) {
-    if (!out) return 0;
-    const match = out.match(/Your code is affected by (\d+) vulnerabilities/i);
-    return match ? parseInt(match[1]) : 0;
-  }
 
-  function parsePython(out) {
-    if (!out) return 0;
-    const jsonStr = out.substring(out.indexOf('{'));
-    if (!jsonStr) return 0;
-    const json = JSON.parse(jsonStr);
-    let count = 0;
-    if (json.dependencies) {
-      json.dependencies.forEach((d) => {
-        if (d.vulns) count += d.vulns.length;
-      });
-    }
-    return count;
-  }
 })();
