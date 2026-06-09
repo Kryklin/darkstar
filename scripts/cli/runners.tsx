@@ -564,3 +564,160 @@ export const ScaffoldRunner = ({ onComplete, autoAdvance = false }: { onComplete
     </Box>
   );
 };
+
+// ─── DockerMatrixRunner ───
+// Runs each wrapper container and validates it prints the D-ASP init message
+
+export type DockerLang = {
+  name: string;
+  service: string;
+  status: 'pending' | 'running' | 'pass' | 'fail' | 'skip';
+  detail?: string;
+  durationMs?: number;
+};
+
+const DOCKER_WRAPPER_LANGS: { name: string; service: string }[] = [
+  { name: 'Node.js', service: 'dasp-node' },
+  { name: 'Python', service: 'dasp-python' },
+  { name: 'Go', service: 'dasp-go' },
+  { name: 'Ruby', service: 'dasp-ruby' },
+  { name: 'Elixir', service: 'dasp-elixir' },
+  { name: 'PHP', service: 'dasp-php' },
+  { name: 'C#', service: 'dasp-csharp' },
+  { name: 'Java', service: 'dasp-java' },
+  { name: 'Kotlin', service: 'dasp-kotlin' },
+  { name: 'Dart', service: 'dasp-dart' },
+  { name: 'Swift', service: 'dasp-swift' },
+  { name: 'Lua', service: 'dasp-lua' },
+  { name: 'R', service: 'dasp-r' },
+  { name: 'Julia', service: 'dasp-julia' },
+  { name: 'Perl', service: 'dasp-perl' },
+];
+
+export const DockerMatrixRunner = ({ onComplete }: { onComplete: () => void }) => {
+  const [langs, setLangs] = useState<DockerLang[]>(
+    DOCKER_WRAPPER_LANGS.map(l => ({ ...l, status: 'pending' as const }))
+  );
+  const [done, setDone] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setTick(f => f + 1), 80);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const { execa } = await import('execa');
+      const TIMEOUT_MS = 60_000;
+
+      for (let i = 0; i < DOCKER_WRAPPER_LANGS.length; i++) {
+        const lang = DOCKER_WRAPPER_LANGS[i];
+
+        // Mark running
+        setLangs(p => p.map((l, idx) => idx === i ? { ...l, status: 'running' as const } : l));
+
+        const start = Date.now();
+        try {
+          const result = await execa(
+            `docker compose run --rm --no-deps ${lang.service}`,
+            {
+              shell: true,
+              timeout: TIMEOUT_MS,
+              cwd: path.resolve(__dirname, '../../'),
+            }
+          );
+
+          const output = (result.stdout || '') + '\n' + (result.stderr || '');
+          const elapsed = Date.now() - start;
+
+          if (output.includes('D-ASP initialized')) {
+            setLangs(p => p.map((l, idx) => idx === i ? { ...l, status: 'pass' as const, durationMs: elapsed } : l));
+          } else {
+            const snippet = stripAnsi(output).split('\n').filter(Boolean).slice(-1)[0]?.slice(0, 60) || 'No init message';
+            setLangs(p => p.map((l, idx) => idx === i ? { ...l, status: 'fail' as const, detail: snippet, durationMs: elapsed } : l));
+          }
+        } catch (e: any) {
+          const elapsed = Date.now() - start;
+          const isTimeout = e.timedOut || elapsed >= TIMEOUT_MS - 1000;
+          const raw = stripAnsi(e.stderr || e.stdout || e.message || '');
+          const detail = isTimeout
+            ? `Timed out after ${Math.round(TIMEOUT_MS / 1000)}s`
+            : raw.split('\n').filter(Boolean).slice(-1)[0]?.slice(0, 60) || 'Unknown error';
+          setLangs(p => p.map((l, idx) => idx === i ? { ...l, status: 'fail' as const, detail, durationMs: elapsed } : l));
+        }
+      }
+
+      // Cleanup: remove stopped containers
+      try {
+        await execa('docker compose down --remove-orphans', {
+          shell: true,
+          cwd: path.resolve(__dirname, '../../'),
+          timeout: 30_000,
+        });
+      } catch {}
+
+      setDone(true);
+    })();
+  }, []);
+
+  const spin = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  const passed = langs.filter(l => l.status === 'pass').length;
+  const failed = langs.filter(l => l.status === 'fail').length;
+  const total = langs.length;
+
+  return (
+    <Box flexDirection="column" padding={1} width={100} alignItems="center">
+      <Text color="#00E5FF" bold>─── Docker Language Matrix Verification ───</Text>
+      <Box marginTop={1}>
+        <Text color="#94A3B8">Validating D-ASP initialization across {total} language runtimes</Text>
+      </Box>
+
+      <Box marginY={1} flexDirection="row" width={96} flexWrap="wrap" justifyContent="center" gap={1}>
+        {langs.map((lang, i) => {
+          const color = lang.status === 'pass' ? '#10B981'
+            : lang.status === 'fail' ? '#EF4444'
+            : lang.status === 'running' ? '#38BDF8'
+            : lang.status === 'skip' ? '#F59E0B'
+            : '#64748B';
+          return (
+            <Box key={i} width={18} height={5} borderStyle="single" borderColor={color} flexDirection="column" alignItems="center" justifyContent="center">
+              <Text color="#F8FAFC" bold>{lang.name}</Text>
+              <Box marginTop={1}>
+                <Text color={color}>
+                  {lang.status === 'running' ? spin[tick % 10] + ' Testing...'
+                    : lang.status === 'pass' ? `✔ ${((lang.durationMs || 0) / 1000).toFixed(1)}s`
+                    : lang.status === 'fail' ? '✖ Failed'
+                    : lang.status === 'skip' ? '⊘ Skipped'
+                    : '○ Pending'}
+                </Text>
+              </Box>
+            </Box>
+          );
+        })}
+      </Box>
+
+      {/* Show failure details */}
+      {langs.some(l => l.status === 'fail' && l.detail) && (
+        <Box flexDirection="column" width={90} marginBottom={1}>
+          {langs.filter(l => l.status === 'fail' && l.detail).map((l, i) => (
+            <Text key={i} color="#64748B">  {l.name}: {l.detail}</Text>
+          ))}
+        </Box>
+      )}
+
+      <Box flexDirection="column" alignItems="center" height={3}>
+        {done && (
+          <Box flexDirection="column" alignItems="center" marginTop={1}>
+            <Text color={failed === 0 ? '#10B981' : '#EF4444'} bold>
+              {failed === 0
+                ? `✔ All ${passed}/${total} language wrappers verified successfully.`
+                : `✖ ${failed}/${total} language wrappers failed. ${passed} passed.`}
+            </Text>
+            <PressEnterToContinue onEnter={onComplete} />
+          </Box>
+        )}
+      </Box>
+    </Box>
+  );
+};

@@ -1,10 +1,20 @@
 version: '3.8'
 
 services:
+  # ─── Builder (must be built FIRST — wrappers COPY --from this image) ───
+  dasp-builder:
+    build:
+      context: .
+      dockerfile: docker/builder.Dockerfile
+    image: dasp-builder:latest
+    container_name: dasp-builder
+
+  # ─── Core Engines ───
   dasp-rust:
     build:
       context: rust
       dockerfile: Dockerfile
+    image: dasp-rust:latest
     command: ['test']
     container_name: dasp-rust
 
@@ -12,13 +22,182 @@ services:
     build:
       context: c
       dockerfile: Dockerfile
+    image: dasp-c:latest
     command: ['test']
     container_name: dasp-c
 
+  # ─── Wrapper Services (all depend on dasp-builder for the .so) ───
+  dasp-node:
+    build:
+      context: .
+      dockerfile: docker/node.Dockerfile
+    image: dasp-node:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-node
+
+  dasp-python:
+    build:
+      context: .
+      dockerfile: docker/python.Dockerfile
+    image: dasp-python:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-python
+
+  dasp-go:
+    build:
+      context: .
+      dockerfile: docker/go.Dockerfile
+    image: dasp-go:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-go
+
+  dasp-ruby:
+    build:
+      context: .
+      dockerfile: docker/ruby.Dockerfile
+    image: dasp-ruby:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-ruby
+
+  dasp-elixir:
+    build:
+      context: .
+      dockerfile: docker/elixir.Dockerfile
+    image: dasp-elixir:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-elixir
+
+  dasp-php:
+    build:
+      context: .
+      dockerfile: docker/php.Dockerfile
+    image: dasp-php:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-php
+
+  dasp-csharp:
+    build:
+      context: .
+      dockerfile: docker/csharp.Dockerfile
+    image: dasp-csharp:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-csharp
+
+  dasp-java:
+    build:
+      context: .
+      dockerfile: docker/java.Dockerfile
+    image: dasp-java:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-java
+
+  dasp-kotlin:
+    build:
+      context: .
+      dockerfile: docker/kotlin.Dockerfile
+    image: dasp-kotlin:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-kotlin
+
+  dasp-dart:
+    build:
+      context: .
+      dockerfile: docker/dart.Dockerfile
+    image: dasp-dart:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-dart
+
+  dasp-swift:
+    build:
+      context: .
+      dockerfile: docker/swift.Dockerfile
+    image: dasp-swift:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-swift
+
+  dasp-lua:
+    build:
+      context: .
+      dockerfile: docker/lua.Dockerfile
+    image: dasp-lua:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-lua
+
+  dasp-r:
+    build:
+      context: .
+      dockerfile: docker/r.Dockerfile
+    image: dasp-r:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-r
+
+  dasp-julia:
+    build:
+      context: .
+      dockerfile: docker/julia.Dockerfile
+    image: dasp-julia:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-julia
+
+  dasp-perl:
+    build:
+      context: .
+      dockerfile: docker/perl.Dockerfile
+    image: dasp-perl:latest
+    depends_on:
+      - dasp-builder
+    init: true
+    command: ['test']
+    container_name: dasp-perl
+
+  # ─── CUDA (GPU profile — only builds/runs when explicitly requested) ───
   dasp-cuda:
     build:
       context: .
       dockerfile: cuda/Dockerfile
+    image: dasp-cuda:latest
     command: ['test']
     deploy:
       resources:
@@ -28,130 +207,5 @@ services:
               count: 1
               capabilities: [gpu]
     container_name: dasp-cuda
-
-  dasp-builder:
-    build:
-      context: .
-      dockerfile: docker/builder.Dockerfile
-    image: dasp-builder:latest
-  dasp-node:
-    build:
-      context: .
-      dockerfile: docker/node.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-node
-  dasp-python:
-    build:
-      context: .
-      dockerfile: docker/python.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-python
-  dasp-go:
-    build:
-      context: .
-      dockerfile: docker/go.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-go
-  dasp-ruby:
-    build:
-      context: .
-      dockerfile: docker/ruby.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-ruby
-  dasp-elixir:
-    build:
-      context: .
-      dockerfile: docker/elixir.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-elixir
-  dasp-php:
-    build:
-      context: .
-      dockerfile: docker/php.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-php
-  dasp-csharp:
-    build:
-      context: .
-      dockerfile: docker/csharp.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-csharp
-  dasp-java:
-    build:
-      context: .
-      dockerfile: docker/java.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-java
-  dasp-kotlin:
-    build:
-      context: .
-      dockerfile: docker/kotlin.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-kotlin
-  dasp-dart:
-    build:
-      context: .
-      dockerfile: docker/dart.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-dart
-  dasp-swift:
-    build:
-      context: .
-      dockerfile: docker/swift.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-swift
-  dasp-lua:
-    build:
-      context: .
-      dockerfile: docker/lua.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-lua
-  dasp-r:
-    build:
-      context: .
-      dockerfile: docker/r.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-r
-  dasp-julia:
-    build:
-      context: .
-      dockerfile: docker/julia.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-julia
-  dasp-perl:
-    build:
-      context: .
-      dockerfile: docker/perl.Dockerfile
-    depends_on:
-      - dasp-builder
-    command: ['test']
-    container_name: dasp-perl
-
+    profiles:
+      - gpu

@@ -10,7 +10,7 @@ import { runKatVerification, KatResult } from './tests/kat.js';
 import { runGpuTest, GpuTestResult } from './tests/gpu.js';
 import { CryptoAnalysisResult, runCryptoAnalysis } from './tests/analyze.js';
 import SelectInput from 'ink-select-input';
-import { ShellJobRunner, ScriptRunner, CleanRunner, EnvCheckRunner, BumpRunner, BuildEnginesRunner, ScaffoldRunner } from './runners.js';
+import { ShellJobRunner, ScriptRunner, CleanRunner, EnvCheckRunner, BumpRunner, BuildEnginesRunner, ScaffoldRunner, DockerMatrixRunner } from './runners.js';
 
 
 const require = createRequire(import.meta.url);
@@ -336,60 +336,59 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
     'java', 'kotlin', 'dart', 'swift', 'lua', 'r', 'julia', 'perl'
   ];
   
+  // Phase 0: Generate language wrapper files
   if (step === 0) {
     return <ScaffoldRunner onComplete={() => setStep(1)} autoAdvance={true} />;
   }
 
+  // Phase 1: Build the shared builder image first (all wrappers COPY --from it)
   if (step === 1) {
-    const coreJobs = [
-      { name: '  ├── Core: Rust', cmd: 'docker compose -f docker-compose.yml build -q dasp-rust' },
-      { name: '  ├── Core: C', cmd: 'docker compose -f docker-compose.yml build -q dasp-c' },
-      { name: '  ├── Core: CUDA', cmd: 'docker compose -f docker-compose.yml build -q dasp-cuda' },
-      { name: '  └── Base Builder (Shared)', cmd: 'docker compose -f docker-compose.yml build -q dasp-builder' }
+    const builderJobs = [
+      { name: '  ├── Base Builder (Shared .so)', cmd: 'docker compose build dasp-builder' },
+      { name: '  ├── Core: Rust', cmd: 'docker compose build dasp-rust' },
+      { name: '  └── Core: C', cmd: 'docker compose build dasp-c' },
     ];
 
     return (
       <ShellJobRunner 
         key={step}
-        title="Headless Docker Test (Phase 1: Multi-Stage Core Builder)" 
-        jobs={coreJobs} 
+        title="Headless Docker Test (Phase 1: Core Infrastructure)" 
+        jobs={builderJobs} 
         concurrent={false}
         boxLayout={false}
         autoAdvance={true}
-        successMsg="Core Infrastructure Initialized. Proceeding to Matrix..." 
-        failMsg="Core Compilation Failed" 
+        successMsg="Core Infrastructure Initialized. Proceeding to Wrapper Builds..." 
+        failMsg="Core Build Failed" 
         onComplete={() => setStep(2)} 
       />
     );
   }
 
+  // Phase 2: Build all 15 wrapper images (builder image already exists)
   if (step === 2) {
     const jobs = wrappers.map((w, i) => ({
       name: `${i === wrappers.length - 1 ? '  └──' : '  ├──'} Wrapper: ${w}`,
-      cmd: `docker compose -f docker-compose.yml build -q dasp-${w}`
+      cmd: `docker compose build dasp-${w}`
     }));
 
     return (
       <ShellJobRunner 
         key={step}
-        title="Headless Docker Test (Phase 2: Build Matrix)" 
+        title="Headless Docker Test (Phase 2: Build Language Matrix)" 
         jobs={jobs} 
         concurrent={false}
         boxLayout={false}
         autoAdvance={true}
-        successMsg="Containers Built Successfully. Proceeding to Benchmark..." 
+        successMsg="All Containers Built. Proceeding to Verification..." 
         failMsg="Container Build Failed" 
         onComplete={() => setStep(3)} 
       />
     );
   }
 
+  // Phase 3: Run each wrapper and verify D-ASP initialization
   return (
-    <InteropTestRunner 
-      title="Headless Docker Test (Phase 3: Benchmark)" 
-      useDocker={true} 
-      onComplete={onComplete} 
-    />
+    <DockerMatrixRunner onComplete={onComplete} />
   );
 };
 
