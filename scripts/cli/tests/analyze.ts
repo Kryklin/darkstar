@@ -37,11 +37,9 @@ export type CryptoAnalysisResult = {
   cumulative_sums: number;
   spectral_dft: number;
   longest_run: number;
-  longest_run: number;
   approx_entropy: number;
   serial_pattern: number;
   lz_compression: number;
-  time_variance: number;
 };
 
 import zlib from 'zlib';
