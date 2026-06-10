@@ -143,6 +143,28 @@ static char *extract_json_string(const char *json, const char *key) {
   return res;
 }
 
+static int extract_json_int(const char *json, const char *key, uint64_t *out_val) {
+  char search_key[64];
+  sprintf(search_key, "\"%s\"", key);
+  char *ptr = strstr(json, search_key);
+  if (!ptr) return 0;
+  ptr = strchr(ptr, ':');
+  if (!ptr) return 0;
+  ptr++;
+  while (*ptr == ' ' || *ptr == '\t') ptr++;
+  char *end = ptr;
+  while (*end >= '0' && *end <= '9') end++;
+  if (end == ptr) return 0;
+  
+  char buf[32];
+  size_t len = end - ptr;
+  if (len >= sizeof(buf)) return 0;
+  memcpy(buf, ptr, len);
+  buf[len] = '\0';
+  *out_val = strtoull(buf, NULL, 10);
+  return 1;
+}
+
 /**
  * @brief Main Entry Point for D-ASP CLI.
  * Supports: keygen, encrypt, decrypt.
@@ -367,14 +389,9 @@ int main(int argc, char *argv[]) {
       uint8_t mac[32];
       hex_decode(mac_hex, mac, 32);
 
-      char *ts_str = extract_json_string(line, "ts");
       uint64_t ts_val = 0;
-      int has_ts = 0;
-      if (ts_str) {
-        ts_val = strtoull(ts_str, NULL, 10);
-        has_ts = 1;
-        free(ts_str);
-      }
+      int has_ts = extract_json_int(line, "ts", &ts_val);
+      fprintf(stderr, "C DEBUG: has_ts=%d, ts_val=%llu\n", has_ts, ts_val);
 
       long long inner_start = get_us();
       int res = dasp_decapsulate_data_inner(payload, p_len, sk,

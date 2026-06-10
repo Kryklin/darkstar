@@ -89,6 +89,28 @@ static char *extract_json_string(const char *json, const char *key) {
     return res;
 }
 
+static int extract_json_int(const char *json, const char *key, uint64_t *out_val) {
+    char search_key[64];
+    sprintf(search_key, "\"%s\"", key);
+    const char *ptr = strstr(json, search_key);
+    if (!ptr) return 0;
+    ptr = strchr(ptr, ':');
+    if (!ptr) return 0;
+    ptr++;
+    while (*ptr == ' ' || *ptr == '\t') ptr++;
+    const char *end = ptr;
+    while (*end >= '0' && *end <= '9') end++;
+    if (end == ptr) return 0;
+    
+    char buf[32];
+    size_t len = end - ptr;
+    if (len >= sizeof(buf)) return 0;
+    memcpy(buf, ptr, len);
+    buf[len] = '\0';
+    *out_val = strtoull(buf, NULL, 10);
+    return 1;
+}
+
 /* --- DPA Protection --- */
 static uint64_t g_dpa_history[10] = {0};
 static int g_dpa_idx = 0;
@@ -345,7 +367,7 @@ int main(int argc, char **argv) {
                 if (current_chunk_size > chunk_size) current_chunk_size = chunk_size;
 
                 CUDA_CHECK(cudaMemcpyAsync(d_payload + offset, h_payload + offset, current_chunk_size, cudaMemcpyHostToDevice, streams[i]));
-                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i], dpa_triggered, prng_seed);
+                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i], dpa_triggered, d_keys + 64);
                 CUDA_CHECK(cudaMemcpyAsync(h_payload + offset, d_payload + offset, current_chunk_size, cudaMemcpyDeviceToHost, streams[i]));
             }
 
@@ -480,14 +502,8 @@ int main(int argc, char **argv) {
             char *data_hex = extract_json_string(line, "data");
             char *ct_hex = extract_json_string(line, "ct");
             char *mac_hex = extract_json_string(line, "mac");
-            char *ts_str = extract_json_string(line, "ts");
             uint64_t ts_val = 0;
-            int has_ts = 0;
-            if (ts_str) {
-                ts_val = strtoull(ts_str, NULL, 10);
-                has_ts = 1;
-                free(ts_str);
-            }
+            int has_ts = extract_json_int(line, "ts", &ts_val);
             if (!data_hex || !ct_hex || !mac_hex) {
                 fprintf(stderr, "CUDA-DASP: Invalid JSON stream payload\n");
                 if (data_hex) free(data_hex);
@@ -610,7 +626,7 @@ int main(int argc, char **argv) {
                     size_t current_chunk_size = p_len - offset;
                     if (current_chunk_size > chunk_size) current_chunk_size = chunk_size;
                     CUDA_CHECK(cudaMemcpyAsync(d_payload + offset, h_payload + offset, current_chunk_size, cudaMemcpyHostToDevice, streams[i]));
-                    dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i], dpa_triggered, prng_seed);
+                    dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i], dpa_triggered, d_keys + 64);
                     CUDA_CHECK(cudaMemcpyAsync(h_payload + offset, d_payload + offset, current_chunk_size, cudaMemcpyDeviceToHost, streams[i]));
                 }
                 for (int i = 0; i < num_streams; i++) {
@@ -815,7 +831,7 @@ int main(int argc, char **argv) {
                 if (current_chunk_size > chunk_size) current_chunk_size = chunk_size;
 
                 CUDA_CHECK(cudaMemcpyAsync(d_payload + offset, h_payload + offset, current_chunk_size, cudaMemcpyHostToDevice, streams[i]));
-                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i], dpa_triggered, prng_seed);
+                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i], dpa_triggered, d_keys + 64);
                 CUDA_CHECK(cudaMemcpyAsync(h_payload + offset, d_payload + offset, current_chunk_size, cudaMemcpyDeviceToHost, streams[i]));
             }
 
@@ -1003,7 +1019,7 @@ int main(int argc, char **argv) {
             if (current_chunk > chunk_size) current_chunk = chunk_size;
 
             CUDA_CHECK(cudaMemcpyAsync(d_payload[stream_idx], h_payload[stream_idx], current_chunk, cudaMemcpyHostToDevice, streams[stream_idx]));
-            dasp_cuda_process_chunk(d_payload[stream_idx], current_chunk, d_nonce, processed_bytes / 32, streams[stream_idx], 0, prng_seed);
+            dasp_cuda_process_chunk(d_payload[stream_idx], current_chunk, d_nonce, processed_bytes / 32, streams[stream_idx], 0, d_keys + 64);
             CUDA_CHECK(cudaMemcpyAsync(h_payload[stream_idx], d_payload[stream_idx], current_chunk, cudaMemcpyDeviceToHost, streams[stream_idx]));
             
             processed_bytes += current_chunk;
@@ -1036,7 +1052,7 @@ int main(int argc, char **argv) {
             size_t current_chunk = total_bytes - processed_bytes;
             if (current_chunk > chunk_size) current_chunk = chunk_size;
 
-            dasp_cuda_process_chunk(d_payload[stream_idx], current_chunk, d_nonce, processed_bytes / 32, streams[stream_idx], 0, prng_seed);
+            dasp_cuda_process_chunk(d_payload[stream_idx], current_chunk, d_nonce, processed_bytes / 32, streams[stream_idx], 0, d_keys + 64);
             
             processed_bytes += current_chunk;
             stream_idx = (stream_idx + 1) % num_streams;

@@ -88,7 +88,7 @@ pub extern "C" fn wasm_decrypt(
     };
 
     let dc = DarkstarCrypt::new();
-    let result = match dc.decrypt(payload, sk_hex, hwid, telemetry != 0) {
+    let result = match dc.decrypt(payload, sk_hex, hwid, telemetry != 0, None) {
         Ok(res) => res,
         Err(e) => format!("{{\"error\":\"{}\"}}", e),
     };

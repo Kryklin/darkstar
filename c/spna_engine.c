@@ -600,8 +600,30 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
     mac_diff |= (in_mac[i] ^ actual_mac[i]);
     mac_diff_fi |= (in_mac[i] ^ actual_mac[i]);
   }
-  if (mac_diff != 0 || mac_diff_fi != 0)
+  if (mac_diff != 0 || mac_diff_fi != 0) {
+    fprintf(stderr, "C DEBUG: MAC mismatch! Expected: ");
+    for(int i=0; i<32; i++) fprintf(stderr, "%02x", in_mac[i]);
+    fprintf(stderr, "\nC DEBUG: Actual: ");
+    for(int i=0; i<32; i++) fprintf(stderr, "%02x", actual_mac[i]);
+    fprintf(stderr, "\nC DEBUG: mac_content_len=%zu\n", mac_content_len);
+    
+    dasp_secure_wipe(hmac_key, 32);
+
+#if defined(__aarch64__) || defined(__ARM_NEON)
+  #ifdef _MSC_VER
+    __isb(_ARM64_BARRIER_SY);
+  #else
+    __asm__ volatile("isb\n\tcsdb" ::: "memory");
+  #endif
+#else
+  #ifdef _MSC_VER
+    _mm_lfence();
+  #else
+    __asm__ volatile("lfence" ::: "memory");
+  #endif
+#endif
     return -1;
+  }
 
 #if defined(__aarch64__) || defined(__ARM_NEON)
   #ifdef _MSC_VER
