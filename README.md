@@ -34,7 +34,7 @@ Explore the architecture and specifications of the D-SPNA-512 suite:
 | [**Security Policy**](SECURITY.md)                    | Vulnerability disclosure and audit policies.          |
 | [**Contributing**](CONTRIBUTING.md)                   | Guidelines for engine optimization and PR submission. |
 
-The **ASP Cascade 16 (D-SPNA-512)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Rust**, **C**, and **CUDA**, with **WebAssembly** bindings via Node/Python/Go. It operates as a strict **256-bit (32-byte) Block Cipher in Counter (CTR) Mode** with a full 512-bit key schedule expansion.
+The **ASP Cascade 16 (D-SPNA-512)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Rust**, **C**, and **CUDA**, with **WebAssembly** bindings via Node/Python/Go. It operates as a strict **512-bit (64-byte) Block Cipher in Counter (CTR) Mode** with a full 512-bit key schedule expansion.
 
 ### 🛡️ Hardware Intrinsic Mitigations
 D-SPNA-512 is engineered for the modern threat landscape, proactively immunizing execution against side-channels and micro-architectural data sampling:

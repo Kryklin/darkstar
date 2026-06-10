@@ -77,6 +77,8 @@ const path = require('path');
         '-g',
         '-fsanitize=address',
         '-mavx2',
+        '-mavx512f',
+        '-fno-strict-aliasing',
         '-o',
         'dasp_asan.exe',
         'main.c',

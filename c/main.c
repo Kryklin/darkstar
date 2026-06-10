@@ -391,8 +391,6 @@ int main(int argc, char *argv[]) {
 
       uint64_t ts_val = 0;
       int has_ts = extract_json_int(line, "ts", &ts_val);
-      fprintf(stderr, "C DEBUG: has_ts=%d, ts_val=%llu\n", has_ts, ts_val);
-
       long long inner_start = get_us();
       int res = dasp_decapsulate_data_inner(payload, p_len, sk,
                                             use_hwid ? hwid : NULL, ct, mac, ts_val, has_ts);
@@ -472,14 +470,8 @@ int main(int argc, char *argv[]) {
     char *ct_hex = extract_json_string(json_data, "ct");
     char *mac_hex = extract_json_string(json_data, "mac");
 
-    char *ts_str = extract_json_string(json_data, "ts");
     uint64_t ts_val = 0;
-    int has_ts = 0;
-    if (ts_str) {
-      ts_val = strtoull(ts_str, NULL, 10);
-      has_ts = 1;
-      free(ts_str);
-    }
+    int has_ts = extract_json_int(json_data, "ts", &ts_val);
 
     if (!data_hex || !ct_hex || !mac_hex)
       return 4;

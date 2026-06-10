@@ -117,283 +117,71 @@ impl DarkstarChaChaPRNG {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx512f")]
-unsafe fn dasp_cascade_32_avx512(block: &mut [u8; 32], round_keys: &[u32; 128]) {
-    let mut state = _mm256_loadu_si256(block.as_ptr() as *const __m256i);
-
-    macro_rules! dasp_round {
-        ($r:expr) => {{
-            let rk = _mm256_loadu_si256(round_keys[($r) * 8..].as_ptr() as *const __m256i);
-            state = _mm256_add_epi32(state, rk);
-            let rc = _mm256_set1_epi32((0x9E3779B9u32).wrapping_add($r) as i32);
-            state = _mm256_xor_si256(state, rc);
-
-            let swapped = if (($r) % 3) == 0 {
-                _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(3, 2, 1, 0, 7, 6, 5, 4))
-            } else if (($r) % 3) == 1 {
-                _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(5, 4, 7, 6, 1, 0, 3, 2))
-            } else {
-                _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(6, 7, 4, 5, 2, 3, 0, 1))
-            };
-
-            let a_new = _mm256_add_epi32(state, swapped);
-            let mut b_new = _mm256_xor_si256(state, a_new);
-
-            const ROT: i32 = if ($r) % 4 == 0 {
-                16
-            } else if ($r) % 4 == 1 {
-                12
-            } else if ($r) % 4 == 2 {
-                8
-            } else {
-                7
-            };
-            let rotl = _mm256_slli_epi32(b_new, ROT);
-            let rotr = _mm256_srli_epi32(b_new, 32 - ROT);
-            b_new = _mm256_or_si256(rotl, rotr);
-
-            if (($r) % 3) == 0 {
-                state = _mm256_blend_epi32(a_new, b_new, 0xF0);
-            } else if (($r) % 3) == 1 {
-                state = _mm256_blend_epi32(a_new, b_new, 0xCC);
-            } else {
-                state = _mm256_blend_epi32(a_new, b_new, 0xAA);
-            }
-        }};
-    }
-
-    dasp_round!(0);
-    dasp_round!(1);
-    dasp_round!(2);
-    dasp_round!(3);
-    dasp_round!(4);
-    dasp_round!(5);
-    dasp_round!(6);
-    dasp_round!(7);
-    dasp_round!(8);
-    dasp_round!(9);
-    dasp_round!(10);
-    dasp_round!(11);
-    dasp_round!(12);
-    dasp_round!(13);
-    dasp_round!(14);
-    dasp_round!(15);
-
-    _mm256_storeu_si256(block.as_mut_ptr() as *mut __m256i, state);
-
-    // Zenbleed Mitigation: Force SIMD YMM Register Wipe
-    let wipe = _mm256_setzero_si256();
-    std::ptr::write_volatile(&mut state, wipe);
-}
-
-// AVX2 explicit path
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-unsafe fn dasp_cascade_32_avx2(block: &mut [u8; 32], round_keys: &[u32; 128]) {
-    let mut state = _mm256_loadu_si256(block.as_ptr() as *const __m256i);
-
-    macro_rules! dasp_round {
-        ($r:expr) => {{
-            let rk = _mm256_loadu_si256(round_keys[($r) * 8..].as_ptr() as *const __m256i);
-            state = _mm256_add_epi32(state, rk);
-            let rc = _mm256_set1_epi32((0x9E3779B9u32).wrapping_add($r) as i32);
-            state = _mm256_xor_si256(state, rc);
-
-            let swapped = if (($r) % 3) == 0 {
-                _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(3, 2, 1, 0, 7, 6, 5, 4))
-            } else if (($r) % 3) == 1 {
-                _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(5, 4, 7, 6, 1, 0, 3, 2))
-            } else {
-                _mm256_permutevar8x32_epi32(state, _mm256_set_epi32(6, 7, 4, 5, 2, 3, 0, 1))
-            };
-
-            let a_new = _mm256_add_epi32(state, swapped);
-            let mut b_new = _mm256_xor_si256(state, a_new);
-
-            const ROT: i32 = if ($r) % 4 == 0 {
-                16
-            } else if ($r) % 4 == 1 {
-                12
-            } else if ($r) % 4 == 2 {
-                8
-            } else {
-                7
-            };
-            let rotl = _mm256_slli_epi32(b_new, ROT);
-            let rotr = _mm256_srli_epi32(b_new, 32 - ROT);
-            b_new = _mm256_or_si256(rotl, rotr);
-
-            if (($r) % 3) == 0 {
-                state = _mm256_blend_epi32(a_new, b_new, 0xF0);
-            } else if (($r) % 3) == 1 {
-                state = _mm256_blend_epi32(a_new, b_new, 0xCC);
-            } else {
-                state = _mm256_blend_epi32(a_new, b_new, 0xAA);
-            }
-        }};
-    }
-
-    dasp_round!(0); dasp_round!(1); dasp_round!(2); dasp_round!(3);
-    dasp_round!(4); dasp_round!(5); dasp_round!(6); dasp_round!(7);
-    dasp_round!(8); dasp_round!(9); dasp_round!(10); dasp_round!(11);
-    dasp_round!(12); dasp_round!(13); dasp_round!(14); dasp_round!(15);
-
-    _mm256_storeu_si256(block.as_mut_ptr() as *mut __m256i, state);
-
-    // Zenbleed Mitigation: Force SIMD YMM Register Wipe
-    let wipe = _mm256_setzero_si256();
-    std::ptr::write_volatile(&mut state, wipe);
-}
-
-// ARM NEON explicit path
-#[cfg(target_arch = "aarch64")]
-#[target_feature(enable = "neon")]
-unsafe fn dasp_cascade_32_neon(block: &mut [u8; 32], round_keys: &[u32; 128]) {
-    use core::arch::aarch64::*;
-    let mut state_lo = vld1q_u32(block.as_ptr() as *const u32);
-    let mut state_hi = vld1q_u32(block.as_ptr().add(16) as *const u32);
-    let mask_aa = vcombine_u32(vcreate_u32(0xFFFFFFFF00000000), vcreate_u32(0xFFFFFFFF00000000));
-
-    macro_rules! dasp_round {
-        ($r:expr) => {{
-            let rk_lo = vld1q_u32(round_keys[($r) * 8..].as_ptr());
-            let rk_hi = vld1q_u32(round_keys[($r) * 8 + 4..].as_ptr());
-            state_lo = vaddq_u32(state_lo, rk_lo);
-            state_hi = vaddq_u32(state_hi, rk_hi);
-            
-            let rc = vdupq_n_u32((0x9E3779B9u32).wrapping_add($r) as u32);
-            state_lo = veorq_u32(state_lo, rc);
-            state_hi = veorq_u32(state_hi, rc);
-            
-            let swapped_lo;
-            let swapped_hi;
-            if (($r) % 3) == 0 {
-                swapped_lo = state_hi;
-                swapped_hi = state_lo;
-            } else if (($r) % 3) == 1 {
-                swapped_lo = vextq_u32::<2>(state_lo, state_lo);
-                swapped_hi = vextq_u32::<2>(state_hi, state_hi);
-            } else {
-                swapped_lo = vrev64q_u32(state_lo);
-                swapped_hi = vrev64q_u32(state_hi);
-            }
-            
-            let a_new_lo = vaddq_u32(state_lo, swapped_lo);
-            let a_new_hi = vaddq_u32(state_hi, swapped_hi);
-            let b_new_lo = veorq_u32(state_lo, a_new_lo);
-            let b_new_hi = veorq_u32(state_hi, a_new_hi);
-            
-            let rotl_lo; let b_final_lo;
-            let rotl_hi; let b_final_hi;
-            if (($r) % 4) == 0 {
-                rotl_lo = vshlq_n_u32::<16>(b_new_lo);
-                b_final_lo = vsriq_n_u32::<16>(rotl_lo, b_new_lo);
-                rotl_hi = vshlq_n_u32::<16>(b_new_hi);
-                b_final_hi = vsriq_n_u32::<16>(rotl_hi, b_new_hi);
-            } else if (($r) % 4) == 1 {
-                rotl_lo = vshlq_n_u32::<12>(b_new_lo);
-                b_final_lo = vsriq_n_u32::<20>(rotl_lo, b_new_lo);
-                rotl_hi = vshlq_n_u32::<12>(b_new_hi);
-                b_final_hi = vsriq_n_u32::<20>(rotl_hi, b_new_hi);
-            } else if (($r) % 4) == 2 {
-                rotl_lo = vshlq_n_u32::<8>(b_new_lo);
-                b_final_lo = vsriq_n_u32::<24>(rotl_lo, b_new_lo);
-                rotl_hi = vshlq_n_u32::<8>(b_new_hi);
-                b_final_hi = vsriq_n_u32::<24>(rotl_hi, b_new_hi);
-            } else {
-                rotl_lo = vshlq_n_u32::<7>(b_new_lo);
-                b_final_lo = vsriq_n_u32::<25>(rotl_lo, b_new_lo);
-                rotl_hi = vshlq_n_u32::<7>(b_new_hi);
-                b_final_hi = vsriq_n_u32::<25>(rotl_hi, b_new_hi);
-            }
-            
-            if (($r) % 3) == 0 {
-                state_lo = a_new_lo;
-                state_hi = b_final_hi;
-            } else if (($r) % 3) == 1 {
-                state_lo = vcombine_u32(vget_low_u32(a_new_lo), vget_high_u32(b_final_lo));
-                state_hi = vcombine_u32(vget_low_u32(a_new_hi), vget_high_u32(b_final_hi));
-            } else {
-                state_lo = vbslq_u32(mask_aa, b_final_lo, a_new_lo);
-                state_hi = vbslq_u32(mask_aa, b_final_hi, a_new_hi);
-            }
-        }};
-    }
-
-    dasp_round!(0); dasp_round!(1); dasp_round!(2); dasp_round!(3);
-    dasp_round!(4); dasp_round!(5); dasp_round!(6); dasp_round!(7);
-    dasp_round!(8); dasp_round!(9); dasp_round!(10); dasp_round!(11);
-    dasp_round!(12); dasp_round!(13); dasp_round!(14); dasp_round!(15);
-
-    vst1q_u32(block.as_mut_ptr() as *mut u32, state_lo);
-    vst1q_u32(block.as_mut_ptr().add(16) as *mut u32, state_hi);
-
-    // Zenbleed Mitigation: Force SIMD Q Register Wipe
-    let wipe = vdupq_n_u32(0);
-    std::ptr::write_volatile(&mut state_lo, wipe);
-    std::ptr::write_volatile(&mut state_hi, wipe);
-}
-
 #[inline(always)]
-fn dasp_cascade_32(block: &mut [u8; 32], round_keys: &[u32; 128]) {
-    #[cfg(target_arch = "x86_64")]
-    {
-        if std::is_x86_feature_detected!("avx512f") {
-            unsafe { dasp_cascade_32_avx512(block, round_keys); return; }
-        } else if std::is_x86_feature_detected!("avx2") {
-            unsafe { dasp_cascade_32_avx2(block, round_keys); return; }
-        }
-    }
-
-    #[cfg(target_arch = "aarch64")]
-    {
-        unsafe { dasp_cascade_32_neon(block, round_keys); return; }
-    }
-
-    dasp_cascade_32_scalar(block, round_keys);
-}
-
-#[inline(always)]
-fn dasp_cascade_32_scalar(block: &mut [u8; 32], round_keys: &[u32; 128]) {
-    let mut state = [0u32; 8];
+fn dasp_cascade_64(block: &mut [u8; 64], round_keys: &[u64; 128]) {
+    let mut state = [0u64; 8];
     for i in 0..8 {
-        let chunk = &block[i * 4..(i + 1) * 4];
-        state[i] = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+        let chunk = &block[i * 8..(i + 1) * 8];
+        state[i] = u64::from_le_bytes([
+            chunk[0], chunk[1], chunk[2], chunk[3],
+            chunk[4], chunk[5], chunk[6], chunk[7]
+        ]);
     }
 
-    let dist_arr = [4, 2, 1];
-    let rot_arr = [16, 12, 8, 7];
+    macro_rules! unroll_rounds {
+        ($($r:expr, $dist:expr, $rot:expr);* $(;)?) => {
+            $(
+                let rk = &round_keys[$r * 8..($r + 1) * 8];
+                state[0] = state[0].wrapping_add(rk[0]);
+                state[1] = state[1].wrapping_add(rk[1]);
+                state[2] = state[2].wrapping_add(rk[2]);
+                state[3] = state[3].wrapping_add(rk[3]);
+                state[4] = state[4].wrapping_add(rk[4]);
+                state[5] = state[5].wrapping_add(rk[5]);
+                state[6] = state[6].wrapping_add(rk[6]);
+                state[7] = state[7].wrapping_add(rk[7]);
+                
+                let rc = 0x9E3779B97F4A7C15u64.wrapping_add($r);
+                state[0] ^= rc; state[1] ^= rc; state[2] ^= rc; state[3] ^= rc;
+                state[4] ^= rc; state[5] ^= rc; state[6] ^= rc; state[7] ^= rc;
 
-    for r in 0..16 {
-        let rk = &round_keys[r * 8..(r + 1) * 8];
-        for j in 0..8 {
-            state[j] = state[j].wrapping_add(rk[j]);
-        }
-        let rc = 0x9E3779B9u32.wrapping_add(r as u32);
-        for j in 0..8 {
-            state[j] ^= rc;
-        }
-
-        let dist = dist_arr[r % 3];
-        let rot = rot_arr[r % 4];
-
-        let mut i = 0;
-        while i < 8 {
-            for j in 0..dist {
-                let a = i + j;
-                let b = i + j + dist;
-                state[a] = state[a].wrapping_add(state[b]);
-                state[b] ^= state[a];
-                state[b] = (state[b] << rot) | (state[b] >> (32 - rot));
-            }
-            i += dist * 2;
+                let mut i = 0;
+                while i < 8 {
+                    for j in 0..$dist {
+                        let a = i + j;
+                        let b = i + j + $dist;
+                        state[a] = state[a].wrapping_add(state[b]);
+                        state[b] ^= state[a];
+                        state[b] = state[b].rotate_left($rot as u32);
+                    }
+                    i += $dist * 2;
+                }
+            )*
         }
     }
+
+    unroll_rounds!(
+        0, 4, 32;
+        1, 2, 24;
+        2, 1, 16;
+        3, 4, 14;
+        4, 2, 32;
+        5, 1, 24;
+        6, 4, 16;
+        7, 2, 14;
+        8, 1, 32;
+        9, 4, 24;
+        10, 2, 16;
+        11, 1, 14;
+        12, 4, 32;
+        13, 2, 24;
+        14, 1, 16;
+        15, 4, 14
+    );
 
     for i in 0..8 {
         let bytes = state[i].to_le_bytes();
-        block[i * 4..(i + 1) * 4].copy_from_slice(&bytes);
+        block[i * 8..(i + 1) * 8].copy_from_slice(&bytes);
     }
 }
 
@@ -566,15 +354,17 @@ impl DarkstarCrypt {
         hex::encode_to_slice(&word_key, &mut word_key_hex).unwrap();
         let word_key_str = std::str::from_utf8(&word_key_hex).unwrap();
 
-        let mut chain_hasher = Sha256::new();
+        let mut chain_hasher = Sha512::new();
         chain_hasher.update(b"dasp-chain-");
         chain_hasher.update(active_password_bytes);
         let mut chain_state = chain_hasher.finalize().to_vec();
 
         let mut rng = DarkstarChaChaPRNG::new(word_key_str);
-        let mut round_keys = [0u32; 128];
+        let mut round_keys = [0u64; 128];
         for key in round_keys.iter_mut() {
-            *key = rng.next();
+            let lo = rng.next() as u64;
+            let hi = rng.next() as u64;
+            *key = (hi << 32) | lo;
         }
 
         // --- DPA Signature Generation ---
@@ -593,21 +383,28 @@ impl DarkstarCrypt {
         let cascade_start = Instant::now();
 
         // CTR Mode Encryption
-        let mut nonce = chain_state.clone();
-        for chunk in payload_bytes.chunks_mut(32) {
-            let mut block = [0u8; 32];
+        let mut nonce = chain_state.clone(); // chain_state is 64 bytes from Sha512
+        for chunk in payload_bytes.chunks_mut(64) {
+            let mut block = [0u8; 64];
             block.copy_from_slice(&nonce);
 
-            dasp_cascade_32(&mut block, &round_keys);
-
-            for (i, b) in chunk.iter_mut().enumerate() {
-                *b ^= block[i];
+            // DPA Lockout Logic - Zeroize state if duplicate pattern matches transaction sig
+            if dpa_triggered && chunk.len() > 16 && chunk[0] == 0x00 && chunk[1] == 0x00 {
+                block.zeroize();
+                return Err("DPA_LOCKOUT: Hardware Pattern Match Triggered. System Halting.".into());
             }
 
-            // Increment nonce
-            for b in nonce.iter_mut() {
-                *b = b.wrapping_add(1);
-                if *b != 0 {
+            dasp_cascade_64(&mut block, &round_keys);
+
+            for (i, byte) in chunk.iter_mut().enumerate() {
+                *byte ^= block[i];
+            }
+
+            // Increment 64-byte nonce (CTR mode)
+            for byte in nonce.iter_mut().rev() {
+                let (val, overflow) = byte.overflowing_add(1);
+                *byte = val;
+                if !overflow {
                     break;
                 }
             }
@@ -805,15 +602,17 @@ impl DarkstarCrypt {
             }
         }
 
-        let mut chain_hasher = Sha256::new();
+        let mut chain_hasher = Sha512::new();
         chain_hasher.update(b"dasp-chain-");
         chain_hasher.update(active_password_bytes);
         let mut chain_state = chain_hasher.finalize().to_vec();
 
         let mut rng = DarkstarChaChaPRNG::new(word_key_str);
-        let mut round_keys = [0u32; 128];
+        let mut round_keys = [0u64; 128];
         for key in round_keys.iter_mut() {
-            *key = rng.next();
+            let lo = rng.next() as u64;
+            let hi = rng.next() as u64;
+            *key = (hi << 32) | lo;
         }
 
         // ---------------------------------------------------------
@@ -821,20 +620,21 @@ impl DarkstarCrypt {
         // ---------------------------------------------------------
         let cascade_start = Instant::now();
         let mut nonce = chain_state.clone();
-        for chunk in payload_bytes.chunks_mut(32) {
-            let mut block = [0u8; 32];
+        for chunk in payload_bytes.chunks_mut(64) {
+            let mut block = [0u8; 64];
             block.copy_from_slice(&nonce);
 
-            dasp_cascade_32(&mut block, &round_keys);
+            dasp_cascade_64(&mut block, &round_keys);
 
             for (i, b) in chunk.iter_mut().enumerate() {
                 *b ^= block[i];
             }
 
             // Increment nonce
-            for b in nonce.iter_mut() {
-                *b = b.wrapping_add(1);
-                if *b != 0 {
+            for b in nonce.iter_mut().rev() {
+                let (val, overflow) = b.overflowing_add(1);
+                *b = val;
+                if !overflow {
                     break;
                 }
             }

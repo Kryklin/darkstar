@@ -5,7 +5,7 @@
 // d_round_keys_const is passed as an argument instead of __constant__
 
 __device__ static inline uint32_t d_rotl32(uint32_t x, int n) {
-    return (x << n) | (x >> (32 - n));
+    return __funnelshift_l(x, x, n);
 }
 
 __device__ static void d_chacha_quarter_round(uint32_t *x, int a, int b, int c, int d) {
@@ -17,13 +17,16 @@ __device__ static void d_chacha_quarter_round(uint32_t *x, int a, int b, int c, 
 
 __device__ static void d_chacha_block(uint32_t *state, uint32_t *out) {
     uint32_t x[16];
+    #pragma unroll
     for(int i=0; i<16; i++) x[i] = state[i];
+    #pragma unroll
     for (int i = 0; i < 10; i++) {
         d_chacha_quarter_round(x, 0, 4, 8, 12); d_chacha_quarter_round(x, 1, 5, 9, 13);
         d_chacha_quarter_round(x, 2, 6, 10, 14); d_chacha_quarter_round(x, 3, 7, 11, 15);
         d_chacha_quarter_round(x, 0, 5, 10, 15); d_chacha_quarter_round(x, 1, 6, 11, 12);
         d_chacha_quarter_round(x, 2, 7, 8, 13); d_chacha_quarter_round(x, 3, 4, 9, 14);
     }
+    #pragma unroll
     for(int i=0; i<16; i++) out[i] = x[i] + state[i];
 }
 
@@ -54,12 +57,22 @@ __device__ static uint32_t d_prng_next(d_prng_t *ctx) {
 // PHASE 1: Device Key Derivation & Caching
 // ---------------------------------------------------------
 
-__global__ void init_keys_kernel(const uint8_t *prng_seed, uint32_t *out_keys) {
+__device__ static inline uint64_t d_rotl64(uint64_t x, int n) {
+    return (x << n) | (x >> (64 - n));
+}
+
+// ---------------------------------------------------------
+// PHASE 1: Device Key Derivation & Caching
+// ---------------------------------------------------------
+
+__global__ void init_keys_kernel(const uint8_t *prng_seed, uint64_t *out_keys) {
     if (threadIdx.x != 0 || blockIdx.x != 0) return;
     d_prng_t prng;
     d_prng_init(&prng, prng_seed);
     for (int i=0; i<128; i++) {
-        out_keys[i] = d_prng_next(&prng);
+        uint32_t lo = d_prng_next(&prng);
+        uint32_t hi = d_prng_next(&prng);
+        out_keys[i] = ((uint64_t)hi << 32) | lo;
     }
 }
 
@@ -67,23 +80,22 @@ __global__ void init_keys_kernel(const uint8_t *prng_seed, uint32_t *out_keys) {
 // PHASE 2: Parallel Block Encryption (CTR Mode)
 // ---------------------------------------------------------
 
-__global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, size_t payload_len, const uint8_t *nonce_base, uint64_t block_offset, const uint32_t *d_round_keys_const, int dpa_triggered, const uint8_t *prng_seed) {
+__global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, size_t payload_len, const uint8_t *nonce_base, uint64_t block_offset, const uint64_t *d_round_keys_const, int dpa_triggered, const uint8_t *prng_seed) {
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-    size_t byte_offset = tid * 32;
+    size_t byte_offset = tid * 64;
     if (byte_offset >= payload_len) return;
     
     // If DPA is triggered, wipe with chaotic PRNG instead of encrypting
     if (dpa_triggered) {
         d_prng_t prng;
         d_prng_init(&prng, prng_seed);
-        // Fast forward PRNG state based on our block offset so it is globally chaotic
-        for(int i=0; i<tid; i++) d_prng_next(&prng);
+        for(int i=0; i<tid*2; i++) d_prng_next(&prng);
         
         uint32_t wipe_val = d_prng_next(&prng);
         uint8_t *wv = (uint8_t*)&wipe_val;
         
         size_t remaining = payload_len - byte_offset;
-        size_t chunk = remaining > 32 ? 32 : remaining;
+        size_t chunk = remaining > 64 ? 64 : remaining;
         for (size_t i = 0; i < chunk; i++) {
             payloads[byte_offset + i] ^= wv[i % 4];
         }
@@ -92,27 +104,23 @@ __global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, siz
     
     uint64_t global_block_idx = block_offset + tid;
 
-    // Load nonce (chain_state)
-    // Nonce is 32 bytes = two uint4s. 
-    // We do not assume it is aligned to 16 bytes for uint4 loading, so we load as uint32
-    uint32_t n[8];
+    // Add global_block_idx to the nonce using Big-Endian addition across 64 bytes
+    uint8_t n_bytes[64];
     for(int i=0; i<8; i++) {
-        n[i] = ((uint32_t*)nonce_base)[i];
+        ((uint64_t*)n_bytes)[i] = ((const uint64_t*)nonce_base)[i];
     }
     
-    // Add global_block_idx to the nonce. Little endian addition on the first 32 bits
-    uint64_t n_low = (uint64_t)n[0] + global_block_idx;
-    n[0] = (uint32_t)n_low;
-    // Simple carry propagation (sufficient for reasonable payloads)
-    if (n_low > 0xFFFFFFFF) {
-        uint64_t n1 = (uint64_t)n[1] + (n_low >> 32);
-        n[1] = (uint32_t)n1;
+    uint64_t val = global_block_idx;
+    for (int j = 63; j >= 0 && val > 0; j--) {
+        uint32_t sum = n_bytes[j] + (uint32_t)(val & 0xFF);
+        n_bytes[j] = sum & 0xFF;
+        val = (val >> 8) + (sum >> 8);
     }
 
-    /* state is stored as s[0..7] corresponding to 8 x uint32 lanes */
-    uint32_t s[8];
-    s[0] = n[0]; s[1] = n[1]; s[2] = n[2]; s[3] = n[3];
-    s[4] = n[4]; s[5] = n[5]; s[6] = n[6]; s[7] = n[7];
+    uint64_t s[8];
+    for(int i=0; i<8; i++) {
+        s[i] = ((uint64_t*)n_bytes)[i];
+    }
 
     /*
      * Permutation tables (matching AVX2 _mm256_permutevar8x32_epi32):
@@ -137,58 +145,52 @@ __global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, siz
     s[7] += d_round_keys_const[(r)*8 + 7]; \
     \
     /* Step 2: XOR round constant */ \
-    uint32_t rc_##r = 0x9E3779B9u + (r); \
+    uint64_t rc_##r = 0x9E3779B97F4A7C15ULL + (r); \
     s[0] ^= rc_##r; s[1] ^= rc_##r; s[2] ^= rc_##r; s[3] ^= rc_##r; \
     s[4] ^= rc_##r; s[5] ^= rc_##r; s[6] ^= rc_##r; s[7] ^= rc_##r; \
     \
     /* Step 3: Permute to create 'swapped' */ \
-    uint32_t sw_##r[8]; \
+    uint64_t sw_##r[8]; \
     if (((r) % 3) == 0) { \
-        /* perm: lane[i] = state[{4,5,6,7,0,1,2,3}[i]] */ \
         sw_##r[0]=s[4]; sw_##r[1]=s[5]; sw_##r[2]=s[6]; sw_##r[3]=s[7]; \
         sw_##r[4]=s[0]; sw_##r[5]=s[1]; sw_##r[6]=s[2]; sw_##r[7]=s[3]; \
     } else if (((r) % 3) == 1) { \
-        /* perm: lane[i] = state[{2,3,0,1,6,7,4,5}[i]] */ \
         sw_##r[0]=s[2]; sw_##r[1]=s[3]; sw_##r[2]=s[0]; sw_##r[3]=s[1]; \
         sw_##r[4]=s[6]; sw_##r[5]=s[7]; sw_##r[6]=s[4]; sw_##r[7]=s[5]; \
     } else { \
-        /* perm: lane[i] = state[{1,0,3,2,5,4,7,6}[i]] */ \
         sw_##r[0]=s[1]; sw_##r[1]=s[0]; sw_##r[2]=s[3]; sw_##r[3]=s[2]; \
         sw_##r[4]=s[5]; sw_##r[5]=s[4]; sw_##r[6]=s[7]; sw_##r[7]=s[6]; \
     } \
     \
     /* Step 4: A_new = state + swapped */ \
-    uint32_t a_##r[8]; \
+    uint64_t a_##r[8]; \
     a_##r[0]=s[0]+sw_##r[0]; a_##r[1]=s[1]+sw_##r[1]; \
     a_##r[2]=s[2]+sw_##r[2]; a_##r[3]=s[3]+sw_##r[3]; \
     a_##r[4]=s[4]+sw_##r[4]; a_##r[5]=s[5]+sw_##r[5]; \
     a_##r[6]=s[6]+sw_##r[6]; a_##r[7]=s[7]+sw_##r[7]; \
     \
     /* Step 5: B_new = state ^ A_new */ \
-    uint32_t b_##r[8]; \
+    uint64_t b_##r[8]; \
     b_##r[0]=s[0]^a_##r[0]; b_##r[1]=s[1]^a_##r[1]; \
     b_##r[2]=s[2]^a_##r[2]; b_##r[3]=s[3]^a_##r[3]; \
     b_##r[4]=s[4]^a_##r[4]; b_##r[5]=s[5]^a_##r[5]; \
     b_##r[6]=s[6]^a_##r[6]; b_##r[7]=s[7]^a_##r[7]; \
     \
     /* Step 6: Rotate B_new */ \
-    int rot_##r = (((r) % 4) == 0) ? 16 : ((((r) % 4) == 1) ? 12 : ((((r) % 4) == 2) ? 8 : 7)); \
-    b_##r[0]=d_rotl32(b_##r[0],rot_##r); b_##r[1]=d_rotl32(b_##r[1],rot_##r); \
-    b_##r[2]=d_rotl32(b_##r[2],rot_##r); b_##r[3]=d_rotl32(b_##r[3],rot_##r); \
-    b_##r[4]=d_rotl32(b_##r[4],rot_##r); b_##r[5]=d_rotl32(b_##r[5],rot_##r); \
-    b_##r[6]=d_rotl32(b_##r[6],rot_##r); b_##r[7]=d_rotl32(b_##r[7],rot_##r); \
+    int rot_##r = (((r) % 4) == 0) ? 32 : ((((r) % 4) == 1) ? 24 : ((((r) % 4) == 2) ? 16 : 14)); \
+    b_##r[0]=d_rotl64(b_##r[0],rot_##r); b_##r[1]=d_rotl64(b_##r[1],rot_##r); \
+    b_##r[2]=d_rotl64(b_##r[2],rot_##r); b_##r[3]=d_rotl64(b_##r[3],rot_##r); \
+    b_##r[4]=d_rotl64(b_##r[4],rot_##r); b_##r[5]=d_rotl64(b_##r[5],rot_##r); \
+    b_##r[6]=d_rotl64(b_##r[6],rot_##r); b_##r[7]=d_rotl64(b_##r[7],rot_##r); \
     \
     /* Step 7: Blend A_new and B_new back into state */ \
     if (((r) % 3) == 0) { \
-        /* 0xF0: lanes 0-3 from A, lanes 4-7 from B */ \
         s[0]=a_##r[0]; s[1]=a_##r[1]; s[2]=a_##r[2]; s[3]=a_##r[3]; \
         s[4]=b_##r[4]; s[5]=b_##r[5]; s[6]=b_##r[6]; s[7]=b_##r[7]; \
     } else if (((r) % 3) == 1) { \
-        /* 0xCC: lanes 0,1,4,5 from A; lanes 2,3,6,7 from B */ \
         s[0]=a_##r[0]; s[1]=a_##r[1]; s[2]=b_##r[2]; s[3]=b_##r[3]; \
         s[4]=a_##r[4]; s[5]=a_##r[5]; s[6]=b_##r[6]; s[7]=b_##r[7]; \
     } else { \
-        /* 0xAA: even lanes from A; odd lanes from B */ \
         s[0]=a_##r[0]; s[1]=b_##r[1]; s[2]=a_##r[2]; s[3]=b_##r[3]; \
         s[4]=a_##r[4]; s[5]=b_##r[5]; s[6]=a_##r[6]; s[7]=b_##r[7]; \
     } \
@@ -201,28 +203,37 @@ __global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, siz
 #undef DASP_ROUND_CUDA
 
     size_t remaining = payload_len - byte_offset;
-    if (remaining >= 32) {
+    if (remaining >= 64) {
         // Use uint4 vector loads/stores for 128-bit coalesced memory transactions
         uint4 *p128 = (uint4*)(payloads + byte_offset);
         uint4 in0 = p128[0];
         uint4 in1 = p128[1];
-        in0.x ^= s[0]; in0.y ^= s[1]; in0.z ^= s[2]; in0.w ^= s[3];
-        in1.x ^= s[4]; in1.y ^= s[5]; in1.z ^= s[6]; in1.w ^= s[7];
+        uint4 in2 = p128[2];
+        uint4 in3 = p128[3];
+        
+        uint32_t *s32 = (uint32_t*)s;
+        in0.x ^= s32[0]; in0.y ^= s32[1]; in0.z ^= s32[2]; in0.w ^= s32[3];
+        in1.x ^= s32[4]; in1.y ^= s32[5]; in1.z ^= s32[6]; in1.w ^= s32[7];
+        in2.x ^= s32[8]; in2.y ^= s32[9]; in2.z ^= s32[10]; in2.w ^= s32[11];
+        in3.x ^= s32[12]; in3.y ^= s32[13]; in3.z ^= s32[14]; in3.w ^= s32[15];
+        
         p128[0] = in0;
         p128[1] = in1;
+        p128[2] = in2;
+        p128[3] = in3;
     } else {
         uint8_t *t8 = (uint8_t*)s;
         for(size_t i=0; i<remaining; i++) payloads[byte_offset + i] ^= t8[i];
     }
 }
 
-uint32_t *g_round_keys_device = NULL;
+uint64_t *g_round_keys_device = NULL;
 
 extern "C" void dasp_cuda_init_keys(const uint8_t *d_keys_128) {
     const uint8_t *prng_seed = d_keys_128 + 64;
     
     if (!g_round_keys_device) {
-        cudaMalloc(&g_round_keys_device, 128 * sizeof(uint32_t));
+        cudaMalloc(&g_round_keys_device, 128 * sizeof(uint64_t));
     }
     
     // Generate keys on GPU directly into device memory
@@ -233,7 +244,7 @@ extern "C" void dasp_cuda_init_keys(const uint8_t *d_keys_128) {
 extern "C" void dasp_cuda_process_chunk(uint8_t *d_payload, size_t chunk_len, const uint8_t *d_nonce, uint64_t block_offset, cudaStream_t stream, int dpa_triggered, const uint8_t *prng_seed) {
     if (chunk_len == 0) return;
 
-    size_t real_num_blocks = (chunk_len + 31) / 32;
+    size_t real_num_blocks = (chunk_len + 63) / 64;
     int threadsPerBlock = 256;
     int blocksPerGrid = (real_num_blocks + threadsPerBlock - 1) / threadsPerBlock;
     

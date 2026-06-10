@@ -67,30 +67,30 @@ _Proof of Constant-Time_: If the high bit of $a$ is 1, $a \gg 7$ yields 1, and $
 
 ---
 
-## 3. The ASP Cascade 16 Engine (32-Bit Vectorized)
+## 3. The ASP Cascade 16 Engine (64-Bit Vectorized)
 
-The ASP Cascade has been structurally upgraded to an **Intrinsic-Forced Execution Model**. It operates as a strict **256-bit (32-byte) Block Cipher** in **Counter (CTR) Mode**.
+The ASP Cascade has been structurally upgraded to an **Intrinsic-Forced Execution Model**. It operates as a strict **512-bit (64-byte) Block Cipher** in **Counter (CTR) Mode**.
 
-The internal state $S$ is defined as eight 32-bit words: $S \in \mathbb{Z}_{2^{32}}^8$.
+The internal state $S$ is defined as eight 64-bit words: $S \in \mathbb{Z}_{2^{64}}^8$.
 
-To eliminate branching and loop overhead, D-SPNA-512 uses a **Static Deterministic Unrolled Schedule** consisting of a pure 32-bit ARX/SPNA sequence.
+To eliminate branching and loop overhead, D-SPNA-512 uses a **Static Deterministic Unrolled Schedule** consisting of a pure 64-bit ARX/SPNA sequence.
 
-### 3.1 Substitution & Algebraic (S/A) Layer: 32-Bit ARX
+### 3.1 Substitution & Algebraic (S/A) Layer: 64-Bit ARX
 
-State words are modified using 32-bit modular addition and bitwise XOR, combining incompatible algebraic groups to neutralize differential approximations.
+State words are modified using 64-bit modular addition and bitwise XOR, combining incompatible algebraic groups to neutralize differential approximations.
 
-- **Addition**: $S = (S + K_{round}) \pmod{2^{32}}$
+- **Addition**: $S = (S + K_{round}) \pmod{2^{64}}$
 - **XOR**: $S = S \oplus C_{round}$
 
-### 3.2 Permutation (P) Layer: 32-Bit Rotation
+### 3.2 Permutation (P) Layer: 64-Bit Rotation
 
-Bit-level diffusion is achieved via hardware-native 32-bit funnel shifts.
+Bit-level diffusion is achieved via hardware-native 64-bit funnel shifts.
 
-- **Transformation**: $S = (S \ll k) \mid (S \gg (32 - k))$
+- **Transformation**: $S = (S \ll k) \mid (S \gg (64 - k))$
 
 ### 3.3 Network (N) Layer: 3-Cycle Butterfly Mixing
 
-The internal state is aggressively mixed using an adjacent index butterfly mixing topology: $S_a = (S_a + S_b) \pmod{2^{32}}$, $S_b = S_b \oplus S_a$. This sequential diffusion matrix achieves instant complete-state cross-lane dependency across all 8 indices. To counteract sequential linear delay, the topology employs ChaCha20-inspired rotation constants dynamically alternating over a 3-cycle sequence (16, 12, 8, 7), maximizing the non-linear algebraic complexity inside the 16-round bounded schedule.
+The internal state is aggressively mixed using an adjacent index butterfly mixing topology: $S_a = (S_a + S_b) \pmod{2^{64}}$, $S_b = S_b \oplus S_a$. This sequential diffusion matrix achieves instant complete-state cross-lane dependency across all 8 indices. To counteract sequential linear delay, the topology employs ChaCha20-inspired rotation constants dynamically alternating over a 3-cycle sequence (32, 24, 16, 14), maximizing the non-linear algebraic complexity inside the 16-round bounded schedule.
 
 ---
 

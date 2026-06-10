@@ -443,10 +443,10 @@ export const BuildEnginesRunner = ({ onComplete }: { onComplete: () => void }) =
     (async () => {
       const { execa } = await import('execa');
       const engines = [
-        { id: 'rust', name: '🦀 Rust', cmd: 'npm run build:rust' },
-        { id: 'wasm', name: '🕸️ WASM', cmd: 'npm run build:wasm' },
-        { id: 'c', name: '⚙️ C', cmd: 'npm run build:c' },
-        { id: 'cuda', name: '🟩 CUDA', cmd: 'npm run build:cuda' }
+        { id: 'rust', name: 'RUST', cmd: 'npm run build:rust' },
+        { id: 'wasm', name: 'WASM', cmd: 'npm run build:wasm' },
+        { id: 'c', name: 'C', cmd: 'npm run build:c' },
+        { id: 'cuda', name: 'CUDA', cmd: 'npm run build:cuda' }
       ];
       
       for (const e of engines) {
@@ -479,7 +479,7 @@ export const BuildEnginesRunner = ({ onComplete }: { onComplete: () => void }) =
       <Box marginY={1} flexDirection="column" width={72}>
         <Text color="#F8FAFC" bold>Darkstar Compilation Target</Text>
         <Box flexDirection="column" marginLeft={2} marginTop={1}>
-          <Text color={getColor(states.rust)}>├─ {getIcon(states.rust)} Rust</Text>
+          <Text color={getColor(states.rust)}>├─ {getIcon(states.rust)} RUST</Text>
           <Text color={getColor(states.wasm)}>├─ {getIcon(states.wasm)} WASM</Text>
           <Text color={getColor(states.c)}>├─ {getIcon(states.c)} C</Text>
           <Text color={getColor(states.cuda)}>└─ {getIcon(states.cuda)} CUDA</Text>

@@ -67,8 +67,18 @@ static void chacha_quarter_round(uint32_t *x, int a, int b, int c, int d) {
 
 static void chacha_block(uint32_t *state, uint32_t *out) {
   uint32_t x[16];
+  #if defined(__GNUC__) || defined(__clang__)
+  #pragma GCC unroll 16
+  #elif defined(_MSC_VER)
+  #pragma unroll(16)
+  #endif
   for (int i = 0; i < 16; i++)
     x[i] = state[i];
+  #if defined(__GNUC__) || defined(__clang__)
+  #pragma GCC unroll 10
+  #elif defined(_MSC_VER)
+  #pragma unroll(10)
+  #endif
   for (int i = 0; i < 10; i++) {
     chacha_quarter_round(x, 0, 4, 8, 12);
     chacha_quarter_round(x, 1, 5, 9, 13);
@@ -79,6 +89,11 @@ static void chacha_block(uint32_t *state, uint32_t *out) {
     chacha_quarter_round(x, 2, 7, 8, 13);
     chacha_quarter_round(x, 3, 4, 9, 14);
   }
+  #if defined(__GNUC__) || defined(__clang__)
+  #pragma GCC unroll 16
+  #elif defined(_MSC_VER)
+  #pragma unroll(16)
+  #endif
   for (int i = 0; i < 16; i++)
     out[i] = x[i] + state[i];
 }
@@ -103,202 +118,206 @@ static uint32_t prng_next(prng_t *ctx) {
   return ctx->block[ctx->block_idx++];
 }
 
-#ifdef _MSC_VER
-__forceinline
-#else
-__attribute__((always_inline))
-#endif
-static inline void dasp_cascade_32_avx2(uint8_t *restrict block,
-                                        const uint32_t *restrict round_keys) {
-  const __m256i *aligned_keys =
-      (const __m256i *)__builtin_assume_aligned(round_keys, 32);
-
-  __m256i state = _mm256_loadu_si256((const __m256i *)block);
-
-#define DASP_ROUND_AVX2(r)                                                     \
-  do {                                                                         \
-    __m256i rk = _mm256_load_si256(&aligned_keys[r]);                          \
-    state = _mm256_add_epi32(state, rk);                                       \
-    __m256i rc = _mm256_set1_epi32(0x9E3779B9 + (r));                          \
-    state = _mm256_xor_si256(state, rc);                                       \
-                                                                               \
-    __m256i swapped;                                                           \
-    if (((r) % 3) == 0)                                                        \
-      swapped = _mm256_permutevar8x32_epi32(                                   \
-          state, _mm256_set_epi32(3, 2, 1, 0, 7, 6, 5, 4));                    \
-    else if (((r) % 3) == 1)                                                   \
-      swapped = _mm256_permutevar8x32_epi32(                                   \
-          state, _mm256_set_epi32(5, 4, 7, 6, 1, 0, 3, 2));                    \
-    else                                                                       \
-      swapped = _mm256_permutevar8x32_epi32(                                   \
-          state, _mm256_set_epi32(6, 7, 4, 5, 2, 3, 0, 1));                    \
-                                                                               \
-    __m256i A_new = _mm256_add_epi32(state, swapped);                          \
-    __m256i B_new = _mm256_xor_si256(state, A_new);                            \
-                                                                               \
-    int rot = (((r) % 4) == 0)                                                 \
-                  ? 16                                                         \
-                  : ((((r) % 4) == 1) ? 12 : ((((r) % 4) == 2) ? 8 : 7));      \
-    __m256i rotl = _mm256_slli_epi32(B_new, rot);                              \
-    __m256i rotr = _mm256_srli_epi32(B_new, 32 - rot);                         \
-    B_new = _mm256_or_si256(rotl, rotr);                                       \
-                                                                               \
-    if (((r) % 3) == 0)                                                        \
-      state = _mm256_blend_epi32(A_new, B_new, 0xF0);                          \
-    else if (((r) % 3) == 1)                                                   \
-      state = _mm256_blend_epi32(A_new, B_new, 0xCC);                          \
-    else                                                                       \
-      state = _mm256_blend_epi32(A_new, B_new, 0xAA);                          \
-  } while (0)
-
-  DASP_ROUND_AVX2(0);
-  DASP_ROUND_AVX2(1);
-  DASP_ROUND_AVX2(2);
-  DASP_ROUND_AVX2(3);
-  DASP_ROUND_AVX2(4);
-  DASP_ROUND_AVX2(5);
-  DASP_ROUND_AVX2(6);
-  DASP_ROUND_AVX2(7);
-  DASP_ROUND_AVX2(8);
-  DASP_ROUND_AVX2(9);
-  DASP_ROUND_AVX2(10);
-  DASP_ROUND_AVX2(11);
-  DASP_ROUND_AVX2(12);
-  DASP_ROUND_AVX2(13);
-  DASP_ROUND_AVX2(14);
-  DASP_ROUND_AVX2(15);
-#undef DASP_ROUND_AVX2
-
-  _mm256_storeu_si256((__m256i *)block, state);
-
-  // Zenbleed Mitigation: Force SIMD YMM Register Wipe
-  volatile __m256i wipe = _mm256_setzero_si256();
-  state = wipe;
+static inline uint64_t rotl64_scalar(uint64_t v, int c) {
+    return (v << c) | (v >> (64 - c));
 }
 
-static inline uint32_t rotl32_scalar(uint32_t v, int c) {
-    return (v << c) | (v >> (32 - c));
-}
+static inline void dasp_cascade_64_scalar(uint8_t *restrict block, const uint64_t *restrict round_keys);
 
-static inline void dasp_cascade_32_scalar(uint8_t *restrict block, const uint32_t *restrict round_keys) {
-    uint32_t state[8];
-    for(int i=0; i<8; i++) {
-        state[i] = ((uint32_t)block[i*4]) | ((uint32_t)block[i*4+1] << 8) | 
-                   ((uint32_t)block[i*4+2] << 16) | ((uint32_t)block[i*4+3] << 24);
-    }
+#ifdef __AVX2__
+static inline void dasp_cascade_64_avx2(uint8_t *restrict block, const uint64_t *restrict round_keys) {
+    const __m256i *aligned_keys = (const __m256i *)__builtin_assume_aligned(round_keys, 64);
     
-    for(int r=0; r<16; r++) {
-        for(int i=0; i<8; i++) state[i] += round_keys[r*8 + i];
-        uint32_t rc = 0x9E3779B9 + r;
-        for(int i=0; i<8; i++) state[i] ^= rc;
-        
-        uint32_t swapped[8];
-        if (r % 3 == 0) {
-            swapped[0] = state[3]; swapped[1] = state[2]; swapped[2] = state[1]; swapped[3] = state[0];
-            swapped[4] = state[7]; swapped[5] = state[6]; swapped[6] = state[5]; swapped[7] = state[4];
-        } else if (r % 3 == 1) {
-            swapped[0] = state[5]; swapped[1] = state[4]; swapped[2] = state[7]; swapped[3] = state[6];
-            swapped[4] = state[1]; swapped[5] = state[0]; swapped[6] = state[3]; swapped[7] = state[2];
-        } else {
-            swapped[0] = state[6]; swapped[1] = state[7]; swapped[2] = state[4]; swapped[3] = state[5];
-            swapped[4] = state[2]; swapped[5] = state[3]; swapped[6] = state[0]; swapped[7] = state[1];
-        }
-        
-        uint32_t a_new[8], b_new[8];
-        for(int i=0; i<8; i++) {
-            a_new[i] = state[i] + swapped[i];
-            b_new[i] = state[i] ^ a_new[i];
-        }
-        
-        int rot = (r % 4 == 0) ? 16 : ((r % 4 == 1) ? 12 : ((r % 4 == 2) ? 8 : 7));
-        for(int i=0; i<8; i++) b_new[i] = rotl32_scalar(b_new[i], rot);
-        
-        if (r % 3 == 0) {
-            state[0] = a_new[0]; state[1] = a_new[1]; state[2] = a_new[2]; state[3] = a_new[3];
-            state[4] = b_new[4]; state[5] = b_new[5]; state[6] = b_new[6]; state[7] = b_new[7];
-        } else if (r % 3 == 1) {
-            state[0] = a_new[0]; state[1] = a_new[1]; state[2] = b_new[2]; state[3] = b_new[3];
-            state[4] = a_new[4]; state[5] = a_new[5]; state[6] = b_new[6]; state[7] = b_new[7];
-        } else {
-            state[0] = a_new[0]; state[1] = b_new[1]; state[2] = a_new[2]; state[3] = b_new[3];
-            state[4] = a_new[4]; state[5] = b_new[5]; state[6] = a_new[6]; state[7] = b_new[7];
-        }
-    }
-    
-    for(int i=0; i<8; i++) {
-        block[i*4] = state[i] & 0xFF;
-        block[i*4+1] = (state[i] >> 8) & 0xFF;
-        block[i*4+2] = (state[i] >> 16) & 0xFF;
-        block[i*4+3] = (state[i] >> 24) & 0xFF;
-    }
-}
+    __m256i state_lo = _mm256_loadu_si256((const __m256i *)block);
+    __m256i state_hi = _mm256_loadu_si256((const __m256i *)(block + 32));
 
-#if defined(__aarch64__) || defined(__ARM_NEON)
-#include <arm_neon.h>
-static inline void dasp_cascade_32_neon(uint8_t *restrict block, const uint32_t *restrict round_keys) {
-    uint32x4_t state_lo = vld1q_u32((const uint32_t *)block);
-    uint32x4_t state_hi = vld1q_u32((const uint32_t *)(block + 16));
-    uint32x4_t mask_AA = vcombine_u32(vcreate_u32(0xFFFFFFFF00000000ULL), vcreate_u32(0xFFFFFFFF00000000ULL));
-
-#define DASP_ROUND_NEON(r) \
+#define DASP_ROUND_AVX2(r) \
     do { \
-        uint32x4_t rk_lo = vld1q_u32(&round_keys[(r) * 8]); \
-        uint32x4_t rk_hi = vld1q_u32(&round_keys[(r) * 8 + 4]); \
-        state_lo = vaddq_u32(state_lo, rk_lo); \
-        state_hi = vaddq_u32(state_hi, rk_hi); \
-        uint32x4_t rc = vdupq_n_u32(0x9E3779B9 + (r)); \
-        state_lo = veorq_u32(state_lo, rc); \
-        state_hi = veorq_u32(state_hi, rc); \
-        \
-        uint32x4_t swapped_lo, swapped_hi; \
+        __m256i rk_lo = _mm256_load_si256(&aligned_keys[(r)*2]); \
+        __m256i rk_hi = _mm256_load_si256(&aligned_keys[(r)*2 + 1]); \
+        state_lo = _mm256_add_epi64(state_lo, rk_lo); \
+        state_hi = _mm256_add_epi64(state_hi, rk_hi); \
+        __m256i rc = _mm256_set1_epi64x(0x9E3779B97F4A7C15ULL + (r)); \
+        state_lo = _mm256_xor_si256(state_lo, rc); \
+        state_hi = _mm256_xor_si256(state_hi, rc); \
+        __m256i swapped_lo, swapped_hi; \
         if (((r) % 3) == 0) { \
             swapped_lo = state_hi; \
             swapped_hi = state_lo; \
         } else if (((r) % 3) == 1) { \
-            swapped_lo = vextq_u32(state_lo, state_lo, 2); \
-            swapped_hi = vextq_u32(state_hi, state_hi, 2); \
+            swapped_lo = _mm256_permute4x64_epi64(state_lo, _MM_SHUFFLE(1, 0, 3, 2)); \
+            swapped_hi = _mm256_permute4x64_epi64(state_hi, _MM_SHUFFLE(1, 0, 3, 2)); \
         } else { \
-            swapped_lo = vrev64q_u32(state_lo); \
-            swapped_hi = vrev64q_u32(state_hi); \
+            swapped_lo = _mm256_permute4x64_epi64(state_lo, _MM_SHUFFLE(2, 3, 0, 1)); \
+            swapped_hi = _mm256_permute4x64_epi64(state_hi, _MM_SHUFFLE(2, 3, 0, 1)); \
         } \
-        \
-        uint32x4_t a_new_lo = vaddq_u32(state_lo, swapped_lo); \
-        uint32x4_t a_new_hi = vaddq_u32(state_hi, swapped_hi); \
-        uint32x4_t b_new_lo = veorq_u32(state_lo, a_new_lo); \
-        uint32x4_t b_new_hi = veorq_u32(state_hi, a_new_hi); \
-        \
-        uint32x4_t rotl_lo, rotl_hi, b_final_lo, b_final_hi; \
-        if (((r) % 4) == 0) { \
-            rotl_lo = vshlq_n_u32(b_new_lo, 16); \
-            b_final_lo = vsriq_n_u32(rotl_lo, b_new_lo, 16); \
-            rotl_hi = vshlq_n_u32(b_new_hi, 16); \
-            b_final_hi = vsriq_n_u32(rotl_hi, b_new_hi, 16); \
-        } else if (((r) % 4) == 1) { \
-            rotl_lo = vshlq_n_u32(b_new_lo, 12); \
-            b_final_lo = vsriq_n_u32(rotl_lo, b_new_lo, 20); \
-            rotl_hi = vshlq_n_u32(b_new_hi, 12); \
-            b_final_hi = vsriq_n_u32(rotl_hi, b_new_hi, 20); \
-        } else if (((r) % 4) == 2) { \
-            rotl_lo = vshlq_n_u32(b_new_lo, 8); \
-            b_final_lo = vsriq_n_u32(rotl_lo, b_new_lo, 24); \
-            rotl_hi = vshlq_n_u32(b_new_hi, 8); \
-            b_final_hi = vsriq_n_u32(rotl_hi, b_new_hi, 24); \
-        } else { \
-            rotl_lo = vshlq_n_u32(b_new_lo, 7); \
-            b_final_lo = vsriq_n_u32(rotl_lo, b_new_lo, 25); \
-            rotl_hi = vshlq_n_u32(b_new_hi, 7); \
-            b_final_hi = vsriq_n_u32(rotl_hi, b_new_hi, 25); \
-        } \
-        \
+        __m256i a_new_lo = _mm256_add_epi64(state_lo, swapped_lo); \
+        __m256i a_new_hi = _mm256_add_epi64(state_hi, swapped_hi); \
+        __m256i b_new_lo = _mm256_xor_si256(state_lo, a_new_lo); \
+        __m256i b_new_hi = _mm256_xor_si256(state_hi, a_new_hi); \
+        int rot = (((r) % 4) == 0) ? 32 : ((((r) % 4) == 1) ? 24 : ((((r) % 4) == 2) ? 16 : 14)); \
+        __m256i rotl_lo = _mm256_slli_epi64(b_new_lo, rot); \
+        __m256i rotr_lo = _mm256_srli_epi64(b_new_lo, 64 - rot); \
+        b_new_lo = _mm256_or_si256(rotl_lo, rotr_lo); \
+        __m256i rotl_hi = _mm256_slli_epi64(b_new_hi, rot); \
+        __m256i rotr_hi = _mm256_srli_epi64(b_new_hi, 64 - rot); \
+        b_new_hi = _mm256_or_si256(rotl_hi, rotr_hi); \
         if (((r) % 3) == 0) { \
             state_lo = a_new_lo; \
-            state_hi = b_final_hi; \
+            state_hi = b_new_hi; \
         } else if (((r) % 3) == 1) { \
-            state_lo = vcombine_u32(vget_low_u32(a_new_lo), vget_high_u32(b_final_lo)); \
-            state_hi = vcombine_u32(vget_low_u32(a_new_hi), vget_high_u32(b_final_hi)); \
+            state_lo = _mm256_blend_epi32(a_new_lo, b_new_lo, 0xF0); \
+            state_hi = _mm256_blend_epi32(a_new_hi, b_new_hi, 0xF0); \
         } else { \
-            state_lo = vbslq_u32(mask_AA, b_final_lo, a_new_lo); \
-            state_hi = vbslq_u32(mask_AA, b_final_hi, a_new_hi); \
+            state_lo = _mm256_blend_epi32(a_new_lo, b_new_lo, 0xCC); \
+            state_hi = _mm256_blend_epi32(a_new_hi, b_new_hi, 0xCC); \
+        } \
+    } while(0)
+
+    DASP_ROUND_AVX2(0); DASP_ROUND_AVX2(1); DASP_ROUND_AVX2(2); DASP_ROUND_AVX2(3);
+    DASP_ROUND_AVX2(4); DASP_ROUND_AVX2(5); DASP_ROUND_AVX2(6); DASP_ROUND_AVX2(7);
+    DASP_ROUND_AVX2(8); DASP_ROUND_AVX2(9); DASP_ROUND_AVX2(10); DASP_ROUND_AVX2(11);
+    DASP_ROUND_AVX2(12); DASP_ROUND_AVX2(13); DASP_ROUND_AVX2(14); DASP_ROUND_AVX2(15);
+#undef DASP_ROUND_AVX2
+
+    _mm256_storeu_si256((__m256i *)block, state_lo);
+    _mm256_storeu_si256((__m256i *)(block + 32), state_hi);
+
+    // Zenbleed Mitigation: Force SIMD YMM Register Wipe
+    volatile __m256i wipe = _mm256_setzero_si256();
+    state_lo = wipe;
+    state_hi = wipe;
+}
+#endif
+
+#if defined(__AVX512F__)
+static inline void dasp_cascade_64_avx512(uint8_t *restrict block, const uint64_t *restrict round_keys) {
+    const __m512i *aligned_keys = (const __m512i *)__builtin_assume_aligned(round_keys, 64);
+    
+    __m512i state = _mm512_loadu_si512((const void *)block);
+
+    __m512i perm0 = _mm512_set_epi64(3, 2, 1, 0, 7, 6, 5, 4);
+    __m512i perm1 = _mm512_set_epi64(5, 4, 7, 6, 1, 0, 3, 2);
+    __m512i perm2 = _mm512_set_epi64(6, 7, 4, 5, 2, 3, 0, 1);
+
+#define DASP_ROUND_AVX512(r) \
+    do { \
+        __m512i rk = _mm512_load_si512(&aligned_keys[(r)]); \
+        state = _mm512_add_epi64(state, rk); \
+        __m512i rc = _mm512_set1_epi64(0x9E3779B97F4A7C15ULL + (r)); \
+        state = _mm512_xor_si512(state, rc); \
+        __m512i swapped; \
+        if (((r) % 3) == 0) { \
+            swapped = _mm512_permutexvar_epi64(perm0, state); \
+        } else if (((r) % 3) == 1) { \
+            swapped = _mm512_permutexvar_epi64(perm1, state); \
+        } else { \
+            swapped = _mm512_permutexvar_epi64(perm2, state); \
+        } \
+        __m512i a_new = _mm512_add_epi64(state, swapped); \
+        __m512i b_new = _mm512_xor_si512(state, a_new); \
+        int rot = (((r) % 4) == 0) ? 32 : ((((r) % 4) == 1) ? 24 : ((((r) % 4) == 2) ? 16 : 14)); \
+        __m512i rotl = _mm512_slli_epi64(b_new, rot); \
+        __m512i rotr = _mm512_srli_epi64(b_new, 64 - rot); \
+        b_new = _mm512_or_si512(rotl, rotr); \
+        if (((r) % 3) == 0) { \
+            state = _mm512_mask_blend_epi64(0xF0, a_new, b_new); \
+        } else if (((r) % 3) == 1) { \
+            state = _mm512_mask_blend_epi64(0xCC, a_new, b_new); \
+        } else { \
+            state = _mm512_mask_blend_epi64(0xAA, a_new, b_new); \
+        } \
+    } while(0)
+
+    DASP_ROUND_AVX512(0); DASP_ROUND_AVX512(1); DASP_ROUND_AVX512(2); DASP_ROUND_AVX512(3);
+    DASP_ROUND_AVX512(4); DASP_ROUND_AVX512(5); DASP_ROUND_AVX512(6); DASP_ROUND_AVX512(7);
+    DASP_ROUND_AVX512(8); DASP_ROUND_AVX512(9); DASP_ROUND_AVX512(10); DASP_ROUND_AVX512(11);
+    DASP_ROUND_AVX512(12); DASP_ROUND_AVX512(13); DASP_ROUND_AVX512(14); DASP_ROUND_AVX512(15);
+#undef DASP_ROUND_AVX512
+
+    _mm512_storeu_si512((void *)block, state);
+
+    // Zenbleed Mitigation: Force SIMD ZMM Register Wipe
+    volatile __m512i wipe = _mm512_setzero_si512();
+    state = wipe;
+}
+#endif
+
+#if defined(__aarch64__) || defined(__ARM_NEON)
+#include <arm_neon.h>
+static inline void dasp_cascade_64_neon(uint8_t *restrict block, const uint64_t *restrict round_keys) {
+    uint64x2_t state0 = vld1q_u64((const uint64_t *)block);
+    uint64x2_t state1 = vld1q_u64((const uint64_t *)(block + 16));
+    uint64x2_t state2 = vld1q_u64((const uint64_t *)(block + 32));
+    uint64x2_t state3 = vld1q_u64((const uint64_t *)(block + 48));
+
+#define DASP_ROUND_NEON(r) \
+    do { \
+        uint64x2_t rk0 = vld1q_u64(&round_keys[(r) * 8]); \
+        uint64x2_t rk1 = vld1q_u64(&round_keys[(r) * 8 + 2]); \
+        uint64x2_t rk2 = vld1q_u64(&round_keys[(r) * 8 + 4]); \
+        uint64x2_t rk3 = vld1q_u64(&round_keys[(r) * 8 + 6]); \
+        state0 = vaddq_u64(state0, rk0); \
+        state1 = vaddq_u64(state1, rk1); \
+        state2 = vaddq_u64(state2, rk2); \
+        state3 = vaddq_u64(state3, rk3); \
+        uint64x2_t rc = vdupq_n_u64(0x9E3779B97F4A7C15ULL + (r)); \
+        state0 = veorq_u64(state0, rc); \
+        state1 = veorq_u64(state1, rc); \
+        state2 = veorq_u64(state2, rc); \
+        state3 = veorq_u64(state3, rc); \
+        uint64x2_t sw0, sw1, sw2, sw3; \
+        if (((r) % 3) == 0) { \
+            sw0 = state2; sw1 = state3; sw2 = state0; sw3 = state1; \
+        } else if (((r) % 3) == 1) { \
+            sw0 = state1; sw1 = state0; sw2 = state3; sw3 = state2; \
+        } else { \
+            sw0 = vcombine_u64(vget_high_u64(state0), vget_low_u64(state0)); \
+            sw1 = vcombine_u64(vget_high_u64(state1), vget_low_u64(state1)); \
+            sw2 = vcombine_u64(vget_high_u64(state2), vget_low_u64(state2)); \
+            sw3 = vcombine_u64(vget_high_u64(state3), vget_low_u64(state3)); \
+        } \
+        uint64x2_t a0 = vaddq_u64(state0, sw0); \
+        uint64x2_t a1 = vaddq_u64(state1, sw1); \
+        uint64x2_t a2 = vaddq_u64(state2, sw2); \
+        uint64x2_t a3 = vaddq_u64(state3, sw3); \
+        uint64x2_t b0 = veorq_u64(state0, a0); \
+        uint64x2_t b1 = veorq_u64(state1, a1); \
+        uint64x2_t b2 = veorq_u64(state2, a2); \
+        uint64x2_t b3 = veorq_u64(state3, a3); \
+        uint64x2_t rotl0, rotl1, rotl2, rotl3, b_final0, b_final1, b_final2, b_final3; \
+        if (((r) % 4) == 0) { \
+            rotl0 = vshlq_n_u64(b0, 32); b_final0 = vsriq_n_u64(rotl0, b0, 32); \
+            rotl1 = vshlq_n_u64(b1, 32); b_final1 = vsriq_n_u64(rotl1, b1, 32); \
+            rotl2 = vshlq_n_u64(b2, 32); b_final2 = vsriq_n_u64(rotl2, b2, 32); \
+            rotl3 = vshlq_n_u64(b3, 32); b_final3 = vsriq_n_u64(rotl3, b3, 32); \
+        } else if (((r) % 4) == 1) { \
+            rotl0 = vshlq_n_u64(b0, 24); b_final0 = vsriq_n_u64(rotl0, b0, 40); \
+            rotl1 = vshlq_n_u64(b1, 24); b_final1 = vsriq_n_u64(rotl1, b1, 40); \
+            rotl2 = vshlq_n_u64(b2, 24); b_final2 = vsriq_n_u64(rotl2, b2, 40); \
+            rotl3 = vshlq_n_u64(b3, 24); b_final3 = vsriq_n_u64(rotl3, b3, 40); \
+        } else if (((r) % 4) == 2) { \
+            rotl0 = vshlq_n_u64(b0, 16); b_final0 = vsriq_n_u64(rotl0, b0, 48); \
+            rotl1 = vshlq_n_u64(b1, 16); b_final1 = vsriq_n_u64(rotl1, b1, 48); \
+            rotl2 = vshlq_n_u64(b2, 16); b_final2 = vsriq_n_u64(rotl2, b2, 48); \
+            rotl3 = vshlq_n_u64(b3, 16); b_final3 = vsriq_n_u64(rotl3, b3, 48); \
+        } else { \
+            rotl0 = vshlq_n_u64(b0, 14); b_final0 = vsriq_n_u64(rotl0, b0, 50); \
+            rotl1 = vshlq_n_u64(b1, 14); b_final1 = vsriq_n_u64(rotl1, b1, 50); \
+            rotl2 = vshlq_n_u64(b2, 14); b_final2 = vsriq_n_u64(rotl2, b2, 50); \
+            rotl3 = vshlq_n_u64(b3, 14); b_final3 = vsriq_n_u64(rotl3, b3, 50); \
+        } \
+        if (((r) % 3) == 0) { \
+            state0 = a0; state1 = a1; \
+            state2 = b_final2; state3 = b_final3; \
+        } else if (((r) % 3) == 1) { \
+            state0 = a0; state1 = b_final1; \
+            state2 = a2; state3 = b_final3; \
+        } else { \
+            state0 = vcombine_u64(vget_low_u64(a0), vget_high_u64(b_final0)); \
+            state1 = vcombine_u64(vget_low_u64(a1), vget_high_u64(b_final1)); \
+            state2 = vcombine_u64(vget_low_u64(a2), vget_high_u64(b_final2)); \
+            state3 = vcombine_u64(vget_low_u64(a3), vget_high_u64(b_final3)); \
         } \
     } while(0)
 
@@ -306,18 +325,93 @@ static inline void dasp_cascade_32_neon(uint8_t *restrict block, const uint32_t 
     DASP_ROUND_NEON(4); DASP_ROUND_NEON(5); DASP_ROUND_NEON(6); DASP_ROUND_NEON(7);
     DASP_ROUND_NEON(8); DASP_ROUND_NEON(9); DASP_ROUND_NEON(10); DASP_ROUND_NEON(11);
     DASP_ROUND_NEON(12); DASP_ROUND_NEON(13); DASP_ROUND_NEON(14); DASP_ROUND_NEON(15);
-
 #undef DASP_ROUND_NEON
 
-    vst1q_u32((uint32_t *)block, state_lo);
-    vst1q_u32((uint32_t *)(block + 16), state_hi);
+    vst1q_u64((uint64_t *)block, state0);
+    vst1q_u64((uint64_t *)(block + 16), state1);
+    vst1q_u64((uint64_t *)(block + 32), state2);
+    vst1q_u64((uint64_t *)(block + 48), state3);
 
     // Zenbleed Mitigation: Force SIMD Q Register Wipe
-    volatile uint32x4_t wipe = vdupq_n_u32(0);
-    state_lo = wipe;
-    state_hi = wipe;
+    volatile uint64x2_t wipe = vdupq_n_u64(0);
+    state0 = wipe; state1 = wipe; state2 = wipe; state3 = wipe;
 }
 #endif
+
+static inline void dasp_cascade_64_scalar(uint8_t *restrict block, const uint64_t *restrict round_keys) {
+    uint64_t state[8];
+    for(int i=0; i<8; i++) {
+        state[i] = ((uint64_t)block[i*8]) | ((uint64_t)block[i*8+1] << 8) | 
+                   ((uint64_t)block[i*8+2] << 16) | ((uint64_t)block[i*8+3] << 24) |
+                   ((uint64_t)block[i*8+4] << 32) | ((uint64_t)block[i*8+5] << 40) |
+                   ((uint64_t)block[i*8+6] << 48) | ((uint64_t)block[i*8+7] << 56);
+    }
+    
+#define DASP_ROUND_SCALAR(r) \
+    do { \
+        for(int i=0; i<8; i++) state[i] += round_keys[(r)*8 + i]; \
+        uint64_t rc = 0x9E3779B97F4A7C15ULL + (r); \
+        for(int i=0; i<8; i++) state[i] ^= rc; \
+        uint64_t swapped[8]; \
+        if ((r) % 3 == 0) { \
+            swapped[0] = state[4]; swapped[1] = state[5]; swapped[2] = state[6]; swapped[3] = state[7]; \
+            swapped[4] = state[0]; swapped[5] = state[1]; swapped[6] = state[2]; swapped[7] = state[3]; \
+        } else if ((r) % 3 == 1) { \
+            swapped[0] = state[2]; swapped[1] = state[3]; swapped[2] = state[0]; swapped[3] = state[1]; \
+            swapped[4] = state[6]; swapped[5] = state[7]; swapped[6] = state[4]; swapped[7] = state[5]; \
+        } else { \
+            swapped[0] = state[1]; swapped[1] = state[0]; swapped[2] = state[3]; swapped[3] = state[2]; \
+            swapped[4] = state[5]; swapped[5] = state[4]; swapped[6] = state[7]; swapped[7] = state[6]; \
+        } \
+        uint64_t a_new[8], b_new[8]; \
+        for(int i=0; i<8; i++) { \
+            a_new[i] = state[i] + swapped[i]; \
+            b_new[i] = state[i] ^ a_new[i]; \
+        } \
+        int rot = ((r) % 4 == 0) ? 32 : (((r) % 4 == 1) ? 24 : (((r) % 4 == 2) ? 16 : 14)); \
+        for(int i=0; i<8; i++) b_new[i] = rotl64_scalar(b_new[i], rot); \
+        if ((r) % 3 == 0) { \
+            state[0] = a_new[0]; state[1] = a_new[1]; state[2] = a_new[2]; state[3] = a_new[3]; \
+            state[4] = b_new[4]; state[5] = b_new[5]; state[6] = b_new[6]; state[7] = b_new[7]; \
+        } else if ((r) % 3 == 1) { \
+            state[0] = a_new[0]; state[1] = a_new[1]; state[2] = b_new[2]; state[3] = b_new[3]; \
+            state[4] = a_new[4]; state[5] = a_new[5]; state[6] = b_new[6]; state[7] = b_new[7]; \
+        } else { \
+            state[0] = a_new[0]; state[1] = b_new[1]; state[2] = a_new[2]; state[3] = b_new[3]; \
+            state[4] = a_new[4]; state[5] = b_new[5]; state[6] = a_new[6]; state[7] = b_new[7]; \
+        } \
+    } while(0)
+
+    DASP_ROUND_SCALAR(0); DASP_ROUND_SCALAR(1); DASP_ROUND_SCALAR(2); DASP_ROUND_SCALAR(3);
+    DASP_ROUND_SCALAR(4); DASP_ROUND_SCALAR(5); DASP_ROUND_SCALAR(6); DASP_ROUND_SCALAR(7);
+    DASP_ROUND_SCALAR(8); DASP_ROUND_SCALAR(9); DASP_ROUND_SCALAR(10); DASP_ROUND_SCALAR(11);
+    DASP_ROUND_SCALAR(12); DASP_ROUND_SCALAR(13); DASP_ROUND_SCALAR(14); DASP_ROUND_SCALAR(15);
+#undef DASP_ROUND_SCALAR
+    
+    for(int i=0; i<8; i++) {
+        block[i*8] = state[i] & 0xFF;
+        block[i*8+1] = (state[i] >> 8) & 0xFF;
+        block[i*8+2] = (state[i] >> 16) & 0xFF;
+        block[i*8+3] = (state[i] >> 24) & 0xFF;
+        block[i*8+4] = (state[i] >> 32) & 0xFF;
+        block[i*8+5] = (state[i] >> 40) & 0xFF;
+        block[i*8+6] = (state[i] >> 48) & 0xFF;
+        block[i*8+7] = (state[i] >> 56) & 0xFF;
+    }
+}
+
+static int check_avx512_support() {
+#ifdef _MSC_VER
+    int cpuInfo[4];
+    __cpuid(cpuInfo, 1);
+    if ((cpuInfo[2] & (1 << 27)) == 0) return 0; // OSXSAVE
+    if ((_xgetbv(_XCR_XFEATURE_ENABLED_MASK) & 0xE6) != 0xE6) return 0;
+    __cpuidex(cpuInfo, 7, 0);
+    return (cpuInfo[1] & (1 << 16)) != 0; // AVX512F
+#else
+    return __builtin_cpu_supports("avx512f");
+#endif
+}
 
 static int check_avx2_support() {
 #ifdef _MSC_VER
@@ -333,18 +427,27 @@ static int check_avx2_support() {
 }
 
 static int g_avx2_supported = -1;
+static int g_avx512_supported = -1;
 
-static inline void dasp_cascade_32(uint8_t *restrict block, const uint32_t *restrict round_keys) {
-#if defined(__aarch64__) || defined(__ARM_NEON)
-    dasp_cascade_32_neon(block, round_keys);
-#else
-    if (g_avx2_supported == -1) g_avx2_supported = check_avx2_support();
-    if (g_avx2_supported) {
-        dasp_cascade_32_avx2(block, round_keys);
-    } else {
-        dasp_cascade_32_scalar(block, round_keys);
+static inline void dasp_cascade_64(uint8_t *restrict block, const uint64_t *restrict round_keys) {
+#if defined(__AVX512F__)
+    if (g_avx512_supported == -1) g_avx512_supported = check_avx512_support();
+    if (g_avx512_supported) {
+        dasp_cascade_64_avx512(block, round_keys);
+        return;
     }
 #endif
+#if defined(__AVX2__)
+    if (g_avx2_supported == -1) g_avx2_supported = check_avx2_support();
+    if (g_avx2_supported) {
+        dasp_cascade_64_avx2(block, round_keys);
+        return;
+    }
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+    dasp_cascade_64_neon(block, round_keys);
+    return;
+#endif
+    dasp_cascade_64_scalar(block, round_keys);
 }
 
 static uint64_t dpa_history[10] = {0};
@@ -440,11 +543,11 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
 
   memset(ss, 0, 32);
 
-  uint8_t chain_state[32];
+  uint8_t chain_state[64];
   {
     char buf[256];
     sprintf(buf, "dasp-chain-%s", active_password_str);
-    crypto_sha256((uint8_t *)buf, strlen(buf), chain_state);
+    crypto_sha512((uint8_t *)buf, strlen(buf), chain_state);
   }
 
   uint8_t word_key[32];
@@ -458,13 +561,15 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
   prng_t rng;
   prng_init(&rng, word_key_hex);
 
-  alignas(32) uint32_t round_keys[128];
+  alignas(64) uint64_t round_keys[128];
   for (int i = 0; i < 128; i++) {
-    round_keys[i] = prng_next(&rng);
+    uint32_t lo = prng_next(&rng);
+    uint32_t hi = prng_next(&rng);
+    round_keys[i] = ((uint64_t)hi << 32) | lo;
   }
 
-  alignas(32) uint8_t nonce[32];
-  memcpy(nonce, chain_state, 32);
+  alignas(64) uint8_t nonce[64];
+  memcpy(nonce, chain_state, 64);
 
   // --- DPA Signature ---
   uint8_t sig_buf[64] = {0};
@@ -477,17 +582,17 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
   // ---------------------------------------------------------
   // PHASE 4: Block Encryption (D-ASP Cascade 16)
   // ---------------------------------------------------------
-  for (size_t i = 0; i < payload_len; i += 32) {
-    alignas(32) uint8_t block[32];
-    memcpy(block, nonce, 32);
-    dasp_cascade_32(block, round_keys);
+  for (size_t i = 0; i < payload_len; i += 64) {
+    alignas(64) uint8_t block[64];
+    memcpy(block, nonce, 64);
+    dasp_cascade_64(block, round_keys);
 
-    size_t chunk = (payload_len - i < 32) ? (payload_len - i) : 32;
+    size_t chunk = (payload_len - i < 64) ? (payload_len - i) : 64;
     for (size_t j = 0; j < chunk; j++) {
       base_payload[i + j] ^= block[j];
     }
 
-    for (int j = 0; j < 32; j++) {
+    for (int j = 63; j >= 0; j--) {
       if (++nonce[j])
         break;
     }
@@ -601,11 +706,6 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
     mac_diff_fi |= (in_mac[i] ^ actual_mac[i]);
   }
   if (mac_diff != 0 || mac_diff_fi != 0) {
-    fprintf(stderr, "C DEBUG: MAC mismatch! Expected: ");
-    for(int i=0; i<32; i++) fprintf(stderr, "%02x", in_mac[i]);
-    fprintf(stderr, "\nC DEBUG: Actual: ");
-    for(int i=0; i<32; i++) fprintf(stderr, "%02x", actual_mac[i]);
-    fprintf(stderr, "\nC DEBUG: mac_content_len=%zu\n", mac_content_len);
     
     dasp_secure_wipe(hmac_key, 32);
 
@@ -643,23 +743,25 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
   // PHASE 4: Block Decryption (D-ASP Cascade 16)
   // ---------------------------------------------------------
   // MAC passed, proceed with decryption (CTR is symmetric)
-  uint8_t chain_state[32];
+  uint8_t chain_state[64];
   {
     char buf[256];
     sprintf(buf, "dasp-chain-%s", active_password_str);
-    crypto_sha256((uint8_t *)buf, strlen(buf), chain_state);
+    crypto_sha512((uint8_t *)buf, strlen(buf), chain_state);
   }
 
   prng_t rng;
   prng_init(&rng, word_key_hex);
 
-  alignas(32) uint32_t round_keys[128];
+  alignas(64) uint64_t round_keys[128];
   for (int i = 0; i < 128; i++) {
-    round_keys[i] = prng_next(&rng);
+    uint32_t lo = prng_next(&rng);
+    uint32_t hi = prng_next(&rng);
+    round_keys[i] = ((uint64_t)hi << 32) | lo;
   }
 
-  alignas(32) uint8_t nonce[32];
-  memcpy(nonce, chain_state, 32);
+  alignas(64) uint8_t nonce[64];
+  memcpy(nonce, chain_state, 64);
 
   // --- DPA Signature ---
   uint8_t sig_buf[64] = {0};
@@ -669,17 +771,17 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
   uint64_t sig = fnv1a_64(sig_buf, 32 + p_prefix);
   int dpa_triggered = check_dpa_pattern(sig);
 
-  for (size_t i = 0; i < payload_len; i += 32) {
-    alignas(32) uint8_t block[32];
-    memcpy(block, nonce, 32);
-    dasp_cascade_32(block, round_keys);
+  for (size_t i = 0; i < payload_len; i += 64) {
+    alignas(64) uint8_t block[64];
+    memcpy(block, nonce, 64);
+    dasp_cascade_64(block, round_keys);
 
-    size_t chunk = (payload_len - i < 32) ? (payload_len - i) : 32;
+    size_t chunk = (payload_len - i < 64) ? (payload_len - i) : 64;
     for (size_t j = 0; j < chunk; j++) {
       base_payload[i + j] ^= block[j];
     }
 
-    for (int j = 0; j < 32; j++) {
+    for (int j = 63; j >= 0; j--) {
       if (++nonce[j])
         break;
     }
@@ -692,7 +794,7 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
     dasp_secure_wipe(blended_ss, 32);
     dasp_secure_wipe(cipher_key, 32);
     dasp_secure_wipe(hmac_key, 32);
-    dasp_secure_wipe(chain_state, 32);
+    dasp_secure_wipe(chain_state, 64);
     dasp_secure_wipe(word_key, 32);
     dasp_secure_wipe(active_password_str, 65);
     dasp_secure_wipe(word_key_hex, 65);
@@ -703,7 +805,7 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
   dasp_secure_wipe(blended_ss, 32);
   dasp_secure_wipe(cipher_key, 32);
   dasp_secure_wipe(hmac_key, 32);
-  dasp_secure_wipe(chain_state, 32);
+  dasp_secure_wipe(chain_state, 64);
   dasp_secure_wipe(word_key, 32);
   dasp_secure_wipe(active_password_str, 65);
   dasp_secure_wipe(word_key_hex, 65);

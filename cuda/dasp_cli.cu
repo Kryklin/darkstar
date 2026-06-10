@@ -265,14 +265,8 @@ int main(int argc, char **argv) {
         memcpy(h_keys, func_key, 32);
         memcpy(h_keys + 64, prng_seed, 64);
         
-        char *ts_str = extract_json_string(json_raw, "ts");
         uint64_t ts_val = 0;
-        int has_ts = 0;
-        if (ts_str) {
-            ts_val = strtoull(ts_str, NULL, 10);
-            has_ts = 1;
-            free(ts_str);
-        }
+        int has_ts = extract_json_int(json_raw, "ts", &ts_val);
 
         /* MAC Verification */
         size_t mac_content_len = CRYPTO_CIPHERTEXTBYTES + p_len + (has_ts ? 8 : 0);
@@ -314,11 +308,11 @@ int main(int argc, char **argv) {
 #endif
 
         /* Generate Nonce (chain_state) for CTR Mode */
-        uint8_t chain_state[32];
+        uint8_t chain_state[64];
         {
             char buf[256];
             sprintf(buf, "dasp-chain-%s", cipher_key_hex);
-            crypto_sha256((uint8_t*)buf, strlen(buf), chain_state);
+            crypto_sha512((uint8_t*)buf, strlen(buf), chain_state);
         }
 
         // --- DPA Signature ---
@@ -346,10 +340,10 @@ int main(int argc, char **argv) {
         uint8_t *d_payload, *d_keys, *d_nonce;
         CUDA_CHECK(cudaMalloc(&d_payload, p_len));
         CUDA_CHECK(cudaMalloc(&d_keys, 128));
-        CUDA_CHECK(cudaMalloc(&d_nonce, 32));
+        CUDA_CHECK(cudaMalloc(&d_nonce, 64));
         
         CUDA_CHECK(cudaMemcpy(d_keys, h_keys, 128, cudaMemcpyHostToDevice));
-        CUDA_CHECK(cudaMemcpy(d_nonce, chain_state, 32, cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpy(d_nonce, chain_state, 64, cudaMemcpyHostToDevice));
         
         dasp_cuda_init_keys(d_keys);
 
@@ -367,7 +361,7 @@ int main(int argc, char **argv) {
                 if (current_chunk_size > chunk_size) current_chunk_size = chunk_size;
 
                 CUDA_CHECK(cudaMemcpyAsync(d_payload + offset, h_payload + offset, current_chunk_size, cudaMemcpyHostToDevice, streams[i]));
-                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i], dpa_triggered, d_keys + 64);
+                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 64, streams[i], dpa_triggered, d_keys + 64);
                 CUDA_CHECK(cudaMemcpyAsync(h_payload + offset, d_payload + offset, current_chunk_size, cudaMemcpyDeviceToHost, streams[i]));
             }
 
@@ -429,9 +423,9 @@ int main(int argc, char **argv) {
         dasp_secure_wipe(func_key, 32);
         dasp_secure_wipe(prng_seed, 64);
         dasp_secure_wipe(h_keys, 128);
-        dasp_secure_wipe(chain_state, 32);
+        dasp_secure_wipe(chain_state, 64);
         CUDA_CHECK(cudaMemset(d_keys, 0, 128));
-        CUDA_CHECK(cudaMemset(d_nonce, 0, 32));
+        CUDA_CHECK(cudaMemset(d_nonce, 0, 64));
 
         /* Cleanup */
         CUDA_CHECK(cudaEventDestroy(start_event));
@@ -488,7 +482,7 @@ int main(int argc, char **argv) {
         CUDA_CHECK(cudaEventCreate(&t_stop));
         uint8_t *d_keys, *d_nonce, *d_payload;
         CUDA_CHECK(cudaMalloc(&d_keys, 128));
-        CUDA_CHECK(cudaMalloc(&d_nonce, 32));
+        CUDA_CHECK(cudaMalloc(&d_nonce, 64));
         size_t d_payload_cap = 1024 * 1024;
         CUDA_CHECK(cudaMalloc(&d_payload, d_payload_cap));
         size_t h_payload_cap = 1024 * 1024;
@@ -593,11 +587,11 @@ int main(int argc, char **argv) {
 #else
             __asm__ volatile("lfence" ::: "memory");
 #endif
-            uint8_t chain_state[32];
+            uint8_t chain_state[64];
             {
                 char buf[256];
                 sprintf(buf, "dasp-chain-%s", cipher_key_hex);
-                crypto_sha256((uint8_t*)buf, strlen(buf), chain_state);
+                crypto_sha512((uint8_t*)buf, strlen(buf), chain_state);
             }
 
             // --- DPA Signature ---
@@ -614,7 +608,7 @@ int main(int argc, char **argv) {
                 CUDA_CHECK(cudaMalloc(&d_payload, d_payload_cap));
             }
             CUDA_CHECK(cudaMemcpy(d_keys, h_keys, 128, cudaMemcpyHostToDevice));
-            CUDA_CHECK(cudaMemcpy(d_nonce, chain_state, 32, cudaMemcpyHostToDevice));
+            CUDA_CHECK(cudaMemcpy(d_nonce, chain_state, 64, cudaMemcpyHostToDevice));
             dasp_cuda_init_keys(d_keys);
             CUDA_CHECK(cudaEventRecord(start_event, 0));
             if (p_len > 0) {
@@ -626,7 +620,7 @@ int main(int argc, char **argv) {
                     size_t current_chunk_size = p_len - offset;
                     if (current_chunk_size > chunk_size) current_chunk_size = chunk_size;
                     CUDA_CHECK(cudaMemcpyAsync(d_payload + offset, h_payload + offset, current_chunk_size, cudaMemcpyHostToDevice, streams[i]));
-                    dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i], dpa_triggered, d_keys + 64);
+                    dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 64, streams[i], dpa_triggered, d_keys + 64);
                     CUDA_CHECK(cudaMemcpyAsync(h_payload + offset, d_payload + offset, current_chunk_size, cudaMemcpyDeviceToHost, streams[i]));
                 }
                 for (int i = 0; i < num_streams; i++) {
@@ -778,11 +772,11 @@ int main(int argc, char **argv) {
         memcpy(h_keys + 64, prng_seed, 64);
         
         /* Generate Nonce (chain_state) for CTR Mode */
-        uint8_t chain_state[32];
+        uint8_t chain_state[64];
         {
             char buf[256];
             sprintf(buf, "dasp-chain-%s", cipher_key_hex);
-            crypto_sha256((uint8_t*)buf, strlen(buf), chain_state);
+            crypto_sha512((uint8_t*)buf, strlen(buf), chain_state);
         }
 
         // --- DPA Signature ---
@@ -810,10 +804,10 @@ int main(int argc, char **argv) {
         uint8_t *d_payload, *d_keys, *d_nonce;
         CUDA_CHECK(cudaMalloc(&d_payload, p_len));
         CUDA_CHECK(cudaMalloc(&d_keys, 128));
-        CUDA_CHECK(cudaMalloc(&d_nonce, 32));
+        CUDA_CHECK(cudaMalloc(&d_nonce, 64));
         
         CUDA_CHECK(cudaMemcpy(d_keys, h_keys, 128, cudaMemcpyHostToDevice));
-        CUDA_CHECK(cudaMemcpy(d_nonce, chain_state, 32, cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpy(d_nonce, chain_state, 64, cudaMemcpyHostToDevice));
         
         dasp_cuda_init_keys(d_keys);
 
@@ -831,7 +825,7 @@ int main(int argc, char **argv) {
                 if (current_chunk_size > chunk_size) current_chunk_size = chunk_size;
 
                 CUDA_CHECK(cudaMemcpyAsync(d_payload + offset, h_payload + offset, current_chunk_size, cudaMemcpyHostToDevice, streams[i]));
-                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i], dpa_triggered, d_keys + 64);
+                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 64, streams[i], dpa_triggered, d_keys + 64);
                 CUDA_CHECK(cudaMemcpyAsync(h_payload + offset, d_payload + offset, current_chunk_size, cudaMemcpyDeviceToHost, streams[i]));
             }
 
@@ -972,11 +966,11 @@ int main(int argc, char **argv) {
         memcpy(h_keys, func_key, 32);
         memcpy(h_keys + 64, prng_seed, 64);
         
-        uint8_t chain_state[32];
+        uint8_t chain_state[64];
         {
             char buf[256];
             sprintf(buf, "dasp-chain-%s", cipher_key_hex);
-            crypto_sha256((uint8_t*)buf, strlen(buf), chain_state);
+            crypto_sha512((uint8_t*)buf, strlen(buf), chain_state);
         }
 
         CUDA_CHECK(cudaFree(0));
@@ -992,9 +986,9 @@ int main(int argc, char **argv) {
         uint8_t *d_keys, *d_nonce;
 
         CUDA_CHECK(cudaMalloc(&d_keys, 128));
-        CUDA_CHECK(cudaMalloc(&d_nonce, 32));
+        CUDA_CHECK(cudaMalloc(&d_nonce, 64));
         CUDA_CHECK(cudaMemcpy(d_keys, h_keys, 128, cudaMemcpyHostToDevice));
-        CUDA_CHECK(cudaMemcpy(d_nonce, chain_state, 32, cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpy(d_nonce, chain_state, 64, cudaMemcpyHostToDevice));
         dasp_cuda_init_keys(d_keys);
 
         for (int i = 0; i < num_streams; i++) {

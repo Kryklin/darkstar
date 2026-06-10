@@ -15,7 +15,7 @@
     "start": "npx tsx scripts/cli/index.tsx",
     "build:rust": "cd rust && cargo build --release",
     "build:wasm": "cd rust && cargo build --release --target wasm32-unknown-unknown && if not exist ..\\wasm mkdir ..\\wasm && copy target\\wasm32-unknown-unknown\\release\\dasp_crypto.wasm ..\\wasm\\dasp_crypto.wasm",
-    "build:c": "cd c && \"C:\\Program Files\\LLVM\\bin\\clang.exe\" -O3 -o d-spna-512.exe main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c -I. -lws2_32 -luserenv -ladvapi32 -lbcrypt -mavx2 -fno-strict-aliasing",
+    "build:c": "cd c && \"C:\\Program Files\\LLVM\\bin\\clang.exe\" -O3 -o d-spna-512.exe main.c spna_engine.c gf_math.c ml_kem.c fips202.c sha512.c sha256.c rng.c poly.c poly_sampling.c -I. -lws2_32 -luserenv -ladvapi32 -lbcrypt -mavx2 -mavx512f -fno-strict-aliasing",
     "build:cuda": "cd cuda && build_cuda.bat",
     "build:engines": "npm run build:rust && npm run build:wasm && npm run build:c && npm run build:cuda",
     "test:gen-kat": "npx tsx scripts/cli/gen_kat.ts",
