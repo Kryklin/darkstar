@@ -23,11 +23,6 @@ The Darkstar ecosystem leverages the **D-SPNA-512** (ASP Cascade 16) protocol wi
 - **Physical Binding**: Payloads are cryptographically bound to the host hardware, limiting the impact of physical data theft.
 - **Algorithm Agnosticism**: D-SPNA-512 provides a structural permutation layer that remains secure even if underlying symmetric primitives are weakened.
 
-### Hardware Threat Mitigations
-- **Speculative Execution (Spectre / Meltdown)**: D-SPNA-512 strictly halts speculative branches using physical `lfence` (x86) and `isb`/`csdb` (ARM) barriers the instant MAC authentication fails, preventing out-of-bounds cache reads.
-- **SIMD Register Leakage (Zenbleed / Ryzenbleed)**: Physical vector registers (`YMM`, `ZMM`, `Q`) are explicitly blasted with zeroes (`vpxor` micro-ops via volatile pointers) immediately before returning control to the OS, sealing cross-process boundaries.
-- **Differential Power Analysis (DPA)**: A deterministic ring-buffer signature tracking mechanism drops repeated identical ML-KEM traces to prevent statistical power curve extraction.
-
 ## Supported Versions
 
 | Version   | Supported      | Security Standard                    |

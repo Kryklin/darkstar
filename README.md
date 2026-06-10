@@ -21,15 +21,6 @@
   <a href="cuda/README.md"><img src="https://img.shields.io/badge/CUDA-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="CUDA"></a>
 </p>
 
-## 🛡️ Core Architecture & Hardware Mitigations
-
-The D-SPNA-512 system has been upgraded to a **512-bit security state** bounded by hybrid **ML-KEM-1024** quantum-resistant key encapsulation. It operates natively across AVX-512, AVX2, and ARM NEON.
-
-- **Constant-Time Execution**: Pure ARX (Addition-Rotation-XOR) matrices bypass memory S-boxes, neutralizing cache-timing vulnerabilities.
-- **Spectre / Meltdown Shielding**: Hardened with physical `lfence` (x86) and `isb`/`csdb` (ARM) pipeline flushes immediately upon MAC authentication failure.
-- **Zenbleed Erase (CVE-2023-20593)**: Forces explicit `vpxor` micro-ops via `_mm256_setzero_si256` and `vdupq_n_u32` to zero out physical SIMD registers.
-- **Differential Power Analysis (DPA)**: Active ring-buffer signature tracking rejects repeated transaction traces.
-
 ## 📚 Documentation Hub
 
 Explore the architecture and specifications of the D-SPNA-512 suite:
@@ -43,7 +34,13 @@ Explore the architecture and specifications of the D-SPNA-512 suite:
 | [**Security Policy**](SECURITY.md)                    | Vulnerability disclosure and audit policies.          |
 | [**Contributing**](CONTRIBUTING.md)                   | Guidelines for engine optimization and PR submission. |
 
-The **ASP Cascade 16 (D-SPNA-512)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Rust**, **C**, and **CUDA**, with **WebAssembly** bindings via Node/Python/Go.
+The **ASP Cascade 16 (D-SPNA-512)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Rust**, **C**, and **CUDA**, with **WebAssembly** bindings via Node/Python/Go. It operates as a strict **256-bit (32-byte) Block Cipher in Counter (CTR) Mode** with a full 512-bit key schedule expansion.
+
+### 🛡️ Hardware Intrinsic Mitigations
+D-SPNA-512 is engineered for the modern threat landscape, proactively immunizing execution against side-channels and micro-architectural data sampling:
+- **Zenbleed (CVE-2023-20593)**: Complete physical SIMD register zeroing (`_mm256_zeroupper()`).
+- **Spectre v1 / Meltdown**: Strict speculation barriers via `lfence` (x86_64) and `isb`/`csdb` (ARM).
+- **DPA-Lockout**: Chaotic PRNG cross-state corruption triggered on repeating ciphertext patterns to neutralize Differential Power Analysis.
 
 ---
 

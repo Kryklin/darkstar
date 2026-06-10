@@ -68,36 +68,7 @@ graph LR
 
 ---
 
-## 3. Decapsulation & Hardware Mitigation Flow
-
-During payload ingestion, D-SPNA-512 enforces strict hardware execution boundaries to prevent side-channel leakage.
-
-```mermaid
-sequenceDiagram
-    participant OS as Host OS
-    participant D as D-SPNA-512 Engine
-    participant CPU as Physical CPU Pipeline
-
-    OS->>D: Provide Payload + Secret Key
-    D->>D: ML-KEM Decapsulation
-    D->>D: Calculate MAC
-    D->>CPU: Validate MAC Signature
-    alt MAC Invalid
-        CPU-->>CPU: Execute `lfence` / `isb` + `csdb`
-        Note over CPU: Pipeline Flushed. Speculative Execution Halted.
-        D->>OS: Reject Transaction
-    else MAC Valid
-        D->>CPU: Dispatch to AVX-512 / NEON ARX Cascade
-        Note over CPU: Payload Decrypted
-        D->>CPU: Execute `vpxor` (`_mm256_setzero_si256`)
-        Note over CPU: Physical SIMD Registers Wiped (Zenbleed Mitigated)
-        D->>OS: Return Plaintext
-    end
-```
-
----
-
-## 4. Multi-Language Interoperability Path
+## 3. Multi-Language Interoperability Path
 
 D-SPNA-512 achieves "Bit-Perfect" parity. Regardless of the implementation language, the output for any given input is mathematically guaranteed to be identical.
 

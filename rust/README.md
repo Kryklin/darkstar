@@ -20,8 +20,6 @@
 ## Overview
 This is the native Rust implementation and the core reference engine for the **ASP Cascade 16 (D-SPNA-512)** suite. It is built for raw performance, memory safety, and produces both native executables and WASM targets for dynamic language integration.
 
-The engine has been natively hardened with conditional pipeline flushing (`lfence` / `isb`) and aggressive SIMD Zeroing (`vpxor` / `vdupq_n_u32`) across AVX-512, AVX2, and ARM NEON ISAs to neutralize speculative execution and physical register leakage.
-
 ## Prerequisites
 - Rust (Cargo) 1.70+
 

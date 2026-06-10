@@ -15,6 +15,8 @@ yarn-error.log
 /coverage
 /typings
 *.wasm
+*.exe
+*.dll
 
 # -----------------------------------------------------------------------------
 # IDEs and editors
@@ -49,13 +51,6 @@ desktop.ini
 # -----------------------------------------------------------------------------
 rust/target/
 
-# -----------------------------------------------------------------------------
-# C engine  (c)
-# -----------------------------------------------------------------------------
-c/d-spna-512
-c/d-spna-512.exe
-c/d-spna-512_asan.exe
-c/d-spna-512_asan.pdb
 # Compiled object files
 c/*.obj
 c/*.o
@@ -63,24 +58,16 @@ c/*.o
 c/*.exp
 c/*.lib
 c/*.pdb
+c/*.pdb
 # Shared library output (rebuilt on demand)
 c/d-spna-512_kem.dll
 c/d-spna-512_kem.lib
 c/d-spna-512_kem.exp
 c/d-spna-512.lib
 c/d-spna-512.exp
-# Misc output files left by tooling
-c/out.txt
-
 # -----------------------------------------------------------------------------
 # CUDA engine  (cuda)
 # -----------------------------------------------------------------------------
-cuda/d-spna-512_cuda.exe
-cuda/d-spna-512_cuda.exp
-cuda/d-spna-512_cuda.lib
-cuda/d-spna-512_test.exe
-cuda/d-spna-512_test.exp
-cuda/d-spna-512_test.lib
 cuda/*.obj
 cuda/*.o
 cuda/*.pdb

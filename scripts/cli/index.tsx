@@ -47,10 +47,18 @@ const AnimatedHeader = ({ terminalHeight }: { terminalHeight: number }) => {
   const showLogo = terminalHeight >= 30; // 13 line logo + 7 line header/margins + 8 line menu
 
   const getAnimatedLine = (line: string, lineIndex: number) => {
-    const blocks = ['█', '▓', '▒', '░'];
-    return line.split('').map((char, charIndex) => {
+    const blocks = ['█', '▓', '▒', '░', 'x', '0', '1'];
+    
+    // Global glitch trigger (every ~2 seconds)
+    const isGlitching = Math.random() < 0.05 && frame % 30 < 5;
+    
+    let renderedLine = line.split('').map((char, charIndex) => {
       if (char === ' ') return char;
       
+      if (isGlitching && Math.random() < 0.3) {
+        return blocks[Math.floor(Math.random() * blocks.length)];
+      }
+
       // Holographic scanline sweeping down
       const scanline = (Math.floor(frame / 2)) % 20; 
       if (lineIndex === scanline) {
@@ -64,19 +72,31 @@ const AnimatedHeader = ({ terminalHeight }: { terminalHeight: number }) => {
 
       return char;
     }).join('');
+
+    // Shift line during glitch
+    if (isGlitching) {
+      const shift = Math.floor(Math.random() * 5) - 2;
+      if (shift > 0) renderedLine = ' '.repeat(shift) + renderedLine.substring(0, renderedLine.length - shift);
+      else if (shift < 0) renderedLine = renderedLine.substring(-shift) + ' '.repeat(-shift);
+    }
+
+    let color = "#F8FAFC";
+    if (isGlitching) {
+      const colors = ["#FF003C", "#00E5FF", "#F8FAFC", "#F59E0B"];
+      color = colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    return <Text key={lineIndex} color={color} bold>{renderedLine}</Text>;
   };
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="#00E5FF" padding={1} width={80} alignItems="center">
       {showLogo && (
         <Box flexDirection="column" alignItems="center">
-          {logoLines.map((line, i) => (
-            <Text key={i} color="#F8FAFC" bold>{getAnimatedLine(line, i)}</Text>
-          ))}
+          {logoLines.map((line, i) => getAnimatedLine(line, i))}
         </Box>
       )}
-      <Box marginTop={showLogo ? 1 : 0}><Text color="#94A3B8">{pkg.description}</Text></Box>
-      <Text color="#00E5FF">Version {pkg.version} | License {pkg.license}</Text>
+      <Box marginTop={showLogo ? 1 : 0}><Text color="#00E5FF">Version {pkg.version} | License {pkg.license}</Text></Box>
     </Box>
   );
 };

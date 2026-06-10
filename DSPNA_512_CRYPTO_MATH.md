@@ -40,7 +40,7 @@ $$
 $$
 
 $$
-K_{root} = \text{HKDF-Expand}(\text{PRK}, \text{info}=\text{"dasp-identity-v3"}, L=64)
+K_{root} = \text{HKDF-Expand}(\text{PRK}, \text{info}=\text{"dasp-identity-v3"}, L=32)
 $$
 
 ---
@@ -124,9 +124,7 @@ While high-level runtimes introduce jitter (jitter != side-channel), the **D-SPN
 
 ### 5.3 Hardware Intrinsics & Entropy Cascade
 
-- **AVX-512 SIMD**: Utilizes `__m512i` structures to process 16 words per clock cycle.
 - **AVX2 SIMD**: C and Rust map the 32-byte state directly to `__m256i` registers, processing 8 words per clock cycle.
-- **ARM NEON**: Native `uint32x4_t` structures are paired to simulate 256-bit operations over dual-registers.
 - **CUDA PTX**: GPUs utilize `uint4` memory transactions and `__funnelshift_l` for pure silicon efficiency.
 - **Interop**: All engines (Rust, C, CUDA) maintain exact bit-perfect parity through CTR mode.
 
