@@ -11,15 +11,15 @@ const BASE_DIR = path.resolve(__dirname, '../../../');
 const ENGINES: Record<string, { cwd: string; cmd: string[] }> = {
   Rust: {
     cwd: path.join(BASE_DIR, 'rust'),
-    cmd: [path.join(BASE_DIR, 'rust', 'target', 'release', 'd-asp.exe')],
+    cmd: [path.join(BASE_DIR, 'rust', 'target', 'release', 'd-spna-512.exe')],
   },
   C: {
     cwd: path.join(BASE_DIR, 'c'),
-    cmd: [path.join(BASE_DIR, 'c', 'dasp.exe')],
+    cmd: [path.join(BASE_DIR, 'c', 'd-spna-512.exe')],
   },
   CUDA: {
     cwd: path.join(BASE_DIR, 'cuda'),
-    cmd: [path.join(BASE_DIR, 'cuda', 'd-asp_cuda.exe')],
+    cmd: [path.join(BASE_DIR, 'cuda', 'd-spna-512_cuda.exe')],
   },
 };
 

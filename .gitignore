@@ -1,57 +1,30 @@
 # =============================================================================
 # DARKSTAR — Project-wide .gitignore
-# Covers: Angular/Electron, Rust, Go, C, CUDA, Node.js, Python, C# (.NET), Zig
+# Covers: Rust, C, CUDA, Node.js, Python (scripts)
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Angular / TypeScript / Electron
+# Node.js / TypeScript
 # -----------------------------------------------------------------------------
-/dist
-/out
-/out-tsc
-/bazel-out
-/.angular/cache
-/coverage
-/typings
-/tmp
-
-# Node
 /node_modules
 npm-debug.log
 yarn-error.log
-
-# Build output (compiled Electron main)
-/electron/main.js
-/electron/main.js.map
+/dist
+/out
+/tmp
+/coverage
+/typings
+*.wasm
 
 # -----------------------------------------------------------------------------
 # IDEs and editors
 # -----------------------------------------------------------------------------
 .idea/
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
-.history/
-
-# Visual Studio Code — keep shared workspace settings, ignore personal state
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-
-# JetBrains
-*.iml
-out/
-
-# Visual Studio
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
 
 # -----------------------------------------------------------------------------
 # System files
@@ -59,7 +32,6 @@ out/
 .DS_Store
 Thumbs.db
 desktop.ini
-ehthumbs.db
 
 # -----------------------------------------------------------------------------
 # Secrets / local environment
@@ -76,17 +48,6 @@ ehthumbs.db
 # Rust engine  (rust)
 # -----------------------------------------------------------------------------
 rust/target/
-# Keep Cargo.lock for binaries
-# !rust/Cargo.lock
-
-# -----------------------------------------------------------------------------
-# Go engine  (go)
-# -----------------------------------------------------------------------------
-go/main
-go/main.exe
-go/d-asp.exe
-go/d-asp_go.exe
-go/dasp.exe
 
 # -----------------------------------------------------------------------------
 # C engine  (c)
@@ -125,53 +86,19 @@ cuda/*.o
 cuda/*.pdb
 
 # -----------------------------------------------------------------------------
-# Node.js engine  (node)
+# Python / Scripts  (python)
 # -----------------------------------------------------------------------------
-node/node_modules/
-node/dist/
-node/cipher.json
-node/key.json
-node/*.wasm
-wasm/dasp_crypto.wasm
-
-# -----------------------------------------------------------------------------
-# Python engine  (python)
-# -----------------------------------------------------------------------------
-python/__pycache__/
-python/*.pyc
-python/*.pyo
-python/.venv/
-python/venv/
-python/dist/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
 # Project root python scratch scripts
 patch_cuda*.py
 rename_docs.py
 calc_checksum.py
-
-# -----------------------------------------------------------------------------
-# C# / .NET engine  (csharp)
-# -----------------------------------------------------------------------------
-csharp/bin/
-csharp/obj/
-# The DLL is built from c — do not commit the copy
-csharp/dasp_kem.dll
-
-# -----------------------------------------------------------------------------
-# Zig engine  (zig)
-# -----------------------------------------------------------------------------
-zig/.zig-cache/
-zig/zig-out/
-zig/dist/
-
-# -----------------------------------------------------------------------------
-# Toolchain archives / downloaded binaries  (tools/)
-# -----------------------------------------------------------------------------
-tools/
-*.zip
-*.tar.gz
-*.tar.xz
-# dotnet install script (downloaded, not authored)
-dotnet-install.ps1
+apply_glitch.py
+patch_cli.py
 
 # -----------------------------------------------------------------------------
 # KAT / interop runtime artefacts
@@ -194,36 +121,10 @@ scripts/data/crypto_analysis.json
 scripts/log/
 # Generated checksums (produced during release pipeline)
 checksums.txt
-# Adhoc test JSON files in root
 cuda_test.json
 
-# -----------------------------------------------------------------------------
-# Mobile builds (Capacitor / iOS / Android)
-# -----------------------------------------------------------------------------
-/ios/App/build/
-/ios/App/Pods/
-/ios/App/DerivedData/
-/android/.gradle/
-/android/build/
-/android/app/build/
-/android/app/.cxx/
-/android/captures/
-
-# -----------------------------------------------------------------------------
 # Miscellaneous
-# -----------------------------------------------------------------------------
-.sass-cache/
-/connect.lock
-/libpeerconnection.log
-testem.log
-# Log files (project-wide)
 *.log
-# Plans directory (internal)
-plans/
-rust/target/
-node/dist/
-__pycache__/
- 
-# GitHub Releases Output
 out-releases/
 out-wrappers/
+tools/

@@ -386,7 +386,7 @@ const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
     );
   }
 
-  // Phase 3: Run each wrapper and verify D-ASP initialization
+  // Phase 3: Run each wrapper and verify D-SPNA-512 initialization
   return (
     <DockerMatrixRunner onComplete={onComplete} />
   );

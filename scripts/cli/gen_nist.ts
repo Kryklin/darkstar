@@ -11,7 +11,7 @@ const path = require('path');
   const { default: chalk } = await import('chalk');
 
   console.log(chalk.hex('#00BCD4').bold('\n  ◈  NIST SP 800-22 Bitstream Generator\n'));
-  console.log(chalk.dim('Generating 10MB of pure D-ASP ciphertext for external statistical testing...'));
+  console.log(chalk.dim('Generating 10MB of pure D-SPNA-512 ciphertext for external statistical testing...'));
 
   try {
     const rootDir = path.join(__dirname, '../..');

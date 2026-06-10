@@ -84,7 +84,7 @@ import { runCryptoAnalysis } from './tests/analyze.js';
       console.log(chalk.red.bold('✖ Cryptographic algorithms are displaying severe anomalies!'));
       process.exit(1);
     } else {
-      console.log(chalk.green.bold('✔ D-ASP Encryption algorithms pass all statistical pseudo-randomness tests!'));
+      console.log(chalk.green.bold('✔ D-SPNA-512 Encryption algorithms pass all statistical pseudo-randomness tests!'));
       process.exit(0);
     }
   } catch (error: any) {

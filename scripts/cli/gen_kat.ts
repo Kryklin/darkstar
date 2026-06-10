@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const C_BIN = path.join(__dirname, '../../rust/target/release/d-asp.exe');
+const C_BIN = path.join(__dirname, '../../rust/target/release/d-spna-512.exe');
 const C_CWD = path.join(__dirname, '../../rust');
 const DATA_DIR = path.join(__dirname, '../data');
 

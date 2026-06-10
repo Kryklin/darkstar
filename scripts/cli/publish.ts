@@ -49,9 +49,9 @@ const pkg = require('../../package.json');
   const root = path.join(__dirname, '../..');
 
   const engines = [
-    { name: 'rust-engine-windows-x64.zip', cwd: 'rust/target/release', files: ['d-asp.exe'] },
-    { name: 'c-engine-windows-x64.zip', cwd: 'c', files: ['dasp.exe', 'dasp_kem.dll', 'dasp.lib'] },
-    { name: 'cuda-engine-windows-x64.zip', cwd: 'cuda', files: ['d-asp_cuda.exe', 'd-asp_cuda.lib', 'd-asp_cuda.exp'] },
+    { name: 'rust-engine-windows-x64.zip', cwd: 'rust/target/release', files: ['d-spna-512.exe'] },
+    { name: 'c-engine-windows-x64.zip', cwd: 'c', files: ['d-spna-512.exe', 'd-spna-512_kem.dll', 'dasp.lib'] },
+    { name: 'cuda-engine-windows-x64.zip', cwd: 'cuda', files: ['d-spna-512_cuda.exe', 'd-spna-512_cuda.lib', 'd-spna-512_cuda.exp'] },
     { name: 'wasm-engine-windows-x64.zip', cwd: 'wasm', files: ['dasp_crypto.wasm'] },
     { name: 'language-wrappers.zip', cwd: 'out-wrappers', files: ['*'] },
   ];
@@ -151,8 +151,8 @@ const pkg = require('../../package.json');
       spinner.text = 'Creating new release...';
       const rel = await githubApi('POST', `/repos/${owner}/${repo}/releases`, {
         tag_name: `v${pkg.version}`,
-        name: `D-ASP v${pkg.version}`,
-        body: `Automated release for D-ASP Core Engines v${pkg.version}.`,
+        name: `D-SPNA-512 v${pkg.version}`,
+        body: `Automated release for D-SPNA-512 Core Engines v${pkg.version}.`,
         draft: false,
       });
       releaseId = rel.id;

@@ -60,7 +60,7 @@ import { execa } from 'execa';
       fs.writeFileSync(cargoTomlPath, cargoToml);
 
       // Update Cargo.lock
-      await execa('cargo', ['update', '-p', 'd-asp'], { cwd: path.join(root, 'rust') });
+      await execa('cargo', ['update', '-p', 'd-spna-512'], { cwd: path.join(root, 'rust') });
     }
 
     // 4. README.md Badges

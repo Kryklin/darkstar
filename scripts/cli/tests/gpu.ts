@@ -17,7 +17,7 @@ export type GpuTestResult = {
 export async function runGpuTest(onProgress: (prog: number, total: number, action: string, result?: GpuTestResult) => void): Promise<GpuTestResult[]> {
   const results: GpuTestResult[] = [];
 
-  const cmd = [path.resolve(CUDA_DIR, 'd-asp_test.exe'), '--telemetry'];
+  const cmd = [path.resolve(CUDA_DIR, 'd-spna-512_test.exe'), '--telemetry'];
   const child = execa(cmd[0], cmd.slice(1), { cwd: CUDA_DIR, reject: false, buffer: false });
 
   const rl = readline.createInterface({ input: child.stdout! });

@@ -231,7 +231,7 @@ export const CleanRunner = ({ onComplete }: { onComplete: () => void }) => {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    const targets = ['node_modules', 'dist', 'out', 'out-releases', 'rust/target', 'c/dasp.exe', 'cuda/d-asp_cuda.exe'];
+    const targets = ['node_modules', 'dist', 'out', 'out-releases', 'rust/target', 'c/d-spna-512.exe', 'cuda/d-spna-512_cuda.exe'];
     const root = path.join(__dirname, '../..');
     const res: typeof items = [];
     for (const t of targets) {
@@ -516,22 +516,22 @@ export const ScaffoldRunner = ({ onComplete, autoAdvance = false }: { onComplete
         const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
 
         const wrappers = [
-          { name: 'Node.js', file: 'node_wrapper.js', code: `// Node.js FFI Wrapper\nconst ffi = require('ffi-napi');\nconst path = require('path');\nconst os = require('os');\nconst ext = os.platform() === 'win32' ? '.dll' : '.so';\nconst dasp = ffi.Library(path.join(__dirname, 'dasp_kem' + ext), {\n  'kem_encrypt': ['int', ['pointer', 'pointer']]\n});\nconsole.log('D-ASP initialized in Node.js');\n` },
+          { name: 'Node.js', file: 'node_wrapper.js', code: `// Node.js FFI Wrapper\nconst ffi = require('ffi-napi');\nconst path = require('path');\nconst os = require('os');\nconst ext = os.platform() === 'win32' ? '.dll' : '.so';\nconst dasp = ffi.Library(path.join(__dirname, 'd-spna-512_kem' + ext), {\n  'kem_encrypt': ['int', ['pointer', 'pointer']]\n});\nconsole.log('D-SPNA-512 initialized in Node.js');\n` },
           { name: 'Browser JS', file: 'browser_wrapper.js', code: `// Browser JS WASM\nconsole.log('Browser JS: load dasp_crypto.wasm');\n` },
-          { name: 'Python', file: 'python_wrapper.py', code: `# Python ctypes Wrapper\nimport ctypes\nimport os\nimport sys\next = '.dll' if sys.platform == 'win32' else '.so'\ndll_path = os.path.join(os.path.dirname(__file__), 'dasp_kem' + ext)\ndasp = ctypes.CDLL(dll_path)\nprint('D-ASP initialized in Python')\n` },
-          { name: 'Go', file: 'go_wrapper.go', code: `package main\n\n/*\n#cgo linux LDFLAGS: -L. -ldasp_kem -Wl,-rpath=.\n#cgo windows LDFLAGS: -L. -ldasp_kem\nextern int kem_encrypt(void*, void*);\n*/\nimport "C"\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("D-ASP initialized in Go")\n}\n` },
-          { name: 'Ruby', file: 'ruby_wrapper.rb', code: `# Ruby FFI Wrapper\nrequire 'ffi'\nrequire 'rbconfig'\next = RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/ ? '.dll' : '.so'\nmodule Dasp\n  extend FFI::Library\n  ffi_lib File.join(__dir__, 'dasp_kem' + ext)\nend\nputs 'D-ASP initialized in Ruby'\n` },
-          { name: 'Elixir', file: 'elixir_wrapper.ex', code: `# Elixir WASM Wrapper\nIO.puts("D-ASP initialized in Elixir")\n` },
-          { name: 'PHP', file: 'php_wrapper.php', code: `<?php\n// PHP WASM Wrapper\necho "D-ASP initialized in PHP\\n";\n` },
-          { name: 'C#', file: 'csharp_wrapper.cs', code: `// C# Wrapper\nusing System;\nusing System.Runtime.InteropServices;\nclass Program {\n  [DllImport("dasp_kem")]\n  public static extern int kem_encrypt(IntPtr a, IntPtr b);\n  static void Main() { Console.WriteLine("D-ASP initialized in C#"); }\n}\n` },
-          { name: 'Java', file: 'java_wrapper.java', code: `// Java JNA Wrapper\npublic class java_wrapper {\n  public static void main(String[] args) {\n    System.out.println("D-ASP initialized in Java");\n  }\n}\n` },
-          { name: 'Kotlin', file: 'kotlin_wrapper.kt', code: `// Kotlin JNA Wrapper\nfun main() {\n  println("D-ASP initialized in Kotlin")\n}\n` },
-          { name: 'Dart', file: 'dart_wrapper.dart', code: `// Dart FFI Wrapper\nimport 'dart:ffi' as ffi;\nimport 'dart:io';\nvoid main() {\n  var ext = Platform.isWindows ? '.dll' : '.so';\n  var dylib = ffi.DynamicLibrary.open('dasp_kem' + ext);\n  print('D-ASP initialized in Dart');\n}\n` },
-          { name: 'Swift', file: 'swift_wrapper.swift', code: `// Swift C-Interop Wrapper\nimport Foundation\nprint("D-ASP initialized in Swift")\n` },
-          { name: 'Lua', file: 'lua_wrapper.lua', code: `-- LuaJIT FFI Wrapper\nlocal ffi = require("ffi")\nlocal ext = ffi.os == "Windows" and ".dll" or ".so"\nlocal dasp = ffi.load(ext == ".dll" and "dasp_kem.dll" or "./dasp_kem.so")\nprint("D-ASP initialized in Lua")\n` },
-          { name: 'R', file: 'r_wrapper.R', code: `# R Wrapper\next <- if(.Platform$OS.type == "windows") ".dll" else ".so"\ndyn.load(paste0("dasp_kem", ext))\nprint("D-ASP initialized in R")\n` },
-          { name: 'Julia', file: 'julia_wrapper.jl', code: `# Julia Wrapper\next = Sys.iswindows() ? ".dll" : ".so"\nlib = joinpath(@__DIR__, "dasp_kem" * ext)\nprintln("D-ASP initialized in Julia")\n` },
-          { name: 'Perl', file: 'perl_wrapper.pl', code: `# Perl FFI Wrapper\nuse FFI::Platypus;\nprint "D-ASP initialized in Perl\\n";\n` }
+          { name: 'Python', file: 'python_wrapper.py', code: `# Python ctypes Wrapper\nimport ctypes\nimport os\nimport sys\next = '.dll' if sys.platform == 'win32' else '.so'\ndll_path = os.path.join(os.path.dirname(__file__), 'd-spna-512_kem' + ext)\ndasp = ctypes.CDLL(dll_path)\nprint('D-SPNA-512 initialized in Python')\n` },
+          { name: 'Go', file: 'go_wrapper.go', code: `package main\n\n/*\n#cgo linux LDFLAGS: -L. -ld-spna-512_kem -Wl,-rpath=.\n#cgo windows LDFLAGS: -L. -ld-spna-512_kem\nextern int kem_encrypt(void*, void*);\n*/\nimport "C"\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("D-SPNA-512 initialized in Go")\n}\n` },
+          { name: 'Ruby', file: 'ruby_wrapper.rb', code: `# Ruby FFI Wrapper\nrequire 'ffi'\nrequire 'rbconfig'\next = RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/ ? '.dll' : '.so'\nmodule Dasp\n  extend FFI::Library\n  ffi_lib File.join(__dir__, 'd-spna-512_kem' + ext)\nend\nputs 'D-SPNA-512 initialized in Ruby'\n` },
+          { name: 'Elixir', file: 'elixir_wrapper.ex', code: `# Elixir WASM Wrapper\nIO.puts("D-SPNA-512 initialized in Elixir")\n` },
+          { name: 'PHP', file: 'php_wrapper.php', code: `<?php\n// PHP WASM Wrapper\necho "D-SPNA-512 initialized in PHP\\n";\n` },
+          { name: 'C#', file: 'csharp_wrapper.cs', code: `// C# Wrapper\nusing System;\nusing System.Runtime.InteropServices;\nclass Program {\n  [DllImport("d-spna-512_kem")]\n  public static extern int kem_encrypt(IntPtr a, IntPtr b);\n  static void Main() { Console.WriteLine("D-SPNA-512 initialized in C#"); }\n}\n` },
+          { name: 'Java', file: 'java_wrapper.java', code: `// Java JNA Wrapper\npublic class java_wrapper {\n  public static void main(String[] args) {\n    System.out.println("D-SPNA-512 initialized in Java");\n  }\n}\n` },
+          { name: 'Kotlin', file: 'kotlin_wrapper.kt', code: `// Kotlin JNA Wrapper\nfun main() {\n  println("D-SPNA-512 initialized in Kotlin")\n}\n` },
+          { name: 'Dart', file: 'dart_wrapper.dart', code: `// Dart FFI Wrapper\nimport 'dart:ffi' as ffi;\nimport 'dart:io';\nvoid main() {\n  var ext = Platform.isWindows ? '.dll' : '.so';\n  var dylib = ffi.DynamicLibrary.open('d-spna-512_kem' + ext);\n  print('D-SPNA-512 initialized in Dart');\n}\n` },
+          { name: 'Swift', file: 'swift_wrapper.swift', code: `// Swift C-Interop Wrapper\nimport Foundation\nprint("D-SPNA-512 initialized in Swift")\n` },
+          { name: 'Lua', file: 'lua_wrapper.lua', code: `-- LuaJIT FFI Wrapper\nlocal ffi = require("ffi")\nlocal ext = ffi.os == "Windows" and ".dll" or ".so"\nlocal dasp = ffi.load(ext == ".dll" and "d-spna-512_kem.dll" or "./d-spna-512_kem.so")\nprint("D-SPNA-512 initialized in Lua")\n` },
+          { name: 'R', file: 'r_wrapper.R', code: `# R Wrapper\next <- if(.Platform$OS.type == "windows") ".dll" else ".so"\ndyn.load(paste0("d-spna-512_kem", ext))\nprint("D-SPNA-512 initialized in R")\n` },
+          { name: 'Julia', file: 'julia_wrapper.jl', code: `# Julia Wrapper\next = Sys.iswindows() ? ".dll" : ".so"\nlib = joinpath(@__DIR__, "d-spna-512_kem" * ext)\nprintln("D-SPNA-512 initialized in Julia")\n` },
+          { name: 'Perl', file: 'perl_wrapper.pl', code: `# Perl FFI Wrapper\nuse FFI::Platypus;\nprint "D-SPNA-512 initialized in Perl\\n";\n` }
         ];
 
         for (const w of wrappers) {
@@ -566,7 +566,7 @@ export const ScaffoldRunner = ({ onComplete, autoAdvance = false }: { onComplete
 };
 
 // ─── DockerMatrixRunner ───
-// Runs each wrapper container and validates it prints the D-ASP init message
+// Runs each wrapper container and validates it prints the D-SPNA-512 init message
 
 export type DockerLang = {
   name: string;
@@ -631,7 +631,7 @@ export const DockerMatrixRunner = ({ onComplete }: { onComplete: () => void }) =
           const output = (result.stdout || '') + '\n' + (result.stderr || '');
           const elapsed = Date.now() - start;
 
-          if (output.includes('D-ASP initialized')) {
+          if (output.includes('D-SPNA-512 initialized')) {
             setLangs(p => p.map((l, idx) => idx === i ? { ...l, status: 'pass' as const, durationMs: elapsed } : l));
           } else {
             const snippet = stripAnsi(output).split('\n').filter(Boolean).slice(-1)[0]?.slice(0, 60) || 'No init message';
@@ -670,7 +670,7 @@ export const DockerMatrixRunner = ({ onComplete }: { onComplete: () => void }) =
     <Box flexDirection="column" padding={1} width={100} alignItems="center">
       <Text color="#00E5FF" bold>─── Docker Language Matrix Verification ───</Text>
       <Box marginTop={1}>
-        <Text color="#94A3B8">Validating D-ASP initialization across {total} language runtimes</Text>
+        <Text color="#94A3B8">Validating D-SPNA-512 initialization across {total} language runtimes</Text>
       </Box>
 
       <Box marginY={1} flexDirection="row" width={96} flexWrap="wrap" justifyContent="center" gap={1}>

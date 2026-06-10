@@ -13,15 +13,15 @@ const BASE_DIR = path.resolve(__dirname, '../../../');
 const ENGINES = {
   Rust: {
     cwd: path.resolve(__dirname, '../../../rust'),
-    cmd: [path.resolve(__dirname, '../../../rust/target/release/d-asp.exe')],
+    cmd: [path.resolve(__dirname, '../../../rust/target/release/d-spna-512.exe')],
   },
   C: {
     cwd: path.resolve(__dirname, '../../../c'),
-    cmd: [path.resolve(__dirname, '../../../c/dasp.exe')],
+    cmd: [path.resolve(__dirname, '../../../c/d-spna-512.exe')],
   },
   CUDA: {
     cwd: path.resolve(__dirname, '../../../cuda'),
-    cmd: [path.resolve(__dirname, '../../../cuda/d-asp_cuda.exe')],
+    cmd: [path.resolve(__dirname, '../../../cuda/d-spna-512_cuda.exe')],
   },
 };
 

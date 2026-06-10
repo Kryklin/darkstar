@@ -7,7 +7,7 @@ const __dirname = dirname(__filename);
 const fs = require('fs');
 const path = require('path');
 
-const targets = ['node_modules', 'dist', 'out', 'out-releases', 'rust/target', 'python/__pycache__', 'c/dasp.exe', 'go/main.exe'];
+const targets = ['node_modules', 'dist', 'out', 'out-releases', 'rust/target', 'python/__pycache__', 'c/d-spna-512.exe', 'go/main.exe'];
 
 console.log('🧹 Purging workspace artifacts...');
 
