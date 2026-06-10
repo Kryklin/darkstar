@@ -20,3 +20,5 @@ if %errorlevel% neq 0 (
     exit /b %errorlevel%
 )
 echo Build successful: d-spna-512_cuda.exe
+
+call build_test.bat

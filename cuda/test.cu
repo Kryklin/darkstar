@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
         }
 
         CUDA_CHECK(cudaEventRecord(start_event, 0));
-        dasp_cuda_process_chunk(d_payload, current_payload_len, d_nonce, 0, 0);
+        dasp_cuda_process_chunk(d_payload, current_payload_len, d_nonce, 0, 0, 0, NULL);
         CUDA_CHECK(cudaEventRecord(stop_event, 0));
         CUDA_CHECK(cudaEventSynchronize(stop_event));
 
@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
         }
 
         CUDA_CHECK(cudaEventRecord(start_event, 0));
-        dasp_cuda_process_chunk(d_payload, current_payload_len, d_nonce, 0, 0);
+        dasp_cuda_process_chunk(d_payload, current_payload_len, d_nonce, 0, 0, 0, NULL);
         CUDA_CHECK(cudaEventRecord(stop_event, 0));
         CUDA_CHECK(cudaEventSynchronize(stop_event));
 

@@ -13,10 +13,10 @@ call "%VS_VARS%" x64 -vcvars_ver=14.29
 set NVCC_FLAGS=-O3 -arch=sm_70 -I%C_DIR% -allow-unsupported-compiler
 
 echo Building D-ASP CUDA Test Suite...
-nvcc %NVCC_FLAGS% test.cu dasp_kernel.cu %C_DIR%\sha256.c -o d-asp_test.exe
+nvcc %NVCC_FLAGS% test.cu dasp_kernel.cu %C_DIR%\sha256.c -o d-spna-512_test.exe
 
 if %errorlevel% neq 0 (
     echo Build failed.
     exit /b %errorlevel%
 )
-echo Build successful: d-asp_test.exe
+echo Build successful: d-spna-512_test.exe
