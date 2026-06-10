@@ -424,6 +424,8 @@ int main(int argc, char *argv[]) {
           printf("%s\n", out_str);
         }
         free(out_str);
+      } else if (res == -2) {
+        printf("{\"error\":\"DPA_LOCKOUT\"}\n");
       } else {
         printf("{\"error\":\"MAC Failed\"}\n");
       }
