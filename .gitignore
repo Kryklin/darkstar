@@ -91,10 +91,10 @@ go/dasp.exe
 # -----------------------------------------------------------------------------
 # C engine  (c)
 # -----------------------------------------------------------------------------
-c/dasp
-c/dasp.exe
-c/dasp_asan.exe
-c/dasp_asan.pdb
+c/d-spna-512
+c/d-spna-512.exe
+c/d-spna-512_asan.exe
+c/d-spna-512_asan.pdb
 # Compiled object files
 c/*.obj
 c/*.o
@@ -103,23 +103,23 @@ c/*.exp
 c/*.lib
 c/*.pdb
 # Shared library output (rebuilt on demand)
-c/dasp_kem.dll
-c/dasp_kem.lib
-c/dasp_kem.exp
-c/dasp.lib
-c/dasp.exp
+c/d-spna-512_kem.dll
+c/d-spna-512_kem.lib
+c/d-spna-512_kem.exp
+c/d-spna-512.lib
+c/d-spna-512.exp
 # Misc output files left by tooling
 c/out.txt
 
 # -----------------------------------------------------------------------------
 # CUDA engine  (cuda)
 # -----------------------------------------------------------------------------
-cuda/d-asp_cuda.exe
-cuda/d-asp_cuda.exp
-cuda/d-asp_cuda.lib
-cuda/d-asp_test.exe
-cuda/d-asp_test.exp
-cuda/d-asp_test.lib
+cuda/d-spna-512_cuda.exe
+cuda/d-spna-512_cuda.exp
+cuda/d-spna-512_cuda.lib
+cuda/d-spna-512_test.exe
+cuda/d-spna-512_test.exp
+cuda/d-spna-512_test.lib
 cuda/*.obj
 cuda/*.o
 cuda/*.pdb
@@ -143,6 +143,10 @@ python/*.pyo
 python/.venv/
 python/venv/
 python/dist/
+# Project root python scratch scripts
+patch_cuda*.py
+rename_docs.py
+calc_checksum.py
 
 # -----------------------------------------------------------------------------
 # C# / .NET engine  (csharp)
