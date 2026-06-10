@@ -11,6 +11,7 @@ fn print_usage() {
     println!("Usage: darkstar <command> [args]");
     println!("Commands:");
     println!("  encrypt <payload> <pk_hex>   Encrypt using D-SPNA-512");
+    println!("  bulk-encrypt <count> <payload> <pk_hex> Encrypt N varying payloads");
     println!("  decrypt <json_data> <sk_hex> Decrypt using D-SPNA-512");
     println!("  stream-decrypt <sk_hex>      Stream decrypt JSON from stdin");
     println!("  rebind <payload> <sk> <new_pk> Rebind a payload to a new key/HWID");
@@ -87,6 +88,30 @@ fn main() {
                 Err(e) => {
                     eprintln!("Encryption Failed: {}", e);
                     std::process::exit(1);
+                }
+            }
+        }
+        "bulk-encrypt" => {
+            if raw_args.len() < 3 {
+                print_usage();
+                return;
+            }
+            let count: usize = raw_args[0].parse().unwrap();
+            let payload = resolve_arg(&raw_args[1]);
+            let pk_hex = resolve_arg(&raw_args[2]);
+
+            for i in 0..count {
+                let varying_payload = if payload.len() > 10 {
+                    format!("{}{:010}", &payload[..payload.len()-10], i)
+                } else {
+                    format!("{}{}", payload, i)
+                };
+                match dc.encrypt(&varying_payload, &pk_hex, hwid.clone(), telemetry) {
+                    Ok(res_json) => println!("{}", res_json),
+                    Err(e) => {
+                        eprintln!("Bulk Encryption Failed at index {}: {}", i, e);
+                        std::process::exit(1);
+                    }
                 }
             }
         }

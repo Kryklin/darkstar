@@ -87,21 +87,17 @@ export async function runInteropBenchmark(
   const sk = skMatch ? skMatch[1] : '';
 
   // Encrypt (Rust) - Pre-generate ROUNDS varying ciphertexts to avoid DPA Lockout
-  onProgress('Setup', 10, undefined, 0, ROUNDS);
+  onProgress('Setup', 50, undefined, 0, ROUNDS);
   const payloadFile = path.join(ENGINES.Rust.cwd, 'payload.txt');
-  const encPayloads: string[] = [];
+  await fs.writeFile(payloadFile, payload, 'utf-8');
+
   const rustCmd = useDocker ? ['docker', 'run', '-i', '--rm', '-v', `${BASE_DIR}:/data`, 'darkstar-dasp-rust'] : ENGINES.Rust.cmd;
   const payloadArg = useDocker ? '@/data/rust/payload.txt' : `@${payloadFile}`;
 
-  for (let i = 0; i < ROUNDS; i++) {
-    const varyingPayload = payload.substring(0, payload.length - 10) + i.toString().padStart(10, '0');
-    await fs.writeFile(payloadFile, varyingPayload, 'utf-8');
-    const encRes = await runCmd([...rustCmd, 'encrypt', payloadArg, pk, '--hwid', hwid, '--telemetry'], ENGINES.Rust.cwd);
-    encPayloads.push(JSON.stringify(JSON.parse(encRes.stdout)));
-    if (i % Math.max(1, Math.floor(ROUNDS / 10)) === 0) {
-      onProgress('Setup', 10 + Math.floor((i / ROUNDS) * 90), undefined, i, ROUNDS);
-    }
-  }
+  const encRes = await runCmd([...rustCmd, 'bulk-encrypt', ROUNDS.toString(), payloadArg, pk, '--hwid', hwid, '--telemetry'], ENGINES.Rust.cwd);
+  const encPayloads: string[] = encRes.stdout.split('\n').filter((l: string) => l.trim().length > 0);
+  
+  onProgress('Setup', 100, undefined, ROUNDS, ROUNDS);
 
   const results: InteropResult[] = [];
 
