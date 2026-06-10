@@ -166,3 +166,7 @@ int randombytes(unsigned char *x, unsigned long long xlen) {
   drbg_ctx.reseed_counter++;
   return RNG_SUCCESS;
 }
+
+void randombytes_force_reseed() {
+  drbg_ctx.reseed_counter = 0;
+}

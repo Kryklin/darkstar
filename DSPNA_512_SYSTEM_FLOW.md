@@ -7,13 +7,13 @@
 
 <div align="center">
 
-[🏠 Main](README.md) | [📐 Math Spec](DASP_CRYPTO_MATH.md) | [⚙️ System Flows](DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
+[🏠 Main](README.md) | [📐 Math Spec](DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
 
 </div>
 
 # ASP Cascade 16: System Logic & Architectural Flows
 
-This document provides a high-fidelity visual breakdown of the logic flows within the **Darkstar ARX Substitution & Permutation (D-ASP)** protocol. It serves as the primary reference for understanding the cryptographic execution pipeline.
+This document provides a high-fidelity visual breakdown of the logic flows within the **Darkstar ARX Substitution & Permutation (D-SPNA-512)** protocol. It serves as the primary reference for understanding the cryptographic execution pipeline.
 
 ## 1. Identity Binding & HUB Flow
 
@@ -70,7 +70,7 @@ graph LR
 
 ## 3. Multi-Language Interoperability Path
 
-D-ASP achieves "Bit-Perfect" parity. Regardless of the implementation language, the output for any given input is mathematically guaranteed to be identical.
+D-SPNA-512 achieves "Bit-Perfect" parity. Regardless of the implementation language, the output for any given input is mathematically guaranteed to be identical.
 
 ```mermaid
 stateDiagram-v2
@@ -96,6 +96,6 @@ stateDiagram-v2
 
 <div align="center">
 
-[🏠 Main](README.md) | [📐 Math Spec](DASP_CRYPTO_MATH.md) | [⚙️ System Flows](DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
+[🏠 Main](README.md) | [📐 Math Spec](DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
 
 </div>

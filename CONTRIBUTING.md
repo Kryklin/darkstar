@@ -7,7 +7,7 @@
 
 <div align="center">
 
-[🏠 Main](README.md) | [📐 Math Spec](DASP_CRYPTO_MATH.md) | [⚙️ System Flows](DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
+[🏠 Main](README.md) | [📐 Math Spec](DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -98,6 +98,6 @@ We welcome suggestions for new features and improvements to existing functionali
 
 <div align="center">
 
-[🏠 Main](README.md) | [📐 Math Spec](DASP_CRYPTO_MATH.md) | [⚙️ System Flows](DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
+[🏠 Main](README.md) | [📐 Math Spec](DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
 
 </div>

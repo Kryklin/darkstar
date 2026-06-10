@@ -7,11 +7,11 @@
 
 <div align="center">
 
-[🏠 Main](README.md) | [📐 Math Spec](DASP_CRYPTO_MATH.md) | [⚙️ System Flows](DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
+[🏠 Main](README.md) | [📐 Math Spec](DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
 
 </div>
 
-# D-ASP: NIST Compliance & Security Analysis Report
+# D-SPNA-512: NIST Compliance & Security Analysis Report
 
 **Date**: 2026-06-06  
 **Version**: 2.0 (ARX Stream Architecture Update)  
@@ -21,7 +21,7 @@
 
 ## 1. Executive Summary
 
-The **Darkstar ARX Substitution & Permutation (D-ASP)** protocol is designed for high-security identity binding and post-quantum resilient data encapsulation. This report verifies that the core cryptographic primitives and ARX implementations adhere to current and upcoming NIST post-quantum standards (FIPS).
+The **Darkstar ARX Substitution & Permutation (D-SPNA-512)** protocol is designed for high-security identity binding and post-quantum resilient data encapsulation. This report verifies that the core cryptographic primitives and ARX implementations adhere to current and upcoming NIST post-quantum standards (FIPS).
 
 ## 2. NIST Standards Mapping
 
@@ -38,7 +38,7 @@ The ASP Cascade 16 engine utilizes a strict 256-bit ARX (Addition, Rotation, XOR
 
 ### 3.1 Non-Linearity (Algebraic & Substitution)
 
-D-ASP achieves mathematical non-linearity without the use of vulnerable lookup tables (S-Boxes). Instead, it relies on modular addition ($\pmod{2^{32}}$) combined with XOR operations. This ensures uniform diffusion and maximum entropy without relying on physical memory architecture, guaranteeing cache-timing immunity.
+D-SPNA-512 achieves mathematical non-linearity without the use of vulnerable lookup tables (S-Boxes). Instead, it relies on modular addition ($\pmod{2^{32}}$) combined with XOR operations. This ensures uniform diffusion and maximum entropy without relying on physical memory architecture, guaranteeing cache-timing immunity.
 
 ### 3.2 Diffusion (Network & Permutation)
 
@@ -47,7 +47,7 @@ This sequential diffusion matrix achieves instant complete-state cross-lane depe
 
 ### 3.3 Dynamic Structural Diversification
 
-D-ASP implements a deterministic "Gauntlet" path selection based on the shared secret derivate.
+D-SPNA-512 implements a deterministic "Gauntlet" path selection based on the shared secret derivate.
 
 > [!NOTE]
 > For NIST submission, we designate this as a **"Structural Diversification Feature"**. While the underlying primitives (ARX loops, KEMs, and HMACs) are fixed and standard, the exact deterministic execution paths and mixing topologies are bound to the hardware session, significantly increasing the complexity of pre-computed attack vectors (e.g., rainbow tables and differential analysis).
@@ -66,12 +66,12 @@ All reference implementations (Rust, C, CUDA) have been audited and mathematical
 
 The system has passed high-fidelity **Known Answer Tests (KAT)** across eight distinct language runtimes, guaranteeing bit-perfect interoperability.
 
-The D-ASP protocol, specifically the **ASP Cascade 16** engine, is fundamentally grounded in NIST-approved post-quantum mathematics (FIPS 203) and modern timing-safe ARX structures (RFC 8439). It has been formally submitted for the NIST PQC transition process.
+The D-SPNA-512 protocol, specifically the **ASP Cascade 16** engine, is fundamentally grounded in NIST-approved post-quantum mathematics (FIPS 203) and modern timing-safe ARX structures (RFC 8439). It has been formally submitted for the NIST PQC transition process.
 
 ---
 
 <div align="center">
 
-[🏠 Main](README.md) | [📐 Math Spec](DASP_CRYPTO_MATH.md) | [⚙️ System Flows](DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
+[🏠 Main](README.md) | [📐 Math Spec](DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
 
 </div>

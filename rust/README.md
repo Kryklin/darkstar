@@ -7,18 +7,18 @@
 
 <div align="center">
 
-[🏠 Main](../README.md) | [📐 Math Spec](../DASP_CRYPTO_MATH.md) | [⚙️ System Flows](../DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
+[🏠 Main](../README.md) | [📐 Math Spec](../DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](../DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
 
 </div>
 
-# D-ASP: Rust Implementation
+# D-SPNA-512: Rust Implementation
 
 <p align="left">
   <img src="https://img.shields.io/badge/Rust-black?style=for-the-badge&logo=rust&logoColor=white" alt="Rust">
 </p>
 
 ## Overview
-This is the native Rust implementation and the core reference engine for the **ASP Cascade 16 (D-ASP)** suite. It is built for raw performance, memory safety, and produces both native executables and WASM targets for dynamic language integration.
+This is the native Rust implementation and the core reference engine for the **ASP Cascade 16 (D-SPNA-512)** suite. It is built for raw performance, memory safety, and produces both native executables and WASM targets for dynamic language integration.
 
 ## Prerequisites
 - Rust (Cargo) 1.70+
@@ -29,51 +29,51 @@ cargo build --release
 ```
 
 ## Detailed Usage
-The Rust executable conforms to the standard D-ASP CLI interface, utilizing JSON for cryptographic payloads to ensure cross-language compatibility.
+The Rust executable conforms to the standard D-SPNA-512 CLI interface, utilizing JSON for cryptographic payloads to ensure cross-language compatibility.
 
 **Encrypting a Payload (Single String):**
 ```bash
-./target/release/d-asp encrypt "my secret payload" <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
+./target/release/d-spna-512 encrypt "my secret payload" <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
 **Encrypting a Payload (From File):**
 ```bash
-./target/release/d-asp encrypt @payload.txt <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
+./target/release/d-spna-512 encrypt @payload.txt <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
 **Streaming Encryption (STDIN to STDOUT):**
 ```bash
-cat payload.txt | ./target/release/d-asp stream-encrypt <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry] > output.json
+cat payload.txt | ./target/release/d-spna-512 stream-encrypt <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry] > output.json
 ```
 
 **Decrypting a Payload (Single String):**
 ```bash
-./target/release/d-asp decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
+./target/release/d-spna-512 decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
 **Decrypting a Payload (From File):**
 ```bash
-./target/release/d-asp decrypt @output.json <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
+./target/release/d-spna-512 decrypt @output.json <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
 **Streaming Decryption (STDIN to STDOUT):**
 ```bash
-cat output.json | ./target/release/d-asp stream-decrypt <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry] > decrypted.txt
+cat output.json | ./target/release/d-spna-512 stream-decrypt <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry] > decrypted.txt
 ```
 
 **Generating a Keypair:**
 ```bash
-./target/release/d-asp keygen
+./target/release/d-spna-512 keygen
 ```
 
 **Running Self-Test:**
 ```bash
-./target/release/d-asp test
+./target/release/d-spna-512 test
 ```
 
 **Rebinding a Payload (Migration):**
 ```bash
-./target/release/d-asp rebind <json_payload> <old_sk_hex> <new_pk_hex> [--hwid <old_hwid>] [--new-hwid <new_hwid>]
+./target/release/d-spna-512 rebind <json_payload> <old_sk_hex> <new_pk_hex> [--hwid <old_hwid>] [--new-hwid <new_hwid>]
 ```
 
 ## Recommended Usage
@@ -104,14 +104,14 @@ Based on the latest benchmarking session (`interop`), the Rust engine achieved t
 
 <div align="center">
 
-[🏠 Main](../README.md) | [📐 Math Spec](../DASP_CRYPTO_MATH.md) | [⚙️ System Flows](../DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
+[🏠 Main](../README.md) | [📐 Math Spec](../DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](../DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
 
 </div>
 
 
 ## 🔬 Cryptographic Analysis Suite
 
-This Rust implementation is fully integrated with the D-ASP exhaustive mathematical testing suite. By running the global dashboard, you can automatically evaluate this engine's output against:
+This Rust implementation is fully integrated with the D-SPNA-512 exhaustive mathematical testing suite. By running the global dashboard, you can automatically evaluate this engine's output against:
 - **Entropy & Diffusion:** Shannon Entropy, Strict Avalanche Criterion (SAC), Cross-Key Diffusion.
 - **Uniformity & Sequences:** Chi-Square, Serial Autocorrelation, Monte Carlo Pi Estimation, Monobit Frequency, Runs Tests.
 - **Side-Channel Immunity:** Constant-Time Execution Variance.

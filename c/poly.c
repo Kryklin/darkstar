@@ -9,6 +9,8 @@
  */
 
 #include "poly.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 /**
  * @brief Precomputed inverse of Q modulo 2^16.
@@ -197,4 +199,16 @@ void polyvec_basemul_acc_montgomery(poly *r, const polyvec *a,
     poly_add(r, r, &t);
   }
   poly_reduce(r);
+}
+
+void poly_verify_constants() {
+  uint32_t checksum = 0;
+  for(int i = 0; i < 128; i++) {
+    uint32_t v = (uint32_t)(int32_t)zetas[i];
+    checksum += v * (uint32_t)(i + 1);
+  }
+  if (checksum != 4294604331U) {
+    fprintf(stderr, "FATAL: Rowhammer/Corruption detected in ML-KEM zetas array.\n");
+    exit(1);
+  }
 }

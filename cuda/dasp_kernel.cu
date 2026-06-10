@@ -34,14 +34,9 @@ typedef struct {
 } d_prng_t;
 
 __device__ static void d_prng_init(d_prng_t *ctx, const uint8_t *seed_64) {
-    ctx->state[0] = 0x61707865;
-    ctx->state[1] = 0x3320646e;
-    ctx->state[2] = 0x79622d32;
-    ctx->state[3] = 0x6b206574;
-    for (int i = 0; i < 8; i++) {
-        ctx->state[4+i] = seed_64[i*4] | (seed_64[i*4+1]<<8) | (seed_64[i*4+2]<<16) | (seed_64[i*4+3]<<24);
+    for (int i = 0; i < 16; i++) {
+        ctx->state[i] = seed_64[i*4] | (seed_64[i*4+1]<<8) | (seed_64[i*4+2]<<16) | (seed_64[i*4+3]<<24);
     }
-    ctx->state[12] = 0; ctx->state[13] = 0; ctx->state[14] = 0; ctx->state[15] = 0;
     d_chacha_block(ctx->state, ctx->block);
     ctx->block_idx = 0;
 }
@@ -72,10 +67,28 @@ __global__ void init_keys_kernel(const uint8_t *prng_seed, uint32_t *out_keys) {
 // PHASE 2: Parallel Block Encryption (CTR Mode)
 // ---------------------------------------------------------
 
-__global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, size_t payload_len, const uint8_t *nonce_base, uint64_t block_offset, const uint32_t *d_round_keys_const) {
+__global__ void __launch_bounds__(256, 4) dasp_ctr_kernel(uint8_t *payloads, size_t payload_len, const uint8_t *nonce_base, uint64_t block_offset, const uint32_t *d_round_keys_const, int dpa_triggered, const uint8_t *prng_seed) {
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     size_t byte_offset = tid * 32;
     if (byte_offset >= payload_len) return;
+    
+    // If DPA is triggered, wipe with chaotic PRNG instead of encrypting
+    if (dpa_triggered) {
+        d_prng_t prng;
+        d_prng_init(&prng, prng_seed);
+        // Fast forward PRNG state based on our block offset so it is globally chaotic
+        for(int i=0; i<tid; i++) d_prng_next(&prng);
+        
+        uint32_t wipe_val = d_prng_next(&prng);
+        uint8_t *wv = (uint8_t*)&wipe_val;
+        
+        size_t remaining = payload_len - byte_offset;
+        size_t chunk = remaining > 32 ? 32 : remaining;
+        for (size_t i = 0; i < chunk; i++) {
+            payloads[byte_offset + i] ^= wv[i % 4];
+        }
+        return;
+    }
     
     uint64_t global_block_idx = block_offset + tid;
 
@@ -217,14 +230,14 @@ extern "C" void dasp_cuda_init_keys(const uint8_t *d_keys_128) {
     cudaDeviceSynchronize();
 }
 
-extern "C" void dasp_cuda_process_chunk(uint8_t *d_payload, size_t chunk_len, const uint8_t *d_nonce, uint64_t block_offset, cudaStream_t stream) {
+extern "C" void dasp_cuda_process_chunk(uint8_t *d_payload, size_t chunk_len, const uint8_t *d_nonce, uint64_t block_offset, cudaStream_t stream, int dpa_triggered, const uint8_t *prng_seed) {
     if (chunk_len == 0) return;
 
     size_t real_num_blocks = (chunk_len + 31) / 32;
     int threadsPerBlock = 256;
     int blocksPerGrid = (real_num_blocks + threadsPerBlock - 1) / threadsPerBlock;
     
-    dasp_ctr_kernel<<<blocksPerGrid, threadsPerBlock, 0, stream>>>(d_payload, chunk_len, d_nonce, block_offset, g_round_keys_device);
+    dasp_ctr_kernel<<<blocksPerGrid, threadsPerBlock, 0, stream>>>(d_payload, chunk_len, d_nonce, block_offset, g_round_keys_device, dpa_triggered, prng_seed);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("CUDA ERROR in kernel: %s\n", cudaGetErrorString(err));

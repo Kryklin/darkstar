@@ -10,12 +10,12 @@ use engine::DarkstarCrypt;
 fn print_usage() {
     println!("Usage: darkstar <command> [args]");
     println!("Commands:");
-    println!("  encrypt <payload> <pk_hex>   Encrypt using D-ASP");
-    println!("  decrypt <json_data> <sk_hex> Decrypt using D-ASP");
+    println!("  encrypt <payload> <pk_hex>   Encrypt using D-SPNA-512");
+    println!("  decrypt <json_data> <sk_hex> Decrypt using D-SPNA-512");
     println!("  stream-decrypt <sk_hex>      Stream decrypt JSON from stdin");
     println!("  rebind <payload> <sk> <new_pk> Rebind a payload to a new key/HWID");
     println!("  keygen                       Generate ML-KEM-1024 keys");
-    println!("  test                         Run D-ASP self-test");
+    println!("  test                         Run D-SPNA-512 self-test");
 }
 
 fn clean_hex(s: &str) -> String {
@@ -37,6 +37,7 @@ fn main() {
     let mut raw_args: Vec<String> = std::env::args().skip(1).collect();
     let mut hwid: Option<Vec<u8>> = None;
     let mut new_hwid: Option<Vec<u8>> = None;
+    let mut ttl_secs: Option<u64> = None;
     let mut telemetry = false;
 
     let mut i = 0;
@@ -49,6 +50,10 @@ fn main() {
             let hw_hex = resolve_arg(&raw_args.remove(i + 1));
             raw_args.remove(i);
             new_hwid = Some(hex::decode(clean_hex(&hw_hex)).expect("Invalid New HWID hex"));
+        } else if raw_args[i] == "--ttl" && i + 1 < raw_args.len() {
+            let t_str = resolve_arg(&raw_args.remove(i + 1));
+            raw_args.remove(i);
+            ttl_secs = Some(t_str.parse::<u64>().expect("Invalid TTL value"));
         } else if raw_args[i] == "--diagnostic" {
             raw_args.remove(i);
             std::env::set_var("DASP_DIAGNOSTIC", "1");
@@ -93,7 +98,7 @@ fn main() {
             let data = resolve_arg(&raw_args[0]);
             let sk_hex = resolve_arg(&raw_args[1]);
 
-            match dc.decrypt(&data, &sk_hex, hwid, telemetry) {
+            match dc.decrypt(&data, &sk_hex, hwid, telemetry, ttl_secs) {
                 Ok(decrypted) => println!("{}", decrypted),
                 Err(e) => {
                     eprintln!("Decryption Failed: {}", e);
@@ -113,7 +118,7 @@ fn main() {
                 if data.is_empty() {
                     continue;
                 }
-                match dc.decrypt(data, &sk_hex, hwid.clone(), telemetry) {
+                match dc.decrypt(data, &sk_hex, hwid.clone(), telemetry, ttl_secs) {
                     Ok(decrypted) => println!("{}", decrypted),
                     Err(_) => println!("{{\"error\":\"MAC Failed\"}}"),
                 }
@@ -128,7 +133,7 @@ fn main() {
             let sk_hex = resolve_arg(&raw_args[1]);
             let pk_hex = resolve_arg(&raw_args[2]);
 
-            match dc.decrypt(&data, &sk_hex, hwid, telemetry) {
+            match dc.decrypt(&data, &sk_hex, hwid, telemetry, ttl_secs) {
                 Ok(mut decrypted) => {
                     match dc.encrypt(&decrypted, &pk_hex, new_hwid, telemetry) {
                         Ok(res_json) => {
@@ -150,22 +155,22 @@ fn main() {
             }
         }
         "keygen" => {
-            let (dk, ek) = MlKem1024::generate(&mut rand::thread_rng());
+            let (dk, ek) = MlKem1024::generate(&mut rand::rngs::OsRng);
             println!("PK: {}", hex::encode(ek.as_bytes()));
             println!("SK: {}", hex::encode(dk.as_bytes()));
         }
         "test" => {
             let payload = "apple banana cherry date elderberry fig grape honeydew";
-            let (dk, ek) = MlKem1024::generate(&mut rand::thread_rng());
+            let (dk, ek) = MlKem1024::generate(&mut rand::rngs::OsRng);
             let pk_hex = hex::encode(ek.as_bytes());
             let sk_hex = hex::encode(dk.as_bytes());
 
-            println!("--- D-ASP Self-Test ---");
+            println!("--- D-SPNA-512 Self-Test ---");
             match dc.encrypt(payload, &pk_hex, None, telemetry) {
                 Ok(res_json) => {
                     println!("Encrypted: {}", res_json);
 
-                    match dc.decrypt(&res_json, &sk_hex, None, telemetry) {
+                    match dc.decrypt(&res_json, &sk_hex, None, telemetry, ttl_secs) {
                         Ok(decrypted) => {
                             println!("Decrypted: '{}'", decrypted);
                             if decrypted == payload {

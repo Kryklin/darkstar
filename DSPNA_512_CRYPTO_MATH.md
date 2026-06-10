@@ -7,22 +7,22 @@
 
 <div align="center">
 
-[🏠 Main](README.md) | [📐 Math Spec](DASP_CRYPTO_MATH.md) | [⚙️ System Flows](DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
+[🏠 Main](README.md) | [📐 Math Spec](DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
 
 </div>
 
-# D-ASP: Formal Mathematical & Systems Specification (Professional Grade)
+# D-SPNA-512: Formal Mathematical & Systems Specification (Professional Grade)
 
-This document provides the formal cryptographic and mathematical specification for the **ASP Cascade 16 (D-ASP)** protocol. ASP Cascade 16 is a high-security cipher suite based on a 16-round **ASP Cascade structure** (ARX Substitution, Permutation, Network) optimized for identity binding and cache-timing side-channel resistance.
+This document provides the formal cryptographic and mathematical specification for the **ASP Cascade 16 (D-SPNA-512)** protocol. ASP Cascade 16 is a high-security cipher suite based on a 16-round **ASP Cascade structure** (ARX Substitution, Permutation, Network) optimized for identity binding and cache-timing side-channel resistance.
 
 > [!IMPORTANT]
-> **No S-Boxes or AES:** The term "Substitution" in D-ASP refers strictly to *ARX Substitution* via Modular Addition and XOR (ARX). D-ASP explicitly abandons traditional block-cipher components like AES-256 Rijndael S-Boxes and MixColumns MDS matrices to guarantee mathematical 0.0000% variance against cache-timing attacks.
+> **No S-Boxes or AES:** The term "Substitution" in D-SPNA-512 refers strictly to *ARX Substitution* via Modular Addition and XOR (ARX). D-SPNA-512 explicitly abandons traditional block-cipher components like AES-256 Rijndael S-Boxes and MixColumns MDS matrices to guarantee mathematical 0.0000% variance against cache-timing attacks.
 
 ---
 
 ## 1. Post-Quantum Trust Anchor (ML-KEM-1024)
 
-D-ASP utilizes **ML-KEM-1024** (Kyber-1024) as its primary asymmetric root.
+D-SPNA-512 utilizes **ML-KEM-1024** (Kyber-1024) as its primary asymmetric root.
 
 ### 1.1 Mathematical Parameters
 
@@ -49,7 +49,7 @@ $$
 
 The diffusion and network layers occupy the finite field $GF(2^8)$, defined by the primitive irreducible polynomial $P(x) = x^8 + x^4 + x^3 + x + 1$ (Hex: `0x11B`).
 
-To neutralize timing side-channels, D-ASP implementations MUST NOT use conditional branching for field reduction. Reduction is performed using **Arithmetic Masking (AM)**.
+To neutralize timing side-channels, D-SPNA-512 implementations MUST NOT use conditional branching for field reduction. Reduction is performed using **Arithmetic Masking (AM)**.
 
 For an element $a \in GF(2^8)$, multiplication by the generator $x$ (0x02) is defined as:
 
@@ -73,7 +73,7 @@ The ASP Cascade has been structurally upgraded to an **Intrinsic-Forced Executio
 
 The internal state $S$ is defined as eight 32-bit words: $S \in \mathbb{Z}_{2^{32}}^8$.
 
-To eliminate branching and loop overhead, D-ASP uses a **Static Deterministic Unrolled Schedule** consisting of a pure 32-bit ARX/SPNA sequence.
+To eliminate branching and loop overhead, D-SPNA-512 uses a **Static Deterministic Unrolled Schedule** consisting of a pure 32-bit ARX/SPNA sequence.
 
 ### 3.1 Substitution & Algebraic (S/A) Layer: 32-Bit ARX
 
@@ -96,7 +96,7 @@ The internal state is aggressively mixed using an adjacent index butterfly mixin
 
 ## 4. Hardware Fault Injection Mitigation (FI)
 
-D-ASP mitigates physical hardware attacks such as VCC voltage glitching and targeted CPU instruction skipping.
+D-SPNA-512 mitigates physical hardware attacks such as VCC voltage glitching and targeted CPU instruction skipping.
 
 ### 4.1 Bidirectional Temporal Parity
 
@@ -120,7 +120,7 @@ To combat OS-level RAM scraping and Side-Channel leakage:
 
 ### 5.2 Managed Compliance (WASM)
 
-While high-level runtimes introduce jitter (jitter != side-channel), the **D-ASP V3** WASM implementation mirrors the 32-bit ARX mathematical operations natively. WebAssembly guarantees execution within its sandboxed runtime without runtime garbage collection interrupting the cascade itself.
+While high-level runtimes introduce jitter (jitter != side-channel), the **D-SPNA-512 V3** WASM implementation mirrors the 32-bit ARX mathematical operations natively. WebAssembly guarantees execution within its sandboxed runtime without runtime garbage collection interrupting the cascade itself.
 
 ### 5.3 Hardware Intrinsics & Entropy Cascade
 
@@ -132,7 +132,7 @@ While high-level runtimes introduce jitter (jitter != side-channel), the **D-ASP
 
 ## 6. Implementation Standards
 
-All compliant D-ASP implementations MUST return a standardized JSON payload:
+All compliant D-SPNA-512 implementations MUST return a standardized JSON payload:
 
 ```json
 {
@@ -148,6 +148,6 @@ Verification is performed by recalculating the HMAC-SHA256 across `ct + data` us
 
 <div align="center">
 
-[🏠 Main](README.md) | [📐 Math Spec](DASP_CRYPTO_MATH.md) | [⚙️ System Flows](DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
+[🏠 Main](README.md) | [📐 Math Spec](DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
 
 </div>

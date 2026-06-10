@@ -7,18 +7,18 @@
 
 <div align="center">
 
-[🏠 Main](../README.md) | [📐 Math Spec](../DASP_CRYPTO_MATH.md) | [⚙️ System Flows](../DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
+[🏠 Main](../README.md) | [📐 Math Spec](../DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](../DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
 
 </div>
 
-# D-ASP: CUDA Implementation
+# D-SPNA-512: CUDA Implementation
 
 <p align="left">
   <img src="https://img.shields.io/badge/CUDA-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="CUDA">
 </p>
 
 ## Overview
-This is the CUDA-accelerated implementation of the **ASP Cascade 16 (D-ASP)** engine. It leverages advanced VRAM-optimized kernels, `__constant__` cache broadcasts, and 128-bit vectorized `uint4` transactions to deliver massive multi-gigabyte throughput.
+This is the CUDA-accelerated implementation of the **ASP Cascade 16 (D-SPNA-512)** engine. It leverages advanced VRAM-optimized kernels, `__constant__` cache broadcasts, and 128-bit vectorized `uint4` transactions to deliver massive multi-gigabyte throughput.
 
 ## Prerequisites
 - NVIDIA CUDA Toolkit (nvcc)
@@ -31,46 +31,46 @@ build_cuda.bat
 ```
 
 ## Detailed Usage
-The CUDA executable conforms to the standard D-ASP CLI interface, utilizing JSON for cryptographic payloads to ensure cross-language compatibility.
+The CUDA executable conforms to the standard D-SPNA-512 CLI interface, utilizing JSON for cryptographic payloads to ensure cross-language compatibility.
 
 **Encrypting a Payload (Single String):**
 ```bash
-./d-asp_cuda encrypt "my secret payload" <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
+./d-spna-512_cuda encrypt "my secret payload" <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
 **Encrypting a Payload (From File):**
 ```bash
-./d-asp_cuda encrypt @payload.txt <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
+./d-spna-512_cuda encrypt @payload.txt <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
 **Streaming Encryption (STDIN to STDOUT):**
 ```bash
-cat payload.txt | ./d-asp_cuda stream-encrypt <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry] > output.json
+cat payload.txt | ./d-spna-512_cuda stream-encrypt <ml_kem_public_key_hex> [--hwid <hex>] [--telemetry] > output.json
 ```
 
 **Decrypting a Payload (Single String):**
 ```bash
-./d-asp_cuda decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
+./d-spna-512_cuda decrypt <json_payload_string> <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
 **Decrypting a Payload (From File):**
 ```bash
-./d-asp_cuda decrypt @output.json <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
+./d-spna-512_cuda decrypt @output.json <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry]
 ```
 
 **Streaming Decryption (STDIN to STDOUT):**
 ```bash
-cat output.json | ./d-asp_cuda stream-decrypt <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry] > decrypted.txt
+cat output.json | ./d-spna-512_cuda stream-decrypt <ml_kem_secret_key_hex> [--hwid <hex>] [--telemetry] > decrypted.txt
 ```
 
 **Generating a Keypair:**
 ```bash
-./d-asp_cuda keygen
+./d-spna-512_cuda keygen
 ```
 
 **Running Self-Test:**
 ```bash
-./d-asp_cuda test
+./d-spna-512_cuda test
 ```
 
 **Rebinding a Payload (Migration):**
@@ -106,14 +106,14 @@ Based on the latest benchmarking session (`interop`), the CUDA engine achieved t
 
 <div align="center">
 
-[🏠 Main](../README.md) | [📐 Math Spec](../DASP_CRYPTO_MATH.md) | [⚙️ System Flows](../DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
+[🏠 Main](../README.md) | [📐 Math Spec](../DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](../DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
 
 </div>
 
 
 ## 🔬 Cryptographic Analysis Suite
 
-This Cuda implementation is fully integrated with the D-ASP exhaustive mathematical testing suite. By running the global dashboard, you can automatically evaluate this engine's output against:
+This Cuda implementation is fully integrated with the D-SPNA-512 exhaustive mathematical testing suite. By running the global dashboard, you can automatically evaluate this engine's output against:
 - **Entropy & Diffusion:** Shannon Entropy, Strict Avalanche Criterion (SAC), Cross-Key Diffusion.
 - **Uniformity & Sequences:** Chi-Square, Serial Autocorrelation, Monte Carlo Pi Estimation, Monobit Frequency, Runs Tests.
 - **Side-Channel Immunity:** Constant-Time Execution Variance.

@@ -134,7 +134,13 @@ static void crypto_pke_enc(uint8_t *ct, const uint8_t *m, const uint8_t *pk,
  * @param sk Output buffer for the secret key.
  * @return 0 on success.
  */
+DASP_EXPORT void ml_kem_verify_constants() {
+  poly_verify_constants();
+}
+
 DASP_EXPORT int crypto_kem_keypair(uint8_t *pk, uint8_t *sk) {
+  ml_kem_verify_constants();
+  randombytes_force_reseed();
   uint8_t d[32], z[32], rho[32], sigma[32];
   uint8_t Kr[64];
   polyvec a[MLKEM_K], s, e, pkvec;
@@ -194,6 +200,8 @@ DASP_EXPORT int crypto_kem_keypair(uint8_t *pk, uint8_t *sk) {
  * @return 0 on success.
  */
 DASP_EXPORT int crypto_kem_enc(uint8_t *ct, uint8_t *ss, const uint8_t *pk) {
+  ml_kem_verify_constants();
+  randombytes_force_reseed();
   uint8_t m[32], Kr[64], h_pk[32];
   uint8_t K_pre[64];
 
@@ -223,6 +231,7 @@ DASP_EXPORT int crypto_kem_enc(uint8_t *ct, uint8_t *ss, const uint8_t *pk) {
  */
 DASP_EXPORT int crypto_kem_dec(uint8_t *ss, const uint8_t *ct,
                                const uint8_t *sk) {
+  ml_kem_verify_constants();
   uint8_t m[32], r[32], Kr[64], K_pre[64];
   uint8_t ct_prime[CRYPTO_CIPHERTEXTBYTES];
   uint8_t h_pk[32];

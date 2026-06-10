@@ -1,4 +1,4 @@
-# D-ASP Language Wrapper & Integration Guide
+# D-SPNA-512 Language Wrapper & Integration Guide
 
 <p align="center">
   <img src="https://img.shields.io/badge/WebAssembly-654FF0?style=for-the-badge&logo=webassembly&logoColor=white" alt="WASM">
@@ -50,7 +50,7 @@ The tool generates functional WASM loading code for:
 - **C# / .NET**: `Wasmtime` NuGet package
 
 ### 2. C-FFI (Foreign Function Interface) Backend
-Best for high-performance compiled languages or systems without mature WASM engines. This bypasses the WASM sandbox and binds directly to the high-performance `dasp_kem.dll` (or `.so`/`.dylib`) compiled by the C engine.
+Best for high-performance compiled languages or systems without mature WASM engines. This bypasses the WASM sandbox and binds directly to the high-performance `dspna_512_kem.dll` (or `.so`/`.dylib`) compiled by the C engine.
 
 The tool generates functional FFI pointer mappings for:
 - **Java**: `JNA`

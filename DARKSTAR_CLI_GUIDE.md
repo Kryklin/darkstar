@@ -7,7 +7,7 @@
 
 <div align="center">
 
-[🏠 Main](README.md) | [📐 Math Spec](DASP_CRYPTO_MATH.md) | [⚙️ System Flows](DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
+[🏠 Main](README.md) | [📐 Math Spec](DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -99,7 +99,7 @@ GITHUB_TOKEN=your_personal_access_token_here
 
 The core cryptographic engines (`rust`, `c`, `cuda`) share a unified CLI API that supports three modes of data ingestion for both `encrypt` and `decrypt` operations.
 
-> **Note:** The executable name will differ per engine (e.g. `d-asp.exe`, `dasp.exe`, `d-asp_cuda.exe`). The examples below use `<engine_exe>`.
+> **Note:** The executable name will differ per engine (e.g. `d-spna-512.exe`, `dasp.exe`, `d-spna-512_cuda.exe`). The examples below use `<engine_exe>`.
 
 ### 1. Single Payload (Raw String)
 Ideal for small, inline strings or environmental variables.
@@ -138,6 +138,6 @@ cat output.json | <engine_exe> stream-decrypt @secret_key.hex [--hwid <hex>] > r
 
 <div align="center">
 
-[🏠 Main](README.md) | [📐 Math Spec](DASP_CRYPTO_MATH.md) | [⚙️ System Flows](DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
+[🏠 Main](README.md) | [📐 Math Spec](DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](DARKSTAR_CLI_GUIDE.md) | [🔒 Security](SECURITY.md) | [🤝 Contributing](CONTRIBUTING.md)
 
 </div>

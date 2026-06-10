@@ -12,7 +12,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _CRT_NONSTDC_NO_DEPRECATE
 
-#include "api.h"
+#include "dasp.h"
+#include "poly.h"
 #include "rng.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -52,12 +53,12 @@ static long long get_us() {
 extern int dasp_encapsulate_data_inner(uint8_t *base_payload,
                                        size_t payload_len, const uint8_t *pk,
                                        const uint8_t *hwid, uint8_t *out_ct,
-                                       uint8_t *out_mac);
+                                       uint8_t *out_mac, uint64_t ts, int has_ts);
 extern int dasp_decapsulate_data_inner(uint8_t *base_payload,
                                        size_t payload_len, const uint8_t *sk,
                                        const uint8_t *hwid,
                                        const uint8_t *in_ct,
-                                       const uint8_t *in_mac);
+                                       const uint8_t *in_mac, uint64_t ts, int has_ts);
 
 // Helpers
 static inline uint8_t hex_char_val(char c) {
@@ -146,10 +147,12 @@ static char *extract_json_string(const char *json, const char *key) {
  * @brief Main Entry Point for D-ASP CLI.
  * Supports: keygen, encrypt, decrypt.
  */
-int main(int argc, char **argv) {
-  if (argc < 2)
+int main(int argc, char *argv[]) {
+  if (argc < 2) {
+    fprintf(stderr, "Usage: %s <cmd> ...\n", argv[0]);
     return 1;
-
+  }
+  poly_verify_constants();
   // ---------------------------------------------------------
   // PHASE 1: CLI Argument Parsing
   // ---------------------------------------------------------
@@ -163,6 +166,7 @@ int main(int argc, char **argv) {
   uint8_t seed[48];
   int has_seed = 0;
   int telemetry = 0;
+  uint64_t ttl = 0;
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--hwid") == 0 && i + 1 < argc) {
@@ -190,6 +194,9 @@ int main(int argc, char **argv) {
     if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
       hex_decode(argv[i + 1], seed, 48);
       has_seed = 1;
+    }
+    if (strcmp(argv[i], "--ttl") == 0 && i + 1 < argc) {
+      ttl = strtoull(argv[i + 1], NULL, 10);
     }
     if (strcmp(argv[i], "--telemetry") == 0) {
       telemetry = 1;
@@ -269,8 +276,10 @@ int main(int argc, char **argv) {
 
     long long total_start = get_us();
     long long inner_start = get_us();
-    dasp_encapsulate_data_inner(payload, p_len, pk, use_hwid ? hwid : NULL, ct,
-                                mac);
+    uint64_t current_ts = (uint64_t)(total_start / 1000000);
+    randombytes_force_reseed();
+    int res = dasp_encapsulate_data_inner(payload, p_len, pk, use_hwid ? hwid : NULL, ct,
+                                mac, current_ts, 1);
     long long inner_end = get_us();
     long long total_end = get_us();
 
@@ -282,18 +291,21 @@ int main(int argc, char **argv) {
     char *data_hex = malloc(p_len * 2 + 1);
     hex_encode(payload, p_len, data_hex);
 
-    if (telemetry) {
-      printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\",\"timings\":{\"kem_"
-             "us\":"
-             "%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,\"total_us\":%lld}}\n",
-             data_hex, ct_hex, mac_hex, (inner_end - inner_start) / 3,
-             (inner_end - inner_start) / 3, (inner_end - inner_start) / 3,
-             total_end - total_start);
+    if (res == -2) {
+      printf("{\"error\":\"DPA_LOCKOUT\"}\n");
     } else {
-      printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\"}\n", data_hex,
-             ct_hex, mac_hex);
+      if (telemetry) {
+        printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\",\"ts\":%llu,\"timings\":{\"kem_"
+               "us\":"
+               "%lld,\"kdf_us\":%lld,\"cascade_us\":%lld,\"total_us\":%lld}}\n",
+               data_hex, ct_hex, mac_hex, current_ts, (inner_end - inner_start) / 3,
+               (inner_end - inner_start) / 3, (inner_end - inner_start) / 3,
+               total_end - total_start);
+      } else {
+        printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\",\"ts\":%llu}\n", data_hex,
+               ct_hex, mac_hex, current_ts);
+      }
     }
-
     free(data_hex);
     free(ct_hex);
     free(payload);
@@ -355,12 +367,35 @@ int main(int argc, char **argv) {
       uint8_t mac[32];
       hex_decode(mac_hex, mac, 32);
 
+      char *ts_str = extract_json_string(line, "ts");
+      uint64_t ts_val = 0;
+      int has_ts = 0;
+      if (ts_str) {
+        ts_val = strtoull(ts_str, NULL, 10);
+        has_ts = 1;
+        free(ts_str);
+      }
+
       long long inner_start = get_us();
       int res = dasp_decapsulate_data_inner(payload, p_len, sk,
-                                            use_hwid ? hwid : NULL, ct, mac);
+                                            use_hwid ? hwid : NULL, ct, mac, ts_val, has_ts);
       long long inner_end = get_us();
 
+      long long end_time = get_us();
       if (res == 0) {
+        if (ttl > 0) {
+          if (!has_ts) {
+            printf("{\"error\":\"Payload missing timestamp (Replay Protection enforced)\"}\n");
+            free(payload);
+            continue;
+          }
+          uint64_t current_ts = (uint64_t)(get_us() / 1000000);
+          if (current_ts > ts_val + ttl) {
+            printf("{\"error\":\"Payload Expired (Replay Protection)\"}\n");
+            free(payload);
+            continue;
+          }
+        }
         char *out_str = malloc(p_len + 1);
         memcpy(out_str, payload, p_len);
         out_str[p_len] = '\0';
@@ -393,13 +428,13 @@ int main(int argc, char **argv) {
     long long total_start = get_us();
 
     char *json_file = argv[2];
-    char *json = NULL;
+    char *json_data = NULL;
     if (json_file[0] == '@') {
-      json = read_file(json_file + 1);
-      if (!json)
+      json_data = read_file(json_file + 1);
+      if (!json_data)
         return 3;
     } else {
-      json = strdup(json_file);
+      json_data = strdup(json_file);
     }
 
     char *sk_str = argv[3];
@@ -414,9 +449,18 @@ int main(int argc, char **argv) {
     uint8_t sk[CRYPTO_SECRETKEYBYTES];
     hex_decode(sk_str, sk, CRYPTO_SECRETKEYBYTES);
 
-    char *data_hex = extract_json_string(json, "data");
-    char *ct_hex = extract_json_string(json, "ct");
-    char *mac_hex = extract_json_string(json, "mac");
+    char *data_hex = extract_json_string(json_data, "data");
+    char *ct_hex = extract_json_string(json_data, "ct");
+    char *mac_hex = extract_json_string(json_data, "mac");
+
+    char *ts_str = extract_json_string(json_data, "ts");
+    uint64_t ts_val = 0;
+    int has_ts = 0;
+    if (ts_str) {
+      ts_val = strtoull(ts_str, NULL, 10);
+      has_ts = 1;
+      free(ts_str);
+    }
 
     if (!data_hex || !ct_hex || !mac_hex)
       return 4;
@@ -433,7 +477,7 @@ int main(int argc, char **argv) {
 
     long long inner_start = get_us();
     int res = dasp_decapsulate_data_inner(payload, p_len, sk,
-                                          use_hwid ? hwid : NULL, ct, mac);
+                                          use_hwid ? hwid : NULL, ct, mac, ts_val, has_ts);
     long long inner_end = get_us();
 
     long long total_end = get_us();
@@ -447,7 +491,22 @@ int main(int argc, char **argv) {
               total_end - total_start);
     }
 
-    if (res == 0) {
+    if (res == -2) {
+      printf("{\"error\":\"DPA_LOCKOUT\"}\n");
+    } else if (res == 0) {
+      if (ttl > 0) {
+        if (!has_ts) {
+          printf("{\"error\":\"Payload missing timestamp (Replay Protection enforced)\"}\n");
+          free(payload); free(json_data); free(sk_str); free(data_hex); free(ct_hex); free(mac_hex);
+          return 1;
+        }
+        uint64_t current_ts = (uint64_t)(get_us() / 1000000);
+        if (current_ts > ts_val + ttl) {
+          printf("{\"error\":\"Payload Expired (Replay Protection)\"}\n");
+          free(payload); free(json_data); free(sk_str); free(data_hex); free(ct_hex); free(mac_hex);
+          return 1;
+        }
+      }
       char *out_str = malloc(p_len + 1);
       memcpy(out_str, payload, p_len);
       out_str[p_len] = '\0';
@@ -461,7 +520,7 @@ int main(int argc, char **argv) {
     free(data_hex);
     free(ct_hex);
     free(mac_hex);
-    free(json);
+    free(json_data);
     free(sk_str);
     free(payload);
     return 0;
@@ -510,7 +569,7 @@ int main(int argc, char **argv) {
     hex_decode(mac_hex, mac, 32);
 
     int res = dasp_decapsulate_data_inner(payload, p_len, sk,
-                                          use_hwid ? hwid : NULL, ct, mac);
+                                          use_hwid ? hwid : NULL, ct, mac, 0, 0);
     if (res != 0) {
       fprintf(stderr, "Rebind Decryption Failed\n");
       return 5;
@@ -518,8 +577,9 @@ int main(int argc, char **argv) {
 
     uint8_t new_ct[CRYPTO_CIPHERTEXTBYTES];
     uint8_t new_mac[32];
+    randombytes_force_reseed();
     dasp_encapsulate_data_inner(
-        payload, p_len, pk, use_new_hwid ? new_hwid : NULL, new_ct, new_mac);
+        payload, p_len, pk, use_new_hwid ? new_hwid : NULL, new_ct, new_mac, 0, 0);
 
     char *new_ct_hex = malloc(CRYPTO_CIPHERTEXTBYTES * 2 + 1);
     char new_mac_hex[65];

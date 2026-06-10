@@ -25,6 +25,8 @@ typedef struct {
   poly vec[4]; // k=4 for ML-KEM-1024
 } polyvec;
 
+void poly_verify_constants();
+
 int16_t montgomery_reduce(int32_t a);
 int16_t barrett_reduce(int16_t a);
 void poly_reduce(poly *r);

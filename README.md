@@ -7,7 +7,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/header-anim-dark.svg">
-    <img src="assets/header-anim-light.svg" width="800" alt="Darkstar ARX Substitution Permutation">
+    <img src="assets/header-anim-light.svg" width="800" alt="Darkstar Substitution Permutation Network Algebraic">
   </picture>
 </p>
 
@@ -23,18 +23,18 @@
 
 ## 📚 Documentation Hub
 
-Explore the architecture and specifications of the D-ASP suite:
+Explore the architecture and specifications of the D-SPNA-512 suite:
 
 | Specification                                         | Description                                           |
 | :---------------------------------------------------- | :---------------------------------------------------- |
-| [**Mathematical Specification**](DASP_CRYPTO_MATH.md) | Cryptographic proofs, ML-KEM constants, and bounds.   |
-| [**System Logic Flows**](DASP_SYSTEM_FLOW.md)         | Sequence diagrams and execution cascades.             |
-| [**NIST Compliance**](DASP_NIST_COMPLIANCE.md)        | Grade-1024 SP 800-208 / FIPS 203 alignment matrix.    |
+| [**Mathematical Specification**](DSPNA_512_CRYPTO_MATH.md) | Cryptographic proofs, ML-KEM constants, and bounds.   |
+| [**System Logic Flows**](DSPNA_512_SYSTEM_FLOW.md)         | Sequence diagrams and execution cascades.             |
+| [**NIST Compliance**](DSPNA_512_NIST_COMPLIANCE.md)        | Grade-1024 SP 800-208 / FIPS 203 alignment matrix.    |
 | [**CLI Guide**](DARKSTAR_CLI_GUIDE.md)                | Usage instructions for universal CLI integration.     |
 | [**Security Policy**](SECURITY.md)                    | Vulnerability disclosure and audit policies.          |
 | [**Contributing**](CONTRIBUTING.md)                   | Guidelines for engine optimization and PR submission. |
 
-The **ASP Cascade 16 (D-ASP)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Rust**, **C**, and **CUDA**, with **WebAssembly** bindings via Node/Python/Go.
+The **ASP Cascade 16 (D-SPNA-512)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Rust**, **C**, and **CUDA**, with **WebAssembly** bindings via Node/Python/Go.
 
 ---
 
@@ -68,7 +68,7 @@ The CUDA engine was engineered to support massive parallel payloads by streaming
 
 ## 🔬 Cryptographic Proofs & Analysis
 
-The D-ASP suite guarantees mathematical pseudo-randomness and structural immunity against differential, sequence, and side-channel analysis. The output is continuously evaluated via our exhaustive analysis suite against the following optimal cryptographic boundaries using a 100KB payload:
+The D-SPNA-512 suite guarantees mathematical pseudo-randomness and structural immunity against differential, sequence, and side-channel analysis. The output is continuously evaluated via our exhaustive analysis suite against the following optimal cryptographic boundaries using a 100KB payload:
 
 | Metric | Rust | C | CUDA | Ideal |
 | :--- | :--- | :--- | :--- | :--- |
@@ -90,7 +90,7 @@ The D-ASP suite guarantees mathematical pseudo-randomness and structural immunit
 | **Lempel-Ziv Incompressibility** | 1.0004 | 1.0004 | 1.0004 | ~ 1.000 |
 
 > [!TIP]
-> **NIST SP 800-22 Certification Ready:** D-ASP includes a native bitstream generator (`npm run gen-nist`) that rapidly pipes hardware-accelerated gigabytes of raw ciphertext into binary format, ready for direct ingestion by external tools like `Dieharder` and the official NIST `sts` suite.
+> **NIST SP 800-22 Certification Ready:** D-SPNA-512 includes a native bitstream generator (`npm run gen-nist`) that rapidly pipes hardware-accelerated gigabytes of raw ciphertext into binary format, ready for direct ingestion by external tools like `Dieharder` and the official NIST `sts` suite.
 
 ---
 
@@ -102,13 +102,13 @@ All implementations are designed as **high-performance, standalone sources** to 
 | :------------ | :-------------------- | :------------------------------ | :---------------------------------- |
 | **Rust**      | `rust/src/main.rs`    | ML-KEM / ASP Cascade 16         | [📖 Rust Guide](rust/README.md)     |
 | **C/C++**     | `c/spna_engine.c`     | FFI ML-KEM / ASP Cascade 16     | [📖 C/C++ Guide](c/README.md)       |
-| **CUDA**      | `cuda/dasp_kernel.cu` | Native ML-KEM / ASP Cascade GPU | [📖 CUDA Guide](cuda/README.md)     |
+| **CUDA**      | `cuda/dspna_512_kernel.cu` | Native ML-KEM / ASP Cascade GPU | [📖 CUDA Guide](cuda/README.md)     |
 | **WASM**      | `rust/Cargo.toml`     | WebAssembly Wrapper via `wasm-pack`| [📖 WASM FFI Guide](WASM_README.md) |
 
 ---
 
 ## ⚖️ License
 
-D-ASP is a Public Domain work, dedicated under the [**CC0 1.0 Universal (CC0 1.0) Public Domain Dedication**](LICENSE).
+D-SPNA-512 is a Public Domain work, dedicated under the [**CC0 1.0 Universal (CC0 1.0) Public Domain Dedication**](LICENSE).
 
 ---

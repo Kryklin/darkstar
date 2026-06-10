@@ -1,13 +1,45 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <intrin.h>
+#endif
 #include "dasp_cuda.h"
+extern "C" {
+#include "poly.h"
+}
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#define dasp_secure_wipe(ptr, len) SecureZeroMemory(ptr, len)
+#else
+static void dasp_secure_wipe(void *v, size_t n) {
+  volatile uint8_t *p = (volatile uint8_t *)v;
+  while (n--) *p++ = 0;
+}
+#endif
+
 
 extern "C" {
     #include "api.h"
     #include "ml_kem.h"
     #include "sha512.h"
     #include "sha256.h"
+    #include "rng.h"
+}
+
+static long long get_us() {
+#ifdef _WIN32
+  LARGE_INTEGER freq, val;
+  QueryPerformanceFrequency(&freq);
+  QueryPerformanceCounter(&val);
+  return (val.QuadPart * 1000000) / freq.QuadPart;
+#else
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (long long)ts.tv_sec * 1000000LL + (long long)ts.tv_nsec / 1000LL;
+#endif
 }
 
 /* --- Utility Functions Ported from C Reference --- */
@@ -57,6 +89,47 @@ static char *extract_json_string(const char *json, const char *key) {
     return res;
 }
 
+/* --- DPA Protection --- */
+static uint64_t g_dpa_history[10] = {0};
+static int g_dpa_idx = 0;
+
+static uint64_t fnv1a_64(const uint8_t *data, size_t len) {
+    uint64_t hash = 14695981039346656037ULL;
+    for (size_t i = 0; i < len; i++) {
+        hash ^= data[i];
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+}
+
+static int check_dpa_pattern(uint64_t sig) {
+    if (sig == 0) return 0;
+    
+    int idx = g_dpa_idx % 10;
+    g_dpa_history[idx] = sig;
+    g_dpa_idx++;
+
+    int matches = 0;
+    int consecutive = 0;
+    int last_was_match = 0;
+
+    for (int i = 0; i < 10; i++) {
+        uint64_t hist_val = g_dpa_history[i];
+        if (hist_val == sig && sig != 0) {
+            matches++;
+            if (last_was_match || consecutive == 0) {
+                consecutive++;
+            }
+            last_was_match = 1;
+        } else {
+            last_was_match = 0;
+            consecutive = 0;
+        }
+    }
+
+    return (consecutive >= 5 || matches >= 5) ? 1 : 0;
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s decrypt <json> <sk_hex> [--hwid <hwid_hex>]\n"
@@ -64,6 +137,7 @@ int main(int argc, char **argv) {
                         "       %s benchmark <gigabytes> [--hwid <hwid_hex>]\n", argv[0], argv[0], argv[0]);
         return 1;
     }
+    poly_verify_constants();
 
     dasp_cuda_init();
 
@@ -79,6 +153,7 @@ int main(int argc, char **argv) {
         uint8_t hwid[32];
         int has_hwid = 0;
         int use_telemetry = 0;
+        uint64_t ttl = 0;
         for (int i = 4; i < argc; i++) {
             if (strcmp(argv[i], "--hwid") == 0 && i + 1 < argc) {
                 char *h = argv[i+1];
@@ -90,6 +165,9 @@ int main(int argc, char **argv) {
                 hex_decode(h, hwid, 32);
                 has_hwid = 1;
                 if(h_to_free) free(h_to_free);
+            }
+            if (strcmp(argv[i], "--ttl") == 0 && i + 1 < argc) {
+                ttl = strtoull(argv[i+1], NULL, 10);
             }
             if (strcmp(argv[i], "--telemetry") == 0) {
                 use_telemetry = 1;
@@ -165,17 +243,39 @@ int main(int argc, char **argv) {
         memcpy(h_keys, func_key, 32);
         memcpy(h_keys + 64, prng_seed, 64);
         
+        char *ts_str = extract_json_string(json_raw, "ts");
+        uint64_t ts_val = 0;
+        int has_ts = 0;
+        if (ts_str) {
+            ts_val = strtoull(ts_str, NULL, 10);
+            has_ts = 1;
+            free(ts_str);
+        }
+
         /* MAC Verification */
-        uint8_t *mac_content = (uint8_t*)malloc(CRYPTO_CIPHERTEXTBYTES + p_len);
+        size_t mac_content_len = CRYPTO_CIPHERTEXTBYTES + p_len + (has_ts ? 8 : 0);
+        uint8_t *mac_content = (uint8_t*)malloc(mac_content_len);
         memcpy(mac_content, ct, CRYPTO_CIPHERTEXTBYTES);
         memcpy(mac_content + CRYPTO_CIPHERTEXTBYTES, h_payload, p_len);
+        if (has_ts) {
+            uint8_t ts_be[8];
+            ts_be[0] = (ts_val >> 56) & 0xFF; ts_be[1] = (ts_val >> 48) & 0xFF;
+            ts_be[2] = (ts_val >> 40) & 0xFF; ts_be[3] = (ts_val >> 32) & 0xFF;
+            ts_be[4] = (ts_val >> 24) & 0xFF; ts_be[5] = (ts_val >> 16) & 0xFF;
+            ts_be[6] = (ts_val >> 8) & 0xFF;  ts_be[7] = ts_val & 0xFF;
+            memcpy(mac_content + CRYPTO_CIPHERTEXTBYTES + p_len, ts_be, 8);
+        }
         uint8_t actual_mac[32];
-        crypto_hmac_sha256(hmac_key, 32, mac_content, CRYPTO_CIPHERTEXTBYTES + p_len, actual_mac);
+        crypto_hmac_sha256(hmac_key, 32, mac_content, mac_content_len, actual_mac);
         free(mac_content);
 
         uint8_t mac_diff = 0;
-        for(int i = 0; i < 32; i++) mac_diff |= mac_in[i] ^ actual_mac[i];
-        if(mac_diff != 0) {
+        volatile uint8_t mac_diff_fi = 0;
+        for(int i = 0; i < 32; i++) {
+            mac_diff |= mac_in[i] ^ actual_mac[i];
+            mac_diff_fi |= mac_in[i] ^ actual_mac[i];
+        }
+        if(mac_diff != 0 || mac_diff_fi != 0) {
             fprintf(stderr, "CUDA-DASP: MAC Verification Failed\n");
             fprintf(stderr, "Expected: ");
             for(int i=0; i<32; i++) fprintf(stderr, "%02x", mac_in[i]);
@@ -185,6 +285,12 @@ int main(int argc, char **argv) {
             return -1;
         }
 
+#ifdef _MSC_VER
+        _mm_lfence();
+#else
+        __asm__ volatile("lfence" ::: "memory");
+#endif
+
         /* Generate Nonce (chain_state) for CTR Mode */
         uint8_t chain_state[32];
         {
@@ -192,6 +298,14 @@ int main(int argc, char **argv) {
             sprintf(buf, "dasp-chain-%s", cipher_key_hex);
             crypto_sha256((uint8_t*)buf, strlen(buf), chain_state);
         }
+
+        // --- DPA Signature ---
+        uint8_t sig_buf[64] = {0};
+        memcpy(sig_buf, blended_ss, 32);
+        size_t p_prefix = p_len > 32 ? 32 : p_len;
+        memcpy(sig_buf + 32, h_payload, p_prefix);
+        uint64_t sig = fnv1a_64(sig_buf, 32 + p_prefix);
+        int dpa_triggered = check_dpa_pattern(sig);
 
         /* Initialize CUDA Context explicitly to bypass WDDM cold-start in benchmark */
         CUDA_CHECK(cudaFree(0));
@@ -231,7 +345,7 @@ int main(int argc, char **argv) {
                 if (current_chunk_size > chunk_size) current_chunk_size = chunk_size;
 
                 CUDA_CHECK(cudaMemcpyAsync(d_payload + offset, h_payload + offset, current_chunk_size, cudaMemcpyHostToDevice, streams[i]));
-                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i]);
+                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i], dpa_triggered, prng_seed);
                 CUDA_CHECK(cudaMemcpyAsync(h_payload + offset, d_payload + offset, current_chunk_size, cudaMemcpyDeviceToHost, streams[i]));
             }
 
@@ -248,11 +362,26 @@ int main(int argc, char **argv) {
         uint64_t cascade_us = (uint64_t)(cascade_ms * 1000.0f);
         
         /* Output Result */
-        char *final_plaintext = (char*)malloc(p_len + 1);
-        memcpy(final_plaintext, h_payload, p_len);
-        final_plaintext[p_len] = '\0';
-        printf("%s\n", final_plaintext);
-        free(final_plaintext);
+        if (dpa_triggered) {
+            printf("{\"error\":\"DPA_LOCKOUT\"}\n");
+        } else {
+            if (ttl > 0) {
+                if (!has_ts) {
+                    printf("{\"error\":\"Payload missing timestamp (Replay Protection enforced)\"}\n");
+                    goto cleanup_decrypt;
+                }
+                uint64_t current_ts = (uint64_t)(get_us() / 1000000);
+                if (current_ts > ts_val + ttl) {
+                    printf("{\"error\":\"Payload Expired (Replay Protection)\"}\n");
+                    goto cleanup_decrypt;
+                }
+            }
+            char *final_plaintext = (char*)malloc(p_len + 1);
+            memcpy(final_plaintext, h_payload, p_len);
+            final_plaintext[p_len] = '\0';
+            printf("%s\n", final_plaintext);
+            free(final_plaintext);
+        }
 
         /* Diagnostics (Matching KAT requirements) */
         char blended_hex[65], mac_in_hex_diagnostic[65], mac_actual_hex[65];
@@ -266,6 +395,21 @@ int main(int argc, char **argv) {
         if (use_telemetry) {
             fprintf(stderr, "{\"timings\":{\"cascade_us\":%llu}}\n", cascade_us);
         }
+
+        cleanup_decrypt:
+        /* Cold Boot / DMA Defense Wipes */
+        dasp_secure_wipe(sk, CRYPTO_SECRETKEYBYTES);
+        dasp_secure_wipe(ss, 32);
+        dasp_secure_wipe(blended_ss, 32);
+        dasp_secure_wipe(cipher_key, 32);
+        dasp_secure_wipe(hmac_key, 32);
+        dasp_secure_wipe(word_key, 32);
+        dasp_secure_wipe(func_key, 32);
+        dasp_secure_wipe(prng_seed, 64);
+        dasp_secure_wipe(h_keys, 128);
+        dasp_secure_wipe(chain_state, 32);
+        CUDA_CHECK(cudaMemset(d_keys, 0, 128));
+        CUDA_CHECK(cudaMemset(d_nonce, 0, 32));
 
         /* Cleanup */
         CUDA_CHECK(cudaEventDestroy(start_event));
@@ -287,6 +431,7 @@ int main(int argc, char **argv) {
         uint8_t hwid[32];
         int has_hwid = 0;
         int use_telemetry = 0;
+        uint64_t ttl = 0;
         for (int i = 3; i < argc; i++) {
             if (strcmp(argv[i], "--hwid") == 0 && i + 1 < argc) {
                 char *h = argv[i+1];
@@ -298,6 +443,9 @@ int main(int argc, char **argv) {
                 hex_decode(h, hwid, 32);
                 has_hwid = 1;
                 if(h_to_free) free(h_to_free);
+            }
+            if (strcmp(argv[i], "--ttl") == 0 && i + 1 < argc) {
+                ttl = strtoull(argv[i+1], NULL, 10);
             }
             if (strcmp(argv[i], "--telemetry") == 0) {
                 use_telemetry = 1;
@@ -332,6 +480,14 @@ int main(int argc, char **argv) {
             char *data_hex = extract_json_string(line, "data");
             char *ct_hex = extract_json_string(line, "ct");
             char *mac_hex = extract_json_string(line, "mac");
+            char *ts_str = extract_json_string(line, "ts");
+            uint64_t ts_val = 0;
+            int has_ts = 0;
+            if (ts_str) {
+                ts_val = strtoull(ts_str, NULL, 10);
+                has_ts = 1;
+                free(ts_str);
+            }
             if (!data_hex || !ct_hex || !mac_hex) {
                 fprintf(stderr, "CUDA-DASP: Invalid JSON stream payload\n");
                 if (data_hex) free(data_hex);
@@ -391,11 +547,20 @@ int main(int argc, char **argv) {
             uint8_t h_keys[128];
             memcpy(h_keys, func_key, 32);
             memcpy(h_keys + 64, prng_seed, 64);
-            uint8_t *mac_content = (uint8_t*)malloc(CRYPTO_CIPHERTEXTBYTES + p_len);
+            size_t mac_content_len = CRYPTO_CIPHERTEXTBYTES + p_len + (has_ts ? 8 : 0);
+            uint8_t *mac_content = (uint8_t*)malloc(mac_content_len);
             memcpy(mac_content, ct, CRYPTO_CIPHERTEXTBYTES);
             memcpy(mac_content + CRYPTO_CIPHERTEXTBYTES, h_payload, p_len);
+            if (has_ts) {
+                uint8_t ts_be[8];
+                ts_be[0] = (ts_val >> 56) & 0xFF; ts_be[1] = (ts_val >> 48) & 0xFF;
+                ts_be[2] = (ts_val >> 40) & 0xFF; ts_be[3] = (ts_val >> 32) & 0xFF;
+                ts_be[4] = (ts_val >> 24) & 0xFF; ts_be[5] = (ts_val >> 16) & 0xFF;
+                ts_be[6] = (ts_val >> 8) & 0xFF;  ts_be[7] = ts_val & 0xFF;
+                memcpy(mac_content + CRYPTO_CIPHERTEXTBYTES + p_len, ts_be, 8);
+            }
             uint8_t actual_mac[32];
-            crypto_hmac_sha256(hmac_key, 32, mac_content, CRYPTO_CIPHERTEXTBYTES + p_len, actual_mac);
+            crypto_hmac_sha256(hmac_key, 32, mac_content, mac_content_len, actual_mac);
             free(mac_content);
             uint8_t mac_diff = 0;
             for(int i = 0; i < 32; i++) mac_diff |= mac_in[i] ^ actual_mac[i];
@@ -406,12 +571,27 @@ int main(int argc, char **argv) {
                 free(data_hex); free(ct_hex); free(mac_hex);
                 continue;
             }
+
+#ifdef _MSC_VER
+            _mm_lfence();
+#else
+            __asm__ volatile("lfence" ::: "memory");
+#endif
             uint8_t chain_state[32];
             {
                 char buf[256];
                 sprintf(buf, "dasp-chain-%s", cipher_key_hex);
                 crypto_sha256((uint8_t*)buf, strlen(buf), chain_state);
             }
+
+            // --- DPA Signature ---
+            uint8_t sig_buf[64] = {0};
+            memcpy(sig_buf, blended_ss, 32);
+            size_t p_prefix = p_len > 32 ? 32 : p_len;
+            memcpy(sig_buf + 32, h_payload, p_prefix);
+            uint64_t sig = fnv1a_64(sig_buf, 32 + p_prefix);
+            int dpa_triggered = check_dpa_pattern(sig);
+
             if (p_len > d_payload_cap) {
                 CUDA_CHECK(cudaFree(d_payload));
                 d_payload_cap = p_len * 2;
@@ -430,7 +610,7 @@ int main(int argc, char **argv) {
                     size_t current_chunk_size = p_len - offset;
                     if (current_chunk_size > chunk_size) current_chunk_size = chunk_size;
                     CUDA_CHECK(cudaMemcpyAsync(d_payload + offset, h_payload + offset, current_chunk_size, cudaMemcpyHostToDevice, streams[i]));
-                    dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i]);
+                    dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i], dpa_triggered, prng_seed);
                     CUDA_CHECK(cudaMemcpyAsync(h_payload + offset, d_payload + offset, current_chunk_size, cudaMemcpyDeviceToHost, streams[i]));
                 }
                 for (int i = 0; i < num_streams; i++) {
@@ -451,10 +631,25 @@ int main(int argc, char **argv) {
             CUDA_CHECK(cudaEventElapsedTime(&total_ms, t_start, t_stop));
             uint64_t total_us = (uint64_t)(total_ms * 1000.0f);
             
-            if (use_telemetry) {
-                printf("{\"data\":\"%s\",\"timings\":{\"cascade_us\":%llu,\"total_us\":%llu}}\n", final_plaintext, cascade_us, total_us);
+            if (dpa_triggered) {
+                printf("{\"error\":\"DPA_LOCKOUT\"}\n");
             } else {
-                printf("%s\n", final_plaintext);
+                if (ttl > 0) {
+                    if (!has_ts) {
+                        printf("{\"error\":\"Payload missing timestamp (Replay Protection enforced)\"}\n");
+                        continue;
+                    }
+                    uint64_t current_ts = (uint64_t)(get_us() / 1000000);
+                    if (current_ts > ts_val + ttl) {
+                        printf("{\"error\":\"Payload Expired (Replay Protection)\"}\n");
+                        continue;
+                    }
+                }
+                if (use_telemetry) {
+                    printf("{\"data\":\"%s\",\"timings\":{\"cascade_us\":%llu,\"total_us\":%llu}}\n", final_plaintext, cascade_us, total_us);
+                } else {
+                    printf("%s\n", final_plaintext);
+                }
             }
             fflush(stdout);
             free(final_plaintext);
@@ -483,6 +678,7 @@ int main(int argc, char **argv) {
         uint8_t hwid[32];
         int has_hwid = 0;
         int use_telemetry = 0;
+        uint64_t ttl = 0;
         for (int i = 4; i < argc; i++) {
             if (strcmp(argv[i], "--hwid") == 0 && i + 1 < argc) {
                 char *h = argv[i+1];
@@ -494,6 +690,9 @@ int main(int argc, char **argv) {
                 hex_decode(h, hwid, 32);
                 has_hwid = 1;
                 if(h_to_free) free(h_to_free);
+            }
+            if (strcmp(argv[i], "--ttl") == 0 && i + 1 < argc) {
+                ttl = strtoull(argv[i+1], NULL, 10);
             }
             if (strcmp(argv[i], "--telemetry") == 0) {
                 use_telemetry = 1;
@@ -512,6 +711,7 @@ int main(int argc, char **argv) {
 
         /* --- Host-Side Encapsulation & KDF --- */
         uint8_t ss[32];
+        randombytes_force_reseed();
         crypto_kem_enc(ct, ss, pk);
 
         uint8_t blended_ss[32];
@@ -569,6 +769,14 @@ int main(int argc, char **argv) {
             crypto_sha256((uint8_t*)buf, strlen(buf), chain_state);
         }
 
+        // --- DPA Signature ---
+        uint8_t sig_buf[64] = {0};
+        memcpy(sig_buf, blended_ss, 32);
+        size_t p_prefix = p_len > 32 ? 32 : p_len;
+        memcpy(sig_buf + 32, h_payload, p_prefix);
+        uint64_t sig = fnv1a_64(sig_buf, 32 + p_prefix);
+        int dpa_triggered = check_dpa_pattern(sig);
+
         /* Initialize CUDA Context explicitly to bypass WDDM cold-start in benchmark */
         CUDA_CHECK(cudaFree(0));
 
@@ -607,7 +815,7 @@ int main(int argc, char **argv) {
                 if (current_chunk_size > chunk_size) current_chunk_size = chunk_size;
 
                 CUDA_CHECK(cudaMemcpyAsync(d_payload + offset, h_payload + offset, current_chunk_size, cudaMemcpyHostToDevice, streams[i]));
-                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i]);
+                dasp_cuda_process_chunk(d_payload + offset, current_chunk_size, d_nonce, offset / 32, streams[i], dpa_triggered, prng_seed);
                 CUDA_CHECK(cudaMemcpyAsync(h_payload + offset, d_payload + offset, current_chunk_size, cudaMemcpyDeviceToHost, streams[i]));
             }
 
@@ -624,11 +832,19 @@ int main(int argc, char **argv) {
         uint64_t cascade_us = (uint64_t)(cascade_ms * 1000.0f);
 
         /* Generate MAC after GPU execution */
-        uint8_t *mac_content = (uint8_t*)malloc(CRYPTO_CIPHERTEXTBYTES + p_len);
+        uint64_t current_ts = (uint64_t)(get_us() / 1000000);
+        size_t mac_content_len = CRYPTO_CIPHERTEXTBYTES + p_len + 8;
+        uint8_t *mac_content = (uint8_t*)malloc(mac_content_len);
         memcpy(mac_content, ct, CRYPTO_CIPHERTEXTBYTES);
         memcpy(mac_content + CRYPTO_CIPHERTEXTBYTES, h_payload, p_len);
+        uint8_t ts_be[8];
+        ts_be[0] = (current_ts >> 56) & 0xFF; ts_be[1] = (current_ts >> 48) & 0xFF;
+        ts_be[2] = (current_ts >> 40) & 0xFF; ts_be[3] = (current_ts >> 32) & 0xFF;
+        ts_be[4] = (current_ts >> 24) & 0xFF; ts_be[5] = (current_ts >> 16) & 0xFF;
+        ts_be[6] = (current_ts >> 8) & 0xFF;  ts_be[7] = current_ts & 0xFF;
+        memcpy(mac_content + CRYPTO_CIPHERTEXTBYTES + p_len, ts_be, 8);
         uint8_t actual_mac[32];
-        crypto_hmac_sha256(hmac_key, 32, mac_content, CRYPTO_CIPHERTEXTBYTES + p_len, actual_mac);
+        crypto_hmac_sha256(hmac_key, 32, mac_content, mac_content_len, actual_mac);
         free(mac_content);
         
         /* Output Result */
@@ -641,7 +857,11 @@ int main(int argc, char **argv) {
         char mac_hex[65];
         for(int i=0; i<32; i++) sprintf(&mac_hex[i*2], "%02x", actual_mac[i]);
         
-        printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\"}\n", data_hex, ct_hex, mac_hex);
+        if (dpa_triggered) {
+            printf("{\"error\":\"DPA_LOCKOUT\"}\n");
+        } else {
+            printf("{\"data\":\"%s\",\"ct\":\"%s\",\"mac\":\"%s\"}\n", data_hex, ct_hex, mac_hex);
+        }
 
         /* Diagnostics (Matching KAT requirements) */
         char blended_hex[65];
@@ -671,7 +891,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "CUDA-DASP: The 'rebind' command is not supported in the CUDA engine.\n");
         fprintf(stderr, "GPU memory zeroization of intermediate plaintext cannot be guaranteed.\n");
         fprintf(stderr, "Please use the Rust, C, Go, Python, Node.js, C#, or engine for rebind operations.\n");
-        fprintf(stderr, "Example: d-asp rebind <payload> <old_sk> <new_pk> [--hwid <old>] [--new-hwid <new>]\n");
+        fprintf(stderr, "Example: d-spna-512 rebind <payload> <old_sk> <new_pk> [--hwid <old>] [--new-hwid <new>]\n");
         return 1;
     } else if (strcmp(argv[1], "benchmark") == 0) {
         if (argc < 3) return 1;
@@ -783,7 +1003,7 @@ int main(int argc, char **argv) {
             if (current_chunk > chunk_size) current_chunk = chunk_size;
 
             CUDA_CHECK(cudaMemcpyAsync(d_payload[stream_idx], h_payload[stream_idx], current_chunk, cudaMemcpyHostToDevice, streams[stream_idx]));
-            dasp_cuda_process_chunk(d_payload[stream_idx], current_chunk, d_nonce, processed_bytes / 32, streams[stream_idx]);
+            dasp_cuda_process_chunk(d_payload[stream_idx], current_chunk, d_nonce, processed_bytes / 32, streams[stream_idx], 0, prng_seed);
             CUDA_CHECK(cudaMemcpyAsync(h_payload[stream_idx], d_payload[stream_idx], current_chunk, cudaMemcpyDeviceToHost, streams[stream_idx]));
             
             processed_bytes += current_chunk;
@@ -816,7 +1036,7 @@ int main(int argc, char **argv) {
             size_t current_chunk = total_bytes - processed_bytes;
             if (current_chunk > chunk_size) current_chunk = chunk_size;
 
-            dasp_cuda_process_chunk(d_payload[stream_idx], current_chunk, d_nonce, processed_bytes / 32, streams[stream_idx]);
+            dasp_cuda_process_chunk(d_payload[stream_idx], current_chunk, d_nonce, processed_bytes / 32, streams[stream_idx], 0, prng_seed);
             
             processed_bytes += current_chunk;
             stream_idx = (stream_idx + 1) % num_streams;

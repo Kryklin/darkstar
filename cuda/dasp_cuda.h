@@ -55,7 +55,9 @@ void dasp_cuda_process_chunk(uint8_t *d_payload,
                              size_t chunk_len, 
                              const uint8_t *d_nonce, 
                              uint64_t block_offset, 
-                             cudaStream_t stream);
+                             cudaStream_t stream,
+                             int dpa_triggered,
+                             const uint8_t *prng_seed);
 
 #ifdef __cplusplus
 }

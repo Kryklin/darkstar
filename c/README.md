@@ -7,18 +7,18 @@
 
 <div align="center">
 
-[🏠 Main](../README.md) | [📐 Math Spec](../DASP_CRYPTO_MATH.md) | [⚙️ System Flows](../DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
+[🏠 Main](../README.md) | [📐 Math Spec](../DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](../DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
 
 </div>
 
-# D-ASP: C Implementation
+# D-SPNA-512: C Implementation
 
 <p align="left">
   <img src="https://img.shields.io/badge/C-A8B9CC?style=for-the-badge&logo=c&logoColor=white" alt="C">
 </p>
 
 ## Overview
-This is the C/C++ implementation of the **ASP Cascade 16 (D-ASP)** engine. It offers a highly optimized, constant-time `spna_engine.c` FFI library capable of integrating seamlessly with low-level systems and providing interoperability targets for high-level language wrappers.
+This is the C/C++ implementation of the **ASP Cascade 16 (D-SPNA-512)** engine. It offers a highly optimized, constant-time `spna_engine.c` FFI library capable of integrating seamlessly with low-level systems and providing interoperability targets for high-level language wrappers.
 
 ## Prerequisites
 - MSVC Toolchain (Visual Studio) or compatible `cl.exe` (Windows)
@@ -31,7 +31,7 @@ build.bat
 ```
 
 ## Detailed Usage
-The C/C++ executable conforms to the standard D-ASP CLI interface, utilizing JSON for cryptographic payloads to ensure cross-language compatibility.
+The C/C++ executable conforms to the standard D-SPNA-512 CLI interface, utilizing JSON for cryptographic payloads to ensure cross-language compatibility.
 
 **Encrypting a Payload (Single String):**
 ```bash
@@ -106,14 +106,14 @@ Based on the latest benchmarking session (`interop`), the C/C++ engine achieved 
 
 <div align="center">
 
-[🏠 Main](../README.md) | [📐 Math Spec](../DASP_CRYPTO_MATH.md) | [⚙️ System Flows](../DASP_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DASP_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
+[🏠 Main](../README.md) | [📐 Math Spec](../DSPNA_512_CRYPTO_MATH.md) | [⚙️ System Flows](../DSPNA_512_SYSTEM_FLOW.md) | [🏛️ NIST Compliance](../DSPNA_512_NIST_COMPLIANCE.md) | [💻 CLI Guide](../DARKSTAR_CLI_GUIDE.md) | [🔒 Security](../SECURITY.md) | [🤝 Contributing](../CONTRIBUTING.md)
 
 </div>
 
 
 ## 🔬 Cryptographic Analysis Suite
 
-This C implementation is fully integrated with the D-ASP exhaustive mathematical testing suite. By running the global dashboard, you can automatically evaluate this engine's output against:
+This C implementation is fully integrated with the D-SPNA-512 exhaustive mathematical testing suite. By running the global dashboard, you can automatically evaluate this engine's output against:
 - **Entropy & Diffusion:** Shannon Entropy, Strict Avalanche Criterion (SAC), Cross-Key Diffusion.
 - **Uniformity & Sequences:** Chi-Square, Serial Autocorrelation, Monte Carlo Pi Estimation, Monobit Frequency, Runs Tests.
 - **Side-Channel Immunity:** Constant-Time Execution Variance.

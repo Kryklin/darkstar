@@ -1,5 +1,5 @@
 [package]
-name = "d-asp"
+name = "d-spna-512"
 version = "1.0.6"
 edition = "2021"
 authors = ["Victor Kane"]
