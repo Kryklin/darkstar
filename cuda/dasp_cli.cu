@@ -351,7 +351,7 @@ int main(int argc, char **argv) {
 
         if (p_len > 0) {
             size_t chunk_size = (p_len + num_streams - 1) / num_streams;
-            chunk_size = (chunk_size + 31) & ~31; // Align to 32 bytes
+            chunk_size = (chunk_size + 63) & ~63; // Align to 64 bytes
 
             for (int i = 0; i < num_streams; i++) {
                 size_t offset = i * chunk_size;
@@ -815,7 +815,7 @@ int main(int argc, char **argv) {
 
         if (p_len > 0) {
             size_t chunk_size = (p_len + num_streams - 1) / num_streams;
-            chunk_size = (chunk_size + 31) & ~31; // Align to 32 bytes
+            chunk_size = (chunk_size + 63) & ~63; // Align to 64 bytes
 
             for (int i = 0; i < num_streams; i++) {
                 size_t offset = i * chunk_size;

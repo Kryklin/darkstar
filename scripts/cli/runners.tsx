@@ -427,6 +427,7 @@ export const BumpRunner = ({ onComplete }: { onComplete: () => void }) => {
 export const BuildEnginesRunner = ({ onComplete }: { onComplete: () => void }) => {
   const [states, setStates] = useState<Record<string, 'pending' | 'running' | 'pass' | 'fail'>>({
     rust: 'pending',
+    rust_test: 'pending',
     wasm: 'pending',
     c: 'pending',
     cuda: 'pending'
@@ -444,6 +445,7 @@ export const BuildEnginesRunner = ({ onComplete }: { onComplete: () => void }) =
       const { execa } = await import('execa');
       const engines = [
         { id: 'rust', name: 'RUST', cmd: 'npm run build:rust' },
+        { id: 'rust_test', name: 'TEST SUITE', cmd: 'cd rust && cargo build --release --bin test_suite' },
         { id: 'wasm', name: 'WASM', cmd: 'npm run build:wasm' },
         { id: 'c', name: 'C', cmd: 'npm run build:c' },
         { id: 'cuda', name: 'CUDA', cmd: 'npm run build:cuda' }
@@ -480,6 +482,7 @@ export const BuildEnginesRunner = ({ onComplete }: { onComplete: () => void }) =
         <Text color="#F8FAFC" bold>Darkstar Compilation Target</Text>
         <Box flexDirection="column" marginLeft={2} marginTop={1}>
           <Text color={getColor(states.rust)}>├─ {getIcon(states.rust)} RUST</Text>
+          <Text color={getColor(states.rust_test)}>├─ {getIcon(states.rust_test)} TEST SUITE</Text>
           <Text color={getColor(states.wasm)}>├─ {getIcon(states.wasm)} WASM</Text>
           <Text color={getColor(states.c)}>├─ {getIcon(states.c)} C</Text>
           <Text color={getColor(states.cuda)}>└─ {getIcon(states.cuda)} CUDA</Text>

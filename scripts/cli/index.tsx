@@ -5,10 +5,6 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import path from 'path';
 import fs from 'fs';
-import { runInteropBenchmark, InteropResult } from './tests/interop.js';
-import { runKatVerification, KatResult } from './tests/kat.js';
-import { runGpuTest, GpuTestResult } from './tests/gpu.js';
-import { CryptoAnalysisResult, runCryptoAnalysis } from './tests/analyze.js';
 import SelectInput from 'ink-select-input';
 import { ShellJobRunner, ScriptRunner, CleanRunner, EnvCheckRunner, BumpRunner, BuildEnginesRunner, ScaffoldRunner, DockerMatrixRunner } from './runners.js';
 
@@ -107,13 +103,7 @@ const items = [
 
   { label: '◉ Environment Preflight', value: 'check-env', color: '#10B981' },
   { isSeparator: true, label: '─── Verification ─────────────────────────────────────────', color: '#F8FAFC' },
-  { label: '◈ Interop Benchmark', value: 'interop', color: '#38BDF8' },
-  { label: '◈ GPU Synthetic Data Test', value: 'gpu-test', color: '#38BDF8' },
-  { label: '◈ Cryptographic Analysis', value: 'crypto_analysis', color: '#38BDF8' },
-  { label: '◈ Generate NIST Bitstream', value: 'gen-nist', color: '#38BDF8' },
-  { label: '◈ Generate KAT Vectors', value: 'gen-kat', color: '#38BDF8' },
-  { label: '◈ KAT Verification', value: 'kat', color: '#38BDF8' },
-  { label: '◈ Headless Docker Matrix', value: 'docker-test', color: '#38BDF8' },
+  { label: '◈ Enter Rust Test Suite', value: 'rust-test-suite', color: '#38BDF8' },
   { isSeparator: true, label: '─── Security & Audit ─────────────────────────────────────', color: '#F8FAFC' },
   { label: '▲ Memory Sanitizers', value: 'asan', color: '#F59E0B' },
   { label: '▲ Security Audit', value: 'audit', color: '#F59E0B' },
@@ -240,363 +230,7 @@ const CenteredLayout = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const InteropTestRunner = ({ title = "Hardware Interoperability Benchmark", useDocker = false, onComplete }: { title?: string; useDocker?: boolean; onComplete: () => void }) => {
-  const [step, setStep] = useState(0);
-  const [rounds, setRounds] = useState(10);
-  const [results, setResults] = useState<InteropResult[]>([]);
-  const [progresses, setProgresses] = useState<{ [key: string]: { progress: number, currentIt: number, totalIt: number } }>({});
-  const [done, setDone] = useState(false);
-  const [tick, setTick] = useState(0);
 
-  useEffect(() => {
-    const t = setInterval(() => setTick(f => f + 1), 80);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    if (step === 1) {
-      runInteropBenchmark((engine, prog, result, current, total) => {
-        setProgresses(p => ({ ...p, [engine]: { progress: prog, currentIt: current ?? 0, totalIt: total ?? 0 } }));
-        if (result) setResults((prev) => {
-           if (prev.find(x => x.engine === result.engine)) return prev;
-           return [...prev, result];
-        });
-      }, rounds, useDocker).then(() => setDone(true)).catch(console.error);
-    }
-  }, [step]);
-
-  const spin = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-
-  const roundChoices = [
-    { label: '1 Iteration (Single Run)', value: 1 },
-    { label: '10 Iterations (Quick)', value: 10 },
-    { label: '100 Iterations (Standard)', value: 100 },
-    { label: '1,000 Iterations (Deep)', value: 1000 },
-    { label: '10,000 Iterations (Stress)', value: 10000 },
-    { label: '100,000 Iterations (Extreme)', value: 100000 }
-  ];
-
-  return (
-    <Box flexDirection="column" padding={1} width={100} alignItems="center">
-      <Text color="#00E5FF" bold>─── {title} ───</Text>
-      
-      {step === 0 && (
-        <Box flexDirection="column" marginTop={1} alignItems="center">
-          <Text color="#38BDF8">Select Number of Test Iterations:</Text>
-          <SelectInput items={roundChoices} onSelect={(item) => { setRounds(item.value); setStep(1); }} />
-        </Box>
-      )}
-
-      {step === 1 && !done && (
-        <Box marginY={1} flexDirection="row" width={90} justifyContent="space-around">
-          {['Rust', 'C', 'CUDA'].map((lang, i) => {
-            const r = results.find(x => x.engine === lang);
-            const progData = progresses[lang];
-            const isCurrent = !!(progData && progData.progress < 100 && !r);
-            const prog = progData?.progress || 0;
-            const color = r ? (r.status === 'PASS' ? '#10B981' : '#EF4444') : isCurrent ? '#38BDF8' : '#64748B';
-            return (
-              <Box key={i} width={28} height={5} borderStyle="single" borderColor={color} flexDirection="column" alignItems="center" justifyContent="center">
-                <Text color="#F8FAFC" bold>{ICONS[lang]} {lang}</Text>
-                <Box marginTop={1}>
-                  <Text color={color}>
-                    {r ? (r.status === 'PASS' ? `✔ ${r.casca_cpb.toFixed(2)} cpb` : '✖ Failed') : isCurrent ? `${spin[tick % 10]} ${prog}% [${'█'.repeat(Math.floor(prog / 10))}${'░'.repeat(10 - Math.floor(prog / 10))}]` : '○ Pending'}
-                  </Text>
-                </Box>
-              </Box>
-            );
-          })}
-        </Box>
-      )}
-
-      {step === 1 && done && (
-      <Box marginY={1} flexDirection="column" width={96} borderStyle="single" borderColor="#0F172A">
-        <Box paddingX={1} marginBottom={1}>
-          <Box width={10}><Text color="#94A3B8" bold>ENGINE</Text></Box>
-          <Box width={10}><Text color="#94A3B8" bold>STATUS</Text></Box>
-          <Box width={15}><Text color="#94A3B8" bold>CASCADE TIME</Text></Box>
-          <Box width={15}><Text color="#94A3B8" bold>CASCADE CPB</Text></Box>
-          <Box width={15}><Text color="#94A3B8" bold>PERFORMANCE</Text></Box>
-          <Box width={15}><Text color="#94A3B8" bold>THROUGHPUT</Text></Box>
-        </Box>
-        
-        {results.map((r, i) => (
-          <Box key={i} paddingX={1} backgroundColor={i % 2 === 0 ? '#0F172A' : undefined}>
-            <Box width={10}><Text color="#F8FAFC">{ICONS[r.engine]} {r.engine}</Text></Box>
-            <Box width={10}><Text color={r.status === 'PASS' ? '#10B981' : '#EF4444'} bold>{r.status}</Text></Box>
-            <Box width={15}><Text color="#38BDF8">{r.casca_us.toFixed(2)} μs</Text></Box>
-            <Box width={15}><Text color="#F59E0B">{r.casca_cpb.toFixed(2)} cpb</Text></Box>
-            <Box width={15}><Text color="#00E5FF">{r.ops_sec.toLocaleString(undefined, {maximumFractionDigits: 0})} ops/s</Text></Box>
-            <Box width={15}><Text color="#D946EF">{r.throughput_mbps.toFixed(1)} MB/s</Text></Box>
-          </Box>
-        ))}
-        <Box paddingX={1} marginTop={1}>
-          <Box width={96}><Text color="#10B981" bold>✓ All iterations verified successfully.</Text></Box>
-        </Box>
-      </Box>
-      )}
-
-      <Box flexDirection="column" alignItems="center" height={3}>
-        {done && (
-          <Box flexDirection="column" alignItems="center">
-            <Text color="#10B981" bold>✨ Hardware Validation Complete.</Text>
-            <PressEnterToContinue onEnter={onComplete} />
-          </Box>
-        )}
-      </Box>
-    </Box>
-  );
-};
-
-const DockerTestRunner = ({ onComplete }: { onComplete: () => void }) => {
-  const [step, setStep] = useState(0);
-
-  const wrappers = [
-    'node', 'python', 'go', 'ruby', 'elixir', 'php', 'csharp', 
-    'java', 'kotlin', 'dart', 'swift', 'lua', 'r', 'julia', 'perl'
-  ];
-  
-  // Phase 0: Generate language wrapper files
-  if (step === 0) {
-    return <ScaffoldRunner onComplete={() => setStep(1)} autoAdvance={true} />;
-  }
-
-  // Phase 1: Build the shared builder image first (all wrappers COPY --from it)
-  if (step === 1) {
-    const builderJobs = [
-      { name: '  ├── Base Builder (Shared .so)', cmd: 'docker compose build dasp-builder' },
-      { name: '  ├── Core: Rust', cmd: 'docker compose build dasp-rust' },
-      { name: '  └── Core: C', cmd: 'docker compose build dasp-c' },
-    ];
-
-    return (
-      <ShellJobRunner 
-        key={step}
-        title="Headless Docker Test (Phase 1: Core Infrastructure)" 
-        jobs={builderJobs} 
-        concurrent={false}
-        boxLayout={false}
-        autoAdvance={true}
-        successMsg="Core Infrastructure Initialized. Proceeding to Wrapper Builds..." 
-        failMsg="Core Build Failed" 
-        onComplete={() => setStep(2)} 
-      />
-    );
-  }
-
-  // Phase 2: Build all 15 wrapper images (builder image already exists)
-  if (step === 2) {
-    const jobs = wrappers.map((w, i) => ({
-      name: `${i === wrappers.length - 1 ? '  └──' : '  ├──'} Wrapper: ${w}`,
-      cmd: `docker compose build dasp-${w}`
-    }));
-
-    return (
-      <ShellJobRunner 
-        key={step}
-        title="Headless Docker Test (Phase 2: Build Language Matrix)" 
-        jobs={jobs} 
-        concurrent={false}
-        boxLayout={false}
-        autoAdvance={true}
-        successMsg="All Containers Built. Proceeding to Verification..." 
-        failMsg="Container Build Failed" 
-        onComplete={() => setStep(3)} 
-      />
-    );
-  }
-
-  // Phase 3: Run each wrapper and verify D-SPNA-512 initialization
-  return (
-    <DockerMatrixRunner onComplete={onComplete} />
-  );
-};
-
-const GpuTestRunner = ({ onComplete }: { onComplete: () => void }) => {
-  const [results, setResults] = useState<GpuTestResult[]>([]);
-  const [progress, setProgress] = useState(0);
-  const [total, setTotal] = useState(0);
-  const [actionLabel, setActionLabel] = useState('');
-  const [done, setDone] = useState(false);
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    const t = setInterval(() => setTick(f => f + 1), 80);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    runGpuTest((prog, tot, action, result) => {
-      setProgress(prog);
-      setTotal(tot);
-      setActionLabel(action);
-      if (result) setResults((prev) => [...prev, result]);
-    }).then(() => setDone(true)).catch(console.error);
-  }, []);
-
-  const spin = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-  const percent = total > 0 ? Math.floor((progress / total) * 100) : 0;
-
-  return (
-    <Box flexDirection="column" padding={1} width={100} alignItems="center">
-      <Text color="#00E5FF" bold>─── GPU Synthetic Sweep Benchmark ───</Text>
-      
-      <Box marginY={1} flexDirection="column" width={80} borderStyle="single" borderColor="#0F172A">
-        <Box paddingX={1} marginBottom={1}>
-          <Box width={15}><Text color="#94A3B8" bold>SIZE</Text></Box>
-          <Box width={20}><Text color="#94A3B8" bold>ENCRYPTION</Text></Box>
-          <Box width={20}><Text color="#94A3B8" bold>DECRYPTION</Text></Box>
-          <Box width={15}><Text color="#94A3B8" bold>INTEGRITY</Text></Box>
-        </Box>
-        
-        {results.map((r, i) => (
-          <Box key={i} paddingX={1} backgroundColor={i % 2 === 0 ? '#0F172A' : undefined}>
-            <Box width={15}><Text color="#F8FAFC">{r.size_mb} MB</Text></Box>
-            <Box width={20}><Text color="#38BDF8">{r.enc_gbps.toFixed(2)} Gbps</Text></Box>
-            <Box width={20}><Text color="#38BDF8">{r.dec_gbps.toFixed(2)} Gbps</Text></Box>
-            <Box width={15}><Text color={r.match ? '#10B981' : '#EF4444'} bold>{r.match ? 'PASS' : 'FAIL'}</Text></Box>
-          </Box>
-        ))}
-        {!done && (
-          <Box paddingX={1} marginTop={results.length > 0 ? 1 : 0}>
-            <Box width={25}><Text color="#38BDF8">{spin[tick % spin.length]} {actionLabel}</Text></Box>
-            <Box width={55}>
-              <Text color="#64748B">
-                {`[${'█'.repeat(Math.floor(percent / 5))}${'░'.repeat(20 - Math.floor(percent / 5))}] `}
-                {percent}%
-              </Text>
-            </Box>
-          </Box>
-        )}
-        {done && results.length > 0 && (
-          <Box paddingX={1} marginTop={1}>
-            <Box width={80}><Text color="#10B981" bold>✓ All {results.length} sizes verified.</Text></Box>
-          </Box>
-        )}
-      </Box>
-
-      <Box flexDirection="column" alignItems="center" height={3} marginTop={1}>
-        {done && (
-          <Box flexDirection="column" alignItems="center">
-            <Text color="#10B981" bold>✨ Sweep Benchmark Complete.</Text>
-            <PressEnterToContinue onEnter={onComplete} />
-          </Box>
-        )}
-      </Box>
-    </Box>
-  );
-};
-
-const KatTestRunner = ({ onComplete }: { onComplete: () => void }) => {
-  const [results, setResults] = useState<KatResult[]>([]);
-  const [currentVectors, setCurrentVectors] = useState<{ [key: string]: string }>({});
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    runKatVerification((engine, vecId, result) => {
-      setCurrentVectors(p => ({ ...p, [engine]: vecId }));
-      if (result) setResults((prev) => [...prev, result]);
-    }).then(() => setDone(true)).catch(console.error);
-  }, []);
-
-  const fails = results.filter(r => r.status !== 'PASS');
-
-  return (
-    <Box flexDirection="column" padding={1} width={80} alignItems="center">
-      <Text color="#F8FAFC" bold>─── Known Answer Test (KAT) Verification ───</Text>
-      <Box marginY={1} flexDirection="column" alignItems="center">
-        {!done ? (
-          <Box flexDirection="column" alignItems="center">
-            {Object.entries(currentVectors).map(([eng, vecId]) => (
-              <Text key={eng} color="#F8FAFC">
-                Verifying <Text color="#38BDF8" bold>{eng}</Text> (Vector: {vecId})...
-              </Text>
-            ))}
-          </Box>
-        ) : (
-          <Box flexDirection="column" alignItems="center">
-            {fails.length === 0 ? (
-               <Box marginBottom={1}><Text color="#10B981" bold>✓ All Engines Bit-Perfect Synchronized.</Text></Box>
-            ) : (
-               <Box marginBottom={1}><Text color="#D946EF" bold>❌ Parity Errors Detected:</Text></Box>
-            )}
-            
-            {['Rust', 'C', 'CUDA'].map(lang => {
-               const langResults = results.filter(r => r.engine === lang);
-               if (langResults.length === 0) return null;
-               const passed = langResults.filter(r => r.status === 'PASS').length;
-               const failed = langResults.length - passed;
-               const color = failed > 0 ? '#EF4444' : '#10B981';
-               return (
-                  <Text key={lang} color="#38BDF8">
-                    {lang}: <Text color={color}>{failed > 0 ? 'FAIL' : 'PASS'} ({passed}/{langResults.length} vectors)</Text>
-                  </Text>
-               );
-            })}
-
-            {fails.length > 0 && (
-              <Box flexDirection="column" alignItems="center" marginTop={1}>
-                {fails.map((f, i) => <Text key={i} color="#F43F5E">{f.engine} ({f.vectorId}): {f.error}</Text>)}
-              </Box>
-            )}
-          </Box>
-        )}
-      </Box>
-      <Box height={2} width={80} alignItems="center" justifyContent="center">
-        {done && <PressEnterToContinue onEnter={onComplete} />}
-      </Box>
-    </Box>
-  );
-};
-
-const CryptoAnalysisRunner = ({ onComplete }: { onComplete: () => void }) => {
-  const [currentStage, setCurrentStage] = useState('');
-  const [progress, setProgress] = useState(0);
-  const [result, setResult] = useState<CryptoAnalysisResult | null>(null);
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    runCryptoAnalysis((stage, prog) => {
-      setCurrentStage(stage);
-      setProgress(prog);
-    }).then((res) => {
-      setResult(res);
-      setDone(true);
-    }).catch(console.error);
-  }, []);
-
-  return (
-    <Box flexDirection="column" padding={1} width={80} alignItems="center">
-      <Text color="#F8FAFC" bold>─── Cryptographic Analysis ───</Text>
-      <Box marginY={1} flexDirection="column" alignItems="center" height={16}>
-        {!done ? (
-          <Text color="#F8FAFC">
-            {currentStage}... {progress}%
-          </Text>
-        ) : result && (
-          <Box flexDirection="column" alignItems="center">
-            <Text color="#F8FAFC">Shannon Entropy: <Text color="#10B981">{result.entropy.toFixed(4)}</Text></Text>
-            <Text color="#F8FAFC">Chi-Square: <Text color="#10B981">{result.chi_square.toFixed(2)}</Text></Text>
-            <Text color="#F8FAFC">Strict Avalanche (SAC): <Text color="#10B981">{result.sac_percent.toFixed(2)}%</Text></Text>
-            <Text color="#F8FAFC">Serial Correlation: <Text color="#10B981">{result.serial_correlation.toFixed(5)}</Text></Text>
-            <Text color="#F8FAFC">Monte Carlo Pi: <Text color="#10B981">{result.monte_carlo_pi.toFixed(5)}</Text></Text>
-            <Text color="#F8FAFC">Monobit Ratio: <Text color="#10B981">{result.monobit.toFixed(4)}</Text></Text>
-            <Text color="#F8FAFC">Cross-Key SAC: <Text color="#10B981">{result.cross_key_sac.toFixed(2)}%</Text></Text>
-            <Text color="#F8FAFC">Time Variance: <Text color="#10B981">{result.time_variance.toFixed(4)}%</Text></Text>
-            <Text color="#F8FAFC">Block Frequency (χ²): <Text color="#10B981">{result.block_frequency.toFixed(4)}</Text></Text>
-            <Text color="#F8FAFC">Cumulative Sums: <Text color="#10B981">{result.cumulative_sums.toFixed(4)}</Text></Text>
-            <Text color="#F8FAFC">Discrete Fourier Transform: <Text color="#10B981">{result.spectral_dft.toFixed(4)}</Text></Text>
-            <Text color="#F8FAFC">Longest Run of Ones (χ²): <Text color="#10B981">{result.longest_run.toFixed(4)}</Text></Text>
-            <Text color="#F8FAFC">Approximate Entropy: <Text color="#10B981">{result.approx_entropy.toFixed(4)}</Text></Text>
-            <Text color="#F8FAFC">Serial Pattern Test (χ²): <Text color="#10B981">{result.serial_pattern.toFixed(4)}</Text></Text>
-            <Text color="#F8FAFC">Lempel-Ziv Incompressibility: <Text color="#10B981">{result.lz_compression.toFixed(4)}</Text></Text>
-          </Box>
-        )}
-      </Box>
-      {done && <PressEnterToContinue onEnter={onComplete} />}
-    </Box>
-  );
-};
 
 
 
@@ -660,29 +294,37 @@ const CryptoAnalysisRunner = ({ onComplete }: { onComplete: () => void }) => {
     };
 
     try {
-      if (action === 'interop') {
-        await runComponent(InteropTestRunner);
-        continue;
-      }
-      if (action === 'kat') {
-        await runComponent(KatTestRunner);
-        continue;
-      }
-      if (action === 'crypto_analysis') {
-        await runComponent(CryptoAnalysisRunner);
+      if (action === 'rust-test-suite') {
+        const RUST_TEST_SUITE = path.resolve(__dirname, '../../rust/target/release/test_suite.exe');
+        if (!fs.existsSync(RUST_TEST_SUITE)) {
+            console.log(chalk.red.bold('\n❌ Operation Aborted.'));
+            console.log(chalk.red(`Rust Test Suite is not compiled.\nPlease compile it first using "Compile Engines" from the main menu.\nMissing: ${RUST_TEST_SUITE}`));
+            await new Promise<void>((resolve) => {
+              const { unmount } = render(<PressEnterToContinue onEnter={() => { unmount(); resolve(); }} />);
+            });
+        } else {
+            const { spawnSync } = await import('child_process');
+            try {
+                if (process.stdin.isTTY) {
+                    process.stdin.setRawMode(true); // Temporarily keep raw mode to flush
+                    process.stdin.resume(); // Start flowing to discard events
+                }
+                await new Promise(r => setTimeout(r, 100)); // Let the Enter keystroke settle
+                if (process.stdin.isTTY) {
+                    process.stdin.read(); // Flush the stream!
+                    process.stdin.pause(); // Stop flowing before handing over to child
+                    process.stdin.setRawMode(false); // Cooked mode for child
+                }
+                spawnSync(RUST_TEST_SUITE, [], { stdio: 'inherit', shell: true });
+            } catch(e) {
+                // Ignore exit errors to cleanly return to menu
+            }
+        }
         continue;
       }
 
       if (action === 'check-env') {
         await runComponent(EnvCheckRunner);
-        continue;
-      }
-      if (action === 'gpu-test') {
-        await runComponent(GpuTestRunner);
-        continue;
-      }
-      if (action === 'docker-test') {
-        await runComponent(DockerTestRunner);
         continue;
       }
       if (action === 'lint') {

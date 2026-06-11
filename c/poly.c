@@ -208,7 +208,8 @@ void poly_verify_constants() {
     checksum += v * (uint32_t)(i + 1);
   }
   if (checksum != 4294604331U) {
-    fprintf(stderr, "FATAL: Rowhammer/Corruption detected in ML-KEM zetas array.\n");
+    fprintf(stderr, "FATAL: Rowhammer/Corruption detected in ML-KEM zetas array. Expected 4294604331U, got %u\n", checksum);
+    fflush(stderr);
     exit(1);
   }
 }
