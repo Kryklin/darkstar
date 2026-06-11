@@ -74,14 +74,9 @@ c/d-spna-512.exp
 __pycache__/
 *.pyc
 *.pyo
+*.py
 .venv/
 venv/
-# Project root python scratch scripts
-patch_cuda*.py
-rename_docs.py
-calc_checksum.py
-apply_glitch.py
-patch_cli.py
 
 # -----------------------------------------------------------------------------
 # KAT / interop runtime artefacts
@@ -113,16 +108,14 @@ out-wrappers/
 tools/
 
 # Ignored output files
-c/*.txt
-c/gen_payload.py
+*.txt
+!scripts/data/*.txt
+*.lib
+*.exp
+*.o
+*.obj
+*.pdb
+*.ilk
 c/test_checksum.c
-cuda/*.exp
-cuda/*.lib
-cuda/*.hex
-cuda/*.json
-cuda/test_cuda_kat.py
-cuda/test_cuda_lng.py
-cuda/test_cuda_lng2.py
 rust/test_c.rs
 scratch/
-
