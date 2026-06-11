@@ -50,9 +50,9 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 
 | Engine        | Casca Time | Casca CPB | Ops/sec      | Throughput (MB/s) |
 | :------------ | :--------- | :-------- | :----------- | :---------------- |
-| **Rust**      | **96.57 μs**  | **4.82**  | **10,355**   | **707.9**         |
-| **CUDA**      | 171.80 μs  | 8.59      | 5,820        | 397.9             |
-| **C**         | 254.39 μs  | 12.71     | 3,930        | 268.7             |
+| **Rust**      | **56.47 μs**  | **2.81**  | **17,708**   | **1210.5**        |
+| **CUDA**      | 144.73 μs  | 7.23      | 6,909        | 472.3             |
+| **C**         | 211.70 μs  | 10.57     | 4,723        | 322.9             |
 
 ### 🏎️ Synthetic GPU Benchmarks (CUDA)
 
@@ -77,21 +77,21 @@ The D-SPNA-512 suite guarantees mathematical pseudo-randomness and structural im
 
 | Metric | Rust | C | CUDA | Ideal |
 | :--- | :--- | :--- | :--- | :--- |
-| **Shannon Entropy (Bits/Byte)** | 7.9980 | 7.9980 | 7.9980 | ~ 8.000 |
-| **Strict Avalanche Criterion (SAC)** | 49.39% | 49.64% | 49.85% | ~ 50.0% |
-| **Chi-Square Uniformity** | 278.27 | 280.99 | 277.34 | 200 - 300 |
-| **Serial Autocorrelation** | 0.00769 | 0.00170 | -0.00159 | ~ 0.000 |
-| **Monte Carlo Pi Estimation** | 3.14590 | 3.14356 | 3.16348 | ~ 3.14159 |
-| **Monobit Frequency** | 0.5002 | 0.4999 | 0.4989 | ~ 0.5000 |
-| **Runs Test (Decay Ratio)** | 0.9996 | 1.0001 | 0.9996 | ~ 1.0000 |
-| **Cross-Key Diffusion** | 50.06% | 49.96% | 50.04% | ~ 50.0% |
+| **Shannon Entropy (Bits/Byte)** | 7.9985 | 7.9978 | 7.9983 | ~ 8.000 |
+| **Strict Avalanche Criterion (SAC)** | 49.57% | 50.60% | 49.99% | ~ 50.0% |
+| **Chi-Square Uniformity** | 208.74 | 305.61 | 236.93 | 200 - 300 |
+| **Serial Autocorrelation** | 0.00109 | -0.00029 | 0.00034 | ~ 0.000 |
+| **Monte Carlo Pi Estimation** | 3.14078 | 3.13953 | 3.14672 | ~ 3.14159 |
+| **Monobit Frequency (p-value)** | 0.9313 | 0.5173 | 0.9295 | > 0.0100 |
+| **Runs Test (p-value)** | 0.8079 | 0.4535 | 0.8234 | > 0.0100 |
+| **Cross-Key Diffusion** | 50.08% | 49.98% | 50.01% | ~ 50.0% |
 | **Constant-Time Variance** | 0.0000% | 0.0000% | 0.0000% | < 5.00% |
-| **Block Frequency (χ²)** | 6287.1563 | 6308.5000 | 6375.5938 | ~ 6400.0 |
-| **Cumulative Sums (Cusum)** | 0.6651 | 0.6585 | 1.1567 | ~ 0.000 |
-| **Discrete Fourier Transform** | 0.8263 | -1.7464 | 0.2687 | ~ 0.000 |
-| **Longest Run of Ones (χ²)** | 4.8133 | 2.0124 | 3.8634 | ~ 0.000 |
-| **Approximate Entropy** | 0.6925 | 0.6926 | 0.6925 | ~ 0.693 |
-| **Serial Pattern Test (χ²)** | 33046.1600 | 32790.2400 | 32777.8400 | ~ 32768 |
+| **Block Frequency (χ²)** | 6516.22 | 6340.97 | 6368.19 | ~ 6400.0 |
+| **Spectral DFT (Peaks)** | 3639 | 3548 | 3546 | ~ 3500 |
+| **LZ Compression** | 1.000 | 1.000 | 1.000 | 1.000 |
+| **Longest Run of Ones (χ²)** | 2.36 | 5.85 | 6.41 | ~ 0.000 |
+| **Approximate Entropy** | 0.6925 | 0.6925 | 0.6925 | ~ 0.693 |
+| **Serial Pattern Test (χ²)** | 32931.92 | 32856.64 | 32875.84 | ~ 32768 |
 | **Lempel-Ziv Incompressibility** | 1.0004 | 1.0004 | 1.0004 | ~ 1.000 |
 
 > [!TIP]

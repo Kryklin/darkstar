@@ -67,35 +67,28 @@ static void chacha_quarter_round(uint32_t *x, int a, int b, int c, int d) {
 
 static void chacha_block(uint32_t *state, uint32_t *out) {
   uint32_t x[16];
-  #if defined(__GNUC__) || defined(__clang__)
-  #pragma GCC unroll 16
-  #elif defined(_MSC_VER)
-  #pragma unroll(16)
-  #endif
-  for (int i = 0; i < 16; i++)
-    x[i] = state[i];
-  #if defined(__GNUC__) || defined(__clang__)
-  #pragma GCC unroll 10
-  #elif defined(_MSC_VER)
-  #pragma unroll(10)
-  #endif
-  for (int i = 0; i < 10; i++) {
-    chacha_quarter_round(x, 0, 4, 8, 12);
-    chacha_quarter_round(x, 1, 5, 9, 13);
-    chacha_quarter_round(x, 2, 6, 10, 14);
-    chacha_quarter_round(x, 3, 7, 11, 15);
-    chacha_quarter_round(x, 0, 5, 10, 15);
-    chacha_quarter_round(x, 1, 6, 11, 12);
-    chacha_quarter_round(x, 2, 7, 8, 13);
+  x[0] = state[0]; x[1] = state[1]; x[2] = state[2]; x[3] = state[3];
+  x[4] = state[4]; x[5] = state[5]; x[6] = state[6]; x[7] = state[7];
+  x[8] = state[8]; x[9] = state[9]; x[10] = state[10]; x[11] = state[11];
+  x[12] = state[12]; x[13] = state[13]; x[14] = state[14]; x[15] = state[15];
+
+#define DASP_CHACHA_DOUBLE_ROUND \
+    chacha_quarter_round(x, 0, 4, 8, 12); \
+    chacha_quarter_round(x, 1, 5, 9, 13); \
+    chacha_quarter_round(x, 2, 6, 10, 14); \
+    chacha_quarter_round(x, 3, 7, 11, 15); \
+    chacha_quarter_round(x, 0, 5, 10, 15); \
+    chacha_quarter_round(x, 1, 6, 11, 12); \
+    chacha_quarter_round(x, 2, 7, 8, 13); \
     chacha_quarter_round(x, 3, 4, 9, 14);
-  }
-  #if defined(__GNUC__) || defined(__clang__)
-  #pragma GCC unroll 16
-  #elif defined(_MSC_VER)
-  #pragma unroll(16)
-  #endif
-  for (int i = 0; i < 16; i++)
-    out[i] = x[i] + state[i];
+
+  DASP_CHACHA_DOUBLE_ROUND; DASP_CHACHA_DOUBLE_ROUND; DASP_CHACHA_DOUBLE_ROUND; DASP_CHACHA_DOUBLE_ROUND; DASP_CHACHA_DOUBLE_ROUND;
+  DASP_CHACHA_DOUBLE_ROUND; DASP_CHACHA_DOUBLE_ROUND; DASP_CHACHA_DOUBLE_ROUND; DASP_CHACHA_DOUBLE_ROUND; DASP_CHACHA_DOUBLE_ROUND;
+
+  out[0] = x[0] + state[0]; out[1] = x[1] + state[1]; out[2] = x[2] + state[2]; out[3] = x[3] + state[3];
+  out[4] = x[4] + state[4]; out[5] = x[5] + state[5]; out[6] = x[6] + state[6]; out[7] = x[7] + state[7];
+  out[8] = x[8] + state[8]; out[9] = x[9] + state[9]; out[10] = x[10] + state[10]; out[11] = x[11] + state[11];
+  out[12] = x[12] + state[12]; out[13] = x[13] + state[13]; out[14] = x[14] + state[14]; out[15] = x[15] + state[15];
 }
 
 static void prng_init(prng_t *ctx, const char *seed_str) {
@@ -349,9 +342,13 @@ static inline void dasp_cascade_64_scalar(uint8_t *restrict block, const uint64_
     
 #define DASP_ROUND_SCALAR(r) \
     do { \
-        for(int i=0; i<8; i++) state[i] += round_keys[(r)*8 + i]; \
+        state[0] += round_keys[(r)*8 + 0]; state[1] += round_keys[(r)*8 + 1]; \
+        state[2] += round_keys[(r)*8 + 2]; state[3] += round_keys[(r)*8 + 3]; \
+        state[4] += round_keys[(r)*8 + 4]; state[5] += round_keys[(r)*8 + 5]; \
+        state[6] += round_keys[(r)*8 + 6]; state[7] += round_keys[(r)*8 + 7]; \
         uint64_t rc = 0x9E3779B97F4A7C15ULL + (r); \
-        for(int i=0; i<8; i++) state[i] ^= rc; \
+        state[0] ^= rc; state[1] ^= rc; state[2] ^= rc; state[3] ^= rc; \
+        state[4] ^= rc; state[5] ^= rc; state[6] ^= rc; state[7] ^= rc; \
         uint64_t swapped[8]; \
         if ((r) % 3 == 0) { \
             swapped[0] = state[4]; swapped[1] = state[5]; swapped[2] = state[6]; swapped[3] = state[7]; \
@@ -364,12 +361,19 @@ static inline void dasp_cascade_64_scalar(uint8_t *restrict block, const uint64_
             swapped[4] = state[5]; swapped[5] = state[4]; swapped[6] = state[7]; swapped[7] = state[6]; \
         } \
         uint64_t a_new[8], b_new[8]; \
-        for(int i=0; i<8; i++) { \
-            a_new[i] = state[i] + swapped[i]; \
-            b_new[i] = state[i] ^ a_new[i]; \
-        } \
+        a_new[0] = state[0] + swapped[0]; b_new[0] = state[0] ^ a_new[0]; \
+        a_new[1] = state[1] + swapped[1]; b_new[1] = state[1] ^ a_new[1]; \
+        a_new[2] = state[2] + swapped[2]; b_new[2] = state[2] ^ a_new[2]; \
+        a_new[3] = state[3] + swapped[3]; b_new[3] = state[3] ^ a_new[3]; \
+        a_new[4] = state[4] + swapped[4]; b_new[4] = state[4] ^ a_new[4]; \
+        a_new[5] = state[5] + swapped[5]; b_new[5] = state[5] ^ a_new[5]; \
+        a_new[6] = state[6] + swapped[6]; b_new[6] = state[6] ^ a_new[6]; \
+        a_new[7] = state[7] + swapped[7]; b_new[7] = state[7] ^ a_new[7]; \
         int rot = ((r) % 4 == 0) ? 32 : (((r) % 4 == 1) ? 24 : (((r) % 4 == 2) ? 16 : 14)); \
-        for(int i=0; i<8; i++) b_new[i] = rotl64_scalar(b_new[i], rot); \
+        b_new[0] = rotl64_scalar(b_new[0], rot); b_new[1] = rotl64_scalar(b_new[1], rot); \
+        b_new[2] = rotl64_scalar(b_new[2], rot); b_new[3] = rotl64_scalar(b_new[3], rot); \
+        b_new[4] = rotl64_scalar(b_new[4], rot); b_new[5] = rotl64_scalar(b_new[5], rot); \
+        b_new[6] = rotl64_scalar(b_new[6], rot); b_new[7] = rotl64_scalar(b_new[7], rot); \
         if ((r) % 3 == 0) { \
             state[0] = a_new[0]; state[1] = a_new[1]; state[2] = a_new[2]; state[3] = a_new[3]; \
             state[4] = b_new[4]; state[5] = b_new[5]; state[6] = b_new[6]; state[7] = b_new[7]; \
@@ -588,8 +592,17 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
     dasp_cascade_64(block, round_keys);
 
     size_t chunk = (payload_len - i < 64) ? (payload_len - i) : 64;
-    for (size_t j = 0; j < chunk; j++) {
-      base_payload[i + j] ^= block[j];
+    if (chunk == 64) {
+      uint64_t *base_ptr = (uint64_t *)(base_payload + i);
+      const uint64_t *block_ptr = (const uint64_t *)block;
+      base_ptr[0] ^= block_ptr[0]; base_ptr[1] ^= block_ptr[1];
+      base_ptr[2] ^= block_ptr[2]; base_ptr[3] ^= block_ptr[3];
+      base_ptr[4] ^= block_ptr[4]; base_ptr[5] ^= block_ptr[5];
+      base_ptr[6] ^= block_ptr[6]; base_ptr[7] ^= block_ptr[7];
+    } else {
+      for (size_t j = 0; j < chunk; j++) {
+        base_payload[i + j] ^= block[j];
+      }
     }
 
     for (int j = 63; j >= 0; j--) {
@@ -777,8 +790,17 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
     dasp_cascade_64(block, round_keys);
 
     size_t chunk = (payload_len - i < 64) ? (payload_len - i) : 64;
-    for (size_t j = 0; j < chunk; j++) {
-      base_payload[i + j] ^= block[j];
+    if (chunk == 64) {
+      uint64_t *base_ptr = (uint64_t *)(base_payload + i);
+      const uint64_t *block_ptr = (const uint64_t *)block;
+      base_ptr[0] ^= block_ptr[0]; base_ptr[1] ^= block_ptr[1];
+      base_ptr[2] ^= block_ptr[2]; base_ptr[3] ^= block_ptr[3];
+      base_ptr[4] ^= block_ptr[4]; base_ptr[5] ^= block_ptr[5];
+      base_ptr[6] ^= block_ptr[6]; base_ptr[7] ^= block_ptr[7];
+    } else {
+      for (size_t j = 0; j < chunk; j++) {
+        base_payload[i + j] ^= block[j];
+      }
     }
 
     for (int j = 63; j >= 0; j--) {

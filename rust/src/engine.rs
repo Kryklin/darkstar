@@ -87,16 +87,20 @@ impl DarkstarChaChaPRNG {
             x[b] ^= x[c];
             x[b] = rotate(x[b], 7);
         }
-        for _ in 0..10 {
-            quarter_round(&mut x, 0, 4, 8, 12);
-            quarter_round(&mut x, 1, 5, 9, 13);
-            quarter_round(&mut x, 2, 6, 10, 14);
-            quarter_round(&mut x, 3, 7, 11, 15);
-            quarter_round(&mut x, 0, 5, 10, 15);
-            quarter_round(&mut x, 1, 6, 11, 12);
-            quarter_round(&mut x, 2, 7, 8, 13);
-            quarter_round(&mut x, 3, 4, 9, 14);
+        macro_rules! double_round {
+            () => {
+                quarter_round(&mut x, 0, 4, 8, 12);
+                quarter_round(&mut x, 1, 5, 9, 13);
+                quarter_round(&mut x, 2, 6, 10, 14);
+                quarter_round(&mut x, 3, 7, 11, 15);
+                quarter_round(&mut x, 0, 5, 10, 15);
+                quarter_round(&mut x, 1, 6, 11, 12);
+                quarter_round(&mut x, 2, 7, 8, 13);
+                quarter_round(&mut x, 3, 4, 9, 14);
+            };
         }
+        double_round!(); double_round!(); double_round!(); double_round!(); double_round!();
+        double_round!(); double_round!(); double_round!(); double_round!(); double_round!();
         for i in 0..16 {
             x[i] = x[i].wrapping_add(st[i]);
         }
@@ -143,16 +147,22 @@ fn dasp_cascade_64(block: &mut [u8; 64], round_keys: &[u64; 128]) {
                 state[0] ^= rc; state[1] ^= rc; state[2] ^= rc; state[3] ^= rc;
                 state[4] ^= rc; state[5] ^= rc; state[6] ^= rc; state[7] ^= rc;
 
-                let mut i = 0;
-                while i < 8 {
-                    for j in 0..$dist {
-                        let a = i + j;
-                        let b = i + j + $dist;
-                        state[a] = state[a].wrapping_add(state[b]);
-                        state[b] ^= state[a];
-                        state[b] = state[b].rotate_left($rot as u32);
-                    }
-                    i += $dist * 2;
+                // Fully manual unroll of the network mixing layer
+                if $dist == 4 {
+                    state[0] = state[0].wrapping_add(state[4]); state[4] ^= state[0]; state[4] = state[4].rotate_left($rot as u32);
+                    state[1] = state[1].wrapping_add(state[5]); state[5] ^= state[1]; state[5] = state[5].rotate_left($rot as u32);
+                    state[2] = state[2].wrapping_add(state[6]); state[6] ^= state[2]; state[6] = state[6].rotate_left($rot as u32);
+                    state[3] = state[3].wrapping_add(state[7]); state[7] ^= state[3]; state[7] = state[7].rotate_left($rot as u32);
+                } else if $dist == 2 {
+                    state[0] = state[0].wrapping_add(state[2]); state[2] ^= state[0]; state[2] = state[2].rotate_left($rot as u32);
+                    state[1] = state[1].wrapping_add(state[3]); state[3] ^= state[1]; state[3] = state[3].rotate_left($rot as u32);
+                    state[4] = state[4].wrapping_add(state[6]); state[6] ^= state[4]; state[6] = state[6].rotate_left($rot as u32);
+                    state[5] = state[5].wrapping_add(state[7]); state[7] ^= state[5]; state[7] = state[7].rotate_left($rot as u32);
+                } else {
+                    state[0] = state[0].wrapping_add(state[1]); state[1] ^= state[0]; state[1] = state[1].rotate_left($rot as u32);
+                    state[2] = state[2].wrapping_add(state[3]); state[3] ^= state[2]; state[3] = state[3].rotate_left($rot as u32);
+                    state[4] = state[4].wrapping_add(state[5]); state[5] ^= state[4]; state[5] = state[5].rotate_left($rot as u32);
+                    state[6] = state[6].wrapping_add(state[7]); state[7] ^= state[6]; state[7] = state[7].rotate_left($rot as u32);
                 }
             )*
         }
@@ -394,8 +404,21 @@ impl DarkstarCrypt {
 
             dasp_cascade_64(&mut block, &round_keys);
 
-            for (i, byte) in chunk.iter_mut().enumerate() {
-                *byte ^= block[i];
+            if chunk.len() == 64 {
+                let chunk_u64 = unsafe { std::slice::from_raw_parts_mut(chunk.as_mut_ptr() as *mut u64, 8) };
+                let block_u64 = unsafe { std::slice::from_raw_parts(block.as_ptr() as *const u64, 8) };
+                chunk_u64[0] ^= block_u64[0];
+                chunk_u64[1] ^= block_u64[1];
+                chunk_u64[2] ^= block_u64[2];
+                chunk_u64[3] ^= block_u64[3];
+                chunk_u64[4] ^= block_u64[4];
+                chunk_u64[5] ^= block_u64[5];
+                chunk_u64[6] ^= block_u64[6];
+                chunk_u64[7] ^= block_u64[7];
+            } else {
+                for (i, byte) in chunk.iter_mut().enumerate() {
+                    *byte ^= block[i];
+                }
             }
 
             // Increment 64-byte nonce (CTR mode)
@@ -624,8 +647,21 @@ impl DarkstarCrypt {
 
             dasp_cascade_64(&mut block, &round_keys);
 
-            for (i, b) in chunk.iter_mut().enumerate() {
-                *b ^= block[i];
+            if chunk.len() == 64 {
+                let chunk_u64 = unsafe { std::slice::from_raw_parts_mut(chunk.as_mut_ptr() as *mut u64, 8) };
+                let block_u64 = unsafe { std::slice::from_raw_parts(block.as_ptr() as *const u64, 8) };
+                chunk_u64[0] ^= block_u64[0];
+                chunk_u64[1] ^= block_u64[1];
+                chunk_u64[2] ^= block_u64[2];
+                chunk_u64[3] ^= block_u64[3];
+                chunk_u64[4] ^= block_u64[4];
+                chunk_u64[5] ^= block_u64[5];
+                chunk_u64[6] ^= block_u64[6];
+                chunk_u64[7] ^= block_u64[7];
+            } else {
+                for (i, b) in chunk.iter_mut().enumerate() {
+                    *b ^= block[i];
+                }
             }
 
             // Increment nonce

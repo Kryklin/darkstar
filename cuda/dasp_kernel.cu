@@ -17,17 +17,26 @@ __device__ static void d_chacha_quarter_round(uint32_t *x, int a, int b, int c, 
 
 __device__ static void d_chacha_block(uint32_t *state, uint32_t *out) {
     uint32_t x[16];
-    #pragma unroll
-    for(int i=0; i<16; i++) x[i] = state[i];
-    #pragma unroll
-    for (int i = 0; i < 10; i++) {
-        d_chacha_quarter_round(x, 0, 4, 8, 12); d_chacha_quarter_round(x, 1, 5, 9, 13);
-        d_chacha_quarter_round(x, 2, 6, 10, 14); d_chacha_quarter_round(x, 3, 7, 11, 15);
-        d_chacha_quarter_round(x, 0, 5, 10, 15); d_chacha_quarter_round(x, 1, 6, 11, 12);
-        d_chacha_quarter_round(x, 2, 7, 8, 13); d_chacha_quarter_round(x, 3, 4, 9, 14);
-    }
-    #pragma unroll
-    for(int i=0; i<16; i++) out[i] = x[i] + state[i];
+    x[0] = state[0]; x[1] = state[1]; x[2] = state[2]; x[3] = state[3];
+    x[4] = state[4]; x[5] = state[5]; x[6] = state[6]; x[7] = state[7];
+    x[8] = state[8]; x[9] = state[9]; x[10] = state[10]; x[11] = state[11];
+    x[12] = state[12]; x[13] = state[13]; x[14] = state[14]; x[15] = state[15];
+
+#define D_CHACHA_DOUBLE_ROUND \
+    d_chacha_quarter_round(x, 0, 4, 8, 12); d_chacha_quarter_round(x, 1, 5, 9, 13); \
+    d_chacha_quarter_round(x, 2, 6, 10, 14); d_chacha_quarter_round(x, 3, 7, 11, 15); \
+    d_chacha_quarter_round(x, 0, 5, 10, 15); d_chacha_quarter_round(x, 1, 6, 11, 12); \
+    d_chacha_quarter_round(x, 2, 7, 8, 13); d_chacha_quarter_round(x, 3, 4, 9, 14);
+
+    D_CHACHA_DOUBLE_ROUND; D_CHACHA_DOUBLE_ROUND; D_CHACHA_DOUBLE_ROUND; D_CHACHA_DOUBLE_ROUND; D_CHACHA_DOUBLE_ROUND;
+    D_CHACHA_DOUBLE_ROUND; D_CHACHA_DOUBLE_ROUND; D_CHACHA_DOUBLE_ROUND; D_CHACHA_DOUBLE_ROUND; D_CHACHA_DOUBLE_ROUND;
+
+#undef D_CHACHA_DOUBLE_ROUND
+
+    out[0] = x[0] + state[0]; out[1] = x[1] + state[1]; out[2] = x[2] + state[2]; out[3] = x[3] + state[3];
+    out[4] = x[4] + state[4]; out[5] = x[5] + state[5]; out[6] = x[6] + state[6]; out[7] = x[7] + state[7];
+    out[8] = x[8] + state[8]; out[9] = x[9] + state[9]; out[10] = x[10] + state[10]; out[11] = x[11] + state[11];
+    out[12] = x[12] + state[12]; out[13] = x[13] + state[13]; out[14] = x[14] + state[14]; out[15] = x[15] + state[15];
 }
 
 typedef struct {
