@@ -103,7 +103,10 @@ const items = [
 
   { label: '◉ Environment Preflight', value: 'check-env', color: '#10B981' },
   { isSeparator: true, label: '─── Verification ─────────────────────────────────────────', color: '#F8FAFC' },
-  { label: '◈ Enter Rust Test Suite', value: 'rust-test-suite', color: '#38BDF8' },
+    { label: '? Interoperability Benchmark', value: 'rust-interop', color: '#38BDF8' },
+    { label: '? Known Answer Test (KAT)', value: 'rust-kat', color: '#38BDF8' },
+    { label: '? Performance Analysis', value: 'rust-analyze', color: '#38BDF8' },
+    { label: '? GPU Synthetic Test', value: 'rust-gpu', color: '#38BDF8' },
   { isSeparator: true, label: '─── Security & Audit ─────────────────────────────────────', color: '#F8FAFC' },
   { label: '▲ Memory Sanitizers', value: 'asan', color: '#F59E0B' },
   { label: '▲ Security Audit', value: 'audit', color: '#F59E0B' },
@@ -294,32 +297,21 @@ const CenteredLayout = ({ children }: { children: React.ReactNode }) => {
     };
 
     try {
-      if (action === 'rust-test-suite') {
-        const RUST_TEST_SUITE = path.resolve(__dirname, '../../rust/target/release/test_suite.exe');
-        if (!fs.existsSync(RUST_TEST_SUITE)) {
-            console.log(chalk.red.bold('\n❌ Operation Aborted.'));
-            console.log(chalk.red(`Rust Test Suite is not compiled.\nPlease compile it first using "Compile Engines" from the main menu.\nMissing: ${RUST_TEST_SUITE}`));
-            await new Promise<void>((resolve) => {
-              const { unmount } = render(<PressEnterToContinue onEnter={() => { unmount(); resolve(); }} />);
-            });
-        } else {
-            const { spawnSync } = await import('child_process');
-            try {
-                if (process.stdin.isTTY) {
-                    process.stdin.setRawMode(true); // Temporarily keep raw mode to flush
-                    process.stdin.resume(); // Start flowing to discard events
-                }
-                await new Promise(r => setTimeout(r, 100)); // Let the Enter keystroke settle
-                if (process.stdin.isTTY) {
-                    process.stdin.read(); // Flush the stream!
-                    process.stdin.pause(); // Stop flowing before handing over to child
-                    process.stdin.setRawMode(false); // Cooked mode for child
-                }
-                spawnSync(RUST_TEST_SUITE, [], { stdio: 'inherit', shell: true });
-            } catch(e) {
-                // Ignore exit errors to cleanly return to menu
-            }
-        }
+      const RUST_TEST_SUITE = path.resolve(__dirname, '../../rust/target/release/test_suite.exe');
+      if (action === 'rust-interop') {
+        await runComponent(ScriptRunner, { title: "Hardware Interoperability Benchmark", cmd: `"${RUST_TEST_SUITE}" interop` });
+        continue;
+      }
+      if (action === 'rust-kat') {
+        await runComponent(ScriptRunner, { title: "Known Answer Test (KAT)", cmd: `"${RUST_TEST_SUITE}" kat` });
+        continue;
+      }
+      if (action === 'rust-analyze') {
+        await runComponent(ScriptRunner, { title: "Performance Analysis", cmd: `"${RUST_TEST_SUITE}" analyze` });
+        continue;
+      }
+      if (action === 'rust-gpu') {
+        await runComponent(ScriptRunner, { title: "GPU Synthetic Data Test", cmd: `"${RUST_TEST_SUITE}" test` });
         continue;
       }
 

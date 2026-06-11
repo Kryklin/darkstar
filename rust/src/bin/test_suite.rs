@@ -66,7 +66,7 @@ fn menu_loop() {
     let mut selected_index = 0;
 
     loop {
-        term.clear_screen().unwrap();
+        // term.clear_screen().unwrap();
         print_header(&term);
 
         let term_width = term.size().1 as usize;
@@ -96,7 +96,7 @@ fn menu_loop() {
                 if selected_index < items.len() - 1 { selected_index += 1; }
             }
             Key::Enter => {
-                term.clear_screen().unwrap();
+                // term.clear_screen().unwrap();
                 match selected_index {
                     0 => interop_command(&mut term),
                     1 => kat_command(&mut term),
@@ -104,7 +104,7 @@ fn menu_loop() {
                     3 => gpu_synthetic_test_command(&mut term),
                     4 => docker_matrix_command(&mut term),
                     5 => {
-                        term.clear_screen().unwrap();
+                        // term.clear_screen().unwrap();
                         break;
                     }
                     _ => {}
@@ -112,7 +112,7 @@ fn menu_loop() {
                 
                 println!();
                 println!("{}", center_text(&style("Press [ENTER] to return to menu...").cyan().to_string(), term.size().1 as usize));
-                let _ = term.read_line();
+                
             }
             Key::Escape => break,
             _ => {}
@@ -169,7 +169,7 @@ fn interop_command(term: &mut Term) {
     let enc_stdout = String::from_utf8_lossy(&enc_output.stdout);
     let enc_payloads: Vec<&str> = enc_stdout.lines().filter(|l| !l.trim().is_empty()).collect();
 
-    setup_pb.finish_with_message("Cryptography Initialized");
+    setup_pb.finish_and_clear();
     println!();
 
     let engines = vec![
@@ -184,7 +184,7 @@ fn interop_command(term: &mut Term) {
     for (name, exe, dir) in engines {
         let pb = m.add(ProgressBar::new(rounds as u64));
         let pad = " ".repeat(term_width.saturating_sub(80) / 2);
-        let template = format!("{}{{spinner:.green}} {:<20} [{{bar:40.cyan/blue}}] {{percent}}%", pad, name);
+        let template = format!("{}{{spinner:.green}} {:<20} [{{bar:40.cyan/blue}}] {{percent}}% {{msg}}", pad, name);
         pb.set_style(ProgressStyle::default_bar()
             .template(&template)
             .unwrap()
@@ -199,6 +199,7 @@ fn interop_command(term: &mut Term) {
                 Ok(c) => c,
                 Err(_) => {
                     pb.finish_with_message("Missing binary");
+                    stats_results.push((name, "MISSING", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
                     continue;
                 }
             };
@@ -276,7 +277,7 @@ fn interop_command(term: &mut Term) {
         let nm_padded = console::pad_str(name, 18, console::Alignment::Left, None);
         let st_padded = console::pad_str(status, 6, console::Alignment::Left, None);
         
-        let st_colored = if status == "PASS" { style(st_padded).green().bold().to_string() } else { style(st_padded).red().bold().to_string() };
+        let st_colored = if status == "PASS" { style(st_padded).green().bold().to_string() } else if status == "MISSING" { style(st_padded).yellow().bold().to_string() } else { style(st_padded).red().bold().to_string() };
         let nm_colored = style(nm_padded).bold().to_string();
         
         let min_s = if status == "PASS" { format!("{:.2}", min) } else { "-".to_string() };
@@ -346,7 +347,7 @@ fn kat_command(term: &mut Term) {
     for (name, exe, dir) in engines {
         let pb = m.add(ProgressBar::new(vectors.len() as u64));
         let pad = " ".repeat(term_width.saturating_sub(80) / 2);
-        let template = format!("{}{{spinner:.green}} {:<20} [{{bar:40.cyan/blue}}] {{pos}}/{{len}}", pad, name);
+        let template = format!("{}{{spinner:.green}} {:<20} [{{bar:40.cyan/blue}}] {{pos}}/{{len}} {{msg}}", pad, name);
         pb.set_style(ProgressStyle::default_bar()
             .template(&template)
             .unwrap()
@@ -450,7 +451,7 @@ fn kat_command(term: &mut Term) {
 
     for (name, vec_id, status, err_msg) in results {
         let st_padded = console::pad_str(status, 6, console::Alignment::Left, None);
-        let st_colored = if status == "PASS" { style(st_padded).green().bold().to_string() } else { style(st_padded).red().bold().to_string() };
+        let st_colored = if status == "PASS" { style(st_padded).green().bold().to_string() } else if status == "MISSING" { style(st_padded).yellow().bold().to_string() } else { style(st_padded).red().bold().to_string() };
         let short_name = if name.contains("Rust") { "Rust" } else if name.contains("CUDA") { "CUDA" } else { "C" };
         let short_vec = if vec_id.len() > 10 { format!("{}...", &vec_id[0..7]) } else { vec_id };
 
