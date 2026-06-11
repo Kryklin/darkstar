@@ -175,7 +175,7 @@ int main(int argc, char **argv) {
         uint8_t hwid[32];
         int has_hwid = 0;
         int use_telemetry = 0;
-        uint64_t ttl = 0;
+
         for (int i = 4; i < argc; i++) {
             if (strcmp(argv[i], "--hwid") == 0 && i + 1 < argc) {
                 char *h = argv[i+1];
@@ -187,9 +187,6 @@ int main(int argc, char **argv) {
                 hex_decode(h, hwid, 32);
                 has_hwid = 1;
                 if(h_to_free) free(h_to_free);
-            }
-            if (strcmp(argv[i], "--ttl") == 0 && i + 1 < argc) {
-                ttl = strtoull(argv[i+1], NULL, 10);
             }
             if (strcmp(argv[i], "--telemetry") == 0) {
                 use_telemetry = 1;
@@ -381,17 +378,6 @@ int main(int argc, char **argv) {
         if (dpa_triggered) {
             printf("{\"error\":\"DPA_LOCKOUT\"}\n");
         } else {
-            if (ttl > 0) {
-                if (!has_ts) {
-                    printf("{\"error\":\"Payload missing timestamp (Replay Protection enforced)\"}\n");
-                    goto cleanup_decrypt;
-                }
-                uint64_t current_ts = (uint64_t)(get_us() / 1000000);
-                if (current_ts > ts_val + ttl) {
-                    printf("{\"error\":\"Payload Expired (Replay Protection)\"}\n");
-                    goto cleanup_decrypt;
-                }
-            }
             char *final_plaintext = (char*)malloc(p_len + 1);
             memcpy(final_plaintext, h_payload, p_len);
             final_plaintext[p_len] = '\0';
@@ -412,7 +398,7 @@ int main(int argc, char **argv) {
             fprintf(stderr, "{\"timings\":{\"cascade_us\":%llu}}\n", cascade_us);
         }
 
-        cleanup_decrypt:
+
         /* Cold Boot / DMA Defense Wipes */
         dasp_secure_wipe(sk, CRYPTO_SECRETKEYBYTES);
         dasp_secure_wipe(ss, 32);
@@ -447,7 +433,7 @@ int main(int argc, char **argv) {
         uint8_t hwid[32];
         int has_hwid = 0;
         int use_telemetry = 0;
-        uint64_t ttl = 0;
+
         for (int i = 3; i < argc; i++) {
             if (strcmp(argv[i], "--hwid") == 0 && i + 1 < argc) {
                 char *h = argv[i+1];
@@ -459,9 +445,6 @@ int main(int argc, char **argv) {
                 hex_decode(h, hwid, 32);
                 has_hwid = 1;
                 if(h_to_free) free(h_to_free);
-            }
-            if (strcmp(argv[i], "--ttl") == 0 && i + 1 < argc) {
-                ttl = strtoull(argv[i+1], NULL, 10);
             }
             if (strcmp(argv[i], "--telemetry") == 0) {
                 use_telemetry = 1;
@@ -644,17 +627,6 @@ int main(int argc, char **argv) {
             if (dpa_triggered) {
                 printf("{\"error\":\"DPA_LOCKOUT\"}\n");
             } else {
-                if (ttl > 0) {
-                    if (!has_ts) {
-                        printf("{\"error\":\"Payload missing timestamp (Replay Protection enforced)\"}\n");
-                        continue;
-                    }
-                    uint64_t current_ts = (uint64_t)(get_us() / 1000000);
-                    if (current_ts > ts_val + ttl) {
-                        printf("{\"error\":\"Payload Expired (Replay Protection)\"}\n");
-                        continue;
-                    }
-                }
                 if (use_telemetry) {
                     printf("{\"data\":\"%s\",\"timings\":{\"cascade_us\":%llu,\"total_us\":%llu}}\n", final_plaintext, cascade_us, total_us);
                 } else {
@@ -688,7 +660,6 @@ int main(int argc, char **argv) {
         uint8_t hwid[32];
         int has_hwid = 0;
         int use_telemetry = 0;
-        uint64_t ttl = 0;
         for (int i = 4; i < argc; i++) {
             if (strcmp(argv[i], "--hwid") == 0 && i + 1 < argc) {
                 char *h = argv[i+1];
@@ -700,9 +671,6 @@ int main(int argc, char **argv) {
                 hex_decode(h, hwid, 32);
                 has_hwid = 1;
                 if(h_to_free) free(h_to_free);
-            }
-            if (strcmp(argv[i], "--ttl") == 0 && i + 1 < argc) {
-                ttl = strtoull(argv[i+1], NULL, 10);
             }
             if (strcmp(argv[i], "--telemetry") == 0) {
                 use_telemetry = 1;

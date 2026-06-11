@@ -404,49 +404,14 @@ static inline void dasp_cascade_64_scalar(uint8_t *restrict block, const uint64_
     }
 }
 
-static int check_avx512_support() {
-#ifdef _MSC_VER
-    int cpuInfo[4];
-    __cpuid(cpuInfo, 1);
-    if ((cpuInfo[2] & (1 << 27)) == 0) return 0; // OSXSAVE
-    if ((_xgetbv(_XCR_XFEATURE_ENABLED_MASK) & 0xE6) != 0xE6) return 0;
-    __cpuidex(cpuInfo, 7, 0);
-    return (cpuInfo[1] & (1 << 16)) != 0; // AVX512F
-#else
-    return __builtin_cpu_supports("avx512f");
-#endif
-}
-
-static int check_avx2_support() {
-#ifdef _MSC_VER
-    int cpuInfo[4];
-    __cpuid(cpuInfo, 1);
-    if ((cpuInfo[2] & (1 << 27)) == 0) return 0; // OSXSAVE
-    if ((_xgetbv(_XCR_XFEATURE_ENABLED_MASK) & 6) != 6) return 0;
-    __cpuidex(cpuInfo, 7, 0);
-    return (cpuInfo[1] & (1 << 5)) != 0;
-#else
-    return __builtin_cpu_supports("avx2");
-#endif
-}
-
-static int g_avx2_supported = -1;
-static int g_avx512_supported = -1;
-
 static inline void dasp_cascade_64(uint8_t *restrict block, const uint64_t *restrict round_keys) {
 #if defined(__AVX512F__)
-    if (g_avx512_supported == -1) g_avx512_supported = check_avx512_support();
-    if (g_avx512_supported) {
-        dasp_cascade_64_avx512(block, round_keys);
-        return;
-    }
+    dasp_cascade_64_avx512(block, round_keys);
+    return;
 #endif
 #if defined(__AVX2__)
-    if (g_avx2_supported == -1) g_avx2_supported = check_avx2_support();
-    if (g_avx2_supported) {
-        dasp_cascade_64_avx2(block, round_keys);
-        return;
-    }
+    dasp_cascade_64_avx2(block, round_keys);
+    return;
 #elif defined(__aarch64__) || defined(__ARM_NEON)
     dasp_cascade_64_neon(block, round_keys);
     return;
@@ -581,7 +546,7 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
   size_t p_prefix = payload_len > 32 ? 32 : payload_len;
   memcpy(sig_buf + 32, base_payload, p_prefix);
   uint64_t sig = fnv1a_64(sig_buf, 32 + p_prefix);
-  int dpa_triggered = check_dpa_pattern(sig);
+  check_dpa_pattern(sig);
 
   // ---------------------------------------------------------
   // PHASE 4: Block Encryption (D-ASP Cascade 16)

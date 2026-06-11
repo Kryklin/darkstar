@@ -396,7 +396,6 @@ int main(int argc, char *argv[]) {
                                             use_hwid ? hwid : NULL, ct, mac, ts_val, has_ts);
       long long inner_end = get_us();
 
-      long long end_time = get_us();
       if (res == 0) {
         if (ttl > 0) {
           if (!has_ts) {

@@ -57,14 +57,12 @@ fn main() {
 fn menu_loop() {
     let mut term = Term::stdout();
 
-    let items = vec![
-        "◈ Interop Benchmark",
+    let items = ["◈ Interop Benchmark",
         "◈ Known Answer Tests (KAT)",
         "◈ Cryptographic Analysis",
         "◈ GPU Synthetic Data Test",
         "◈ Headless Docker Matrix",
-        "✕ Exit to Node.js Manager",
-    ];
+        "✕ Exit to Node.js Manager"];
     let mut selected_index = 0;
 
     loop {
@@ -92,7 +90,7 @@ fn menu_loop() {
 
         match key {
             Key::ArrowUp | Key::Char('w') | Key::Char('W') | Key::Char('k') | Key::Char('K') => {
-                if selected_index > 0 { selected_index -= 1; }
+                selected_index = selected_index.saturating_sub(1);
             }
             Key::ArrowDown | Key::Char('s') | Key::Char('S') | Key::Char('j') | Key::Char('J') => {
                 if selected_index < items.len() - 1 { selected_index += 1; }
@@ -164,7 +162,7 @@ fn interop_command(term: &mut Term) {
     fs::write(&payload_file, &payload).unwrap();
 
     let enc_output = Command::new(&rust_exe)
-        .args(&["bulk-encrypt", &rounds.to_string(), &format!("@{}", payload_file.display()), pk, "--hwid", hwid, "--telemetry"])
+        .args(["bulk-encrypt", &rounds.to_string(), &format!("@{}", payload_file.display()), pk, "--hwid", hwid, "--telemetry"])
         .current_dir(&rust_dir)
         .output().expect("Failed to bulk-encrypt");
 
@@ -193,7 +191,7 @@ fn interop_command(term: &mut Term) {
             .progress_chars("=> "));
 
         let mut child = match Command::new(&exe)
-            .args(&["stream-decrypt", sk, "--hwid", hwid, "--telemetry"])
+            .args(["stream-decrypt", sk, "--hwid", hwid, "--telemetry"])
             .current_dir(&dir)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -218,15 +216,13 @@ fn interop_command(term: &mut Term) {
         let reader = BufReader::new(child_stdout);
         let mut casca_us_list = Vec::with_capacity(rounds);
 
-        for line_res in reader.lines() {
-            if let Ok(line) = line_res {
-                if let Ok(v) = serde_json::from_str::<Value>(&line) {
-                    if let Some(c) = v.get("timings").and_then(|t| t.get("cascade_us")) {
-                        casca_us_list.push(c.as_f64().unwrap_or(0.0));
-                    }
+        for line in reader.lines().map_while(Result::ok) {
+            if let Ok(v) = serde_json::from_str::<Value>(&line) {
+                if let Some(c) = v.get("timings").and_then(|t| t.get("cascade_us")) {
+                    casca_us_list.push(c.as_f64().unwrap_or(0.0));
                 }
-                pb.inc(1);
             }
+            pb.inc(1);
         }
 
         let run_res = child.wait().unwrap();
@@ -373,8 +369,8 @@ fn kat_command(term: &mut Term) {
             if let Some(h) = hwid { fs::write(&hwid_file, h).unwrap(); }
 
             let mut cmd = Command::new(&exe);
-            cmd.current_dir(&dir).args(&["decrypt", &format!("@{}", data_file.display()), &format!("@{}", sk_file.display())]);
-            if hwid.is_some() { cmd.args(&["--hwid", &format!("@{}", hwid_file.display())]); }
+            cmd.current_dir(&dir).args(["decrypt", &format!("@{}", data_file.display()), &format!("@{}", sk_file.display())]);
+            if hwid.is_some() { cmd.args(["--hwid", &format!("@{}", hwid_file.display())]); }
             if !name.contains("C Native") { cmd.arg("--diagnostic"); }
 
             let output = cmd.output().unwrap();
@@ -502,7 +498,7 @@ fn crypto_analysis_command(term: &mut Term) {
     let payload_file = rust_dir.join("tmp_analyze_payload.txt");
     fs::write(&payload_file, &payload).unwrap();
 
-    let enc_output = Command::new(&rust_exe).args(&["encrypt", &format!("@{}", payload_file.display()), pk]).current_dir(&rust_dir).output().unwrap();
+    let enc_output = Command::new(&rust_exe).args(["encrypt", &format!("@{}", payload_file.display()), pk]).current_dir(&rust_dir).output().unwrap();
     let stdout_str = String::from_utf8_lossy(&enc_output.stdout);
     
     let mut ct_hex = String::new();
@@ -539,7 +535,7 @@ fn crypto_analysis_command(term: &mut Term) {
     pb.set_message("Strict Avalanche Criterion (SAC)...");
 
     let payload_str = "CRYPTOGRAPHIC_AVALANCHE_TEST_PAYLOAD_1234567890";
-    let base_enc_out = Command::new(&rust_exe).args(&["encrypt", payload_str, pk]).current_dir(&rust_dir).output().unwrap();
+    let base_enc_out = Command::new(&rust_exe).args(["encrypt", payload_str, pk]).current_dir(&rust_dir).output().unwrap();
     let base_out_str = String::from_utf8_lossy(&base_enc_out.stdout);
     let mut base_sac_hex = String::new();
     for line in base_out_str.lines().rev() {
@@ -562,7 +558,7 @@ fn crypto_analysis_command(term: &mut Term) {
         chars[idx] = replacement;
         let mut_str: String = chars.into_iter().collect();
 
-        let m_out = Command::new(&rust_exe).args(&["encrypt", &mut_str, pk]).current_dir(&rust_dir).output().unwrap();
+        let m_out = Command::new(&rust_exe).args(["encrypt", &mut_str, pk]).current_dir(&rust_dir).output().unwrap();
         let m_out_str = String::from_utf8_lossy(&m_out.stdout);
         let mut m_sac_hex = String::new();
         for line in m_out_str.lines().rev() {
@@ -590,7 +586,7 @@ fn crypto_analysis_command(term: &mut Term) {
     let stdout2 = String::from_utf8_lossy(&output2.stdout);
     let pk2 = stdout2.lines().find(|l| l.starts_with("PK:")).unwrap().split(": ").nth(1).unwrap().trim();
 
-    let cross_out = Command::new(&rust_exe).args(&["encrypt", &format!("@{}", payload_file.display()), pk2]).current_dir(&rust_dir).output().unwrap();
+    let cross_out = Command::new(&rust_exe).args(["encrypt", &format!("@{}", payload_file.display()), pk2]).current_dir(&rust_dir).output().unwrap();
     let cross_str = String::from_utf8_lossy(&cross_out.stdout);
     let mut cross_hex = String::new();
     for line in cross_str.lines().rev() {
@@ -677,30 +673,28 @@ fn gpu_synthetic_test_command(term: &mut Term) {
 
     let mut results = Vec::new();
 
-    for line in reader.lines() {
-        if let Ok(l) = line {
-            if let Ok(v) = serde_json::from_str::<Value>(&l) {
-                if let Some(res) = v.get("result") {
-                    if res.as_bool().unwrap_or(false) {
-                        results.push((
-                            v.get("size_mb").and_then(|x| x.as_f64()).unwrap_or(0.0),
-                            v.get("enc_gbps").and_then(|x| x.as_f64()).unwrap_or(0.0),
-                            v.get("dec_gbps").and_then(|x| x.as_f64()).unwrap_or(0.0),
-                            v.get("match").and_then(|x| {
-                                if x.is_boolean() { x.as_bool() }
-                                else if x.is_string() { Some(x.as_str().unwrap() == "true") }
-                                else { None }
-                            }).unwrap_or(false),
-                        ));
-                    }
+    for l in reader.lines().map_while(Result::ok) {
+        if let Ok(v) = serde_json::from_str::<Value>(&l) {
+            if let Some(res) = v.get("result") {
+                if res.as_bool().unwrap_or(false) {
+                    results.push((
+                        v.get("size_mb").and_then(|x| x.as_f64()).unwrap_or(0.0),
+                        v.get("enc_gbps").and_then(|x| x.as_f64()).unwrap_or(0.0),
+                        v.get("dec_gbps").and_then(|x| x.as_f64()).unwrap_or(0.0),
+                        v.get("match").and_then(|x| {
+                            if x.is_boolean() { x.as_bool() }
+                            else if x.is_string() { Some(x.as_str().unwrap() == "true") }
+                            else { None }
+                        }).unwrap_or(false),
+                    ));
                 }
-                if let Some(prog) = v.get("progress").and_then(|x| x.as_u64()) {
-                    let total = v.get("total").and_then(|x| x.as_u64()).unwrap_or(100);
-                    let action = v.get("action").and_then(|x| x.as_str()).unwrap_or("");
-                    let size = v.get("size_mb").and_then(|x| x.as_f64()).unwrap_or(0.0);
-                    pb.set_position((prog * 100) / total);
-                    pb.set_message(format!("{} {} MB...", action, size));
-                }
+            }
+            if let Some(prog) = v.get("progress").and_then(|x| x.as_u64()) {
+                let total = v.get("total").and_then(|x| x.as_u64()).unwrap_or(100);
+                let action = v.get("action").and_then(|x| x.as_str()).unwrap_or("");
+                let size = v.get("size_mb").and_then(|x| x.as_f64()).unwrap_or(0.0);
+                pb.set_position((prog * 100) / total);
+                pb.set_message(format!("{} {} MB...", action, size));
             }
         }
     }
@@ -780,7 +774,7 @@ fn docker_matrix_command(term: &mut Term) {
 
         let start = std::time::Instant::now();
         let output = Command::new("docker")
-            .args(&["compose", "run", "--rm", "--no-deps", service])
+            .args(["compose", "run", "--rm", "--no-deps", service])
             .current_dir(&base_dir)
             .output();
 
@@ -803,7 +797,7 @@ fn docker_matrix_command(term: &mut Term) {
     }
     
     let _ = Command::new("docker")
-        .args(&["compose", "down", "--remove-orphans"])
+        .args(["compose", "down", "--remove-orphans"])
         .current_dir(&base_dir)
         .output();
 

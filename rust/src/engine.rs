@@ -262,8 +262,8 @@ impl DarkstarCrypt {
         let mut consecutive = 0;
         let mut last_was_match = false;
 
-        for i in 0..10 {
-            let hist_val = DPA_HISTORY[i].load(Ordering::SeqCst);
+        for hist_atom in &DPA_HISTORY {
+            let hist_val = hist_atom.load(Ordering::SeqCst);
             if hist_val == sig && sig != 0 {
                 matches += 1;
                 if last_was_match || consecutive == 0 {
@@ -339,12 +339,12 @@ impl DarkstarCrypt {
         // ---------------------------------------------------------
         let mut cipher_hasher = Sha256::new();
         cipher_hasher.update(b"cipher");
-        cipher_hasher.update(blended_ss.clone());
+        cipher_hasher.update(blended_ss);
         let mut cipher_key = cipher_hasher.finalize();
 
         let mut hmac_hasher = Sha256::new();
         hmac_hasher.update(b"hmac");
-        hmac_hasher.update(blended_ss.clone());
+        hmac_hasher.update(blended_ss);
         let mut hmac_key = hmac_hasher.finalize();
 
         let mut active_password_bytes = [0u8; 64];
