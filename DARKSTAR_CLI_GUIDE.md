@@ -42,13 +42,18 @@ npm start
 
 ### Testing & Benchmarking
 
-Operations used to verify parity and execution times across all languages.
+Operations used to verify parity and execution times across all languages. These are all accessible via the interactive `npm start` dashboard.
 
-| Option    | Display Name            | Command Executed        | Description                                                                                 |
-| :-------- | :---------------------- | :---------------------- | :------------------------------------------------------------------------------------------ |
-| `interop` | **Interop Benchmark**   | `npm run test:interop`  | Verifies bit-perfect parity across all language engines (including CUDA).                   |
-| `kat`     | **KAT Verification**    | `npm run test:kat`      | Runs the Known Answer Test suite (NIST Parity) across all engines, including GPU execution. |
-| `gen-kat` | **Generate KAT Data**   | `npm run test:gen-kat`  | Re-generates standard, long, and bound KAT vectors using the reference engine.              |
+| Option    | Display Name                 | Description                                                                                 |
+| :-------- | :--------------------------- | :------------------------------------------------------------------------------------------ |
+| `interop` | **Interop Benchmark**        | Verifies bit-perfect parity across all language engines (including CUDA).                   |
+| `kat`     | **Known Answer Tests (KAT)** | Runs the Known Answer Test suite (NIST Parity) across all engines.                          |
+| `analysis`| **Cryptographic Analysis**   | Evaluates the math engines against randomness, entropy, and SAC bounds.                     |
+| `gpu`     | **GPU Synthetic Data Test**  | Streams massive continuous payloads to test the raw GB/s limit of the CUDA engine.          |
+| `docker`  | **Headless Docker Matrix**   | Orchestrates a standalone Docker Compose matrix to test language engines off-host.          |
+
+> [!NOTE]
+> Standalone testing via CLI (e.g., `npm run test:gen-kat` to regenerate vectors) is still available, but daily development should utilize the interactive `npm start` suite.
 
 ### Build & Compilation
 
@@ -61,12 +66,11 @@ Production-grade compilation tasks.
 
 ### System
 
-System-level diagnostic and headless verification utilities.
+System-level diagnostic utilities.
 
 | Option        | Display Name              | Command Executed        | Description                                                                        |
 | :------------ | :------------------------ | :---------------------- | :--------------------------------------------------------------------------------- |
 | `check-env`   | **Dev Environment Check** | Custom Script           | Verifies the installation of C, Rust toolchains.                          |
-| `docker-test` | **Headless Docker Test**  | `docker compose ... up` | Orchestrates a standalone Docker Compose matrix to test language engines off-host. |
 
 ---
 

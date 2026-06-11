@@ -50,9 +50,9 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 
 | Engine        | Casca Time | Casca CPB | Ops/sec      | Throughput (MB/s) |
 | :------------ | :--------- | :-------- | :----------- | :---------------- |
-| **CUDA**      | 156.44 μs  | **7.64**  | **6,392**    | **437.0**         |
-| **Rust**      | **134.91 μs** | **6.59** | **7,412**    | **506.7**         |
-| **C**         | 249.55 μs  | 12.19     | 4,007        | 273.9             |
+| **Rust**      | **96.57 μs**  | **4.82**  | **10,355**   | **707.9**         |
+| **CUDA**      | 171.80 μs  | 8.59      | 5,820        | 397.9             |
+| **C**         | 254.39 μs  | 12.71     | 3,930        | 268.7             |
 
 ### 🏎️ Synthetic GPU Benchmarks (CUDA)
 
@@ -65,7 +65,6 @@ The CUDA engine was engineered to support massive parallel payloads by streaming
 | **64 MB**    | 603.71         | 644.31         |
 | **256 MB**   | 638.80         | 652.96         |
 | **512 MB**   | 651.21         | 650.48         |
-| **1024 MB**  | 651.66         | 654.24         |
 
 > [!NOTE]
 > Detailed structural requirements, CLI Usage, High-Throughput Streaming (CUDA) specs, and Known Answer Tests (KAT) are thoroughly documented in the [**Documentation Hub**](#-documentation-hub) above.

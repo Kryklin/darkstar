@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
         printf("--- D-ASP CUDA Verification Tool (Sweep Benchmark) ---\n");
     }
 
-    size_t sizes_mb[] = {1, 16, 64, 256, 512, 1024};
+    size_t sizes_mb[] = {1, 16, 64, 128, 256, 512};
     int num_sizes = sizeof(sizes_mb) / sizeof(sizes_mb[0]);
 
     dasp_cuda_init();

@@ -97,10 +97,10 @@ Based on the latest benchmarking session (`interop`), the C/C++ engine achieved 
 
 | Metric | Recorded Value |
 | :--- | :--- |
-| **Cascade Time** | `249.55 μs` |
-| **Cascade CPB** | `12.19` |
-| **Ops/sec** | `4,007` |
-| **Throughput** | `273.9 MB/s` |
+| **Cascade Time** | `254.39 μs` |
+| **Cascade CPB** | `12.71` |
+| **Ops/sec** | `3,930` |
+| **Throughput** | `268.7 MB/s` |
 
 ---
 

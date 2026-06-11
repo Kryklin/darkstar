@@ -1,4 +1,3 @@
-use std::f64::consts::PI;
 
 pub fn shannon_entropy(data: &[u8]) -> f64 {
     if data.is_empty() { return 0.0; }

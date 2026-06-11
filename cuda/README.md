@@ -72,6 +72,8 @@ cat output.json | ./d-spna-512_cuda stream-decrypt <ml_kem_secret_key_hex> [--hw
 ```bash
 ./d-spna-512_cuda test
 ```
+> [!NOTE]
+> The internal synthetic data test caps maximum contiguous GPU payloads at 512MB to prevent Windows WDDM fragmentation issues and ensure broad hardware compatibility.
 
 **Rebinding a Payload (Migration):**
 > [!NOTE]
@@ -97,10 +99,10 @@ Based on the latest benchmarking session (`interop`), the CUDA engine achieved t
 
 | Metric | Recorded Value |
 | :--- | :--- |
-| **Cascade Time** | `156.44 μs` |
-| **Cascade CPB** | `7.64` |
-| **Ops/sec** | `6,392` |
-| **Throughput** | `437.0 MB/s` |
+| **Cascade Time** | `171.80 μs` |
+| **Cascade CPB** | `8.59` |
+| **Ops/sec** | `5,820` |
+| **Throughput** | `397.9 MB/s` |
 
 ---
 
