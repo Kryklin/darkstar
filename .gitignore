@@ -52,13 +52,12 @@ desktop.ini
 rust/target/
 
 # Compiled object files
-c/*.obj
-c/*.o
+*.obj
+*.o
 # MSVC / Clang linker artefacts
-c/*.exp
-c/*.lib
-c/*.pdb
-c/*.pdb
+*.exp
+*.lib
+*.pdb
 # Shared library output (rebuilt on demand)
 c/d-spna-512_kem.dll
 c/d-spna-512_kem.lib
@@ -68,9 +67,6 @@ c/d-spna-512.exp
 # -----------------------------------------------------------------------------
 # CUDA engine  (cuda)
 # -----------------------------------------------------------------------------
-cuda/*.obj
-cuda/*.o
-cuda/*.pdb
 
 # -----------------------------------------------------------------------------
 # Python / Scripts  (python)

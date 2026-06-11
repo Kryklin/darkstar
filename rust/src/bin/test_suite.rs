@@ -144,10 +144,12 @@ fn interop_command(term: &mut Term) {
     let payload_size_mb = (payload.len() * rounds) as f64 / 1048576.0;
 
     let setup_pb = ProgressBar::new(2);
+    let pad = " ".repeat(term_width.saturating_sub(80) / 2);
+    let template = format!("{}{{spinner:.cyan}} [{{bar:40.cyan/blue}}] {{msg}}", pad);
     setup_pb.set_style(ProgressStyle::default_bar()
-        .template("{spinner:.cyan} [{bar:40.cyan/blue}] {msg}")
+        .template(&template)
         .unwrap()
-        .progress_chars("█▓▒░"));
+        .progress_chars("=> "));
     setup_pb.set_message("Generating Master Keys...");
 
     let output = Command::new(&rust_exe).arg("keygen").current_dir(&rust_dir).output().expect("Failed to run rust keygen");
@@ -183,10 +185,12 @@ fn interop_command(term: &mut Term) {
 
     for (name, exe, dir) in engines {
         let pb = m.add(ProgressBar::new(rounds as u64));
+        let pad = " ".repeat(term_width.saturating_sub(80) / 2);
+        let template = format!("{}{{spinner:.green}} {:<20} [{{bar:40.cyan/blue}}] {{percent}}%", pad, name);
         pb.set_style(ProgressStyle::default_bar()
-            .template(&format!("{{spinner:.green}} {:<20} [{{bar:40.cyan/blue}}] {{percent}}%", name))
+            .template(&template)
             .unwrap()
-            .progress_chars("█▓▒░"));
+            .progress_chars("=> "));
 
         let mut child = match Command::new(&exe)
             .args(&["stream-decrypt", sk, "--hwid", hwid, "--telemetry"])
@@ -345,10 +349,12 @@ fn kat_command(term: &mut Term) {
     let m = MultiProgress::new();
     for (name, exe, dir) in engines {
         let pb = m.add(ProgressBar::new(vectors.len() as u64));
+        let pad = " ".repeat(term_width.saturating_sub(80) / 2);
+        let template = format!("{}{{spinner:.green}} {:<20} [{{bar:40.cyan/blue}}] {{pos}}/{{len}}", pad, name);
         pb.set_style(ProgressStyle::default_bar()
-            .template(&format!("{{spinner:.green}} {:<20} [{{bar:40.cyan/blue}}] {{pos}}/{{len}}", name))
+            .template(&template)
             .unwrap()
-            .progress_chars("█▓▒░"));
+            .progress_chars("=> "));
 
         for vec in &vectors {
             let vec_id = vec.get("vector_id").and_then(|v| v.as_str()).unwrap_or("unknown");
@@ -477,10 +483,12 @@ fn crypto_analysis_command(term: &mut Term) {
     let rust_exe = rust_dir.join("target").join("release").join("d-spna-512.exe");
 
     let pb = ProgressBar::new(100);
+    let pad = " ".repeat(term_width.saturating_sub(80) / 2);
+    let template = format!("{}{{spinner:.cyan}} [{{bar:40.cyan/blue}}] {{msg}}", pad);
     pb.set_style(ProgressStyle::default_bar()
-        .template("{spinner:.cyan} [{bar:40.cyan/blue}] {msg}")
+        .template(&template)
         .unwrap()
-        .progress_chars("█▓▒░"));
+        .progress_chars("=> "));
     
     pb.set_message("Keygen...");
     let output = Command::new(&rust_exe).arg("keygen").current_dir(&rust_dir).output().expect("Failed keygen");
@@ -660,10 +668,12 @@ fn gpu_synthetic_test_command(term: &mut Term) {
     let reader = BufReader::new(child_stdout);
 
     let pb = ProgressBar::new(100);
+    let pad = " ".repeat(term_width.saturating_sub(80) / 2);
+    let template = format!("{}{{spinner:.green}} [{{bar:40.cyan/blue}}] {{msg}}", pad);
     pb.set_style(ProgressStyle::default_bar()
-        .template("{spinner:.green} [{bar:40.cyan/blue}] {msg}")
+        .template(&template)
         .unwrap()
-        .progress_chars("█▓▒░"));
+        .progress_chars("=> "));
 
     let mut results = Vec::new();
 
