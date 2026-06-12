@@ -242,3 +242,12 @@ pub fn count_bit_flips(a: &str, b: &str) -> usize {
     }
     diffs
 }
+pub fn hamming_distance_variance(a: &[u8], b: &[u8]) -> f64 {
+    let mut diffs = 0;
+    for i in 0..a.len().min(b.len()) {
+        diffs += (a[i] ^ b[i]).count_ones() as usize;
+    }
+    let total_bits = (a.len().min(b.len()) * 8) as f64;
+    if total_bits == 0.0 { return 0.0; }
+    (diffs as f64 / total_bits) * 100.0
+}
