@@ -16,9 +16,18 @@ echo Building D-ASP CUDA CLI...
 nvcc %NVCC_FLAGS% dasp_cli.cu dasp_kernel.cu %C_DIR%\ml_kem.c %C_DIR%\fips202.c %C_DIR%\sha256.c %C_DIR%\sha512.c %C_DIR%\rng.c %C_DIR%\poly.c %C_DIR%\poly_sampling.c %C_DIR%\gf_math.c -o d-spna-512_cuda.exe
 
 if %errorlevel% neq 0 (
-    echo Build failed.
+    echo CLI Build failed.
     exit /b %errorlevel%
 )
-echo Build successful: d-spna-512_cuda.exe
+
+echo Building D-ASP CUDA DLL for FFI...
+nvcc %NVCC_FLAGS% -shared dasp_kernel.cu -o dspna512_cuda.dll
+
+if %errorlevel% neq 0 (
+    echo DLL Build failed.
+    exit /b %errorlevel%
+)
+
+echo Build successful: d-spna-512_cuda.exe and dspna512_cuda.dll
 
 call build_test.bat

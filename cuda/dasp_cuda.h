@@ -59,6 +59,26 @@ void dasp_cuda_process_chunk(uint8_t *d_payload,
                              int dpa_triggered,
                              const uint8_t *prng_seed);
 
+#ifdef _WIN32
+    #define DASP_CUDA_EXPORT __declspec(dllexport)
+#else
+    #define DASP_CUDA_EXPORT __attribute__((visibility("default")))
+#endif
+
+DASP_CUDA_EXPORT void dspna512_cuda_encrypt_batch(
+    const uint8_t *host_input,
+    const uint8_t *host_key,
+    uint8_t *host_out,
+    size_t num_blocks
+);
+
+DASP_CUDA_EXPORT void dspna512_cuda_decrypt_batch(
+    const uint8_t *host_input,
+    const uint8_t *host_key,
+    uint8_t *host_out,
+    size_t num_blocks
+);
+
 #ifdef __cplusplus
 }
 #endif

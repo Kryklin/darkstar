@@ -162,9 +162,9 @@ fn mitigations_command(term: &mut console::Term) {
     let cuda_dir = base_dir.join("cuda");
 
     let engines = vec![
-        ("Rust", rust_dir.join("target").join("release").join("d-spna-512.exe"), rust_dir.clone()),
-        ("C", c_dir.join("d-spna-512.exe"), c_dir.clone()),
-        ("CUDA", cuda_dir.join("d-spna-512_cuda.exe"), cuda_dir.clone()),
+        ("Rust Core Engine", rust_dir.join("target").join("release").join("dasp_crypto.dll"), "dspna512_encrypt_block"),
+        ("C Native Engine", c_dir.join("dspna512.dll"), "dspna512_encrypt_block"),
+        ("CUDA GPU Engine", cuda_dir.join("dspna512_cuda.dll"), "dspna512_cuda_encrypt_batch"),
     ];
 
     let pb = indicatif::ProgressBar::new((100 * engines.len()) as u64);
@@ -177,57 +177,71 @@ fn mitigations_command(term: &mut console::Term) {
 
 ");
 
-    let size = 1048576;
-    let payload_zeros = String::from_utf8(vec![b'0'; size]).unwrap();
-    let payload_ones = String::from_utf8(vec![b'1'; size]).unwrap();
+    let payload_zeros = [0u8; 64];
+    let payload_ones = [255u8; 64];
+    let key = [0u8; 1024];
+    let mut out = [0u8; 64];
 
-    let runs = 250;
+    let runs = 25000; // Increased runs since FFI is much faster
 
-    for (engine_name, engine_exe, run_dir) in &engines {
-        pb.set_message(format!("[{}] Keygen...", engine_name));
-        let output = std::process::Command::new(&rust_dir.join("target").join("release").join("d-spna-512.exe")).arg("keygen").current_dir(&rust_dir).output().unwrap();
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let pk = stdout.lines().find(|l| l.starts_with("PK:")).unwrap().split(": ").nth(1).unwrap().trim();
+    for (engine_name, dll_path, sym_name) in &engines {
+        pb.set_message(format!("[{}] Loading FFI Library...", engine_name));
+        
+        let mut zeros_timings = Vec::with_capacity(runs);
+        let mut ones_timings = Vec::with_capacity(runs);
 
-        log_content.push_str(&format!("  [Vector] Zeros (first 64 bytes): {}
-  [Vector] Ones (first 64 bytes): {}
-", &payload_zeros[0..64], &payload_ones[0..64]));
-        let file_zeros = run_dir.join("tmp_zeros.txt");
-        let file_ones = run_dir.join("tmp_ones.txt");
-        std::fs::write(&file_zeros, &payload_zeros).unwrap();
-        std::fs::write(&file_ones, &payload_ones).unwrap();
+        unsafe {
+            if let Ok(lib) = libloading::Library::new(dll_path) {
+                if sym_name == &"dspna512_cuda_encrypt_batch" {
+                    let func: libloading::Symbol<unsafe extern "C" fn(*const u8, *const u8, *mut u8, usize)> = lib.get(sym_name.as_bytes()).unwrap();
+                    
+                    // Warmup
+                    func(payload_zeros.as_ptr(), key.as_ptr(), out.as_mut_ptr(), 1);
 
-        let mut zeros_timings = Vec::new();
-        let mut ones_timings = Vec::new();
+                    for i in 0..runs {
+                        if i % 1000 == 0 {
+                            pb.set_message(format!("[{}] Sampling Constant-Time Variance... ({}/{})", engine_name, i+1, runs));
+                        }
+                        
+                        let start_z = std::time::Instant::now();
+                        func(payload_zeros.as_ptr(), key.as_ptr(), out.as_mut_ptr(), 1);
+                        zeros_timings.push(start_z.elapsed().as_nanos() as f64 / 1000.0);
 
-        for i in 0..runs {
-            pb.set_message(format!("[{}] Sampling Constant-Time Variance... ({}/{})", engine_name, i+1, runs));
-            
-            let z_out = std::process::Command::new(engine_exe).args(["encrypt", &format!("@{}", file_zeros.display()), pk, "--telemetry"]).current_dir(run_dir).output().unwrap();
-            let mut z_str = String::from_utf8_lossy(&z_out.stdout).to_string();
-            z_str.push('\n');
-            z_str.push_str(&String::from_utf8_lossy(&z_out.stderr));
-            for line in z_str.lines() {
-                if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
-                    if let Some(t) = v.get("timings").and_then(|t| t.get("cascade_us")) { zeros_timings.push(t.as_f64().unwrap_or(0.0)); }
+                        let start_o = std::time::Instant::now();
+                        func(payload_ones.as_ptr(), key.as_ptr(), out.as_mut_ptr(), 1);
+                        ones_timings.push(start_o.elapsed().as_nanos() as f64 / 1000.0);
+                    }
+                } else {
+                    let func: libloading::Symbol<unsafe extern "C" fn(*const u8, *const u8, *mut u8)> = lib.get(sym_name.as_bytes()).unwrap();
+                    
+                    // Warmup
+                    func(payload_zeros.as_ptr(), key.as_ptr(), out.as_mut_ptr());
+
+                    for i in 0..runs {
+                        if i % 1000 == 0 {
+                            pb.set_message(format!("[{}] Sampling Constant-Time Variance... ({}/{})", engine_name, i+1, runs));
+                        }
+                        
+                        let start_z = std::time::Instant::now();
+                        func(payload_zeros.as_ptr(), key.as_ptr(), out.as_mut_ptr());
+                        zeros_timings.push(start_z.elapsed().as_nanos() as f64 / 1000.0);
+
+                        let start_o = std::time::Instant::now();
+                        func(payload_ones.as_ptr(), key.as_ptr(), out.as_mut_ptr());
+                        ones_timings.push(start_o.elapsed().as_nanos() as f64 / 1000.0);
+                    }
                 }
+            } else {
+                pb.println(format!("Failed to load {} from {}", engine_name, dll_path.display()));
             }
+        }
+        
+        pb.inc(100);
 
-            let o_out = std::process::Command::new(engine_exe).args(["encrypt", &format!("@{}", file_ones.display()), pk, "--telemetry"]).current_dir(run_dir).output().unwrap();
-            let mut o_str = String::from_utf8_lossy(&o_out.stdout).to_string();
-            o_str.push('\n');
-            o_str.push_str(&String::from_utf8_lossy(&o_out.stderr));
-            for line in o_str.lines() {
-                if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
-                    if let Some(t) = v.get("timings").and_then(|t| t.get("cascade_us")) { ones_timings.push(t.as_f64().unwrap_or(0.0)); }
-                }
-            }
-            pb.inc((100 / runs) as u64);
+        if zeros_timings.is_empty() {
+            continue;
         }
 
-        std::fs::remove_file(&file_zeros).unwrap_or(());
-        std::fs::remove_file(&file_ones).unwrap_or(());
-        
         // Use strict statistical average to capture true boundary variance
         let z_avg = zeros_timings.iter().sum::<f64>() / zeros_timings.len() as f64;
         let o_avg = ones_timings.iter().sum::<f64>() / ones_timings.len() as f64;
@@ -235,11 +249,11 @@ fn mitigations_command(term: &mut console::Term) {
         let variance_pct = if z_avg > 0.0 { (variance_us / z_avg) * 100.0 } else { 0.0 };
 
         let metrics = vec![
-            ("All-Zeros Payload Avg (us)", format!("{:.2}", z_avg)),
-            ("All-Ones Payload Avg (us)", format!("{:.2}", o_avg)),
-            ("Absolute Variance (us)", format!("{:.2}", variance_us)),
+            ("All-Zeros Payload Avg (us)", format!("{:.4}", z_avg)),
+            ("All-Ones Payload Avg (us)", format!("{:.4}", o_avg)),
+            ("Absolute Variance (us)", format!("{:.4}", variance_us)),
             ("Relative Variance (%)", format!("{:.4}%", variance_pct)),
-            ("Execution Time Mitigation", if variance_pct < 5.0 { "PASS (Constant-Time)".to_string() } else { "FAIL".to_string() }),
+            ("Execution Time Mitigation", if variance_pct < 0.1 { "PASS (Constant-Time)".to_string() } else { "FAIL".to_string() }),
             ("S-Box / Branch Prediction Leakage", "Zero".to_string()),
             ("Memory Pattern Leakage", "Zero".to_string()),
         ];
@@ -254,9 +268,10 @@ fn mitigations_command(term: &mut console::Term) {
 ");
     }
 
-    pb.finish_and_clear();
-    println!("  [OK] Side-Channel Mitigations Complete");
-    save_and_open_log("mitigations", &log_content);
+    pb.finish_with_message("Side-Channel Mitigations Audit Complete");
+    println!();
+    println!("  [OK] Cryptographic ARX Variance Tested (FFI Isolated)");
+    save_and_open_log("rust_mitigations", &log_content);
 }
 
 fn main() {
@@ -371,7 +386,7 @@ fn interop_command(term: &mut Term) {
     let c_exe = c_dir.join("d-spna-512.exe");
     let cuda_exe = cuda_dir.join("d-spna-512_cuda.exe");
 
-    let mut payload_bytes = vec![0u8; 1024 / 2];
+    let mut payload_bytes = vec![0u8; 36864];
     rand::thread_rng().fill(&mut payload_bytes[..]);
     let payload = hex::encode(&payload_bytes);
     let hwid = "11223344556677889900AABBCCDDEEFF11223344556677889900AABBCCDDEEFF";
@@ -435,7 +450,7 @@ fn interop_command(term: &mut Term) {
                 Ok(c) => c,
                 Err(_) => {
                     pb.finish_with_message("Missing binary");
-                    stats_results.push((name, "MISSING", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+                    stats_results.push((name, "MISSING", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
                     continue;
                 }
             };
@@ -483,23 +498,24 @@ fn interop_command(term: &mut Term) {
             let p99 = casca_us_list[p99_idx.min(casca_us_list.len() - 1)];
 
             let ops_sec = if avg > 0.0 { 1_000_000.0 / avg } else { 0.0 };
-            let total_payload_bytes: usize = enc_payloads.iter().map(|s| s.len()).sum();
+            let total_payload_bytes: usize = enc_payloads.iter().map(|s| s.len() / 2).sum();
             let throughput_mbps = (total_payload_bytes as f64 / 1048576.0) / stream_elapsed_sec;
+            let cpb = (avg * 4000.0) / (payload_bytes.len() as f64); // Assume 4.0 GHz reference clock
 
-            stats_results.push((name, "PASS", min, max, avg, std_dev, p99, ops_sec, throughput_mbps));
+            stats_results.push((name, "PASS", min, max, avg, std_dev, p99, ops_sec, throughput_mbps, cpb));
         } else {
-            stats_results.push((name, "FAIL", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+            stats_results.push((name, "FAIL", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
         }
     }
 
     
     let mut log_content = String::new();
     log_content.push_str("=== D-SPNA-512 Interoperability Benchmark ===\n\n");
-    for (name, status, min, max, avg, std_dev, p99, ops_sec, throughput_mbps) in &stats_results {
-        log_content.push_str(&format!("Engine: {}\nStatus: {}\nMin / Max: {:.2} us / {:.2} us\nAvg: {:.2} us\nStd Dev: {:.2} us\np99: {:.2} us\nOps/Sec: {:.2}\nThroughput: {:.2} MB/s\n\n", name, status, min, max, avg, std_dev, p99, ops_sec, throughput_mbps));
+    for (name, status, min, max, avg, std_dev, p99, ops_sec, throughput_mbps, cpb) in &stats_results {
+        log_content.push_str(&format!("Engine: {}\nStatus: {}\nMin / Max: {:.2} us / {:.2} us\nAvg: {:.2} us\nStd Dev: {:.2} us\np99: {:.2} us\nOps/Sec: {:.2}\nThroughput: {:.2} MB/s\nCascade CPB (4.0GHz ref): {:.2}\n\n", name, status, min, max, avg, std_dev, p99, ops_sec, throughput_mbps, cpb));
     }
     println!("  [OK] Interop Benchmark Complete");
-    for (name, status, _, _, _, _, _, _, _) in &stats_results {
+    for (name, status, _, _, _, _, _, _, _, _) in &stats_results {
         println!("       - {}: {}", name, status);
     }
     save_and_open_log("interop", &log_content);

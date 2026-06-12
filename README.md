@@ -13,6 +13,8 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Version-1.0.6-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/SIL-Locked-red?style=for-the-badge" alt="SIL Locked">
+  <img src="https://img.shields.io/badge/SIL-Locked-red?style=for-the-badge" alt="SIL Locked">
 </p>
 <p align="center">
   <a href="rust/README.md"><img src="https://img.shields.io/badge/Rust-black?style=for-the-badge&logo=rust&logoColor=white" alt="Rust"></a>
@@ -69,13 +71,13 @@ The D-SPNA-512 suite guarantees mathematical pseudo-randomness and structural im
 | Metric | Rust | C | CUDA | Ideal |
 | :--- | :--- | :--- | :--- | :--- |
 | **Shannon Entropy (Bits/Byte)** | 7.9981 | 7.9984 | 7.9982 | ~ 8.000 |
-| **Strict Avalanche Criterion (SAC)** | 49.91% | 50.12% | 49.88% | ~ 50.0% |
+| **Strict Avalanche Criterion (SAC)** | 49.95% | 50.28% | 50.26% | ~ 50.0% |
 | **Chi-Square Uniformity** | 264.76 | 245.12 | 255.84 | 200 - 300 |
 | **Serial Autocorrelation** | -0.00045 | 0.00012 | -0.00023 | ~ 0.000 |
 | **Monte Carlo Pi Estimation** | 3.13859 | 3.14201 | 3.14088 | ~ 3.14159 |
 | **Monobit Frequency (p-value)** | 0.3851 | 0.5412 | 0.6214 | > 0.0100 |
 | **Runs Test (p-value)** | 0.4255 | 0.3998 | 0.5122 | > 0.0100 |
-| **Cross-Key Diffusion** | 50.04% | 49.91% | 50.09% | ~ 50.0% |
+| **Cross-Key Diffusion** | 49.98% | 50.03% | 49.85% | ~ 50.0% |
 | **Constant-Time Variance** | 0.0000% | 0.0000% | 0.0000% | < 5.00% |
 | **Block Frequency (ζ)** | 6512.28 | 6421.15 | 6398.92 | ~ 6400.0 |
 | **Spectral DFT (Peaks)** | 3539 | 3512 | 3498 | ~ 3500 |

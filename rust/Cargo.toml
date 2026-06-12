@@ -25,6 +25,8 @@ console = "0.16.3"
 indicatif = "0.18.4"
 libm = "0.2.16"
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+libloading = "0.9.0"
 
 [build-dependencies]
 winres = "0.1"
@@ -34,3 +36,11 @@ lto = "fat"
 codegen-units = 1
 panic = "abort"
 opt-level = 3
+
+[[bin]]
+name = "d-spna-512"
+path = "src/main.rs"
+
+[[bin]]
+name = "test_suite"
+path = "src/bin/test_suite.rs"

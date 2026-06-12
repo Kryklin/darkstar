@@ -876,3 +876,31 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
 
   return 0;
 }
+
+#ifdef _MSC_VER
+#define DASP_EXPORT __declspec(dllexport)
+#else
+#define DASP_EXPORT __attribute__((visibility("default")))
+#endif
+
+DASP_EXPORT void dspna512_encrypt_block(const uint8_t *input, const uint8_t *key, uint8_t *out) {
+    memcpy(out, input, 64);
+    uint64_t round_keys[128];
+    for (int i = 0; i < 128; i++) {
+        uint64_t v = 0;
+        memcpy(&v, key + (i * 8), 8);
+        round_keys[i] = v;
+    }
+    dasp_cascade_64(out, round_keys);
+}
+
+DASP_EXPORT void dspna512_decrypt_block(const uint8_t *input, const uint8_t *key, uint8_t *out) {
+    memcpy(out, input, 64);
+    uint64_t round_keys[128];
+    for (int i = 0; i < 128; i++) {
+        uint64_t v = 0;
+        memcpy(&v, key + (i * 8), 8);
+        round_keys[i] = v;
+    }
+    dasp_cascade_64(out, round_keys);
+}

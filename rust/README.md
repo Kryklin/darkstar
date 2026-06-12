@@ -95,10 +95,10 @@ Based on the latest benchmarking session (`interop`), the Rust engine achieved t
 
 | Metric | Recorded Value |
 | :--- | :--- |
-| **Cascade Time** | `56.47 μs` |
-| **Cascade CPB** | `2.81` |
-| **Ops/sec** | `17,708` |
-| **Throughput** | `1210.5 MB/s` |
+| **Cascade Time** | `57.34 μs` |
+| **Cascade CPB** | `6.22` |
+| **Ops/sec** | `17,439` |
+| **Throughput** | `50.42 MB/s` |
 
 ---
 

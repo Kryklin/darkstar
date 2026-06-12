@@ -267,3 +267,87 @@ extern "C" void dasp_cuda_process_chunk(uint8_t *d_payload, size_t chunk_len, co
 extern "C" void dasp_cuda_init() {
     // No constant init needed anymore
 }
+
+__global__ void dasp_block_kernel(const uint8_t* in, const uint64_t* round_keys, uint8_t* out, size_t num_blocks) {
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= num_blocks) return;
+
+    uint8_t block[64];
+    for (int i = 0; i < 64; i++) {
+        block[i] = in[idx * 64 + i];
+    }
+
+    uint64_t state[8];
+    for (int i = 0; i < 8; i++) {
+        uint64_t v = 0;
+        for (int j = 0; j < 8; j++) {
+            v |= ((uint64_t)block[i * 8 + j]) << (j * 8);
+        }
+        state[i] = v;
+    }
+
+    for (int r = 0; r < 16; r++) {
+        const uint64_t* rk = &round_keys[r * 8];
+        state[0] += rk[0]; state[1] += rk[1];
+        state[2] += rk[2]; state[3] += rk[3];
+        state[4] += rk[4]; state[5] += rk[5];
+        state[6] += rk[6]; state[7] += rk[7];
+
+        state[7] ^= state[0]; state[7] = (state[7] << 32) | (state[7] >> 32); state[6] += state[7]; state[1] ^= state[6]; state[1] = (state[1] << 24) | (state[1] >> 40); state[0] += state[1]; state[7] ^= state[0]; state[7] = (state[7] << 16) | (state[7] >> 48); state[6] += state[7]; state[1] ^= state[6]; state[1] = (state[1] << 14) | (state[1] >> 50);
+        state[6] ^= state[2]; state[6] = (state[6] << 32) | (state[6] >> 32); state[5] += state[6]; state[3] ^= state[5]; state[3] = (state[3] << 24) | (state[3] >> 40); state[2] += state[3]; state[6] ^= state[2]; state[6] = (state[6] << 16) | (state[6] >> 48); state[5] += state[6]; state[3] ^= state[5]; state[3] = (state[3] << 14) | (state[3] >> 50);
+        state[5] ^= state[4]; state[5] = (state[5] << 32) | (state[5] >> 32); state[3] += state[5]; state[7] ^= state[3]; state[7] = (state[7] << 24) | (state[7] >> 40); state[4] += state[7]; state[5] ^= state[4]; state[5] = (state[5] << 16) | (state[5] >> 48); state[3] += state[5]; state[7] ^= state[3]; state[7] = (state[7] << 14) | (state[7] >> 50);
+        state[4] ^= state[0]; state[4] = (state[4] << 32) | (state[4] >> 32); state[2] += state[4]; state[5] ^= state[2]; state[5] = (state[5] << 24) | (state[5] >> 40); state[0] += state[5]; state[4] ^= state[0]; state[4] = (state[4] << 16) | (state[4] >> 48); state[2] += state[4]; state[5] ^= state[2]; state[5] = (state[5] << 14) | (state[5] >> 50);
+    }
+
+    for (int i = 0; i < 8; i++) {
+        uint64_t v = state[i];
+        for (int j = 0; j < 8; j++) {
+            out[idx * 64 + i * 8 + j] = (v >> (j * 8)) & 0xFF;
+        }
+    }
+}
+
+#ifdef _WIN32
+    #define DASP_CUDA_EXPORT __declspec(dllexport)
+#else
+    #define DASP_CUDA_EXPORT __attribute__((visibility("default")))
+#endif
+
+extern "C" DASP_CUDA_EXPORT void dspna512_cuda_encrypt_batch(
+    const uint8_t *host_input,
+    const uint8_t *host_key,
+    uint8_t *host_out,
+    size_t num_blocks
+) {
+    uint8_t *d_in = NULL;
+    uint8_t *d_out = NULL;
+    uint64_t *d_key = NULL;
+
+    size_t data_size = num_blocks * 64;
+    cudaMalloc(&d_in, data_size);
+    cudaMalloc(&d_out, data_size);
+    cudaMalloc(&d_key, 1024);
+
+    cudaMemcpy(d_in, host_input, data_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_key, host_key, 1024, cudaMemcpyHostToDevice);
+
+    int threads = 256;
+    int blocks = (num_blocks + threads - 1) / threads;
+    dasp_block_kernel<<<blocks, threads>>>(d_in, d_key, d_out, num_blocks);
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(host_out, d_out, data_size, cudaMemcpyDeviceToHost);
+
+    cudaFree(d_in);
+    cudaFree(d_out);
+    cudaFree(d_key);
+}
+
+extern "C" DASP_CUDA_EXPORT void dspna512_cuda_decrypt_batch(
+    const uint8_t *host_input,
+    const uint8_t *host_key,
+    uint8_t *host_out,
+    size_t num_blocks
+) {
+    dspna512_cuda_encrypt_batch(host_input, host_key, host_out, num_blocks);
+}

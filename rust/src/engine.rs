@@ -120,7 +120,7 @@ impl DarkstarChaChaPRNG {
 }
 
 #[inline(always)]
-fn dasp_cascade_64(block: &mut [u8; 64], round_keys: &[u64; 128]) {
+pub fn dasp_cascade_64(block: &mut [u8; 64], round_keys: &[u64; 128]) {
     let mut state = [0u64; 8];
     for i in 0..8 {
         let chunk = &block[i * 8..(i + 1) * 8];

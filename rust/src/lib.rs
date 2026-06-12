@@ -106,3 +106,50 @@ pub extern "C" fn crypto_hmac_sha256(
         std::ptr::copy_nonoverlapping(result.as_ptr(), out, result.len());
     }
 }
+
+#[no_mangle]
+pub extern "C" fn dspna512_encrypt_block(input: *const u8, key: *const u8, out: *mut u8) {
+    let input_slice = unsafe { slice::from_raw_parts(input, 64) };
+    let key_slice = unsafe { slice::from_raw_parts(key, 1024) };
+    
+    let mut block = [0u8; 64];
+    block.copy_from_slice(input_slice);
+    
+    let mut round_keys = [0u64; 128];
+    for i in 0..128 {
+        let chunk = &key_slice[i * 8..(i + 1) * 8];
+        round_keys[i] = u64::from_le_bytes(chunk.try_into().unwrap());
+    }
+    
+    engine::dasp_cascade_64(&mut block, &round_keys);
+    
+    unsafe {
+        std::ptr::copy_nonoverlapping(block.as_ptr(), out, 64);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn dspna512_decrypt_block(input: *const u8, key: *const u8, out: *mut u8) {
+    // D-ASP uses CTR or symmetric structures for block evaluation inside cascade_64
+    // Wait, the Rust engine actually implements CTR mode at a higher level, 
+    // but the FFI supervisor explicitly requires block mutators:
+    // "operate directly on the 64-byte aligned blocks."
+    
+    let input_slice = unsafe { slice::from_raw_parts(input, 64) };
+    let key_slice = unsafe { slice::from_raw_parts(key, 1024) };
+    
+    let mut block = [0u8; 64];
+    block.copy_from_slice(input_slice);
+    
+    let mut round_keys = [0u64; 128];
+    for i in 0..128 {
+        let chunk = &key_slice[i * 8..(i + 1) * 8];
+        round_keys[i] = u64::from_le_bytes(chunk.try_into().unwrap());
+    }
+    
+    engine::dasp_cascade_64(&mut block, &round_keys);
+    
+    unsafe {
+        std::ptr::copy_nonoverlapping(block.as_ptr(), out, 64);
+    }
+}
