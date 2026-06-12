@@ -570,9 +570,13 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
       }
     }
 
-    for (int j = 63; j >= 0; j--) {
-      if (++nonce[j])
-        break;
+    uint64_t carry = 1;
+    uint64_t *ptr = (uint64_t *)nonce;
+    for (int j = 7; j >= 0; j--) {
+      uint64_t val = _byteswap_uint64(ptr[j]);
+      uint64_t sum = val + carry;
+      carry = (sum < val) ? 1 : 0;
+      ptr[j] = _byteswap_uint64(sum);
     }
   }
 
@@ -768,9 +772,13 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
       }
     }
 
-    for (int j = 63; j >= 0; j--) {
-      if (++nonce[j])
-        break;
+    uint64_t carry = 1;
+    uint64_t *ptr = (uint64_t *)nonce;
+    for (int j = 7; j >= 0; j--) {
+      uint64_t val = _byteswap_uint64(ptr[j]);
+      uint64_t sum = val + carry;
+      carry = (sum < val) ? 1 : 0;
+      ptr[j] = _byteswap_uint64(sum);
     }
   }
 

@@ -421,13 +421,14 @@ impl DarkstarCrypt {
                 }
             }
 
-            // Increment 64-byte nonce (CTR mode)
-            for byte in nonce.iter_mut().rev() {
-                let (val, overflow) = byte.overflowing_add(1);
-                *byte = val;
-                if !overflow {
-                    break;
-                }
+            // Fast 64-bit branchless nonce increment
+            let mut carry = 1u64;
+            let ptr = nonce.as_mut_ptr() as *mut u64;
+            for i in (0..8).rev() {
+                let val = u64::from_be(unsafe { std::ptr::read_unaligned(ptr.add(i)) });
+                let (new_val, overflow) = val.overflowing_add(carry);
+                unsafe { std::ptr::write_unaligned(ptr.add(i), new_val.to_be()) };
+                carry = overflow as u64;
             }
         }
         let cascade_duration = cascade_start.elapsed();
@@ -664,13 +665,14 @@ impl DarkstarCrypt {
                 }
             }
 
-            // Increment nonce
-            for b in nonce.iter_mut().rev() {
-                let (val, overflow) = b.overflowing_add(1);
-                *b = val;
-                if !overflow {
-                    break;
-                }
+            // Fast 64-bit branchless nonce increment
+            let mut carry = 1u64;
+            let ptr = nonce.as_mut_ptr() as *mut u64;
+            for i in (0..8).rev() {
+                let val = u64::from_be(unsafe { std::ptr::read_unaligned(ptr.add(i)) });
+                let (new_val, overflow) = val.overflowing_add(carry);
+                unsafe { std::ptr::write_unaligned(ptr.add(i), new_val.to_be()) };
+                carry = overflow as u64;
             }
         }
         let cascade_duration = cascade_start.elapsed();

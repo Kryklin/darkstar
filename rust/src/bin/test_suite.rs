@@ -94,13 +94,19 @@ fn bench_command(term: &mut console::Term) {
             std::fs::write(&payload_file, &payload).unwrap();
 
             let enc_out = std::process::Command::new(engine_exe).args(["encrypt", &format!("@{}", payload_file.display()), pk, "--telemetry"]).current_dir(run_dir).output().unwrap();
-            let enc_str = String::from_utf8_lossy(&enc_out.stdout);
+            let mut enc_str = String::from_utf8_lossy(&enc_out.stdout).to_string();
+            enc_str.push('\n');
+            enc_str.push_str(&String::from_utf8_lossy(&enc_out.stderr));
             let mut enc_us = 0.0;
             let mut enc_json = String::new();
             for line in enc_str.lines() {
                 if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
-                    if let Some(t) = v.get("timings").and_then(|t| t.get("cascade_us")) { enc_us = t.as_f64().unwrap_or(0.0); }
-                    enc_json = line.to_string();
+                    if let Some(t) = v.get("timings").and_then(|t| t.get("cascade_us")) { 
+                        enc_us = t.as_f64().unwrap_or(0.0); 
+                    }
+                    if v.get("ct").is_some() || v.get("data").is_some() {
+                        enc_json = line.to_string();
+                    }
                 }
             }
 
@@ -108,7 +114,9 @@ fn bench_command(term: &mut console::Term) {
             std::fs::write(&ct_file, &enc_json).unwrap();
 
             let dec_out = std::process::Command::new(engine_exe).args(["decrypt", &format!("@{}", ct_file.display()), sk, "--telemetry"]).current_dir(run_dir).output().unwrap();
-            let dec_str = String::from_utf8_lossy(&dec_out.stdout);
+            let mut dec_str = String::from_utf8_lossy(&dec_out.stdout).to_string();
+            dec_str.push('\n');
+            dec_str.push_str(&String::from_utf8_lossy(&dec_out.stderr));
             let mut dec_us = 0.0;
             for line in dec_str.lines() {
                 if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
@@ -264,6 +272,8 @@ fn main() {
 
     match command {
         "interop" => interop_command(&mut term),
+        "bench" => bench_command(&mut term),
+        "mitigations" => mitigations_command(&mut term),
         "kat" => kat_command(&mut term),
         "analysis" => crypto_analysis_command(&mut term),
         "gpu" => gpu_synthetic_test_command(&mut term),
