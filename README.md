@@ -27,19 +27,21 @@
 
 Explore the architecture and specifications of the D-SPNA-512 suite:
 
-| Specification                                         | Description                                           |
-| :---------------------------------------------------- | :---------------------------------------------------- |
+| Specification                                              | Description                                           |
+| :--------------------------------------------------------- | :---------------------------------------------------- |
 | [**Mathematical Specification**](DSPNA_512_CRYPTO_MATH.md) | Cryptographic proofs, ML-KEM constants, and bounds.   |
 | [**System Logic Flows**](DSPNA_512_SYSTEM_FLOW.md)         | Sequence diagrams and execution cascades.             |
 | [**NIST Compliance**](DSPNA_512_NIST_COMPLIANCE.md)        | Grade-1024 SP 800-208 / FIPS 203 alignment matrix.    |
-| [**CLI Guide**](DARKSTAR_CLI_GUIDE.md)                | Usage instructions for universal CLI integration.     |
-| [**Security Policy**](SECURITY.md)                    | Vulnerability disclosure and audit policies.          |
-| [**Contributing**](CONTRIBUTING.md)                   | Guidelines for engine optimization and PR submission. |
+| [**CLI Guide**](DARKSTAR_CLI_GUIDE.md)                     | Usage instructions for universal CLI integration.     |
+| [**Security Policy**](SECURITY.md)                         | Vulnerability disclosure and audit policies.          |
+| [**Contributing**](CONTRIBUTING.md)                        | Guidelines for engine optimization and PR submission. |
 
 The **ASP Cascade 16 (D-SPNA-512)** suite is a sovereign post-quantum encryption engine providing bit-perfect interoperability across **Rust**, **C**, and **CUDA**, with **WebAssembly** bindings via Node/Python/Go. It operates as a strict **512-bit (64-byte) Block Cipher in Counter (CTR) Mode** with a full 512-bit key schedule expansion.
 
 ### 🛡️ Hardware Intrinsic Mitigations
+
 D-SPNA-512 is engineered for the modern threat landscape, proactively immunizing execution against side-channels and micro-architectural data sampling:
+
 - **Zenbleed (CVE-2023-20593)**: Complete physical SIMD register zeroing (`_mm256_zeroupper()`).
 - **Spectre v1 / Meltdown**: Strict speculation barriers via `lfence` (x86_64) and `isb`/`csdb` (ARM).
 - **DPA-Lockout**: Chaotic PRNG cross-state corruption triggered on repeating ciphertext patterns to neutralize Differential Power Analysis.
@@ -50,14 +52,11 @@ D-SPNA-512 is engineered for the modern threat landscape, proactively immunizing
 
 The suite is instrumented for exhaustive telemetry across all cryptographic and architectural layers using payloads scaling up to 10MB.
 
-| Engine        | Cascade Time | Cascade CPB | Throughput (MB/s) | Time Variance |
-| :------------ | :----------- | :---------- | :---------------- | :------------ |
-| **Rust**      | **57.34 μs** | **6.22**    | **50.42**         | **0.00%**     |
-| **C**         | **185.83 μs**| **20.16**   | **41.35**         | **0.00%**     |
-| **CUDA**      | **163.16 μs**| **17.70**   | **5.26**          | **0.00%**     |
-
-> **Note:** Hardware implementations (CUDA) process decryption synchronously in shared memory, making telemetry metrics functionally infinite relative to PCIe bus latency. CUDA reports 'inf' because the decrypted payload remains directly on the VRAM for native GPU ingestion. When decrypting, VRAM-to-VRAM throughput exceeds 1.5 TB/s, which registers as virtually 0 elapsed microseconds over 10MB payloads, dividing into 'inf' Gbps. Rust and C have been thoroughly mitigated against side-channel branch and memory pattern leakage with variances mathematically proven and benchmarked to absolute 0.00% (< 1us jitter).
-
+| Engine   | Cascade Time  | Cascade CPB | Throughput (MB/s) | Time Variance |
+| :------- | :------------ | :---------- | :---------------- | :------------ |
+| **Rust** | **57.34 μs**  | **6.22**    | **50.42**         | **0.00%**     |
+| **C**    | **185.83 μs** | **20.16**   | **41.35**         | **0.00%**     |
+| **CUDA** | **163.16 μs** | **17.70**   | **5.26**          | **0.00%**     |
 
 > [!NOTE]
 > Detailed structural requirements, CLI Usage, High-Throughput Streaming (CUDA) specs, and Known Answer Tests (KAT) are thoroughly documented in the [**Documentation Hub**](#-documentation-hub) above.
@@ -68,24 +67,24 @@ The suite is instrumented for exhaustive telemetry across all cryptographic and 
 
 The D-SPNA-512 suite guarantees mathematical pseudo-randomness and structural immunity against differential, sequence, and side-channel analysis. The output is continuously evaluated via our exhaustive analysis suite against the following optimal cryptographic boundaries using a 100KB payload:
 
-| Metric | Rust | C | CUDA | Ideal |
-| :--- | :--- | :--- | :--- | :--- |
-| **Shannon Entropy (Bits/Byte)** | 7.9981 | 7.9984 | 7.9982 | ~ 8.000 |
-| **Strict Avalanche Criterion (SAC)** | 49.95% | 50.28% | 50.26% | ~ 50.0% |
-| **Chi-Square Uniformity** | 264.76 | 245.12 | 255.84 | 200 - 300 |
-| **Serial Autocorrelation** | -0.00045 | 0.00012 | -0.00023 | ~ 0.000 |
-| **Monte Carlo Pi Estimation** | 3.13859 | 3.14201 | 3.14088 | ~ 3.14159 |
-| **Monobit Frequency (p-value)** | 0.3851 | 0.5412 | 0.6214 | > 0.0100 |
-| **Runs Test (p-value)** | 0.4255 | 0.3998 | 0.5122 | > 0.0100 |
-| **Cross-Key Diffusion** | 49.98% | 50.03% | 49.85% | ~ 50.0% |
-| **Constant-Time Variance** | 0.0000% | 0.0000% | 0.0000% | < 5.00% |
-| **Block Frequency (ζ)** | 6512.28 | 6421.15 | 6398.92 | ~ 6400.0 |
-| **Spectral DFT (Peaks)** | 3539 | 3512 | 3498 | ~ 3500 |
-| **LZ Compression** | 1.000 | 1.000 | 1.000 | 1.000 |
-| **Longest Run of Ones (ζ)** | 1.07 | 1.84 | 0.95 | ~ 0.000 |
-| **Approximate Entropy** | 0.6925 | 0.6925 | 0.6925 | ~ 0.693 |
-| **Serial Pattern Test (ζ)** | 32869.84 | 32791.12 | 32814.55 | ~ 32768 |
-| **Lempel-Ziv Incompressibility** | 1.0004 | 1.0004 | 1.0004 | ~ 1.000 |
+| Metric                               | Rust     | C        | CUDA     | Ideal     |
+| :----------------------------------- | :------- | :------- | :------- | :-------- |
+| **Shannon Entropy (Bits/Byte)**      | 7.9981   | 7.9984   | 7.9982   | ~ 8.000   |
+| **Strict Avalanche Criterion (SAC)** | 49.95%   | 50.28%   | 50.26%   | ~ 50.0%   |
+| **Chi-Square Uniformity**            | 264.76   | 245.12   | 255.84   | 200 - 300 |
+| **Serial Autocorrelation**           | -0.00045 | 0.00012  | -0.00023 | ~ 0.000   |
+| **Monte Carlo Pi Estimation**        | 3.13859  | 3.14201  | 3.14088  | ~ 3.14159 |
+| **Monobit Frequency (p-value)**      | 0.3851   | 0.5412   | 0.6214   | > 0.0100  |
+| **Runs Test (p-value)**              | 0.4255   | 0.3998   | 0.5122   | > 0.0100  |
+| **Cross-Key Diffusion**              | 49.98%   | 50.03%   | 49.85%   | ~ 50.0%   |
+| **Constant-Time Variance**           | 0.0000%  | 0.0000%  | 0.0000%  | < 5.00%   |
+| **Block Frequency (ζ)**              | 6512.28  | 6421.15  | 6398.92  | ~ 6400.0  |
+| **Spectral DFT (Peaks)**             | 3539     | 3512     | 3498     | ~ 3500    |
+| **LZ Compression**                   | 1.000    | 1.000    | 1.000    | 1.000     |
+| **Longest Run of Ones (ζ)**          | 1.07     | 1.84     | 0.95     | ~ 0.000   |
+| **Approximate Entropy**              | 0.6925   | 0.6925   | 0.6925   | ~ 0.693   |
+| **Serial Pattern Test (ζ)**          | 32869.84 | 32791.12 | 32814.55 | ~ 32768   |
+| **Lempel-Ziv Incompressibility**     | 1.0004   | 1.0004   | 1.0004   | ~ 1.000   |
 
 > [!TIP]
 > **NIST SP 800-22 Certification Ready:** D-SPNA-512 includes a native bitstream generator (`npm run gen-nist`) that rapidly pipes hardware-accelerated gigabytes of raw ciphertext into binary format, ready for direct ingestion by external tools like `Dieharder` and the official NIST `sts` suite.
@@ -96,12 +95,12 @@ The D-SPNA-512 suite guarantees mathematical pseudo-randomness and structural im
 
 All implementations are designed as **high-performance, standalone sources** to ensure maximum portability and zero external cryptographic dependencies (where possible).
 
-| Language      | Engine Path           | Core Implementation             | Documentation                       |
-| :------------ | :-------------------- | :------------------------------ | :---------------------------------- |
-| **Rust**      | `rust/src/main.rs`    | ML-KEM / ASP Cascade 16         | [📖 Rust Guide](rust/README.md)     |
-| **C/C++**     | `c/spna_engine.c`     | FFI ML-KEM / ASP Cascade 16     | [📖 C/C++ Guide](c/README.md)       |
-| **CUDA**      | `cuda/dspna_512_kernel.cu` | Native ML-KEM / ASP Cascade GPU | [📖 CUDA Guide](cuda/README.md)     |
-| **WASM**      | `rust/Cargo.toml`     | WebAssembly Wrapper via `wasm-pack`| [📖 WASM FFI Guide](WASM_README.md) |
+| Language  | Engine Path                | Core Implementation                 | Documentation                       |
+| :-------- | :------------------------- | :---------------------------------- | :---------------------------------- |
+| **Rust**  | `rust/src/main.rs`         | ML-KEM / ASP Cascade 16             | [📖 Rust Guide](rust/README.md)     |
+| **C/C++** | `c/spna_engine.c`          | FFI ML-KEM / ASP Cascade 16         | [📖 C/C++ Guide](c/README.md)       |
+| **CUDA**  | `cuda/dspna_512_kernel.cu` | Native ML-KEM / ASP Cascade GPU     | [📖 CUDA Guide](cuda/README.md)     |
+| **WASM**  | `rust/Cargo.toml`          | WebAssembly Wrapper via `wasm-pack` | [📖 WASM FFI Guide](WASM_README.md) |
 
 ---
 
