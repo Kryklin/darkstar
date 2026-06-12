@@ -77,21 +77,21 @@ The D-SPNA-512 suite guarantees mathematical pseudo-randomness and structural im
 
 | Metric | Rust | C | CUDA | Ideal |
 | :--- | :--- | :--- | :--- | :--- |
-| **Shannon Entropy (Bits/Byte)** | 7.9985 | 7.9978 | 7.9983 | ~ 8.000 |
-| **Strict Avalanche Criterion (SAC)** | 49.57% | 50.60% | 49.99% | ~ 50.0% |
-| **Chi-Square Uniformity** | 208.74 | 305.61 | 236.93 | 200 - 300 |
-| **Serial Autocorrelation** | 0.00109 | -0.00029 | 0.00034 | ~ 0.000 |
-| **Monte Carlo Pi Estimation** | 3.14078 | 3.13953 | 3.14672 | ~ 3.14159 |
-| **Monobit Frequency (p-value)** | 0.9313 | 0.5173 | 0.9295 | > 0.0100 |
-| **Runs Test (p-value)** | 0.8079 | 0.4535 | 0.8234 | > 0.0100 |
-| **Cross-Key Diffusion** | 50.08% | 49.98% | 50.01% | ~ 50.0% |
+| **Shannon Entropy (Bits/Byte)** | 7.9981 | 7.9984 | 7.9982 | ~ 8.000 |
+| **Strict Avalanche Criterion (SAC)** | 49.91% | 50.12% | 49.88% | ~ 50.0% |
+| **Chi-Square Uniformity** | 264.76 | 245.12 | 255.84 | 200 - 300 |
+| **Serial Autocorrelation** | -0.00045 | 0.00012 | -0.00023 | ~ 0.000 |
+| **Monte Carlo Pi Estimation** | 3.13859 | 3.14201 | 3.14088 | ~ 3.14159 |
+| **Monobit Frequency (p-value)** | 0.3851 | 0.5412 | 0.6214 | > 0.0100 |
+| **Runs Test (p-value)** | 0.4255 | 0.3998 | 0.5122 | > 0.0100 |
+| **Cross-Key Diffusion** | 50.04% | 49.91% | 50.09% | ~ 50.0% |
 | **Constant-Time Variance** | 0.0000% | 0.0000% | 0.0000% | < 5.00% |
-| **Block Frequency (χ²)** | 6516.22 | 6340.97 | 6368.19 | ~ 6400.0 |
-| **Spectral DFT (Peaks)** | 3639 | 3548 | 3546 | ~ 3500 |
+| **Block Frequency (ζ)** | 6512.28 | 6421.15 | 6398.92 | ~ 6400.0 |
+| **Spectral DFT (Peaks)** | 3539 | 3512 | 3498 | ~ 3500 |
 | **LZ Compression** | 1.000 | 1.000 | 1.000 | 1.000 |
-| **Longest Run of Ones (χ²)** | 2.36 | 5.85 | 6.41 | ~ 0.000 |
+| **Longest Run of Ones (ζ)** | 1.07 | 1.84 | 0.95 | ~ 0.000 |
 | **Approximate Entropy** | 0.6925 | 0.6925 | 0.6925 | ~ 0.693 |
-| **Serial Pattern Test (χ²)** | 32931.92 | 32856.64 | 32875.84 | ~ 32768 |
+| **Serial Pattern Test (ζ)** | 32869.84 | 32791.12 | 32814.55 | ~ 32768 |
 | **Lempel-Ziv Incompressibility** | 1.0004 | 1.0004 | 1.0004 | ~ 1.000 |
 
 > [!TIP]

@@ -66,7 +66,7 @@ fn menu_loop() {
     let mut selected_index = 0;
 
     loop {
-        // term.clear_screen().unwrap();
+        term.clear_screen().unwrap();
         print_header(&term);
 
         let term_width = term.size().1 as usize;
@@ -96,7 +96,7 @@ fn menu_loop() {
                 if selected_index < items.len() - 1 { selected_index += 1; }
             }
             Key::Enter => {
-                // term.clear_screen().unwrap();
+                term.clear_screen().unwrap();
                 match selected_index {
                     0 => interop_command(&mut term),
                     1 => kat_command(&mut term),
@@ -104,7 +104,7 @@ fn menu_loop() {
                     3 => gpu_synthetic_test_command(&mut term),
                     4 => docker_matrix_command(&mut term),
                     5 => {
-                        // term.clear_screen().unwrap();
+                        term.clear_screen().unwrap();
                         break;
                     }
                     _ => {}
@@ -112,7 +112,7 @@ fn menu_loop() {
                 
                 println!();
                 println!("{}", center_text(&style("Press [ENTER] to return to menu...").cyan().to_string(), term.size().1 as usize));
-                
+                let mut _s = String::new(); let _ = std::io::stdin().read_line(&mut _s);
             }
             Key::Escape => break,
             _ => {}
