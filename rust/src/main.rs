@@ -102,7 +102,7 @@ fn main() {
 
             for i in 0..count {
                 let varying_payload = if payload.len() > 10 {
-                    format!("{}{:010}", &payload[..payload.len()-10], i)
+                    format!("{}{:010}", &payload[..payload.len() - 10], i)
                 } else {
                     format!("{}{}", payload, i)
                 };

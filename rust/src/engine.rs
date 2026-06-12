@@ -41,7 +41,6 @@ impl Instant {
 #[cfg(not(target_arch = "wasm32"))]
 pub use std::time::Instant;
 
-
 /// Deterministic PRNG Implementation
 struct DarkstarChaChaPRNG {
     state: [u32; 16],
@@ -99,8 +98,16 @@ impl DarkstarChaChaPRNG {
                 quarter_round(&mut x, 3, 4, 9, 14);
             };
         }
-        double_round!(); double_round!(); double_round!(); double_round!(); double_round!();
-        double_round!(); double_round!(); double_round!(); double_round!(); double_round!();
+        double_round!();
+        double_round!();
+        double_round!();
+        double_round!();
+        double_round!();
+        double_round!();
+        double_round!();
+        double_round!();
+        double_round!();
+        double_round!();
         for i in 0..16 {
             x[i] = x[i].wrapping_add(st[i]);
         }
@@ -125,8 +132,7 @@ pub fn dasp_cascade_64(block: &mut [u8; 64], round_keys: &[u64; 128]) {
     for i in 0..8 {
         let chunk = &block[i * 8..(i + 1) * 8];
         state[i] = u64::from_le_bytes([
-            chunk[0], chunk[1], chunk[2], chunk[3],
-            chunk[4], chunk[5], chunk[6], chunk[7]
+            chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
         ]);
     }
 
@@ -142,7 +148,7 @@ pub fn dasp_cascade_64(block: &mut [u8; 64], round_keys: &[u64; 128]) {
                 state[5] = state[5].wrapping_add(rk[5]);
                 state[6] = state[6].wrapping_add(rk[6]);
                 state[7] = state[7].wrapping_add(rk[7]);
-                
+
                 let rc = 0x9E3779B97F4A7C15u64.wrapping_add($r);
                 state[0] ^= rc; state[1] ^= rc; state[2] ^= rc; state[3] ^= rc;
                 state[4] ^= rc; state[5] ^= rc; state[6] ^= rc; state[7] ^= rc;
@@ -196,8 +202,13 @@ pub fn dasp_cascade_64(block: &mut [u8; 64], round_keys: &[u64; 128]) {
 static CHACHA_CONSTANTS: [u32; 4] = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574];
 
 pub fn verify_constants() {
-    let sum: u32 = CHACHA_CONSTANTS.iter().fold(0, |acc, &x| acc.wrapping_add(x));
-    assert_eq!(sum, 2031316857, "FATAL: Rowhammer/Corruption detected in static arrays.");
+    let sum: u32 = CHACHA_CONSTANTS
+        .iter()
+        .fold(0, |acc, &x| acc.wrapping_add(x));
+    assert_eq!(
+        sum, 2031316857,
+        "FATAL: Rowhammer/Corruption detected in static arrays."
+    );
 }
 
 #[allow(dead_code)]
@@ -248,10 +259,18 @@ impl DarkstarCrypt {
 
     fn check_dpa_pattern(sig: u64) -> bool {
         use std::sync::atomic::{AtomicU64, Ordering};
-        
+
         static DPA_HISTORY: [AtomicU64; 10] = [
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0)
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
         ];
         static DPA_IDX: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
@@ -381,7 +400,7 @@ impl DarkstarCrypt {
         let prefix_len = std::cmp::min(payload_str.len(), 32);
         std::hash::Hash::hash_slice(&payload_str.as_bytes()[..prefix_len], &mut sig_hasher);
         let transaction_sig = std::hash::Hasher::finish(&sig_hasher);
-        
+
         let dpa_triggered = Self::check_dpa_pattern(transaction_sig);
 
         // ---------------------------------------------------------
@@ -399,14 +418,18 @@ impl DarkstarCrypt {
             // DPA Lockout Logic - Zeroize state if duplicate pattern matches transaction sig
             if dpa_triggered && chunk.len() > 16 && chunk[0] == 0x00 && chunk[1] == 0x00 {
                 block.zeroize();
-                return Err("DPA_LOCKOUT: Hardware Pattern Match Triggered. System Halting.".into());
+                return Err(
+                    "DPA_LOCKOUT: Hardware Pattern Match Triggered. System Halting.".into(),
+                );
             }
 
             dasp_cascade_64(&mut block, &round_keys);
 
             if chunk.len() == 64 {
-                let chunk_u64 = unsafe { std::slice::from_raw_parts_mut(chunk.as_mut_ptr() as *mut u64, 8) };
-                let block_u64 = unsafe { std::slice::from_raw_parts(block.as_ptr() as *const u64, 8) };
+                let chunk_u64 =
+                    unsafe { std::slice::from_raw_parts_mut(chunk.as_mut_ptr() as *mut u64, 8) };
+                let block_u64 =
+                    unsafe { std::slice::from_raw_parts(block.as_ptr() as *const u64, 8) };
                 chunk_u64[0] ^= block_u64[0];
                 chunk_u64[1] ^= block_u64[1];
                 chunk_u64[2] ^= block_u64[2];
@@ -424,7 +447,7 @@ impl DarkstarCrypt {
             // Fast 64-bit branchless nonce increment, fully unrolled
             let mut carry = 1u64;
             let ptr = nonce.as_mut_ptr() as *mut u64;
-            
+
             let val = u64::from_be(unsafe { std::ptr::read_unaligned(ptr.add(7)) });
             let (new_val, overflow) = val.overflowing_add(carry);
             unsafe { std::ptr::write_unaligned(ptr.add(7), new_val.to_be()) };
@@ -466,7 +489,10 @@ impl DarkstarCrypt {
         }
         let cascade_duration = cascade_start.elapsed();
 
-        let current_ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+        let current_ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         let mut mac = <HmacSha256 as hmac::Mac>::new_from_slice(&hmac_key)
             .map_err(|e| format!("HMAC error: {:?}", e))?;
         mac.update(&ct[..]);
@@ -628,27 +654,34 @@ impl DarkstarCrypt {
         }
         let actual_mac = mac.finalize().into_bytes();
         let expected_mac = fast_hex_decode(mac_tag_hex)?;
-        
+
         let mut diff_verify = 0u8;
         for i in 0..32 {
             diff_verify |= actual_mac[i] ^ expected_mac[i];
         }
-        
+
         let valid_2 = unsafe { std::ptr::read_volatile(&diff_verify) } == 0;
-        
+
         if !valid_2 {
             return Err("Integrity Check Failed".into());
         }
 
         #[cfg(target_arch = "x86_64")]
-        unsafe { core::arch::x86_64::_mm_lfence() };
+        unsafe {
+            core::arch::x86_64::_mm_lfence()
+        };
         #[cfg(target_arch = "aarch64")]
-        unsafe { core::arch::aarch64::isb(core::arch::aarch64::SY) };
+        unsafe {
+            core::arch::aarch64::isb(core::arch::aarch64::SY)
+        };
         std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
 
         if let Some(t_secs) = ttl_secs {
             if let Some(pt) = payload.ts {
-                let current_ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+                let current_ts = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
                 if current_ts > pt + t_secs {
                     return Err("Payload Expired (Replay Protection)".into());
                 }
@@ -682,8 +715,10 @@ impl DarkstarCrypt {
             dasp_cascade_64(&mut block, &round_keys);
 
             if chunk.len() == 64 {
-                let chunk_u64 = unsafe { std::slice::from_raw_parts_mut(chunk.as_mut_ptr() as *mut u64, 8) };
-                let block_u64 = unsafe { std::slice::from_raw_parts(block.as_ptr() as *const u64, 8) };
+                let chunk_u64 =
+                    unsafe { std::slice::from_raw_parts_mut(chunk.as_mut_ptr() as *mut u64, 8) };
+                let block_u64 =
+                    unsafe { std::slice::from_raw_parts(block.as_ptr() as *const u64, 8) };
                 chunk_u64[0] ^= block_u64[0];
                 chunk_u64[1] ^= block_u64[1];
                 chunk_u64[2] ^= block_u64[2];
