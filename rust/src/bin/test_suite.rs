@@ -75,7 +75,7 @@ fn bench_command(term: &mut console::Term) {
 
     for (engine_name, engine_exe, run_dir) in &engines {
         pb.set_message(format!("[{}] Keygen...", engine_name));
-        let output = std::process::Command::new(engine_exe).arg("keygen").current_dir(run_dir).output().unwrap();
+        let output = std::process::Command::new(&rust_dir.join("target").join("release").join("d-spna-512.exe")).arg("keygen").current_dir(&rust_dir).output().unwrap();
         let stdout = String::from_utf8_lossy(&output.stdout);
         let pk = stdout.lines().find(|l| l.starts_with("PK:")).unwrap().split(": ").nth(1).unwrap().trim();
         let sk = stdout.lines().find(|l| l.starts_with("SK:")).unwrap().split(": ").nth(1).unwrap().trim();
@@ -178,7 +178,7 @@ fn mitigations_command(term: &mut console::Term) {
 
     for (engine_name, engine_exe, run_dir) in &engines {
         pb.set_message(format!("[{}] Keygen...", engine_name));
-        let output = std::process::Command::new(engine_exe).arg("keygen").current_dir(run_dir).output().unwrap();
+        let output = std::process::Command::new(&rust_dir.join("target").join("release").join("d-spna-512.exe")).arg("keygen").current_dir(&rust_dir).output().unwrap();
         let stdout = String::from_utf8_lossy(&output.stdout);
         let pk = stdout.lines().find(|l| l.starts_with("PK:")).unwrap().split(": ").nth(1).unwrap().trim();
 
@@ -650,7 +650,7 @@ fn crypto_analysis_command(term: &mut Term) {
 
     for (engine_name, engine_exe, run_dir) in &engines {
         pb.set_message(format!("[{}] Keygen...", engine_name));
-        let output = Command::new(engine_exe).arg("keygen").current_dir(run_dir).output().expect("Failed keygen");
+        let output = Command::new(&rust_dir.join("target").join("release").join("d-spna-512.exe")).arg("keygen").current_dir(&rust_dir).output().expect("Failed keygen");
         let stdout = String::from_utf8_lossy(&output.stdout);
         let pk = stdout.lines().find(|l| l.starts_with("PK:")).unwrap().split(": ").nth(1).unwrap().trim();
         
@@ -745,7 +745,7 @@ fn crypto_analysis_command(term: &mut Term) {
         pb.inc(10);
         pb.set_message(format!("[{}] Cross-Key Avalanche...", engine_name));
 
-        let output2 = Command::new(engine_exe).arg("keygen").current_dir(run_dir).output().unwrap();
+        let output2 = Command::new(&rust_dir.join("target").join("release").join("d-spna-512.exe")).arg("keygen").current_dir(&rust_dir).output().unwrap();
         let stdout2 = String::from_utf8_lossy(&output2.stdout);
         let pk2 = stdout2.lines().find(|l| l.starts_with("PK:")).unwrap().split(": ").nth(1).unwrap().trim();
 
