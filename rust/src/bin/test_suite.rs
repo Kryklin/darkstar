@@ -44,6 +44,39 @@ fn center_text(text: &str, term_width: usize) -> String {
     }
 }
 
+fn get_progress_style(term_width: usize) -> indicatif::ProgressStyle {
+    let pad = " ".repeat(term_width.saturating_sub(80) / 2);
+    let template = format!(
+        "{}{{spinner:.cyan}} [{{bar:40.blue/cyan}}] {{pos:>4}}/{{len:4}} {{msg}}",
+        pad
+    );
+    indicatif::ProgressStyle::default_bar()
+        .template(&template)
+        .unwrap()
+        .progress_chars("█▉▊▋▌▍▎▏  ")
+}
+
+fn get_spinner_style(term_width: usize) -> indicatif::ProgressStyle {
+    let pad = " ".repeat(term_width.saturating_sub(80) / 2);
+    let template = format!("{}{{spinner:.cyan}} {{msg}}", pad);
+    indicatif::ProgressStyle::default_spinner()
+        .template(&template)
+        .unwrap()
+        .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
+}
+
+fn get_multi_progress_style(term_width: usize) -> indicatif::ProgressStyle {
+    let pad = " ".repeat(term_width.saturating_sub(80) / 2);
+    let template = format!(
+        "{}{{spinner:.cyan}} [{{bar:40.blue/cyan}}] {{percent:>3}}% {{msg}}",
+        pad
+    );
+    indicatif::ProgressStyle::default_bar()
+        .template(&template)
+        .unwrap()
+        .progress_chars("█▉▊▋▌▍▎▏  ")
+}
+
 fn print_header(_term: &console::Term) {
     println!();
     println!(
@@ -86,14 +119,7 @@ fn bench_command(term: &mut console::Term) {
     ];
 
     let pb = indicatif::ProgressBar::new((100 * engines.len()) as u64);
-    let pad = " ".repeat(term_width.saturating_sub(80) / 2);
-    let template = format!("{}{{spinner:.cyan}} [{{bar:40.cyan/blue}}] {{msg}}", pad);
-    pb.set_style(
-        indicatif::ProgressStyle::default_bar()
-            .template(&template)
-            .unwrap()
-            .progress_chars("=> "),
-    );
+    pb.set_style(get_progress_style(term_width));
 
     let sizes = vec![("100 KB", 102400), ("1 MB", 1048576), ("10 MB", 10485760)];
     let mut log_content = String::new();
@@ -257,8 +283,14 @@ fn bench_command(term: &mut console::Term) {
         pb.inc(10);
     }
 
-    pb.finish_and_clear();
-    println!("  [OK] Performance & Bitrate Matrix Complete");
+    pb.finish_with_message("✔ Complete");
+    println!();
+    println!(
+        "  {}",
+        style("[OK] Performance & Bitrate Matrix Complete")
+            .green()
+            .bold()
+    );
     println!("       - Peak Encryption: {:.2} Gbps", top_enc);
     println!("       - Peak Decryption: {:.2} Gbps", top_dec);
     save_and_open_log("bench", &log_content);
@@ -297,14 +329,7 @@ fn mitigations_command(term: &mut console::Term) {
     ];
 
     let pb = indicatif::ProgressBar::new((100 * engines.len()) as u64);
-    let pad = " ".repeat(term_width.saturating_sub(80) / 2);
-    let template = format!("{}{{spinner:.cyan}} [{{bar:40.cyan/blue}}] {{msg}}", pad);
-    pb.set_style(
-        indicatif::ProgressStyle::default_bar()
-            .template(&template)
-            .unwrap()
-            .progress_chars("=> "),
-    );
+    pb.set_style(get_progress_style(term_width));
 
     let mut log_content = String::new();
     log_content.push_str(
@@ -441,9 +466,14 @@ fn mitigations_command(term: &mut console::Term) {
         );
     }
 
-    pb.finish_with_message("Side-Channel Mitigations Audit Complete");
+    pb.finish_with_message("✔ Side-Channel Mitigations Audit Complete");
     println!();
-    println!("  [OK] Cryptographic ARX Variance Tested (FFI Isolated)");
+    println!(
+        "  {}",
+        style("[OK] Cryptographic ARX Variance Tested (FFI Isolated)")
+            .green()
+            .bold()
+    );
     save_and_open_log("rust_mitigations", &log_content);
 }
 
@@ -566,14 +596,7 @@ fn interop_command(term: &mut Term) {
     let payload_size_mb = (payload.len() * rounds) as f64 / 1048576.0;
 
     let setup_pb = ProgressBar::new(2);
-    let pad = " ".repeat(term_width.saturating_sub(80) / 2);
-    let template = format!("{}{{spinner:.cyan}} [{{bar:40.cyan/blue}}] {{msg}}", pad);
-    setup_pb.set_style(
-        ProgressStyle::default_bar()
-            .template(&template)
-            .unwrap()
-            .progress_chars("=> "),
-    );
+    setup_pb.set_style(get_progress_style(term_width));
     setup_pb.set_message("Generating Master Keys...");
 
     let output = Command::new(&rust_exe)
@@ -625,7 +648,7 @@ fn interop_command(term: &mut Term) {
         .filter(|l| !l.trim().is_empty())
         .collect();
 
-    setup_pb.finish_and_clear();
+    setup_pb.finish_with_message("✔ Key Generation Complete");
     println!();
 
     let engines = vec![
@@ -639,17 +662,7 @@ fn interop_command(term: &mut Term) {
 
     for (name, exe, dir) in engines {
         let pb = m.add(ProgressBar::new(rounds as u64));
-        let pad = " ".repeat(term_width.saturating_sub(80) / 2);
-        let template = format!(
-            "{}{{spinner:.green}} {:<20} [{{bar:40.cyan/blue}}] {{percent}}% {{msg}}",
-            pad, name
-        );
-        pb.set_style(
-            ProgressStyle::default_bar()
-                .template(&template)
-                .unwrap()
-                .progress_chars("=> "),
-        );
+        pb.set_style(get_multi_progress_style(term_width));
 
         let mut child = match Command::new(&exe)
             .args(["stream-decrypt", sk, "--hwid", hwid, "--telemetry"])
@@ -694,7 +707,7 @@ fn interop_command(term: &mut Term) {
         let run_res = child.wait().unwrap();
         let stream_elapsed_sec = stream_start.elapsed().as_secs_f64();
         let success = run_res.success();
-        pb.finish_and_clear();
+        pb.finish_with_message("✔ Stream Decrypted");
 
         if success && !casca_us_list.is_empty() {
             casca_us_list.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -742,7 +755,11 @@ fn interop_command(term: &mut Term) {
     {
         log_content.push_str(&format!("Engine: {}\nStatus: {}\nMin / Max: {:.2} us / {:.2} us\nAvg: {:.2} us\nStd Dev: {:.2} us\np99: {:.2} us\nOps/Sec: {:.2}\nThroughput: {:.2} MB/s\nCascade CPB (4.0GHz ref): {:.2}\n\n", name, status, min, max, avg, std_dev, p99, ops_sec, throughput_mbps, cpb));
     }
-    println!("  [OK] Interop Benchmark Complete");
+    println!();
+    println!(
+        "  {}",
+        style("[OK] Interop Benchmark Complete").green().bold()
+    );
     for (name, status, _, _, _, _, _, _, _, _) in &stats_results {
         println!("       - {}: {}", name, status);
     }
@@ -809,17 +826,7 @@ fn kat_command(term: &mut Term) {
     let m = MultiProgress::new();
     for (name, exe, dir) in engines {
         let pb = m.add(ProgressBar::new(vectors.len() as u64));
-        let pad = " ".repeat(term_width.saturating_sub(80) / 2);
-        let template = format!(
-            "{}{{spinner:.green}} {:<20} [{{bar:40.cyan/blue}}] {{pos}}/{{len}} {{msg}}",
-            pad, name
-        );
-        pb.set_style(
-            ProgressStyle::default_bar()
-                .template(&template)
-                .unwrap()
-                .progress_chars("=> "),
-        );
+        pb.set_style(get_progress_style(term_width));
 
         for vec in &vectors {
             let vec_id = vec
@@ -921,7 +928,7 @@ fn kat_command(term: &mut Term) {
             results.push((name, vec_id.to_string(), status, err_msg.to_string()));
             pb.inc(1);
         }
-        pb.finish_with_message("Completed");
+        pb.finish_with_message("✔ Completed");
     }
     println!();
 
@@ -933,7 +940,10 @@ fn kat_command(term: &mut Term) {
             name, vec_id, status, err_msg
         ));
     }
-    println!("  [OK] Known Answer Tests Complete");
+    println!(
+        "  {}",
+        style("[OK] Known Answer Tests Complete").green().bold()
+    );
     let pass_count = results.iter().filter(|(_, _, s, _)| s == &"PASS").count();
     println!("       - {}/{} vectors passed", pass_count, results.len());
     save_and_open_log("kat", &log_content);
@@ -968,14 +978,7 @@ fn crypto_analysis_command(term: &mut Term) {
     ];
 
     let pb = ProgressBar::new((100 * engines.len()) as u64);
-    let pad = " ".repeat(term_width.saturating_sub(80) / 2);
-    let template = format!("{}{{spinner:.cyan}} [{{bar:40.cyan/blue}}] {{msg}}", pad);
-    pb.set_style(
-        ProgressStyle::default_bar()
-            .template(&template)
-            .unwrap()
-            .progress_chars("=> "),
-    );
+    pb.set_style(get_progress_style(term_width));
 
     let mut log_content = String::new();
     log_content.push_str(
@@ -1239,7 +1242,7 @@ fn crypto_analysis_command(term: &mut Term) {
         pb.inc(20);
     }
 
-    pb.finish_and_clear();
+    pb.finish_with_message("✔ Stream Decrypted");
     println!("  [OK] Cryptographic Analysis Complete");
     save_and_open_log("analysis", &log_content);
 }
@@ -1269,14 +1272,7 @@ fn gpu_synthetic_test_command(term: &mut Term) {
     let reader = BufReader::new(child_stdout);
 
     let pb = ProgressBar::new(100);
-    let pad = " ".repeat(term_width.saturating_sub(80) / 2);
-    let template = format!("{}{{spinner:.green}} [{{bar:40.cyan/blue}}] {{msg}}", pad);
-    pb.set_style(
-        ProgressStyle::default_bar()
-            .template(&template)
-            .unwrap()
-            .progress_chars("=> "),
-    );
+    pb.set_style(get_progress_style(term_width));
 
     let mut results = Vec::new();
 
@@ -1314,7 +1310,7 @@ fn gpu_synthetic_test_command(term: &mut Term) {
 
     let _ = child.wait();
     let elapsed_sec = start_time.elapsed().as_secs_f64();
-    pb.finish_with_message("Completed");
+    pb.finish_with_message("✔ Completed");
     println!();
 
     let mut log_content = String::new();
@@ -1331,7 +1327,12 @@ fn gpu_synthetic_test_command(term: &mut Term) {
             size, enc, dec, is_match
         ));
     }
-    println!("  [OK] GPU Synthetic Data Test Complete");
+    println!(
+        "  {}",
+        style("[OK] GPU Synthetic Data Test Complete")
+            .green()
+            .bold()
+    );
     save_and_open_log("gpu", &log_content);
 }
 
@@ -1369,11 +1370,7 @@ fn docker_matrix_command(term: &mut Term) {
 
     for (name, service) in langs {
         let pb = m.add(ProgressBar::new_spinner());
-        pb.set_style(
-            ProgressStyle::default_spinner()
-                .template("{spinner:.green} {msg}")
-                .unwrap(),
-        );
+        pb.set_style(get_spinner_style(term_width));
         pb.set_message(format!("Testing {}...", name));
         pb.enable_steady_tick(std::time::Duration::from_millis(80));
 
@@ -1384,7 +1381,7 @@ fn docker_matrix_command(term: &mut Term) {
             .output();
 
         let elapsed = start.elapsed();
-        pb.finish_and_clear();
+        pb.finish_with_message("✔ Stream Decrypted");
 
         match output {
             Ok(out) => {
@@ -1415,7 +1412,11 @@ fn docker_matrix_command(term: &mut Term) {
     for (name, status, ms) in &results {
         log_content.push_str(&format!("{}: {} ({} ms)\n", name, status, ms));
     }
-    println!("  [OK] Headless Docker Matrix Complete");
+    println!();
+    println!(
+        "  {}",
+        style("[OK] Headless Docker Matrix Complete").green().bold()
+    );
     for (name, status, _) in &results {
         if status == &"PASS" {
             println!("       - {}: PASS", name);
