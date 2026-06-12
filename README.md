@@ -14,7 +14,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Version-1.0.6-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/SIL-Locked-red?style=for-the-badge" alt="SIL Locked">
-  <img src="https://img.shields.io/badge/SIL-Locked-red?style=for-the-badge" alt="SIL Locked">
 </p>
 <p align="center">
   <a href="rust/README.md"><img src="https://img.shields.io/badge/Rust-black?style=for-the-badge&logo=rust&logoColor=white" alt="Rust"></a>
