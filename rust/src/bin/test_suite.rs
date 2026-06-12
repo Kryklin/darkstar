@@ -78,7 +78,12 @@ fn bench_command(term: &mut console::Term) {
         let output = std::process::Command::new(&rust_dir.join("target").join("release").join("d-spna-512.exe")).arg("keygen").current_dir(&rust_dir).output().unwrap();
         let stdout = String::from_utf8_lossy(&output.stdout);
         let pk = stdout.lines().find(|l| l.starts_with("PK:")).unwrap().split(": ").nth(1).unwrap().trim();
+        log_content.push_str(&format!("  [Keygen] Public Key: {}
+", pk));
         let sk = stdout.lines().find(|l| l.starts_with("SK:")).unwrap().split(": ").nth(1).unwrap().trim();
+        log_content.push_str(&format!("  [Keygen] Public Key: {}
+  [Keygen] Secret Key: {}
+", pk, sk));
 
         let mut results = Vec::new();
 
@@ -182,6 +187,9 @@ fn mitigations_command(term: &mut console::Term) {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let pk = stdout.lines().find(|l| l.starts_with("PK:")).unwrap().split(": ").nth(1).unwrap().trim();
 
+        log_content.push_str(&format!("  [Vector] Zeros (first 64 bytes): {}
+  [Vector] Ones (first 64 bytes): {}
+", &payload_zeros[0..64], &payload_ones[0..64]));
         let file_zeros = run_dir.join("tmp_zeros.txt");
         let file_ones = run_dir.join("tmp_ones.txt");
         std::fs::write(&file_zeros, &payload_zeros).unwrap();
@@ -653,11 +661,14 @@ fn crypto_analysis_command(term: &mut Term) {
         let output = Command::new(&rust_dir.join("target").join("release").join("d-spna-512.exe")).arg("keygen").current_dir(&rust_dir).output().expect("Failed keygen");
         let stdout = String::from_utf8_lossy(&output.stdout);
         let pk = stdout.lines().find(|l| l.starts_with("PK:")).unwrap().split(": ").nth(1).unwrap().trim();
-        
+        log_content.push_str(&format!("  [Keygen] Public Key 1: {}
+", pk));
         pb.inc(10);
         pb.set_message(format!("[{}] Encrypting 100KB payload...", engine_name));
 
         let payload = "A".repeat(102400);
+        log_content.push_str(&format!("  [Vector] Entropy Payload: {}...
+", &payload[0..64]));
         let payload_file = run_dir.join("tmp_analyze_payload.txt");
         fs::write(&payload_file, &payload).unwrap();
 
@@ -698,6 +709,8 @@ fn crypto_analysis_command(term: &mut Term) {
         pb.set_message(format!("[{}] Strict Avalanche Criterion (SAC)...", engine_name));
 
         let payload_str = "CRYPTOGRAPHIC_AVALANCHE_TEST_PAYLOAD_1234567890";
+        log_content.push_str(&format!("  [Vector] SAC Base Payload: {}
+", payload_str));
         let base_enc_out = Command::new(engine_exe).args(["encrypt", payload_str, pk]).current_dir(run_dir).output().unwrap();
         let base_out_str = String::from_utf8_lossy(&base_enc_out.stdout);
         let mut base_sac_hex = String::new();
@@ -748,6 +761,8 @@ fn crypto_analysis_command(term: &mut Term) {
         let output2 = Command::new(&rust_dir.join("target").join("release").join("d-spna-512.exe")).arg("keygen").current_dir(&rust_dir).output().unwrap();
         let stdout2 = String::from_utf8_lossy(&output2.stdout);
         let pk2 = stdout2.lines().find(|l| l.starts_with("PK:")).unwrap().split(": ").nth(1).unwrap().trim();
+        log_content.push_str(&format!("  [Keygen] Public Key 2 (Cross-Key): {}
+", pk2));
 
         let cross_out = Command::new(engine_exe).args(["encrypt", &format!("@{}", payload_file.display()), pk2]).current_dir(run_dir).output().unwrap();
         let cross_str = String::from_utf8_lossy(&cross_out.stdout);
