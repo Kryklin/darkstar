@@ -421,15 +421,48 @@ impl DarkstarCrypt {
                 }
             }
 
-            // Fast 64-bit branchless nonce increment
+            // Fast 64-bit branchless nonce increment, fully unrolled
             let mut carry = 1u64;
             let ptr = nonce.as_mut_ptr() as *mut u64;
-            for i in (0..8).rev() {
-                let val = u64::from_be(unsafe { std::ptr::read_unaligned(ptr.add(i)) });
-                let (new_val, overflow) = val.overflowing_add(carry);
-                unsafe { std::ptr::write_unaligned(ptr.add(i), new_val.to_be()) };
-                carry = overflow as u64;
-            }
+            
+            let val = u64::from_be(unsafe { std::ptr::read_unaligned(ptr.add(7)) });
+            let (new_val, overflow) = val.overflowing_add(carry);
+            unsafe { std::ptr::write_unaligned(ptr.add(7), new_val.to_be()) };
+            carry = overflow as u64;
+
+            let val = u64::from_be(unsafe { std::ptr::read_unaligned(ptr.add(6)) });
+            let (new_val, overflow) = val.overflowing_add(carry);
+            unsafe { std::ptr::write_unaligned(ptr.add(6), new_val.to_be()) };
+            carry = overflow as u64;
+
+            let val = u64::from_be(unsafe { std::ptr::read_unaligned(ptr.add(5)) });
+            let (new_val, overflow) = val.overflowing_add(carry);
+            unsafe { std::ptr::write_unaligned(ptr.add(5), new_val.to_be()) };
+            carry = overflow as u64;
+
+            let val = u64::from_be(unsafe { std::ptr::read_unaligned(ptr.add(4)) });
+            let (new_val, overflow) = val.overflowing_add(carry);
+            unsafe { std::ptr::write_unaligned(ptr.add(4), new_val.to_be()) };
+            carry = overflow as u64;
+
+            let val = u64::from_be(unsafe { std::ptr::read_unaligned(ptr.add(3)) });
+            let (new_val, overflow) = val.overflowing_add(carry);
+            unsafe { std::ptr::write_unaligned(ptr.add(3), new_val.to_be()) };
+            carry = overflow as u64;
+
+            let val = u64::from_be(unsafe { std::ptr::read_unaligned(ptr.add(2)) });
+            let (new_val, overflow) = val.overflowing_add(carry);
+            unsafe { std::ptr::write_unaligned(ptr.add(2), new_val.to_be()) };
+            carry = overflow as u64;
+
+            let val = u64::from_be(unsafe { std::ptr::read_unaligned(ptr.add(1)) });
+            let (new_val, overflow) = val.overflowing_add(carry);
+            unsafe { std::ptr::write_unaligned(ptr.add(1), new_val.to_be()) };
+            carry = overflow as u64;
+
+            let val = u64::from_be(unsafe { std::ptr::read_unaligned(ptr.add(0)) });
+            let (new_val, _overflow) = val.overflowing_add(carry);
+            unsafe { std::ptr::write_unaligned(ptr.add(0), new_val.to_be()) };
         }
         let cascade_duration = cascade_start.elapsed();
 

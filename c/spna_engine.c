@@ -572,12 +572,46 @@ int dasp_encapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
 
     uint64_t carry = 1;
     uint64_t *ptr = (uint64_t *)nonce;
-    for (int j = 7; j >= 0; j--) {
-      uint64_t val = _byteswap_uint64(ptr[j]);
-      uint64_t sum = val + carry;
-      carry = (sum < val) ? 1 : 0;
-      ptr[j] = _byteswap_uint64(sum);
-    }
+    uint64_t val, sum;
+
+    val = _byteswap_uint64(ptr[7]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[7] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[6]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[6] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[5]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[5] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[4]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[4] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[3]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[3] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[2]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[2] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[1]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[1] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[0]);
+    sum = val + carry;
+    ptr[0] = _byteswap_uint64(sum);
   }
 
   size_t mac_content_len = CRYPTO_CIPHERTEXTBYTES + payload_len + (has_ts ? 8 : 0);
@@ -774,12 +808,46 @@ int dasp_decapsulate_data_inner(uint8_t *base_payload, size_t payload_len,
 
     uint64_t carry = 1;
     uint64_t *ptr = (uint64_t *)nonce;
-    for (int j = 7; j >= 0; j--) {
-      uint64_t val = _byteswap_uint64(ptr[j]);
-      uint64_t sum = val + carry;
-      carry = (sum < val) ? 1 : 0;
-      ptr[j] = _byteswap_uint64(sum);
-    }
+    uint64_t val, sum;
+
+    val = _byteswap_uint64(ptr[7]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[7] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[6]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[6] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[5]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[5] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[4]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[4] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[3]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[3] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[2]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[2] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[1]);
+    sum = val + carry;
+    carry = sum < val;
+    ptr[1] = _byteswap_uint64(sum);
+
+    val = _byteswap_uint64(ptr[0]);
+    sum = val + carry;
+    ptr[0] = _byteswap_uint64(sum);
   }
 
   if (dpa_triggered) {

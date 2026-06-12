@@ -89,21 +89,22 @@ fn bench_command(term: &mut console::Term) {
 
         for (label, size) in &sizes {
             pb.set_message(format!("[{}] Benchmarking {} payload...", engine_name, label));
-            let payload = "A".repeat(*size);
+            let mut payload_bytes = vec![0u8; *size / 2];
+            rand::thread_rng().fill(&mut payload_bytes[..]);
+            let payload = hex::encode(&payload_bytes);
             let payload_file = run_dir.join("tmp_bench_payload.txt");
             std::fs::write(&payload_file, &payload).unwrap();
 
+            let enc_start = std::time::Instant::now();
             let enc_out = std::process::Command::new(engine_exe).args(["encrypt", &format!("@{}", payload_file.display()), pk, "--telemetry"]).current_dir(run_dir).output().unwrap();
+            let enc_us = enc_start.elapsed().as_micros() as f64;
+            
             let mut enc_str = String::from_utf8_lossy(&enc_out.stdout).to_string();
             enc_str.push('\n');
             enc_str.push_str(&String::from_utf8_lossy(&enc_out.stderr));
-            let mut enc_us = 0.0;
             let mut enc_json = String::new();
             for line in enc_str.lines() {
                 if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
-                    if let Some(t) = v.get("timings").and_then(|t| t.get("cascade_us")) { 
-                        enc_us = t.as_f64().unwrap_or(0.0); 
-                    }
                     if v.get("ct").is_some() || v.get("data").is_some() {
                         enc_json = line.to_string();
                     }
@@ -113,16 +114,9 @@ fn bench_command(term: &mut console::Term) {
             let ct_file = run_dir.join("tmp_bench_ct.txt");
             std::fs::write(&ct_file, &enc_json).unwrap();
 
+            let dec_start = std::time::Instant::now();
             let dec_out = std::process::Command::new(engine_exe).args(["decrypt", &format!("@{}", ct_file.display()), sk, "--telemetry"]).current_dir(run_dir).output().unwrap();
-            let mut dec_str = String::from_utf8_lossy(&dec_out.stdout).to_string();
-            dec_str.push('\n');
-            dec_str.push_str(&String::from_utf8_lossy(&dec_out.stderr));
-            let mut dec_us = 0.0;
-            for line in dec_str.lines() {
-                if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
-                    if let Some(t) = v.get("timings").and_then(|t| t.get("cascade_us")) { dec_us = t.as_f64().unwrap_or(0.0); }
-                }
-            }
+            let dec_us = dec_start.elapsed().as_micros() as f64;
 
             let enc_throughput = (*size as f64 / 1048576.0) / (enc_us / 1000000.0);
             let dec_throughput = (*size as f64 / 1048576.0) / (dec_us / 1000000.0);
@@ -187,7 +181,7 @@ fn mitigations_command(term: &mut console::Term) {
     let payload_zeros = String::from_utf8(vec![b'0'; size]).unwrap();
     let payload_ones = String::from_utf8(vec![b'1'; size]).unwrap();
 
-    let runs = 50;
+    let runs = 250;
 
     for (engine_name, engine_exe, run_dir) in &engines {
         pb.set_message(format!("[{}] Keygen...", engine_name));
@@ -210,7 +204,9 @@ fn mitigations_command(term: &mut console::Term) {
             pb.set_message(format!("[{}] Sampling Constant-Time Variance... ({}/{})", engine_name, i+1, runs));
             
             let z_out = std::process::Command::new(engine_exe).args(["encrypt", &format!("@{}", file_zeros.display()), pk, "--telemetry"]).current_dir(run_dir).output().unwrap();
-            let z_str = String::from_utf8_lossy(&z_out.stdout);
+            let mut z_str = String::from_utf8_lossy(&z_out.stdout).to_string();
+            z_str.push('\n');
+            z_str.push_str(&String::from_utf8_lossy(&z_out.stderr));
             for line in z_str.lines() {
                 if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
                     if let Some(t) = v.get("timings").and_then(|t| t.get("cascade_us")) { zeros_timings.push(t.as_f64().unwrap_or(0.0)); }
@@ -218,7 +214,9 @@ fn mitigations_command(term: &mut console::Term) {
             }
 
             let o_out = std::process::Command::new(engine_exe).args(["encrypt", &format!("@{}", file_ones.display()), pk, "--telemetry"]).current_dir(run_dir).output().unwrap();
-            let o_str = String::from_utf8_lossy(&o_out.stdout);
+            let mut o_str = String::from_utf8_lossy(&o_out.stdout).to_string();
+            o_str.push('\n');
+            o_str.push_str(&String::from_utf8_lossy(&o_out.stderr));
             for line in o_str.lines() {
                 if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
                     if let Some(t) = v.get("timings").and_then(|t| t.get("cascade_us")) { ones_timings.push(t.as_f64().unwrap_or(0.0)); }
@@ -230,6 +228,7 @@ fn mitigations_command(term: &mut console::Term) {
         std::fs::remove_file(&file_zeros).unwrap_or(());
         std::fs::remove_file(&file_ones).unwrap_or(());
         
+        // Use strict statistical average to capture true boundary variance
         let z_avg = zeros_timings.iter().sum::<f64>() / zeros_timings.len() as f64;
         let o_avg = ones_timings.iter().sum::<f64>() / ones_timings.len() as f64;
         let variance_us = (z_avg - o_avg).abs();
@@ -372,7 +371,9 @@ fn interop_command(term: &mut Term) {
     let c_exe = c_dir.join("d-spna-512.exe");
     let cuda_exe = cuda_dir.join("d-spna-512_cuda.exe");
 
-    let payload = "Professional Grade Benchmark Payload: 0123456789ABCDEF0123456789ABCDEF".repeat(1024);
+    let mut payload_bytes = vec![0u8; 1024 / 2];
+    rand::thread_rng().fill(&mut payload_bytes[..]);
+    let payload = hex::encode(&payload_bytes);
     let hwid = "11223344556677889900AABBCCDDEEFF11223344556677889900AABBCCDDEEFF";
     let payload_size_mb = (payload.len() * rounds) as f64 / 1048576.0;
 
@@ -443,6 +444,7 @@ fn interop_command(term: &mut Term) {
         let child_stdout = child.stdout.take().unwrap();
 
         let enc_payloads_clone: Vec<String> = enc_payloads.iter().map(|&s| s.to_string()).collect();
+        let stream_start = std::time::Instant::now();
         std::thread::spawn(move || {
             for p in enc_payloads_clone {
                 if writeln!(child_stdin, "{}", p).is_err() { break; }
@@ -462,6 +464,7 @@ fn interop_command(term: &mut Term) {
         }
 
         let run_res = child.wait().unwrap();
+        let stream_elapsed_sec = stream_start.elapsed().as_secs_f64();
         let success = run_res.success();
         pb.finish_and_clear();
 
@@ -480,7 +483,8 @@ fn interop_command(term: &mut Term) {
             let p99 = casca_us_list[p99_idx.min(casca_us_list.len() - 1)];
 
             let ops_sec = if avg > 0.0 { 1_000_000.0 / avg } else { 0.0 };
-            let throughput_mbps = if avg > 0.0 { (payload.len() as f64 / 1048576.0) / (avg / 1000000.0) } else { 0.0 };
+            let total_payload_bytes: usize = enc_payloads.iter().map(|s| s.len()).sum();
+            let throughput_mbps = (total_payload_bytes as f64 / 1048576.0) / stream_elapsed_sec;
 
             stats_results.push((name, "PASS", min, max, avg, std_dev, p99, ops_sec, throughput_mbps));
         } else {
@@ -676,7 +680,9 @@ fn crypto_analysis_command(term: &mut Term) {
         pb.inc(10);
         pb.set_message(format!("[{}] Encrypting 100KB payload...", engine_name));
 
-        let payload = "A".repeat(102400);
+        let mut payload_bytes = vec![0u8; 102400 / 2];
+        rand::thread_rng().fill(&mut payload_bytes[..]);
+        let payload = hex::encode(&payload_bytes);
         log_content.push_str(&format!("  [Vector] Entropy Payload: {}...
 ", &payload[0..64]));
         let payload_file = run_dir.join("tmp_analyze_payload.txt");
@@ -718,7 +724,7 @@ fn crypto_analysis_command(term: &mut Term) {
         pb.inc(30);
         pb.set_message(format!("[{}] Strict Avalanche Criterion (SAC)...", engine_name));
 
-        let payload_str = "CRYPTOGRAPHIC_AVALANCHE_TEST_PAYLOAD_1234567890";
+        let payload_str = "CRYPTOGRAPHIC_AVALANCHE_TEST_PAYLOAD_1234567890_PADDING_12345678";
         log_content.push_str(&format!("  [Vector] SAC Base Payload: {}
 ", payload_str));
         let base_enc_out = Command::new(engine_exe).args(["encrypt", payload_str, pk]).current_dir(run_dir).output().unwrap();
@@ -840,6 +846,7 @@ fn gpu_synthetic_test_command(term: &mut Term) {
     let cuda_dir = base_dir.join("cuda");
     let cuda_exe = cuda_dir.join("d-spna-512_test.exe");
 
+    let start_time = std::time::Instant::now();
     let mut child = Command::new(&cuda_exe)
         .arg("--telemetry")
         .current_dir(&cuda_dir)
@@ -886,14 +893,18 @@ fn gpu_synthetic_test_command(term: &mut Term) {
     }
 
     let _ = child.wait();
+    let elapsed_sec = start_time.elapsed().as_secs_f64();
     pb.finish_with_message("Completed");
     println!();
 
     
     let mut log_content = String::new();
     log_content.push_str("=== D-SPNA-512 GPU Synthetic Data Results ===\n\n");
+    let total_size_mb: f64 = results.iter().map(|(s, _, _, _)| s).sum();
+    let system_gbps = (total_size_mb / 1024.0) / elapsed_sec;
+    log_content.push_str(&format!("System-Level (PCIe inclusive) Throughput: {:.2} GB/s\n\n", system_gbps));
     for (size, enc, dec, is_match) in &results {
-        log_content.push_str(&format!("Size: {:.2} MB\nEnc: {:.2} GB/s\nDec: {:.2} GB/s\nMatch: {}\n\n", size, enc, dec, is_match));
+        log_content.push_str(&format!("Size: {:.2} MB\nRaw Engine Enc: {:.2} GB/s\nRaw Engine Dec: {:.2} GB/s\nMatch: {}\n\n", size, enc, dec, is_match));
     }
     println!("  [OK] GPU Synthetic Data Test Complete");
     save_and_open_log("gpu", &log_content);
