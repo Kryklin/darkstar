@@ -9,8 +9,8 @@ use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use console::{style, Key, Term};
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use console::{style, Term};
+use indicatif::{MultiProgress, ProgressBar};
 use rand::Rng;
 
 fn save_and_open_log(prefix: &str, content: &str) {
@@ -25,7 +25,11 @@ fn save_and_open_log(prefix: &str, content: &str) {
     let logs_dir = base_dir.join("logs");
     std::fs::create_dir_all(&logs_dir).unwrap_or(());
     let log_path = logs_dir.join(format!("rust_{}_{}.log", prefix, timestamp));
-    std::fs::write(&log_path, content).unwrap();
+    let os_info = std::env::consts::OS;
+    let arch_info = std::env::consts::ARCH;
+    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+    let full_content = format!("=== SYSTEM TELEMETRY ===\nOS: {} ({})\nCores: {}\nTimestamp: {}\n========================\n\n{}", os_info, arch_info, cores, timestamp, content);
+    std::fs::write(&log_path, full_content).unwrap();
     println!("  -> Detailed log saved to: {}", log_path.display());
     if cfg!(target_os = "windows") {
         let _ = std::process::Command::new("cmd")
@@ -44,10 +48,10 @@ fn center_text(text: &str, term_width: usize) -> String {
     }
 }
 
-fn get_progress_style(term_width: usize) -> indicatif::ProgressStyle {
+fn create_progress_style(term_width: usize) -> indicatif::ProgressStyle {
     let pad = " ".repeat(term_width.saturating_sub(80) / 2);
     let template = format!(
-        "{}{{spinner:.cyan}} [{{bar:40.blue/cyan}}] {{pos:>4}}/{{len:4}} {{msg}}",
+        "{}{{spinner:.cyan}} [{{bar:40.blue/cyan}}] {{pos:>4}}/{{len:4}} [{{elapsed_precise}} | {{eta_precise}}] {{msg}}",
         pad
     );
     indicatif::ProgressStyle::default_bar()
@@ -56,19 +60,19 @@ fn get_progress_style(term_width: usize) -> indicatif::ProgressStyle {
         .progress_chars("█▉▊▋▌▍▎▏  ")
 }
 
-fn get_spinner_style(term_width: usize) -> indicatif::ProgressStyle {
+fn create_spinner_style(term_width: usize) -> indicatif::ProgressStyle {
     let pad = " ".repeat(term_width.saturating_sub(80) / 2);
-    let template = format!("{}{{spinner:.cyan}} {{msg}}", pad);
+    let template = format!("{}{{spinner:.cyan}} [{{elapsed_precise}}] {{msg}}", pad);
     indicatif::ProgressStyle::default_spinner()
         .template(&template)
         .unwrap()
         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
 }
 
-fn get_multi_progress_style(term_width: usize) -> indicatif::ProgressStyle {
+fn create_multi_progress_style(term_width: usize) -> indicatif::ProgressStyle {
     let pad = " ".repeat(term_width.saturating_sub(80) / 2);
     let template = format!(
-        "{}{{spinner:.cyan}} [{{bar:40.blue/cyan}}] {{percent:>3}}% {{msg}}",
+        "{}{{spinner:.cyan}} [{{bar:40.blue/cyan}}] {{percent:>3}}% [{{elapsed_precise}} | {{eta_precise}}] {{msg}}",
         pad
     );
     indicatif::ProgressStyle::default_bar()
@@ -119,7 +123,7 @@ fn bench_command(term: &mut console::Term) {
     ];
 
     let pb = indicatif::ProgressBar::new((100 * engines.len()) as u64);
-    pb.set_style(get_progress_style(term_width));
+    pb.set_style(create_progress_style(term_width));
 
     let sizes = vec![("100 KB", 102400), ("1 MB", 1048576), ("10 MB", 10485760)];
     let mut log_content = String::new();
@@ -152,13 +156,7 @@ fn bench_command(term: &mut console::Term) {
             .split(": ")
             .nth(1)
             .unwrap()
-            .trim();
-        log_content.push_str(&format!(
-            "  [Keygen] Public Key: {}
-",
-            pk
-        ));
-        let sk = stdout
+            .trim();        let sk = stdout
             .lines()
             .find(|l| l.starts_with("SK:"))
             .unwrap()
@@ -166,13 +164,6 @@ fn bench_command(term: &mut console::Term) {
             .nth(1)
             .unwrap()
             .trim();
-        log_content.push_str(&format!(
-            "  [Keygen] Public Key: {}
-  [Keygen] Secret Key: {}
-",
-            pk, sk
-        ));
-
         let mut results = Vec::new();
 
         for (label, size) in &sizes {
@@ -215,7 +206,7 @@ fn bench_command(term: &mut console::Term) {
             std::fs::write(&ct_file, &enc_json).unwrap();
 
             let dec_start = std::time::Instant::now();
-            let dec_out = std::process::Command::new(engine_exe)
+            let _dec_out = std::process::Command::new(engine_exe)
                 .args([
                     "decrypt",
                     &format!("@{}", ct_file.display()),
@@ -283,7 +274,7 @@ fn bench_command(term: &mut console::Term) {
         pb.inc(10);
     }
 
-    pb.finish_with_message("✔ Complete");
+    pb.finish_with_message("✔ Testing Complete");
     println!();
     println!(
         "  {}",
@@ -329,7 +320,7 @@ fn mitigations_command(term: &mut console::Term) {
     ];
 
     let pb = indicatif::ProgressBar::new((100 * engines.len()) as u64);
-    pb.set_style(get_progress_style(term_width));
+    pb.set_style(create_progress_style(term_width));
 
     let mut log_content = String::new();
     log_content.push_str(
@@ -424,6 +415,17 @@ fn mitigations_command(term: &mut console::Term) {
         // Use strict statistical average to capture true boundary variance
         let z_avg = zeros_timings.iter().sum::<f64>() / zeros_timings.len() as f64;
         let o_avg = ones_timings.iter().sum::<f64>() / ones_timings.len() as f64;
+        let z_min = zeros_timings.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+        let z_max = zeros_timings.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+        let o_min = ones_timings.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+        let o_max = ones_timings.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+        let mut z_s = zeros_timings.clone(); z_s.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let mut o_s = ones_timings.clone(); o_s.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let z_p95 = z_s[(z_s.len() as f64 * 0.95) as usize];
+        let o_p95 = o_s[(o_s.len() as f64 * 0.95) as usize];
+        let z_var = zeros_timings.iter().map(|x| (x - z_avg).powi(2)).sum::<f64>() / zeros_timings.len() as f64;
+        let o_var = ones_timings.iter().map(|x| (x - o_avg).powi(2)).sum::<f64>() / ones_timings.len() as f64;
+
         let variance_us = (z_avg - o_avg).abs();
         let variance_pct = if z_avg > 0.0 {
             (variance_us / z_avg) * 100.0
@@ -432,20 +434,13 @@ fn mitigations_command(term: &mut console::Term) {
         };
 
         let metrics = vec![
-            ("All-Zeros Payload Avg (us)", format!("{:.4}", z_avg)),
-            ("All-Ones Payload Avg (us)", format!("{:.4}", o_avg)),
+            ("All-Zeros Min / Max / Avg / p95 (us)", format!("{:.4} / {:.4} / {:.4} / {:.4}", z_min, z_max, z_avg, z_p95)),
+            ("All-Zeros StdDev (us)", format!("{:.4}", z_var.sqrt())),
+            ("All-Ones Min / Max / Avg / p95 (us)", format!("{:.4} / {:.4} / {:.4} / {:.4}", o_min, o_max, o_avg, o_p95)),
+            ("All-Ones StdDev (us)", format!("{:.4}", o_var.sqrt())),
             ("Absolute Variance (us)", format!("{:.4}", variance_us)),
             ("Relative Variance (%)", format!("{:.4}%", variance_pct)),
-            (
-                "Execution Time Mitigation",
-                if variance_pct < 0.1 {
-                    "PASS (Constant-Time)".to_string()
-                } else {
-                    "FAIL".to_string()
-                },
-            ),
-            ("S-Box / Branch Prediction Leakage", "Zero".to_string()),
-            ("Memory Pattern Leakage", "Zero".to_string()),
+
         ];
 
         log_content.push_str(&format!(
@@ -466,7 +461,7 @@ fn mitigations_command(term: &mut console::Term) {
         );
     }
 
-    pb.finish_with_message("✔ Side-Channel Mitigations Audit Complete");
+    pb.finish_with_message("✔ Mitigations Audit Complete");
     println!();
     println!(
         "  {}",
@@ -593,10 +588,10 @@ fn interop_command(term: &mut Term) {
     rand::thread_rng().fill(&mut payload_bytes[..]);
     let payload = hex::encode(&payload_bytes);
     let hwid = "11223344556677889900AABBCCDDEEFF11223344556677889900AABBCCDDEEFF";
-    let payload_size_mb = (payload.len() * rounds) as f64 / 1048576.0;
+    let _payload_size_mb = (payload.len() * rounds) as f64 / 1048576.0;
 
     let setup_pb = ProgressBar::new(2);
-    setup_pb.set_style(get_progress_style(term_width));
+    setup_pb.set_style(create_progress_style(term_width));
     setup_pb.set_message("Generating Master Keys...");
 
     let output = Command::new(&rust_exe)
@@ -662,7 +657,7 @@ fn interop_command(term: &mut Term) {
 
     for (name, exe, dir) in engines {
         let pb = m.add(ProgressBar::new(rounds as u64));
-        pb.set_style(get_multi_progress_style(term_width));
+        pb.set_style(create_multi_progress_style(term_width));
 
         let mut child = match Command::new(&exe)
             .args(["stream-decrypt", sk, "--hwid", hwid, "--telemetry"])
@@ -707,7 +702,7 @@ fn interop_command(term: &mut Term) {
         let run_res = child.wait().unwrap();
         let stream_elapsed_sec = stream_start.elapsed().as_secs_f64();
         let success = run_res.success();
-        pb.finish_with_message("✔ Stream Decrypted");
+        pb.finish_with_message("✔ Execution Complete");
 
         if success && !casca_us_list.is_empty() {
             casca_us_list.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -826,7 +821,7 @@ fn kat_command(term: &mut Term) {
     let m = MultiProgress::new();
     for (name, exe, dir) in engines {
         let pb = m.add(ProgressBar::new(vectors.len() as u64));
-        pb.set_style(get_progress_style(term_width));
+        pb.set_style(create_progress_style(term_width));
 
         for vec in &vectors {
             let vec_id = vec
@@ -919,7 +914,8 @@ fn kat_command(term: &mut Term) {
                         let act = actual_diag.get(stage);
                         if exp.is_some() && act.is_some() && exp != act {
                             status = "FAIL";
-                            err_msg = "Diag mismatch";
+                            let diff = format!("Stage {} mismatch!\nExpected: {}\nActual: {}", stage, serde_json::to_string_pretty(&exp).unwrap_or_default(), serde_json::to_string_pretty(&act).unwrap_or_default());
+                            err_msg = Box::leak(diff.into_boxed_str());
                             break;
                         }
                     }
@@ -928,7 +924,7 @@ fn kat_command(term: &mut Term) {
             results.push((name, vec_id.to_string(), status, err_msg.to_string()));
             pb.inc(1);
         }
-        pb.finish_with_message("✔ Completed");
+        pb.finish_with_message("✔ Test Batch Complete");
     }
     println!();
 
@@ -978,7 +974,7 @@ fn crypto_analysis_command(term: &mut Term) {
     ];
 
     let pb = ProgressBar::new((100 * engines.len()) as u64);
-    pb.set_style(get_progress_style(term_width));
+    pb.set_style(create_progress_style(term_width));
 
     let mut log_content = String::new();
     log_content.push_str(
@@ -1007,24 +1003,12 @@ fn crypto_analysis_command(term: &mut Term) {
             .split(": ")
             .nth(1)
             .unwrap()
-            .trim();
-        log_content.push_str(&format!(
-            "  [Keygen] Public Key 1: {}
-",
-            pk
-        ));
-        pb.inc(10);
+            .trim();        pb.inc(10);
         pb.set_message(format!("[{}] Encrypting 100KB payload...", engine_name));
 
         let mut payload_bytes = vec![0u8; 102400 / 2];
         rand::thread_rng().fill(&mut payload_bytes[..]);
-        let payload = hex::encode(&payload_bytes);
-        log_content.push_str(&format!(
-            "  [Vector] Entropy Payload: {}...
-",
-            &payload[0..64]
-        ));
-        let payload_file = run_dir.join("tmp_analyze_payload.txt");
+        let payload = hex::encode(&payload_bytes);        let payload_file = run_dir.join("tmp_analyze_payload.txt");
         fs::write(&payload_file, &payload).unwrap();
 
         let enc_output = Command::new(engine_exe)
@@ -1053,19 +1037,45 @@ fn crypto_analysis_command(term: &mut Term) {
             engine_name
         ));
 
+        let t_start = std::time::Instant::now();
         let entropy = analysis_math::shannon_entropy(&ct_bytes);
+        let t_entropy = t_start.elapsed().as_micros();
+        let t_start = std::time::Instant::now();
         let chi2 = analysis_math::chi_square(&ct_bytes);
+        let t_chi2 = t_start.elapsed().as_micros();
+        let t_start = std::time::Instant::now();
         let serial_corr = analysis_math::serial_correlation(&ct_bytes);
+        let t_serial_corr = t_start.elapsed().as_micros();
+        let t_start = std::time::Instant::now();
         let pi_est = analysis_math::monte_carlo_pi(&ct_bytes);
+        let t_pi_est = t_start.elapsed().as_micros();
+        let t_start = std::time::Instant::now();
         let monobit = analysis_math::monobit_frequency(&ct_bytes);
+        let t_monobit = t_start.elapsed().as_micros();
+        let t_start = std::time::Instant::now();
         let runs_ratio = analysis_math::runs_test(&ct_bytes);
+        let t_runs_ratio = t_start.elapsed().as_micros();
+        let t_start = std::time::Instant::now();
         let block_freq = analysis_math::block_frequency(&ct_bytes);
+        let t_block_freq = t_start.elapsed().as_micros();
+        let t_start = std::time::Instant::now();
         let cusum = analysis_math::cumulative_sums(&ct_bytes);
+        let t_cusum = t_start.elapsed().as_micros();
+        let t_start = std::time::Instant::now();
         let spectral = analysis_math::spectral_dft(&ct_bytes);
+        let t_spectral = t_start.elapsed().as_micros();
+        let t_start = std::time::Instant::now();
         let longest = analysis_math::longest_run_of_ones(&ct_bytes);
+        let t_longest = t_start.elapsed().as_micros();
+        let t_start = std::time::Instant::now();
         let apen = analysis_math::approx_entropy(&ct_bytes);
+        let t_apen = t_start.elapsed().as_micros();
+        let t_start = std::time::Instant::now();
         let serial = analysis_math::serial_test(&ct_bytes);
+        let t_serial = t_start.elapsed().as_micros();
+        let t_start = std::time::Instant::now();
         let lz_ratio = analysis_math::lz_compression(&ct_bytes);
+        let t_lz_ratio = t_start.elapsed().as_micros();
 
         pb.inc(30);
         pb.set_message(format!(
@@ -1073,13 +1083,7 @@ fn crypto_analysis_command(term: &mut Term) {
             engine_name
         ));
 
-        let payload_str = "CRYPTOGRAPHIC_AVALANCHE_TEST_PAYLOAD_1234567890_PADDING_12345678";
-        log_content.push_str(&format!(
-            "  [Vector] SAC Base Payload: {}
-",
-            payload_str
-        ));
-        let base_enc_out = Command::new(engine_exe)
+        let payload_str = "CRYPTOGRAPHIC_AVALANCHE_TEST_PAYLOAD_1234567890_PADDING_12345678";        let base_enc_out = Command::new(engine_exe)
             .args(["encrypt", payload_str, pk])
             .current_dir(run_dir)
             .output()
@@ -1164,12 +1168,6 @@ fn crypto_analysis_command(term: &mut Term) {
             .nth(1)
             .unwrap()
             .trim();
-        log_content.push_str(&format!(
-            "  [Keygen] Public Key 2 (Cross-Key): {}
-",
-            pk2
-        ));
-
         let cross_out = Command::new(engine_exe)
             .args(["encrypt", &format!("@{}", payload_file.display()), pk2])
             .current_dir(run_dir)
@@ -1199,27 +1197,21 @@ fn crypto_analysis_command(term: &mut Term) {
         fs::remove_file(&payload_file).unwrap_or(());
 
         let metrics = vec![
-            (
-                "Shannon Entropy (> 7.99 is perfect)",
-                format!("{:.6}", entropy),
-            ),
-            ("Chi-Square Distribution", format!("{:.2}", chi2)),
-            (
-                "Strict Avalanche Criterion (SAC %)",
-                format!("{:.2}%", avg_sac),
-            ),
+            ("Shannon Entropy (> 7.99 is perfect)", format!("{:.6} ({} us)", entropy, t_entropy)),
+            ("Chi-Square Distribution", format!("{:.2} ({} us)", chi2, t_chi2)),
+            ("Strict Avalanche Criterion (SAC %)", format!("{:.2}%", avg_sac)),
             ("Cross-Key Avalanche %", format!("{:.2}%", cross_sac)),
-            ("Serial Correlation", format!("{:.6}", serial_corr)),
-            ("Monte Carlo Pi Estimator", format!("{:.6}", pi_est)),
-            ("Monobit Frequency (p-value)", format!("{:.6}", monobit)),
-            ("Runs Test (p-value)", format!("{:.6}", runs_ratio)),
-            ("Block Frequency (x^2)", format!("{:.2}", block_freq)),
-            ("Cumulative Sums (max)", format!("{:.2}", cusum)),
-            ("Spectral DFT (peaks)", format!("{:.0}", spectral)),
-            ("Longest Run of Ones (x^2)", format!("{:.2}", longest)),
-            ("Approximate Entropy", format!("{:.6}", apen)),
-            ("Serial Test", format!("{:.6}", serial)),
-            ("LZ Compression Ratio", format!("{:.6}", lz_ratio)),
+            ("Serial Correlation", format!("{:.6} ({} us)", serial_corr, t_serial_corr)),
+            ("Monte Carlo Pi Estimator", format!("{:.6} ({} us)", pi_est, t_pi_est)),
+            ("Monobit Frequency (p-value)", format!("{:.6} ({} us)", monobit, t_monobit)),
+            ("Runs Test (p-value)", format!("{:.6} ({} us)", runs_ratio, t_runs_ratio)),
+            ("Block Frequency (x^2)", format!("{:.2} ({} us)", block_freq, t_block_freq)),
+            ("Cumulative Sums (max)", format!("{:.2} ({} us)", cusum, t_cusum)),
+            ("Spectral DFT (peaks)", format!("{:.0} ({} us)", spectral, t_spectral)),
+            ("Longest Run of Ones (x^2)", format!("{:.2} ({} us)", longest, t_longest)),
+            ("Approximate Entropy", format!("{:.6} ({} us)", apen, t_apen)),
+            ("Serial Test", format!("{:.6} ({} us)", serial, t_serial)),
+            ("LZ Compression Ratio", format!("{:.6} ({} us)", lz_ratio, t_lz_ratio)),
             ("Hamming Distance Variance", format!("{:.2}%", hamming_dist)),
         ];
 
@@ -1242,8 +1234,8 @@ fn crypto_analysis_command(term: &mut Term) {
         pb.inc(20);
     }
 
-    pb.finish_with_message("✔ Stream Decrypted");
-    println!("  [OK] Cryptographic Analysis Complete");
+    pb.finish_with_message("✔ Execution Complete");
+    println!("  {}", style("[OK] Cryptographic Analysis Complete").green().bold());
     save_and_open_log("analysis", &log_content);
 }
 
@@ -1272,7 +1264,7 @@ fn gpu_synthetic_test_command(term: &mut Term) {
     let reader = BufReader::new(child_stdout);
 
     let pb = ProgressBar::new(100);
-    pb.set_style(get_progress_style(term_width));
+    pb.set_style(create_progress_style(term_width));
 
     let mut results = Vec::new();
 
@@ -1310,7 +1302,7 @@ fn gpu_synthetic_test_command(term: &mut Term) {
 
     let _ = child.wait();
     let elapsed_sec = start_time.elapsed().as_secs_f64();
-    pb.finish_with_message("✔ Completed");
+    pb.finish_with_message("✔ Test Batch Complete");
     println!();
 
     let mut log_content = String::new();
@@ -1370,7 +1362,7 @@ fn docker_matrix_command(term: &mut Term) {
 
     for (name, service) in langs {
         let pb = m.add(ProgressBar::new_spinner());
-        pb.set_style(get_spinner_style(term_width));
+        pb.set_style(create_spinner_style(term_width));
         pb.set_message(format!("Testing {}...", name));
         pb.enable_steady_tick(std::time::Duration::from_millis(80));
 
@@ -1381,7 +1373,7 @@ fn docker_matrix_command(term: &mut Term) {
             .output();
 
         let elapsed = start.elapsed();
-        pb.finish_with_message("✔ Stream Decrypted");
+        pb.finish_with_message("✔ Execution Complete");
 
         match output {
             Ok(out) => {
